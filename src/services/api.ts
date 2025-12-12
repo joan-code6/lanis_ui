@@ -1,3 +1,27 @@
+import {
+  SchoolListResponse,
+  DistrictSchoolsResponse,
+  SchoolSearchResponse
+} from '../types';
+// School List API
+export const schoolListAPI = {
+  async getAllSchools(): Promise<SchoolListResponse> {
+    const response = await apiClient.get<SchoolListResponse>('/school-list');
+    return response.data;
+  },
+
+  async getSchoolsByDistrict(districtId: string): Promise<DistrictSchoolsResponse> {
+    const response = await apiClient.get<DistrictSchoolsResponse>(`/school-list/district/${districtId}`);
+    return response.data;
+  },
+
+  async searchSchools(query: string): Promise<SchoolSearchResponse> {
+    const response = await apiClient.get<SchoolSearchResponse>('/school-list/search', {
+      params: { q: query },
+    });
+    return response.data;
+  },
+};
 import axios, { AxiosInstance } from 'axios';
 import {
   LoginRequest,

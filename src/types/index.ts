@@ -1,3 +1,38 @@
+// School List types
+export interface School {
+  id: string;
+  name: string;
+  location: string;
+}
+
+export interface District {
+  id: string;
+  name: string;
+  schools: School[];
+}
+
+export interface SchoolListResponse {
+  success: boolean;
+  districts: District[];
+}
+
+export interface DistrictSchoolsResponse {
+  success: boolean;
+  district: District;
+}
+
+export interface SchoolSearchResult {
+  district_id: string;
+  district_name: string;
+  school: School;
+}
+
+export interface SchoolSearchResponse {
+  success: boolean;
+  query: string;
+  count: number;
+  results: SchoolSearchResult[];
+}
 // Authentication types
 export interface LoginRequest {
   school_id: string;

@@ -1,6 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { EyeIcon, EyeSlashIcon, AcademicCapIcon } from '@heroicons/react/24/outline';
+
+import { schoolListAPI } from '../../services/api';
+import { School, District } from '../../types';
 
 const LoginForm: React.FC = () => {
   const { login } = useAuth();
@@ -9,10 +12,18 @@ const LoginForm: React.FC = () => {
     username: '',
     password: '',
   });
+  const [schoolSearch, setSchoolSearch] = useState('');
+  const [schoolResults, setSchoolResults] = useState<School[]>([]);
+  const [allDistricts, setAllDistricts] = useState<District[]>([]);
+  const [selectedSchool, setSelectedSchool] = useState<School | null>(null);
+  const [showSchoolDropdown, setShowSchoolDropdown] = useState(false);
+  const schoolInputRef = useRef<HTMLInputElement>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
+
+  // Handle username/password changes
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
       ...formData,
@@ -20,6 +31,47 @@ const LoginForm: React.FC = () => {
     });
     if (error) setError('');
   };
+
+  // Handle school search input
+  const handleSchoolSearch = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSchoolSearch(value);
+    setShowSchoolDropdown(true);
+    setSelectedSchool(null);
+    setFormData((prev) => ({ ...prev, school_id: '' }));
+    if (value.length < 2) {
+      setSchoolResults([]);
+      return;
+    }
+    try {
+      const res = await schoolListAPI.searchSchools(value);
+      setSchoolResults(res.results.map(r => ({ ...r.school, district_id: r.district_id, district_name: r.district_name })));
+    } catch (e) {
+      setSchoolResults([]);
+    }
+  };
+
+  // Handle school selection
+  const handleSelectSchool = (school: School & { district_id?: string; district_name?: string }) => {
+    setSelectedSchool(school);
+    setSchoolSearch(`${school.name} (${school.location})${school.district_name ? ' – ' + school.district_name : ''}`);
+    setFormData((prev) => ({ ...prev, school_id: school.id }));
+    setShowSchoolDropdown(false);
+    if (schoolInputRef.current) schoolInputRef.current.blur();
+  };
+
+  // Hide dropdown on outside click
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (schoolInputRef.current && !schoolInputRef.current.contains(e.target as Node)) {
+        setShowSchoolDropdown(false);
+      }
+    };
+    if (showSchoolDropdown) {
+      document.addEventListener('mousedown', handleClick);
+    }
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [showSchoolDropdown]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,23 +102,46 @@ const LoginForm: React.FC = () => {
           </p>
         </div>
 
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+        <form className="mt-8 space-y-6" onSubmit={handleSubmit} autoComplete="off">
           <div className="card">
             <div className="space-y-4">
-              <div>
-                <label htmlFor="school_id" className="block text-sm font-medium text-gray-700 mb-1">
-                  Schul-ID
+              <div className="relative">
+                <label htmlFor="school_search" className="block text-sm font-medium text-gray-700 mb-1">
+                  Schule suchen
                 </label>
                 <input
-                  id="school_id"
-                  name="school_id"
+                  id="school_search"
+                  name="school_search"
                   type="text"
-                  required
                   className="input"
-                  placeholder="z.B. 1234"
-                  value={formData.school_id}
-                  onChange={handleChange}
+                  placeholder="Schulname oder Ort eingeben..."
+                  value={schoolSearch}
+                  onChange={handleSchoolSearch}
+                  autoComplete="off"
+                  ref={schoolInputRef}
+                  required
+                  onFocus={() => setShowSchoolDropdown(schoolSearch.length > 1)}
                 />
+                {showSchoolDropdown && schoolSearch.length > 1 && (
+                  <div className="absolute left-0 right-0 z-10 mt-1 bg-white border border-gray-200 rounded shadow-lg max-h-60 overflow-y-auto w-full">
+                    {schoolResults.length === 0 ? (
+                      <div className="px-4 py-2 text-gray-500 text-sm">Keine Schulen gefunden</div>
+                    ) : (
+                      schoolResults.map((school, idx) => (
+                        <div
+                          key={school.id + idx}
+                          className="px-4 py-2 hover:bg-primary-50 cursor-pointer text-sm"
+                          onMouseDown={e => { e.preventDefault(); handleSelectSchool(school); }}
+                        >
+                          {school.name} <span className="text-gray-400">({school.location})</span>
+                          {school.district_name && (
+                            <span className="ml-2 text-xs text-gray-400">{school.district_name}</span>
+                          )}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
               </div>
 
               <div>
@@ -122,7 +197,7 @@ const LoginForm: React.FC = () => {
 
               <button
                 type="submit"
-                disabled={isLoading}
+                disabled={isLoading || !formData.school_id}
                 className="w-full btn btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isLoading ? (

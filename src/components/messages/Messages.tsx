@@ -8,6 +8,9 @@ import {
   XMarkIcon,
   UserIcon,
   InboxArrowDownIcon,
+  UsersIcon,
+  ChatBubbleLeftIcon,
+  AcademicCapIcon,
 } from '@heroicons/react/24/outline';
 import { format, parseISO } from 'date-fns';
 import { de } from 'date-fns/locale';
@@ -22,6 +25,8 @@ const Messages: React.FC = () => {
   const [isConversationLoading, setIsConversationLoading] = useState(false);
   const [error, setError] = useState('');
   const [showCompose, setShowCompose] = useState(false);
+  const [showParticipants, setShowParticipants] = useState(false);
+  const [participantSearch, setParticipantSearch] = useState('');
   const [messageType, setMessageType] = useState<'All' | 'Unread' | 'Sent'>('All');
 
   // Early return if no token
@@ -196,6 +201,11 @@ const Messages: React.FC = () => {
     }
   };
 
+  const closeParticipantsModal = () => {
+    setShowParticipants(false);
+    setParticipantSearch('');
+  };
+
   const formatDate = (dateString: string) => {
     try {
       const date = parseISO(dateString);
@@ -316,6 +326,24 @@ const Messages: React.FC = () => {
       <div className="flex-1 flex flex-col">
         {selectedConversation ? (
           <>
+            {/* Conversation header */}
+            <div className="border-b border-gray-200 p-4 bg-white">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <h2 className="text-lg font-medium text-gray-900">
+                    {messages.find(m => m.Uniquid === selectedConversation)?.Betreff || 'Unterhaltung'}
+                  </h2>
+                </div>
+                <button
+                  onClick={() => setShowParticipants(true)}
+                  className="btn btn-secondary flex items-center"
+                >
+                  <UsersIcon className="h-4 w-4 mr-2" />
+                  Teilnehmer anzeigen
+                </button>
+              </div>
+            </div>
+
             {isConversationLoading ? (
               <div className="flex-1 flex items-center justify-center">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
@@ -487,6 +515,245 @@ const Messages: React.FC = () => {
                     Senden
                   </>
                 )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Participants modal */}
+      {showParticipants && selectedConversation && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg max-w-md w-full m-4 max-h-[60vh] flex flex-col">
+            {/* Header */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <h3 className="text-lg font-medium text-gray-900">Teilnehmer</h3>
+              <button
+                onClick={closeParticipantsModal}
+                className="text-gray-400 hover:text-gray-500"
+              >
+                <XMarkIcon className="h-6 w-6" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 p-6 overflow-y-auto">
+              {(() => {
+                // Get statistics from the first message in the conversation
+                const conversationMessage = conversationMessages.find(msg => msg.statistik);
+                const stats = conversationMessage?.statistik;
+                
+                // Get the original message header data to access all recipients
+                const messageHeader = messages.find(m => m.Uniquid === selectedConversation);
+                
+                if (!stats && !messageHeader) {
+                  return (
+                    <div className="text-center py-8">
+                      <UsersIcon className="mx-auto h-12 w-12 text-gray-400" />
+                      <p className="mt-2 text-sm text-gray-500">
+                        Keine Teilnehmerinformationen verfügbar
+                      </p>
+                    </div>
+                  );
+                }
+
+                // Get all participants from the message header
+                const getAllParticipants = () => {
+                  const participants = new Map();
+                  
+                  // Add sender
+                  if (messageHeader?.Sender) {
+                    const senderMessage = conversationMessages.find(msg => 
+                      msg.Sender === messageHeader.Sender || msg.sender === messageHeader.Sender
+                    );
+                    const senderName = senderMessage?.username || senderMessage?.SenderName || `Sender ${messageHeader.Sender}`;
+                    const senderRole = senderMessage?.SenderArt || 'Sender';
+                    participants.set(messageHeader.Sender, { 
+                      id: messageHeader.Sender,
+                      name: senderName, 
+                      role: senderRole, 
+                      type: 'sender',
+                      class: ''
+                    });
+                  }
+                  
+                  // Add all recipients from empf array
+                  if (messageHeader?.empf && Array.isArray(messageHeader.empf)) {
+                    messageHeader.empf.forEach((recipient, index) => {
+                      // Parse the HTML span to extract name and class
+                      const cleanText = recipient.replace(/<[^>]*>/g, '').trim();
+                      // Extract name and class from format like "Wegener, Bennet Joan (09B)"
+                      const match = cleanText.match(/^(.*?)\s*\(([^)]+)\)$/);
+                      const name = match ? match[1].trim() : cleanText;
+                      const className = match ? match[2].trim() : '';
+                      
+                      participants.set(`recipient-${index}`, {
+                        id: `recipient-${index}`,
+                        name: name,
+                        role: 'Teilnehmer',
+                        type: 'recipient',
+                        class: className
+                      });
+                    });
+                  }
+                  
+                  return Array.from(participants.values());
+                };
+
+                const allParticipants = getAllParticipants();
+                
+                // Filter participants by search
+                const filteredParticipants = allParticipants.filter(participant => 
+                  participantSearch === '' || 
+                  participant.name.toLowerCase().includes(participantSearch.toLowerCase()) ||
+                  (participant.class && participant.class.toLowerCase().includes(participantSearch.toLowerCase()))
+                );
+
+                return (
+                  <div className="space-y-4">
+                    {stats && (
+                      <div className="bg-gray-50 rounded-lg p-4">
+                        <h4 className="text-sm font-medium text-gray-900 mb-3">Übersicht</h4>
+                        <div className="grid grid-cols-2 gap-4 text-sm">
+                          <div className="flex items-center">
+                            <div className="w-3 h-3 bg-blue-500 rounded-full mr-2"></div>
+                            <span className="text-gray-600">Teilnehmer:</span>
+                            <span className="font-medium ml-1">{stats.teilnehmer}</span>
+                          </div>
+                          <div className="flex items-center">
+                            <div className="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
+                            <span className="text-gray-600">Betreuer:</span>
+                            <span className="font-medium ml-1">{stats.betreuer}</span>
+                          </div>
+                          <div className="flex items-center">
+                            <div className="w-3 h-3 bg-purple-500 rounded-full mr-2"></div>
+                            <span className="text-gray-600">Eltern:</span>
+                            <span className="font-medium ml-1">{stats.eltern}</span>
+                          </div>
+                          <div className="flex items-center">
+                            <div className="w-3 h-3 bg-gray-500 rounded-full mr-2"></div>
+                            <span className="text-gray-600">Gesamt:</span>
+                            <span className="font-medium ml-1">{stats.teilnehmer + stats.betreuer + stats.eltern}</span>
+                          </div>
+                        </div>
+                        <div className="mt-3 pt-3 border-t border-gray-200">
+                          <div className="flex items-center text-sm">
+                            <div className="w-3 h-3 bg-indigo-500 rounded-full mr-2"></div>
+                            <span className="text-gray-600">Alle Teilnehmer:</span>
+                            <span className="font-medium ml-1">{allParticipants.length}</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Search input */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Teilnehmer suchen
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Name oder Klasse eingeben..."
+                        className="input"
+                        value={participantSearch}
+                        onChange={(e) => setParticipantSearch(e.target.value)}
+                      />
+                    </div>
+
+                    <div>
+                      <div className="flex items-center justify-between mb-3">
+                        <h4 className="text-sm font-medium text-gray-900">
+                          Alle Teilnehmer
+                        </h4>
+                        <span className="text-xs text-gray-500">
+                          {filteredParticipants.length} von {allParticipants.length} Teilnehmern
+                        </span>
+                      </div>
+                      <div className="space-y-2">
+                        {filteredParticipants.length === 0 && participantSearch !== '' ? (
+                          <div className="text-center py-8">
+                            <UserIcon className="mx-auto h-8 w-8 text-gray-400" />
+                            <p className="mt-2 text-sm text-gray-500">
+                              Keine Teilnehmer gefunden für "{participantSearch}"
+                            </p>
+                          </div>
+                        ) : (
+                          filteredParticipants.map((participant, index) => {
+                            // Determine the color based on participant type and role
+                            let roleColor = 'bg-gray-100 text-gray-800';
+                            // Icon component to render for the participant
+                            let IconComponent = UserIcon;
+                            
+                            if (participant.type === 'sender') {
+                              roleColor = 'bg-green-100 text-green-800';
+                              IconComponent = ChatBubbleLeftIcon;
+                            } else {
+                              roleColor = 'bg-blue-100 text-blue-800';
+                              IconComponent = UserIcon;
+                            }
+                            
+                            if (participant.role === 'Betreuer') {
+                              roleColor = 'bg-purple-100 text-purple-800';
+                              IconComponent = AcademicCapIcon;
+                            }
+                            
+                            return (
+                              <div key={participant.id} className="flex items-center p-3 bg-gray-50 rounded-lg">
+                                <div className="h-8 w-8 flex items-center justify-center bg-gray-200 rounded-full text-sm mr-3">
+                                  <IconComponent className="h-5 w-5 text-gray-700" aria-hidden />
+                                </div>
+                                <div className="flex-1">
+                                  <p className="text-sm font-medium text-gray-900">{participant.name}</p>
+                                  <div className="flex items-center space-x-2">
+                                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${roleColor}`}>
+                                      {participant.role}
+                                    </span>
+                                    {participant.class && (
+                                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
+                                        {participant.class}
+                                      </span>
+                                    )}
+                                    <span className="text-xs text-gray-500">
+                                      {participant.type === 'sender' ? 'Absender' : 'Empfänger'}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Additional recipients info if available */}
+                    {(() => {
+                      const firstMessage = conversationMessages[0];
+                      const weitereEmpfaenger = firstMessage?.WeitereEmpfaenger;
+                      
+                      if (weitereEmpfaenger && weitereEmpfaenger.trim() !== '') {
+                        return (
+                          <div>
+                            <h4 className="text-sm font-medium text-gray-900 mb-2">Weitere Empfänger</h4>
+                            <div className="text-sm text-gray-600 bg-gray-50 rounded-lg p-3">
+                              {weitereEmpfaenger}
+                            </div>
+                          </div>
+                        );
+                      }
+                      return null;
+                    })()}
+                  </div>
+                );
+              })()}
+            </div>
+
+            {/* Footer */}
+            <div className="flex justify-end p-6 border-t border-gray-200">
+              <button
+                onClick={closeParticipantsModal}
+                className="btn btn-secondary"
+              >
+                Schließen
               </button>
             </div>
           </div>
