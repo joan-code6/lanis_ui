@@ -1,0 +1,243 @@
+// Authentication types
+export interface LoginRequest {
+  school_id: string;
+  username: string;
+  password: string;
+}
+
+export interface LoginResponse {
+  token: string;
+  school_id: string;
+  username: string;
+  encryption_ready: boolean;
+}
+
+export interface User {
+  [key: string]: string;
+}
+
+// Module and App types
+export interface Module {
+  name: string;
+  url: string;
+  color: string;
+  logo: string;
+  folders: string[];
+  target: string;
+}
+
+export interface ModulesResponse {
+  success: boolean;
+  modules: Module[];
+}
+
+export interface AppFolder {
+  name: string;
+  logo: string;
+  farbe: string;
+}
+
+export interface AppEntry {
+  Name: string;
+  Farbe: string;
+  Logo: string;
+  Ordner: string[];
+  link: string;
+  target: string;
+}
+
+export interface AppsResponse {
+  success: boolean;
+  data: {
+    error: string;
+    folders: AppFolder[];
+    entrys: AppEntry[];
+    till: number;
+  };
+}
+
+// Message types
+export interface MessageHeader {
+  Id: string;
+  Uniquid: string;
+  Sender: string;
+  Betreff: string;
+  Papierkorb: string;
+  private: number;
+  WeitereEmpfaenger: string;
+  empf: string[];
+  unread?: boolean;
+  date?: string;
+  [key: string]: any;
+}
+
+export interface MessagesResponse {
+  success: boolean;
+  total: number;
+  conversations: MessageHeader[];
+}
+
+export interface Message {
+  id: string;
+  sender: string;
+  content: string;
+  date: string;
+  [key: string]: any;
+}
+
+export interface ConversationResponse {
+  success: boolean;
+  conversation_id: string;
+  messages: Message[];
+}
+
+export interface SearchResult {
+  id: string;
+  name: string;
+  username: string;
+  type: string;
+  [key: string]: any;
+}
+
+export interface SearchResponse {
+  success: boolean;
+  results: SearchResult[];
+}
+
+export interface SendMessageRequest {
+  recipients: string[];
+  subject: string;
+  content: string;
+}
+
+export interface SendMessageResponse {
+  success: boolean;
+  message_id: string;
+  sent_at: string;
+}
+
+// Course types
+export interface CourseEntry {
+  entry_id: string | null;
+  book_id: string;
+  name: string;
+  course_link: string;
+  teacher_full_name: string;
+  teacher_short: string;
+  teacher_message_link: string;
+  thema: string;
+  datum: string;
+  homework: string;
+  homework_done: boolean;
+}
+
+export interface CoursesResponse {
+  success: boolean;
+  entries: CourseEntry[];
+  entry_count: number;
+}
+
+// Course entry in a course detail view
+export interface CourseDetailEntry {
+  entry_id: string;
+  date: string;
+  hours?: string;
+  thema: string;
+  homework: string;
+  homework_done: boolean;
+  attendance: string;
+  files: EntryAttachment[];
+}
+
+// Course details from API
+export interface CourseDetails {
+  course_id: string;
+  course_name: string;
+  semester: string;
+  teacher_short: string;
+  teacher_full: string;
+  entries: CourseDetailEntry[];
+  entry_count: number;
+  exams?: string[];
+  attendance_summary?: { [key: string]: string };
+}
+
+export interface CourseDetailsResponse {
+  success: boolean;
+  course_id: string;
+  course_name: string;
+  semester: string;
+  teacher_short: string;
+  teacher_full: string;
+  entries: CourseDetailEntry[];
+  entry_count: number;
+  exams?: string[];
+  attendance_summary?: { [key: string]: string };
+}
+
+export interface EntryAttachment {
+  name: string;
+  url: string;
+  [key: string]: any;
+}
+
+export interface EntryDetails {
+  id: string;
+  title: string;
+  content: string;
+  date: string;
+  attachments: EntryAttachment[];
+}
+
+export interface EntryDetailsResponse {
+  success: boolean;
+  entry: EntryDetails;
+}
+
+export interface WeeklyEntry {
+  date: string;
+  course: string;
+  entry: string;
+  url: string;
+  [key: string]: any;
+}
+
+export interface WeeklyViewResponse {
+  success: boolean;
+  week: {
+    start_date: string;
+    entries: WeeklyEntry[];
+  };
+}
+
+export interface Submission {
+  id: string;
+  title: string;
+  course: string;
+  due_date: string;
+  status: string;
+  url: string;
+  [key: string]: any;
+}
+
+export interface SubmissionsResponse {
+  success: boolean;
+  submissions: Submission[];
+}
+
+// Common types
+export interface ApiError {
+  detail: string;
+}
+
+export interface AuthContextType {
+  isAuthenticated: boolean;
+  token: string | null;
+  user: User | null;
+  login: (credentials: LoginRequest) => Promise<boolean>;
+  logout: () => void;
+}
+
+export interface HealthResponse {
+  status: string;
+}
