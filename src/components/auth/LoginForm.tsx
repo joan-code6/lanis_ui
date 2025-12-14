@@ -5,6 +5,18 @@ import { EyeIcon, EyeSlashIcon, AcademicCapIcon } from '@heroicons/react/24/outl
 import { schoolListAPI } from '../../services/api';
 import { School, District } from '../../types';
 
+// Debounce hook
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState<T>(value);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedValue(value), delay);
+    return () => clearTimeout(timer);
+  }, [value, delay]);
+
+  return debouncedValue;
+}
+
 const LoginForm: React.FC = () => {
   const { login } = useAuth();
   const [formData, setFormData] = useState({
@@ -13,6 +25,7 @@ const LoginForm: React.FC = () => {
     password: '',
   });
   const [schoolSearch, setSchoolSearch] = useState('');
+  const debouncedSchoolSearch = useDebounce(schoolSearch, 300); // 300ms debounce
   const [schoolResults, setSchoolResults] = useState<School[]>([]);
   const [allDistricts, setAllDistricts] = useState<District[]>([]);
   const [selectedSchool, setSelectedSchool] = useState<School | null>(null);
@@ -32,24 +45,42 @@ const LoginForm: React.FC = () => {
     if (error) setError('');
   };
 
-  // Handle school search input
-  const handleSchoolSearch = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Handle school search input (just update state, debounced effect does the API call)
+  const handleSchoolSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setSchoolSearch(value);
     setShowSchoolDropdown(true);
     setSelectedSchool(null);
     setFormData((prev) => ({ ...prev, school_id: '' }));
-    if (value.length < 2) {
-      setSchoolResults([]);
-      return;
-    }
-    try {
-      const res = await schoolListAPI.searchSchools(value);
-      setSchoolResults(res.results.map(r => ({ ...r.school, district_id: r.district_id, district_name: r.district_name })));
-    } catch (e) {
-      setSchoolResults([]);
-    }
   };
+
+  // Debounced API call for school search
+  useEffect(() => {
+    const abortController = new AbortController();
+
+    const searchSchools = async () => {
+      if (debouncedSchoolSearch.length < 2) {
+        setSchoolResults([]);
+        return;
+      }
+      try {
+        const res = await schoolListAPI.searchSchools(debouncedSchoolSearch);
+        if (!abortController.signal.aborted) {
+          setSchoolResults(res.results.map(r => ({ ...r.school, district_id: r.district_id, district_name: r.district_name })));
+        }
+      } catch (e) {
+        if (!abortController.signal.aborted) {
+          setSchoolResults([]);
+        }
+      }
+    };
+
+    searchSchools();
+
+    return () => {
+      abortController.abort();
+    };
+  }, [debouncedSchoolSearch]);
 
   // Handle school selection
   const handleSelectSchool = (school: School & { district_id?: string; district_name?: string }) => {

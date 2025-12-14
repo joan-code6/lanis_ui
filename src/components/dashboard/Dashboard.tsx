@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { appsAPI } from '../../services/api';
-import { AppEntry, Module, AppFolder } from '../../types';
+import { Module } from '../../types';
 import {
   FolderIcon,
   ArrowTopRightOnSquareIcon as ExternalLinkIcon,
@@ -11,20 +12,20 @@ import {
 } from '@heroicons/react/24/outline';
 import clsx from 'clsx';
 
-interface CombinedApp {
+interface CombinedModule {
   name: string;
   url: string;
   color: string;
   logo: string;
   folders: string[];
   target: string;
-  type: 'app' | 'module';
 }
 
 const Dashboard: React.FC = () => {
   const { token } = useAuth();
-  const [apps, setApps] = useState<CombinedApp[]>([]);
-  const [folders, setFolders] = useState<AppFolder[]>([]);
+  const navigate = useNavigate();
+  const [modules, setModules] = useState<CombinedModule[]>([]);
+  const [folders, setFolders] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
@@ -45,93 +46,117 @@ const Dashboard: React.FC = () => {
 
   useEffect(() => {
     if (token) {
-      loadAppsAndModules();
+      loadModules();
     }
   }, [token]);
 
-  const loadAppsAndModules = async () => {
+  const loadModules = async () => {
     if (!token) return;
-
     try {
       setIsLoading(true);
       setError('');
-
-      // Load both apps and modules
-      const [appsResponse, modulesResponse] = await Promise.all([
-        appsAPI.getApps(token),
-        appsAPI.getModules(token),
-      ]);
-
-      // Combine apps and modules
-      const combinedApps: CombinedApp[] = [];
-
-      // Add apps
-      if (appsResponse.success) {
-        setFolders(appsResponse.data.folders);
-        appsResponse.data.entrys.forEach((app: AppEntry) => {
-          combinedApps.push({
-            name: app.Name,
-            url: app.link,
-            color: app.Farbe,
-            logo: app.Logo,
-            folders: app.Ordner,
-            target: app.target,
-            type: 'app',
-          });
-        });
-      }
-
-      // Add modules
+      const modulesResponse = await appsAPI.getModules(token);
       if (modulesResponse.success) {
+        setModules(modulesResponse.modules);
+        // Collect unique folder names as strings
+        const allFolders: string[] = [];
         modulesResponse.modules.forEach((module: Module) => {
-          combinedApps.push({
-            name: module.name,
-            url: module.url,
-            color: module.color,
-            logo: module.logo,
-            folders: module.folders,
-            target: module.target,
-            type: 'module',
+          module.folders.forEach((folder) => {
+            if (!allFolders.includes(folder)) {
+              allFolders.push(folder);
+            }
           });
         });
+        setFolders(allFolders);
       }
-
-      setApps(combinedApps);
     } catch (error) {
-      console.error('Error loading apps and modules:', error);
-      setError('Fehler beim Laden der Apps und Module.');
+      console.error('Error loading modules:', error);
+      setError('Fehler beim Laden der Module.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleAppClick = (app: CombinedApp) => {
-    if (app.url.includes('start.schulportal.hessen.de')) {
-      // Handle internal module - you can implement routing here later
-      console.log('Internal module:', app.url);
-      // For now, open in new tab
-      window.open(app.url, '_blank');
-    } else {
-      // External link
-      const target = app.target === '_blank' ? '_blank' : '_self';
-      window.open(app.url, target);
+  const handleModuleClick = (module: CombinedModule) => {
+    // Check if URL contains nachrichten.php or meinunterricht.php and navigate internally
+    if (module.url.includes('/nachrichten.php')) {
+      navigate('/messages');
+      return;
     }
+    if (module.url.includes('/meinunterricht.php')) {
+      navigate('/courses');
+      return;
+    }
+    // Open external links in a new tab
+    window.open(module.url, '_blank', 'noopener,noreferrer');
   };
 
-  const filteredApps = apps.filter((app) => {
-    const matchesSearch = app.name.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesFolder = selectedFolder === 'all' || app.folders.includes(selectedFolder);
+  const filteredModules = modules.filter((module) => {
+    const matchesSearch = module.name.toLowerCase().includes(searchTerm.toLowerCase());
+    // Defensive: sanitize folder names for comparison
+    const moduleFolders = module.folders.map(f => f.trim());
+    const matchesFolder = selectedFolder === 'all' || moduleFolders.includes(selectedFolder);
     return matchesSearch && matchesFolder;
   });
 
-  const getAppIcon = (logo: string, color: string) => {
-    // This is a simplified version - you might want to map specific icons
+  const getModuleIcon = (logo: string, color: string) => {
+    // Clean up logo string: remove newlines, extra spaces
+    let trimmed = logo ? logo.replace(/\r?\n/g, '').replace(/\s+/g, ' ').trim() : '';
+    
+    // Normalize color (add # if missing for hex colors)
+    let bgColor = color ? color.trim() : '#888888';
+    if (bgColor && !bgColor.startsWith('#') && /^[0-9a-fA-F]{6}$/.test(bgColor)) {
+      bgColor = '#' + bgColor;
+    }
+
+    // Map old Font Awesome 4 icons to Font Awesome 6 equivalents
+    const iconMap: Record<string, string> = {
+      'fa fa-files-o': 'fa-regular fa-copy',
+      'fa fa-check-square-o': 'fa-regular fa-square-check',
+      'glyphicon glyphicon-comment': 'fa-regular fa-comment',
+      'glyphicon glyphicon-user': 'fa-regular fa-user',
+      'glyphicon glyphicon-home': 'fa-solid fa-house',
+      'glyphicon glyphicon-cog': 'fa-solid fa-gear',
+      'glyphicon glyphicon-envelope': 'fa-regular fa-envelope',
+      'glyphicon glyphicon-file': 'fa-regular fa-file',
+      'glyphicon glyphicon-folder-open': 'fa-regular fa-folder-open',
+      'glyphicon glyphicon-search': 'fa-solid fa-magnifying-glass',
+      'glyphicon glyphicon-star': 'fa-regular fa-star',
+      'glyphicon glyphicon-heart': 'fa-regular fa-heart',
+      'glyphicon glyphicon-ok': 'fa-solid fa-check',
+      'glyphicon glyphicon-remove': 'fa-solid fa-xmark',
+      'glyphicon glyphicon-plus': 'fa-solid fa-plus',
+      'glyphicon glyphicon-minus': 'fa-solid fa-minus',
+      'glyphicon glyphicon-calendar': 'fa-regular fa-calendar',
+      'glyphicon glyphicon-time': 'fa-regular fa-clock',
+      'glyphicon glyphicon-pencil': 'fa-solid fa-pencil',
+      'glyphicon glyphicon-trash': 'fa-regular fa-trash-can',
+    };
+
+    // Check if we need to map this icon
+    if (iconMap[trimmed]) {
+      trimmed = iconMap[trimmed];
+    }
+
+    // If we have a valid icon class, render it
+    if (trimmed.length > 0) {
+      return (
+        <div
+          className="w-12 h-12 rounded-lg flex items-center justify-center text-white text-xl"
+          style={{ backgroundColor: bgColor }}
+        >
+          <i className={trimmed} aria-hidden="true" />
+        </div>
+      );
+    }
+    
+    // Fallback: show first letter of module name
     return (
       <div
         className="w-12 h-12 rounded-lg flex items-center justify-center text-white text-xl font-bold"
-        style={{ backgroundColor: color }}
+        style={{ backgroundColor: bgColor }}
       >
-        {logo.charAt(0).toUpperCase()}
+        ?
       </div>
     );
   };
@@ -186,8 +211,8 @@ const Dashboard: React.FC = () => {
           >
             <option value="all">Alle Ordner</option>
             {folders.map((folder) => (
-              <option key={folder.name} value={folder.name}>
-                {folder.name}
+              <option key={folder} value={folder}>
+                {folder}
               </option>
             ))}
           </select>
@@ -220,11 +245,11 @@ const Dashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Apps grid/list */}
-      {filteredApps.length === 0 ? (
+      {/* Modules grid/list */}
+      {filteredModules.length === 0 ? (
         <div className="text-center py-12">
           <FolderIcon className="mx-auto h-12 w-12 text-gray-400" />
-          <h3 className="mt-2 text-sm font-medium text-gray-900">Keine Apps gefunden</h3>
+          <h3 className="mt-2 text-sm font-medium text-gray-900">Keine Module gefunden</h3>
           <p className="mt-1 text-sm text-gray-500">
             Versuchen Sie, Ihre Suchkriterien zu ändern.
           </p>
@@ -238,28 +263,26 @@ const Dashboard: React.FC = () => {
               : 'grid-cols-1'
           )}
         >
-          {filteredApps.map((app, index) => (
+          {filteredModules.map((module, index) => (
             <div
               key={index}
               className={clsx(
                 'card card-hover group',
                 viewMode === 'list' && 'flex items-center p-4'
               )}
-              onClick={() => handleAppClick(app)}
+              onClick={() => handleModuleClick(module)}
             >
               <div className={clsx('flex items-center', viewMode === 'grid' ? 'flex-col text-center' : 'flex-row')}>
                 <div className={clsx('flex-shrink-0', viewMode === 'list' && 'mr-4')}>
-                  {getAppIcon(app.logo, app.color)}
+                  {getModuleIcon(module.logo, module.color)}
                 </div>
-                
                 <div className={clsx('flex-1', viewMode === 'grid' ? 'mt-4' : 'ml-0')}>
                   <h3 className="font-medium text-gray-900 group-hover:text-primary-600 transition-colors">
-                    {app.name}
+                    {module.name}
                   </h3>
-                  
-                  {app.folders.length > 0 && (
+                  {module.folders.length > 0 && (
                     <div className={clsx('flex flex-wrap gap-1', viewMode === 'grid' ? 'mt-2 justify-center' : 'mt-1')}>
-                      {app.folders.map((folder) => (
+                      {module.folders.map((folder) => (
                         <span
                           key={folder}
                           className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600"
@@ -269,12 +292,10 @@ const Dashboard: React.FC = () => {
                       ))}
                     </div>
                   )}
-                  
                   <div className={clsx('text-xs text-gray-500', viewMode === 'grid' ? 'mt-2' : 'mt-1')}>
-                    {app.type === 'module' ? 'Modul' : 'App'}
+                    Modul
                   </div>
                 </div>
-
                 {viewMode === 'list' && (
                   <div className="flex-shrink-0 ml-4">
                     <ExternalLinkIcon className="h-5 w-5 text-gray-400 group-hover:text-primary-600 transition-colors" />
