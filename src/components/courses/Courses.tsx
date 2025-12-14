@@ -23,6 +23,13 @@ import {
   PaperClipIcon,
   ChevronRightIcon,
   ArrowTopRightOnSquareIcon,
+  FunnelIcon,
+  CheckCircleIcon,
+  XCircleIcon,
+  ExclamationCircleIcon,
+  ChartBarIcon,
+  ListBulletIcon,
+  Squares2X2Icon,
 } from '@heroicons/react/24/outline';
 import { format, parseISO } from 'date-fns';
 import { de } from 'date-fns/locale';
@@ -33,13 +40,22 @@ type ViewMode = 'overview' | 'course-detail' | 'weekly' | 'submissions' | 'entry
 const Courses: React.FC = () => {
   const { token } = useAuth();
   const [viewMode, setViewMode] = useState<ViewMode>('overview');
-  const [courses, setCourses] = useState<CourseEntry[]>([]);
+  // Cached courses state
+  const [courses, setCourses] = useState<CourseEntry[]>(() => {
+    const cached = localStorage.getItem('courses_cache');
+    return cached ? JSON.parse(cached) : [];
+  });
+  const [isUpdating, setIsUpdating] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState<CourseDetailsResponse | null>(null);
   const [selectedEntry, setSelectedEntry] = useState<EntryDetails | null>(null);
   const [weeklyEntries, setWeeklyEntries] = useState<WeeklyEntry[]>([]);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+  const [filterAttendance, setFilterAttendance] = useState<string>('all');
+  const [showOnlyHomework, setShowOnlyHomework] = useState(false);
+  const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
+  const [detailViewMode, setDetailViewMode] = useState<'cards' | 'timeline'>('cards');
 
   // Early return if no token
   if (!token) {
@@ -55,20 +71,21 @@ const Courses: React.FC = () => {
 
   useEffect(() => {
     if (token && viewMode === 'overview') {
+      // Show cached state immediately, then update
       loadCourses();
     }
+    // eslint-disable-next-line
   }, [token, viewMode]);
 
   const loadCourses = async () => {
     if (!token) return;
-
+    setIsUpdating(true);
     try {
-      setIsLoading(true);
       setError('');
       const response = await coursesAPI.getCourses(token);
-      
       if (response.success) {
         setCourses(response.entries);
+        localStorage.setItem('courses_cache', JSON.stringify(response.entries));
       } else {
         setError('Fehler beim Laden der Kurse.');
       }
@@ -77,6 +94,7 @@ const Courses: React.FC = () => {
       setError('Fehler beim Laden der Kurse.');
     } finally {
       setIsLoading(false);
+      setIsUpdating(false);
     }
   };
 
@@ -219,7 +237,8 @@ const Courses: React.FC = () => {
     }
   };
 
-  if (isLoading) {
+  // Show cached state immediately, but if no cached and loading, show skeleton
+  if (isLoading && (!courses || courses.length === 0)) {
     return (
       <div className="p-6">
         <div className="animate-pulse space-y-4">
@@ -236,6 +255,13 @@ const Courses: React.FC = () => {
 
   return (
     <div className="p-6">
+      {/* Spinner indicator for updating */}
+      {isUpdating && (
+        <div className="flex items-center gap-2 px-4 py-2 text-primary-600">
+          <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-600 inline-block"></span>
+          <span>Aktualisiere...</span>
+        </div>
+      )}
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center justify-between">
@@ -357,7 +383,127 @@ const Courses: React.FC = () => {
       )}
 
       {viewMode === 'course-detail' && selectedCourse && (
-        <div className="space-y-4">
+        <div className="space-y-6">
+          {/* Course Statistics */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="card bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-blue-600 font-medium">Einträge</p>
+                  <p className="text-2xl font-bold text-blue-900">{selectedCourse.entries?.length || 0}</p>
+                </div>
+                <DocumentTextIcon className="h-8 w-8 text-blue-600 opacity-50" />
+              </div>
+            </div>
+            
+            <div className="card bg-gradient-to-br from-yellow-50 to-yellow-100 border-yellow-200">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-yellow-600 font-medium">Hausaufgaben</p>
+                  <p className="text-2xl font-bold text-yellow-900">
+                    {selectedCourse.entries?.filter(e => e.homework).length || 0}
+                  </p>
+                </div>
+                <ClockIcon className="h-8 w-8 text-yellow-600 opacity-50" />
+              </div>
+            </div>
+            
+            <div className="card bg-gradient-to-br from-green-50 to-green-100 border-green-200">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-green-600 font-medium">Anwesend</p>
+                  <p className="text-2xl font-bold text-green-900">
+                    {selectedCourse.entries?.filter(e => e.attendance === 'anwesend').length || 0}
+                  </p>
+                </div>
+                <CheckCircleIcon className="h-8 w-8 text-green-600 opacity-50" />
+              </div>
+            </div>
+            
+            <div className="card bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-purple-600 font-medium">Dateien</p>
+                  <p className="text-2xl font-bold text-purple-900">
+                    {selectedCourse.entries?.reduce((acc, e) => acc + (e.files?.length || 0), 0) || 0}
+                  </p>
+                </div>
+                <PaperClipIcon className="h-8 w-8 text-purple-600 opacity-50" />
+              </div>
+            </div>
+          </div>
+
+          {/* Filters and Controls */}
+          <div className="card">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <FunnelIcon className="h-4 w-4 text-gray-500" />
+                  <span className="text-sm font-medium text-gray-700">Filter:</span>
+                </div>
+                
+                <select
+                  value={filterAttendance}
+                  onChange={(e) => setFilterAttendance(e.target.value)}
+                  className="text-sm border border-gray-300 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                >
+                  <option value="all">Alle Einträge</option>
+                  <option value="anwesend">Anwesend</option>
+                  <option value="entschuldigt">Entschuldigt</option>
+                  <option value="unentschuldigt">Unentschuldigt</option>
+                </select>
+
+                <button
+                  onClick={() => setShowOnlyHomework(!showOnlyHomework)}
+                  className={clsx(
+                    "text-sm px-3 py-1.5 rounded-lg transition-colors",
+                    showOnlyHomework 
+                      ? "bg-yellow-100 text-yellow-700 border border-yellow-300" 
+                      : "bg-gray-100 text-gray-600 border border-gray-300 hover:bg-gray-200"
+                  )}
+                >
+                  {showOnlyHomework ? '✓ ' : ''}Nur Hausaufgaben
+                </button>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setSortOrder(sortOrder === 'newest' ? 'oldest' : 'newest')}
+                  className="text-sm px-3 py-1.5 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors border border-gray-300"
+                >
+                  {sortOrder === 'newest' ? '↓ Neueste zuerst' : '↑ Älteste zuerst'}
+                </button>
+
+                <div className="flex border border-gray-300 rounded-lg overflow-hidden">
+                  <button
+                    onClick={() => setDetailViewMode('cards')}
+                    className={clsx(
+                      "p-2 transition-colors",
+                      detailViewMode === 'cards'
+                        ? "bg-primary-600 text-white"
+                        : "bg-white text-gray-600 hover:bg-gray-50"
+                    )}
+                    title="Kartenansicht"
+                  >
+                    <Squares2X2Icon className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={() => setDetailViewMode('timeline')}
+                    className={clsx(
+                      "p-2 transition-colors",
+                      detailViewMode === 'timeline'
+                        ? "bg-primary-600 text-white"
+                        : "bg-white text-gray-600 hover:bg-gray-50"
+                    )}
+                    title="Timeline-Ansicht"
+                  >
+                    <ListBulletIcon className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
           {!selectedCourse.entries || selectedCourse.entries.length === 0 ? (
             <div className="text-center py-12">
               <DocumentTextIcon className="mx-auto h-12 w-12 text-gray-400" />
@@ -367,75 +513,246 @@ const Courses: React.FC = () => {
               </p>
             </div>
           ) : (
-            <div className="space-y-4">
-              {selectedCourse.entries.map((entry) => (
-                <div
-                  key={entry.entry_id}
-                  className="card"
-                >
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex-1">
-                      <div className="flex items-center text-sm text-gray-500 mb-2">
-                        <CalendarDaysIcon className="h-4 w-4 mr-1" />
-                        <span>{formatDate(entry.date)}</span>
-                        {entry.attendance && (
-                          <span className={clsx(
-                            "ml-3 px-2 py-1 rounded-full text-xs",
-                            entry.attendance === 'anwesend' ? 'bg-green-100 text-green-700' :
-                            entry.attendance === 'entschuldigt' ? 'bg-yellow-100 text-yellow-700' :
-                            'bg-gray-100 text-gray-600'
-                          )}>
-                            {entry.attendance}
-                          </span>
-                        )}
-                      </div>
-                      <h4 className="font-medium text-gray-900 mb-2">{entry.thema}</h4>
-                      
-                      {entry.homework && (
-                        <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded">
-                          <div className="flex items-center text-sm font-medium text-yellow-800 mb-1">
-                            <ClockIcon className="h-4 w-4 mr-1" />
-                            Hausaufgaben
-                            {entry.homework_done && (
-                              <span className="ml-2 text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded">Erledigt</span>
+            (() => {
+              // Filter and sort entries
+              let filteredEntries = selectedCourse.entries.filter((entry) => {
+                if (filterAttendance !== 'all' && entry.attendance !== filterAttendance) return false;
+                if (showOnlyHomework && !entry.homework) return false;
+                return true;
+              });
+
+              // Sort entries
+              filteredEntries = [...filteredEntries].sort((a, b) => {
+                const dateA = new Date(a.date).getTime();
+                const dateB = new Date(b.date).getTime();
+                return sortOrder === 'newest' ? dateB - dateA : dateA - dateB;
+              });
+
+              if (filteredEntries.length === 0) {
+                return (
+                  <div className="text-center py-12 card">
+                    <FunnelIcon className="mx-auto h-12 w-12 text-gray-400" />
+                    <h3 className="mt-2 text-sm font-medium text-gray-900">Keine passenden Einträge</h3>
+                    <p className="mt-1 text-sm text-gray-500">
+                      Versuchen Sie, die Filter anzupassen.
+                    </p>
+                  </div>
+                );
+              }
+
+              return detailViewMode === 'cards' ? (
+                <div className="space-y-4">
+                  {filteredEntries.map((entry) => (
+                    <div
+                      key={entry.entry_id}
+                      className="card hover:shadow-lg transition-shadow duration-200"
+                    >
+                      {/* Header with Date and Attendance */}
+                      <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-200">
+                        <div className="flex items-center gap-3">
+                          <div className="h-10 w-10 bg-gradient-to-br from-primary-500 to-primary-600 rounded-lg flex items-center justify-center">
+                            <CalendarDaysIcon className="h-5 w-5 text-white" />
+                          </div>
+                          <div>
+                            <div className="text-sm font-medium text-gray-900">{formatDate(entry.date)}</div>
+                            {entry.attendance && (
+                              <div className="flex items-center gap-1 mt-1">
+                                {entry.attendance === 'anwesend' && (
+                                  <CheckCircleIcon className="h-4 w-4 text-green-600" />
+                                )}
+                                {entry.attendance === 'entschuldigt' && (
+                                  <ExclamationCircleIcon className="h-4 w-4 text-yellow-600" />
+                                )}
+                                {entry.attendance !== 'anwesend' && entry.attendance !== 'entschuldigt' && (
+                                  <XCircleIcon className="h-4 w-4 text-red-600" />
+                                )}
+                                <span className={clsx(
+                                  "text-xs font-medium",
+                                  entry.attendance === 'anwesend' ? 'text-green-700' :
+                                  entry.attendance === 'entschuldigt' ? 'text-yellow-700' :
+                                  'text-red-700'
+                                )}>
+                                  {entry.attendance}
+                                </span>
+                              </div>
                             )}
                           </div>
-                          <div className="text-sm text-yellow-700 whitespace-pre-wrap">{entry.homework}</div>
+                        </div>
+                        
+                        {(entry.homework || (entry.files && entry.files.length > 0)) && (
+                          <div className="flex items-center gap-2">
+                            {entry.homework && (
+                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700">
+                                <ClockIcon className="h-3 w-3 mr-1" />
+                                HA
+                              </span>
+                            )}
+                            {entry.files && entry.files.length > 0 && (
+                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+                                <PaperClipIcon className="h-3 w-3 mr-1" />
+                                {entry.files.length}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                      
+                      {/* Topic */}
+                      <h4 className="text-lg font-semibold text-gray-900 mb-4">{entry.thema}</h4>
+                      
+                      {/* Homework Section */}
+                      {entry.homework && (
+                        <div className="mb-4 p-4 bg-gradient-to-r from-yellow-50 to-orange-50 border-l-4 border-yellow-400 rounded-lg">
+                          <div className="flex items-start justify-between mb-2">
+                            <div className="flex items-center gap-2">
+                              <ClockIcon className="h-5 w-5 text-yellow-600" />
+                              <span className="text-sm font-semibold text-yellow-900">Hausaufgaben</span>
+                            </div>
+                            {entry.homework_done && (
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700 border border-green-200">
+                                <CheckCircleIcon className="h-3.5 w-3.5 mr-1" />
+                                Erledigt
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed">{entry.homework}</div>
                         </div>
                       )}
                       
+                      {/* Files Section */}
                       {entry.files && entry.files.length > 0 && (
-                        <div className="mt-3">
-                          <h5 className="text-sm font-medium text-gray-700 mb-2 flex items-center">
-                            <PaperClipIcon className="h-4 w-4 mr-1" />
-                            Dateien ({entry.files.length})
+                        <div className="mt-4">
+                          <h5 className="text-sm font-semibold text-gray-700 mb-3 flex items-center">
+                            <PaperClipIcon className="h-4 w-4 mr-2 text-gray-500" />
+                            Anhänge ({entry.files.length})
                           </h5>
-                          <div className="space-y-1">
+                          <div className="grid grid-cols-1 gap-2">
                             {entry.files.map((file, index) => (
                               <a
                                 key={index}
                                 href={file.url !== '#' ? file.url : undefined}
                                 className={clsx(
-                                  "flex items-center p-2 rounded text-sm",
+                                  "flex items-center p-3 rounded-lg border transition-all",
                                   file.url !== '#' 
-                                    ? "text-primary-600 hover:bg-primary-50 cursor-pointer" 
-                                    : "text-gray-400 cursor-not-allowed bg-gray-50"
+                                    ? "border-primary-200 bg-primary-50 hover:bg-primary-100 hover:border-primary-300 cursor-pointer group" 
+                                    : "border-gray-200 bg-gray-50 cursor-not-allowed opacity-60"
                                 )}
                                 target="_blank"
                                 rel="noopener noreferrer"
                               >
-                                <PaperClipIcon className="h-4 w-4 mr-2 flex-shrink-0" />
-                                <span className="truncate">{file.name}</span>
+                                <div className={clsx(
+                                  "h-8 w-8 rounded flex items-center justify-center flex-shrink-0",
+                                  file.url !== '#' ? "bg-primary-100 group-hover:bg-primary-200" : "bg-gray-200"
+                                )}>
+                                  <DocumentTextIcon className={clsx(
+                                    "h-4 w-4",
+                                    file.url !== '#' ? "text-primary-600" : "text-gray-400"
+                                  )} />
+                                </div>
+                                <span className={clsx(
+                                  "ml-3 text-sm font-medium truncate",
+                                  file.url !== '#' ? "text-primary-700 group-hover:text-primary-800" : "text-gray-500"
+                                )}>
+                                  {file.name}
+                                </span>
+                                {file.url !== '#' && (
+                                  <ArrowTopRightOnSquareIcon className="h-4 w-4 ml-auto text-primary-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                )}
                               </a>
                             ))}
                           </div>
                         </div>
                       )}
                     </div>
+                  ))}
+                </div>
+              ) : (
+                // Timeline view
+                <div className="relative">
+                  <div className="absolute left-8 top-0 bottom-0 w-0.5 bg-gradient-to-b from-primary-500 via-primary-300 to-transparent"></div>
+                  <div className="space-y-6">
+                    {filteredEntries.map((entry, index) => (
+                      <div key={entry.entry_id} className="relative pl-20">
+                        <div className="absolute left-5 top-6 h-6 w-6 rounded-full bg-primary-600 border-4 border-white shadow-md flex items-center justify-center">
+                          <div className="h-2 w-2 rounded-full bg-white"></div>
+                        </div>
+                        
+                        <div className="card hover:shadow-lg transition-shadow duration-200">
+                          <div className="flex items-start justify-between mb-3">
+                            <div>
+                              <div className="text-xs text-gray-500 mb-1">
+                                Eintrag #{filteredEntries.length - index}
+                              </div>
+                              <div className="text-sm font-semibold text-gray-900">{formatDate(entry.date)}</div>
+                              {entry.attendance && (
+                                <span className={clsx(
+                                  "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium mt-1",
+                                  entry.attendance === 'anwesend' ? 'bg-green-100 text-green-700' :
+                                  entry.attendance === 'entschuldigt' ? 'bg-yellow-100 text-yellow-700' :
+                                  'bg-red-100 text-red-700'
+                                )}>
+                                  {entry.attendance}
+                                </span>
+                              )}
+                            </div>
+                            
+                            <div className="flex items-center gap-2">
+                              {entry.homework && (
+                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700">
+                                  HA
+                                </span>
+                              )}
+                              {entry.files && entry.files.length > 0 && (
+                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+                                  {entry.files.length} <PaperClipIcon className="h-3 w-3 ml-1" />
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          
+                          <h4 className="text-base font-semibold text-gray-900 mb-3">{entry.thema}</h4>
+                          
+                          {entry.homework && (
+                            <div className="mb-3 p-3 bg-yellow-50 border-l-4 border-yellow-400 rounded">
+                              <div className="flex items-center gap-2 mb-1">
+                                <ClockIcon className="h-4 w-4 text-yellow-600" />
+                                <span className="text-xs font-semibold text-yellow-900">Hausaufgaben</span>
+                                {entry.homework_done && (
+                                  <CheckCircleIcon className="h-4 w-4 text-green-600" />
+                                )}
+                              </div>
+                              <div className="text-xs text-gray-700 whitespace-pre-wrap">{entry.homework}</div>
+                            </div>
+                          )}
+                          
+                          {entry.files && entry.files.length > 0 && (
+                            <div className="flex flex-wrap gap-2 mt-3">
+                              {entry.files.map((file, fileIndex) => (
+                                <a
+                                  key={fileIndex}
+                                  href={file.url !== '#' ? file.url : undefined}
+                                  className={clsx(
+                                    "inline-flex items-center px-3 py-1.5 rounded-lg text-xs border",
+                                    file.url !== '#'
+                                      ? "border-primary-200 bg-primary-50 text-primary-700 hover:bg-primary-100 cursor-pointer"
+                                      : "border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed"
+                                  )}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                >
+                                  <DocumentTextIcon className="h-3 w-3 mr-1" />
+                                  {file.name}
+                                </a>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
-              ))}
-            </div>
+              );
+            })()
           )}
         </div>
       )}

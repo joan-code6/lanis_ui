@@ -18,7 +18,12 @@ import clsx from 'clsx';
 
 const Messages: React.FC = () => {
   const { token } = useAuth();
-  const [messages, setMessages] = useState<MessageHeader[]>([]);
+  // Cached messages state
+  const [messages, setMessages] = useState<MessageHeader[]>(() => {
+    const cached = localStorage.getItem('messages_cache');
+    return cached ? JSON.parse(cached) : [];
+  });
+  const [isUpdating, setIsUpdating] = useState(false);
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
   const [conversationMessages, setConversationMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -27,7 +32,10 @@ const Messages: React.FC = () => {
   const [showCompose, setShowCompose] = useState(false);
   const [showParticipants, setShowParticipants] = useState(false);
   const [participantSearch, setParticipantSearch] = useState('');
+
   const [messageType, setMessageType] = useState<'All' | 'Unread' | 'Sent'>('All');
+  // Search bar state for messages
+  const [messageSearch, setMessageSearch] = useState('');
 
   // Early return if no token
   if (!token) {
@@ -54,18 +62,18 @@ const Messages: React.FC = () => {
 
   useEffect(() => {
     if (token) {
+      // Show cached state immediately, then update
       loadMessages();
     }
+    // eslint-disable-next-line
   }, [token, messageType]);
 
   const loadMessages = async () => {
     if (!token) return;
-
+    setIsUpdating(true);
     try {
-      setIsLoading(true);
       setError('');
       const response = await messagesAPI.getMessageHeaders(token, messageType);
-      
       if (response.success) {
         // Transform the API response to match our component expectations
         const transformedMessages = response.conversations.map(msg => ({
@@ -77,6 +85,7 @@ const Messages: React.FC = () => {
           date: new Date().toISOString(), // Using current date as fallback
         }));
         setMessages(transformedMessages);
+        localStorage.setItem('messages_cache', JSON.stringify(transformedMessages));
       } else {
         setError('Fehler beim Laden der Nachrichten.');
       }
@@ -85,6 +94,7 @@ const Messages: React.FC = () => {
       setError('Fehler beim Laden der Nachrichten.');
     } finally {
       setIsLoading(false);
+      setIsUpdating(false);
     }
   };
 
@@ -215,7 +225,8 @@ const Messages: React.FC = () => {
     }
   };
 
-  if (isLoading) {
+  // Show cached state immediately, but if no cached and loading, show skeleton
+  if (isLoading && (!messages || messages.length === 0)) {
     return (
       <div className="p-6">
         <div className="animate-pulse space-y-4">
@@ -248,7 +259,7 @@ const Messages: React.FC = () => {
           </div>
 
           {/* Message type filter */}
-          <div className="flex bg-gray-100 rounded-lg p-1">
+          <div className="flex bg-gray-100 rounded-lg p-1 mb-3">
             {(['All', 'Unread', 'Sent'] as const).map((type) => (
               <button
                 key={type}
@@ -264,7 +275,25 @@ const Messages: React.FC = () => {
               </button>
             ))}
           </div>
+
+          {/* Search bar for messages */}
+          <div className="mb-2">
+            <input
+              type="text"
+              className="input w-full"
+              placeholder="Nachrichten durchsuchen... (Betreff, Absender, Empfänger)"
+              value={messageSearch}
+              onChange={e => setMessageSearch(e.target.value)}
+            />
+          </div>
         </div>
+        {/* Spinner indicator for updating */}
+        {isUpdating && (
+          <div className="flex items-center gap-2 px-4 py-2 text-primary-600">
+            <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-600 inline-block"></span>
+            <span>Aktualisiere...</span>
+          </div>
+        )}
 
         {/* Messages list */}
         <div className="flex-1 overflow-y-auto">
@@ -284,39 +313,53 @@ const Messages: React.FC = () => {
             </div>
           ) : (
             <div className="divide-y divide-gray-200">
-              {messages && messages.map((message) => (
-                <div
-                  key={message.id}
-                  className={clsx(
-                    'p-4 hover:bg-gray-50 cursor-pointer transition-colors',
-                    selectedConversation === message.Uniquid && 'bg-primary-50',
-                    message.unread && 'font-semibold'
-                  )}
-                  onClick={() => loadConversation(message.Uniquid)}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center min-w-0 flex-1">
-                      <UserIcon className="h-8 w-8 text-gray-400 flex-shrink-0 mr-3" />
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium text-gray-900 truncate">
-                          Sender {message.Sender}
+              {(messages && messages
+                .filter(message => {
+                  if (!messageSearch.trim()) return true;
+                  const search = messageSearch.toLowerCase();
+                  // Search in subject, sender, and recipients (empf)
+                  const subject = (message.Betreff || '').toLowerCase();
+                  const sender = (message.Sender || '').toLowerCase();
+                  const empf = Array.isArray(message.empf) ? message.empf.join(' ').toLowerCase() : '';
+                  return (
+                    subject.includes(search) ||
+                    sender.includes(search) ||
+                    empf.includes(search)
+                  );
+                })
+                .map((message) => (
+                  <div
+                    key={message.id}
+                    className={clsx(
+                      'p-4 hover:bg-gray-50 cursor-pointer transition-colors',
+                      selectedConversation === message.Uniquid && 'bg-primary-50',
+                      message.unread && 'font-semibold'
+                    )}
+                    onClick={() => loadConversation(message.Uniquid)}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center min-w-0 flex-1">
+                        <UserIcon className="h-8 w-8 text-gray-400 flex-shrink-0 mr-3" />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium text-gray-900 truncate">
+                            Sender {message.Sender}
+                          </p>
+                          <p className="text-sm text-gray-500 truncate">
+                            {message.Betreff}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-end">
+                        <p className="text-xs text-gray-500">
+                          {message.date ? formatDate(message.date) : 'Heute'}
                         </p>
-                        <p className="text-sm text-gray-500 truncate">
-                          {message.Betreff}
-                        </p>
+                        {message.unread && (
+                          <div className="w-2 h-2 bg-primary-600 rounded-full mt-1"></div>
+                        )}
                       </div>
                     </div>
-                    <div className="flex flex-col items-end">
-                      <p className="text-xs text-gray-500">
-                        {message.date ? formatDate(message.date) : 'Heute'}
-                      </p>
-                      {message.unread && (
-                        <div className="w-2 h-2 bg-primary-600 rounded-full mt-1"></div>
-                      )}
-                    </div>
                   </div>
-                </div>
-              ))}
+                )))}
             </div>
           )}
         </div>

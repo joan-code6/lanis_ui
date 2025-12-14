@@ -24,7 +24,12 @@ interface CombinedModule {
 const Dashboard: React.FC = () => {
   const { token } = useAuth();
   const navigate = useNavigate();
-  const [modules, setModules] = useState<CombinedModule[]>([]);
+  // Cached modules state
+  const [modules, setModules] = useState<CombinedModule[]>(() => {
+    const cached = localStorage.getItem('modules_cache');
+    return cached ? JSON.parse(cached) : [];
+  });
+  const [isUpdating, setIsUpdating] = useState(false);
   const [folders, setFolders] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
@@ -46,18 +51,21 @@ const Dashboard: React.FC = () => {
 
   useEffect(() => {
     if (token) {
+      // Show cached state immediately, then update
       loadModules();
     }
+    // eslint-disable-next-line
   }, [token]);
 
   const loadModules = async () => {
     if (!token) return;
+    setIsUpdating(true);
     try {
-      setIsLoading(true);
       setError('');
       const modulesResponse = await appsAPI.getModules(token);
       if (modulesResponse.success) {
         setModules(modulesResponse.modules);
+        localStorage.setItem('modules_cache', JSON.stringify(modulesResponse.modules));
         // Collect unique folder names as strings
         const allFolders: string[] = [];
         modulesResponse.modules.forEach((module: Module) => {
@@ -74,6 +82,7 @@ const Dashboard: React.FC = () => {
       setError('Fehler beim Laden der Module.');
     } finally {
       setIsLoading(false);
+      setIsUpdating(false);
     }
   };
 
@@ -161,7 +170,8 @@ const Dashboard: React.FC = () => {
     );
   };
 
-  if (isLoading) {
+  // Show cached state immediately, but if no cached and loading, show skeleton
+  if (isLoading && (!modules || modules.length === 0)) {
     return (
       <div className="p-6">
         <div className="animate-pulse space-y-4">
@@ -245,6 +255,13 @@ const Dashboard: React.FC = () => {
         </div>
       </div>
 
+      {/* Spinner indicator for updating */}
+      {isUpdating && (
+        <div className="flex items-center gap-2 px-4 py-2 text-primary-600">
+          <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-600 inline-block"></span>
+          <span>Aktualisiere...</span>
+        </div>
+      )}
       {/* Modules grid/list */}
       {filteredModules.length === 0 ? (
         <div className="text-center py-12">

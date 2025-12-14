@@ -185,7 +185,7 @@ const LoginForm: React.FC = () => {
                   type="text"
                   required
                   className="input"
-                  placeholder="Benutzername (ohne Schul-Präfix)"
+                  placeholder="Benutzername (vorname.nachname)"
                   value={formData.username}
                   onChange={handleChange}
                 />

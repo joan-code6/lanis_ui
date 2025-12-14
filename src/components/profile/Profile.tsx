@@ -13,7 +13,12 @@ import {
 
 const Profile: React.FC = () => {
   const { user, token } = useAuth();
-  const [userDetails, setUserDetails] = useState<User | null>(user);
+  // Cached user profile state
+  const [userDetails, setUserDetails] = useState<User | null>(() => {
+    const cached = localStorage.getItem('profile_cache');
+    return cached ? JSON.parse(cached) : user;
+  });
+  const [isUpdating, setIsUpdating] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [healthStatus, setHealthStatus] = useState<string>('');
@@ -32,21 +37,22 @@ const Profile: React.FC = () => {
 
   useEffect(() => {
     if (token) {
+      // Show cached state immediately, then update
       loadUserProfile();
       checkApiHealth();
     }
+    // eslint-disable-next-line
   }, [token]);
 
   const loadUserProfile = async () => {
     if (!token) return;
-
+    setIsUpdating(true);
     try {
-      setIsLoading(true);
       setError('');
       const response = await authAPI.getUserProfile(token);
-      
       if (response.success) {
         setUserDetails(response.data);
+        localStorage.setItem('profile_cache', JSON.stringify(response.data));
       } else {
         setError('Fehler beim Laden des Benutzerprofils.');
       }
@@ -55,6 +61,7 @@ const Profile: React.FC = () => {
       setError('Fehler beim Laden des Benutzerprofils.');
     } finally {
       setIsLoading(false);
+      setIsUpdating(false);
     }
   };
 
@@ -95,7 +102,8 @@ const Profile: React.FC = () => {
     }
   };
 
-  if (isLoading) {
+  // Show cached state immediately, but if no cached and loading, show skeleton
+  if (isLoading && (!userDetails)) {
     return (
       <div className="p-6">
         <div className="animate-pulse space-y-4">
@@ -117,6 +125,14 @@ const Profile: React.FC = () => {
         <p className="text-gray-600">Ihre Benutzerinformationen und Kontodetails</p>
       </div>
 
+
+      {/* Spinner indicator for updating */}
+      {isUpdating && (
+        <div className="flex items-center gap-2 px-4 py-2 text-primary-600">
+          <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-600 inline-block"></span>
+          <span>Aktualisiere...</span>
+        </div>
+      )}
       {error && (
         <div className="mb-6 bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg">
           {error}
