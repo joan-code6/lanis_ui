@@ -265,13 +265,6 @@ const Courses: React.FC = () => {
           {viewMode === 'overview' && (
             <div className="flex space-x-3">
               <button
-                onClick={loadWeeklyView}
-                className="btn btn-secondary"
-              >
-                <CalendarDaysIcon className="h-4 w-4 mr-2" />
-                Wochenansicht
-              </button>
-              <button
                 onClick={loadSubmissions}
                 className="btn btn-secondary"
               >
