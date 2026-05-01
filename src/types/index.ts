@@ -3,6 +3,8 @@ export interface School {
   id: string;
   name: string;
   location: string;
+  district_id?: string;
+  district_name?: string;
 }
 
 export interface District {
@@ -275,4 +277,78 @@ export interface AuthContextType {
 
 export interface HealthResponse {
   status: string;
+}
+
+// Calendar types
+export interface CalendarCategory {
+  id: number;
+  name: string;
+  color: string;
+  logo: string;
+}
+
+export interface CalendarGroup {
+  id: number;
+  name: string;
+}
+
+export interface CalendarMeta {
+  first_id: string;
+  new_events_count: string;
+  can_write: boolean;
+  key: string;
+  public_view: boolean;
+  institution: string;
+  is_admin: boolean;
+}
+
+export interface CalendarEvent {
+  id: string;
+  title: string;
+  category: string;
+  category_name?: string;
+  category_color?: string;
+  description: string;
+  start: string;
+  end: string;
+  all_day: boolean;
+  new: string;
+  editable: boolean;
+  properties: Record<string, string>;
+  raw: Record<string, unknown>;
+}
+
+export interface CalendarOverviewResponse {
+  success: boolean;
+  page_title: string;
+  calendar: CalendarMeta;
+  categories: CalendarCategory[];
+  groups: CalendarGroup[];
+  export_links: { label: string; url: string }[];
+}
+
+export interface CalendarEventsResponse {
+  success: boolean;
+  events: CalendarEvent[];
+  count: number;
+  categories: CalendarCategory[];
+  groups: CalendarGroup[];
+  filters: {
+    year: number;
+    start: string;
+    category: string;
+    search: string;
+    target: string;
+    view_id: string;
+  };
+  raw: Record<string, unknown>;
+}
+
+export interface SingleCalendarEventResponse {
+  success: boolean;
+  event: Record<string, unknown>;
+  filters: {
+    event_id: string;
+    view_id: string;
+  };
 }

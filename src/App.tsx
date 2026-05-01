@@ -6,6 +6,7 @@ import LoginForm from './components/auth/LoginForm';
 import Dashboard from './components/dashboard/Dashboard';
 import Messages from './components/messages/Messages';
 import Courses from './components/courses/Courses';
+import Kalender from './components/calendar/Kalender';
 import Profile from './components/profile/Profile';
 
 // Protected Route component
@@ -55,6 +56,7 @@ const AppRoutes: React.FC = () => {
                   <Route path="/" element={<Dashboard />} />
                   <Route path="/messages" element={<Messages />} />
                   <Route path="/courses" element={<Courses />} />
+                  <Route path="/calendar" element={<Kalender />} />
                   <Route path="/profile" element={<Profile />} />
                   {/* Redirect any unknown routes to dashboard */}
                   <Route path="*" element={<Navigate to="/" replace />} />

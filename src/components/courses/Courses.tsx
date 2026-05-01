@@ -355,7 +355,7 @@ const Courses: React.FC = () => {
                   {course.homework && (
                     <div className="mt-3 p-2 bg-yellow-50 border border-yellow-200 rounded">
                       <div className="text-xs font-medium text-yellow-800 mb-1">Hausaufgaben:</div>
-                      <div className="text-sm text-yellow-700">{course.homework}</div>
+                      <div className="text-sm text-yellow-700">{course.homework?.trim()}</div>
                     </div>
                   )}
                   
@@ -384,55 +384,6 @@ const Courses: React.FC = () => {
 
       {viewMode === 'course-detail' && selectedCourse && (
         <div className="space-y-6">
-          {/* Course Statistics */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="card bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-blue-600 font-medium">Einträge</p>
-                  <p className="text-2xl font-bold text-blue-900">{selectedCourse.entries?.length || 0}</p>
-                </div>
-                <DocumentTextIcon className="h-8 w-8 text-blue-600 opacity-50" />
-              </div>
-            </div>
-            
-            <div className="card bg-gradient-to-br from-yellow-50 to-yellow-100 border-yellow-200">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-yellow-600 font-medium">Hausaufgaben</p>
-                  <p className="text-2xl font-bold text-yellow-900">
-                    {selectedCourse.entries?.filter(e => e.homework).length || 0}
-                  </p>
-                </div>
-                <ClockIcon className="h-8 w-8 text-yellow-600 opacity-50" />
-              </div>
-            </div>
-            
-            <div className="card bg-gradient-to-br from-green-50 to-green-100 border-green-200">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-green-600 font-medium">Anwesend</p>
-                  <p className="text-2xl font-bold text-green-900">
-                    {selectedCourse.entries?.filter(e => e.attendance === 'anwesend').length || 0}
-                  </p>
-                </div>
-                <CheckCircleIcon className="h-8 w-8 text-green-600 opacity-50" />
-              </div>
-            </div>
-            
-            <div className="card bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-purple-600 font-medium">Dateien</p>
-                  <p className="text-2xl font-bold text-purple-900">
-                    {selectedCourse.entries?.reduce((acc, e) => acc + (e.files?.length || 0), 0) || 0}
-                  </p>
-                </div>
-                <PaperClipIcon className="h-8 w-8 text-purple-600 opacity-50" />
-              </div>
-            </div>
-          </div>
-
           {/* Filters and Controls */}
           <div className="card">
             <div className="flex flex-wrap items-center justify-between gap-4">
@@ -451,6 +402,8 @@ const Courses: React.FC = () => {
                   <option value="anwesend">Anwesend</option>
                   <option value="entschuldigt">Entschuldigt</option>
                   <option value="unentschuldigt">Unentschuldigt</option>
+                  <option value="so">Sonstiges</option>
+                  <option value="fehlend">Fehlend</option>
                 </select>
 
                 <button
@@ -516,7 +469,7 @@ const Courses: React.FC = () => {
             (() => {
               // Filter and sort entries
               let filteredEntries = selectedCourse.entries.filter((entry) => {
-                if (filterAttendance !== 'all' && entry.attendance !== filterAttendance) return false;
+                if (filterAttendance !== 'all' && entry.attendance.trim().toLowerCase() !== filterAttendance) return false;
                 if (showOnlyHomework && !entry.homework) return false;
                 return true;
               });
@@ -557,20 +510,27 @@ const Courses: React.FC = () => {
                             <div className="text-sm font-medium text-gray-900">{formatDate(entry.date)}</div>
                             {entry.attendance && (
                               <div className="flex items-center gap-1 mt-1">
-                                {entry.attendance === 'anwesend' && (
-                                  <CheckCircleIcon className="h-4 w-4 text-green-600" />
-                                )}
-                                {entry.attendance === 'entschuldigt' && (
-                                  <ExclamationCircleIcon className="h-4 w-4 text-yellow-600" />
-                                )}
-                                {entry.attendance !== 'anwesend' && entry.attendance !== 'entschuldigt' && (
-                                  <XCircleIcon className="h-4 w-4 text-red-600" />
-                                )}
+                                {(() => {
+                                  const att = entry.attendance.trim().toLowerCase();
+                                  return att === 'anwesend' ? (
+                                    <CheckCircleIcon className="h-4 w-4 text-green-600" />
+                                  ) : att === 'fehlend' || att === 'unentschuldigt' ? (
+                                    <XCircleIcon className="h-4 w-4 text-red-600" />
+                                  ) : att === 'entschuldigt' ? (
+                                    <CheckCircleIcon className="h-4 w-4 text-blue-600" />
+                                  ) : att === 'so' ? (
+                                    <ExclamationCircleIcon className="h-4 w-4 text-yellow-600" />
+                                  ) : (
+                                    <ExclamationCircleIcon className="h-4 w-4 text-gray-400" />
+                                  );
+                                })()}
                                 <span className={clsx(
                                   "text-xs font-medium",
-                                  entry.attendance === 'anwesend' ? 'text-green-700' :
-                                  entry.attendance === 'entschuldigt' ? 'text-yellow-700' :
-                                  'text-red-700'
+                                  entry.attendance.trim().toLowerCase() === 'anwesend' ? 'text-green-700' :
+                                  entry.attendance.trim().toLowerCase() === 'fehlend' || entry.attendance.trim().toLowerCase() === 'unentschuldigt' ? 'text-red-700' :
+                                  entry.attendance.trim().toLowerCase() === 'entschuldigt' ? 'text-blue-700' :
+                                  entry.attendance.trim().toLowerCase() === 'so' ? 'text-yellow-700' :
+                                  'text-gray-500'
                                 )}>
                                   {entry.attendance}
                                 </span>
@@ -615,7 +575,7 @@ const Courses: React.FC = () => {
                               </span>
                             )}
                           </div>
-                          <div className="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed">{entry.homework}</div>
+                          <div className="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed">{entry.homework?.trim()}</div>
                         </div>
                       )}
                       
@@ -687,9 +647,11 @@ const Courses: React.FC = () => {
                               {entry.attendance && (
                                 <span className={clsx(
                                   "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium mt-1",
-                                  entry.attendance === 'anwesend' ? 'bg-green-100 text-green-700' :
-                                  entry.attendance === 'entschuldigt' ? 'bg-yellow-100 text-yellow-700' :
-                                  'bg-red-100 text-red-700'
+                                  entry.attendance.trim().toLowerCase() === 'anwesend' ? 'bg-green-100 text-green-700' :
+                                  entry.attendance.trim().toLowerCase() === 'fehlend' || entry.attendance.trim().toLowerCase() === 'unentschuldigt' ? 'bg-red-100 text-red-700' :
+                                  entry.attendance.trim().toLowerCase() === 'entschuldigt' ? 'bg-blue-100 text-blue-700' :
+                                  entry.attendance.trim().toLowerCase() === 'so' ? 'bg-yellow-100 text-yellow-700' :
+                                  'bg-gray-100 text-gray-500'
                                 )}>
                                   {entry.attendance}
                                 </span>
@@ -721,7 +683,7 @@ const Courses: React.FC = () => {
                                   <CheckCircleIcon className="h-4 w-4 text-green-600" />
                                 )}
                               </div>
-                              <div className="text-xs text-gray-700 whitespace-pre-wrap">{entry.homework}</div>
+                              <div className="text-xs text-gray-700 whitespace-pre-wrap">{entry.homework?.trim()}</div>
                             </div>
                           )}
                           

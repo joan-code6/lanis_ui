@@ -4,6 +4,7 @@ import {
   HomeIcon,
   ChatBubbleLeftRightIcon,
   AcademicCapIcon,
+  CalendarDaysIcon,
   UserIcon,
   ArrowRightOnRectangleIcon,
   Bars3Icon,
@@ -19,6 +20,7 @@ const navigation = [
   { name: 'Dashboard', href: '/', icon: HomeIcon },
   { name: 'Nachrichten', href: '/messages', icon: ChatBubbleLeftRightIcon },
   { name: 'Mein Unterricht', href: '/courses', icon: AcademicCapIcon },
+  { name: 'Kalender', href: '/calendar', icon: CalendarDaysIcon },
   { name: 'Profil', href: '/profile', icon: UserIcon },
 ];
 

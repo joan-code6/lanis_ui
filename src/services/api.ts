@@ -40,6 +40,9 @@ import {
   WeeklyViewResponse,
   SubmissionsResponse,
   HealthResponse,
+  CalendarOverviewResponse,
+  CalendarEventsResponse,
+  SingleCalendarEventResponse,
 } from '../types';
 
 // Configuration
@@ -177,6 +180,42 @@ export const coursesAPI = {
   async getSubmissions(token: string): Promise<SubmissionsResponse> {
     const response = await apiClient.get<SubmissionsResponse>('/meinunterricht/submissions', {
       headers: { 'X-Session-Token': token },
+    });
+    return response.data;
+  },
+};
+
+// Calendar API
+export const calendarAPI = {
+  async getOverview(token: string): Promise<CalendarOverviewResponse> {
+    const response = await apiClient.get<CalendarOverviewResponse>('/kalender', {
+      headers: { 'X-Session-Token': token },
+    });
+    return response.data;
+  },
+
+  async getEvents(
+    token: string,
+    options: {
+      year?: number;
+      start?: string;
+      category?: string;
+      search?: string;
+      target?: string;
+      view_id?: string;
+    } = {}
+  ): Promise<CalendarEventsResponse> {
+    const response = await apiClient.get<CalendarEventsResponse>('/kalender/events', {
+      headers: { 'X-Session-Token': token },
+      params: options,
+    });
+    return response.data;
+  },
+
+  async getEvent(token: string, eventId: string, viewId?: string): Promise<SingleCalendarEventResponse> {
+    const response = await apiClient.get<SingleCalendarEventResponse>(`/kalender/event/${eventId}`, {
+      headers: { 'X-Session-Token': token },
+      params: { view_id: viewId },
     });
     return response.data;
   },
