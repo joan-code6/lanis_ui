@@ -18,7 +18,6 @@ import clsx from 'clsx';
 
 const Messages: React.FC = () => {
   const { token } = useAuth();
-  // Cached messages state
   const [messages, setMessages] = useState<MessageHeader[]>(() => {
     const cached = localStorage.getItem('messages_cache');
     return cached ? JSON.parse(cached) : [];
@@ -34,22 +33,19 @@ const Messages: React.FC = () => {
   const [participantSearch, setParticipantSearch] = useState('');
 
   const [messageType, setMessageType] = useState<'All' | 'Unread' | 'Sent'>('All');
-  // Search bar state for messages
   const [messageSearch, setMessageSearch] = useState('');
 
-  // Early return if no token
   if (!token) {
     return (
       <div className="p-6">
         <div className="text-center py-12">
-          <h3 className="text-lg font-medium text-gray-900">Nicht authentifiziert</h3>
-          <p className="text-gray-500">Bitte melden Sie sich an, um Nachrichten zu sehen.</p>
+          <h3 className="text-lg font-medium text-surface-900">Nicht authentifiziert</h3>
+          <p className="text-surface-500">Bitte melden Sie sich an, um Nachrichten zu sehen.</p>
         </div>
       </div>
     );
   }
 
-  // Compose message state
   const [composeData, setComposeData] = useState({
     recipients: [] as SearchResult[],
     subject: '',
@@ -62,10 +58,8 @@ const Messages: React.FC = () => {
 
   useEffect(() => {
     if (token) {
-      // Show cached state immediately, then update
       loadMessages();
     }
-    // eslint-disable-next-line
   }, [token, messageType]);
 
   const loadMessages = async () => {
@@ -75,14 +69,13 @@ const Messages: React.FC = () => {
       setError('');
       const response = await messagesAPI.getMessageHeaders(token, messageType);
       if (response.success) {
-        // Transform the API response to match our component expectations
         const transformedMessages = response.conversations.map(msg => ({
           ...msg,
-          id: msg.Uniquid, // Use Uniquid for conversation loading
+          id: msg.Uniquid,
           sender: msg.Sender,
           subject: msg.Betreff,
-          unread: msg.private > 0, // Assuming private field indicates unread status
-          date: new Date().toISOString(), // Using current date as fallback
+          unread: msg.private > 0,
+          date: new Date().toISOString(),
         }));
         setMessages(transformedMessages);
         localStorage.setItem('messages_cache', JSON.stringify(transformedMessages));
@@ -100,27 +93,21 @@ const Messages: React.FC = () => {
 
   const loadConversation = async (conversationId: string) => {
     if (!token) return;
-
     try {
       setIsConversationLoading(true);
       setSelectedConversation(conversationId);
-      console.log('Loading conversation with ID:', conversationId); // Debug log
       const response = await messagesAPI.getConversation(token, conversationId);
-      console.log('Conversation response:', response); // Debug log
-      
       if (response.success && response.messages) {
-        // Transform the API response to match our component expectations
         const transformedMessages = response.messages.map((msg: any) => ({
           id: msg.Id || msg.id,
           sender: msg.username || msg.Sender || 'Unbekannter Sender',
           content: msg.Inhalt || msg.content || '',
           date: msg.Datum || msg.date || new Date().toISOString(),
-          ...msg // Keep all original fields for debugging
+          ...msg
         }));
         setConversationMessages(transformedMessages);
-        setError(''); // Clear any previous errors
+        setError('');
       } else {
-        // Handle specific API error cases
         if (response && typeof response === 'object' && 'error' in response) {
           if (response.error === 'No message data in response: {\'error\': \'-1\'}') {
             setError('Diese Unterhaltung konnte nicht geladen werden. Möglicherweise ist sie nicht mehr verfügbar oder Sie haben keine Berechtigung.');
@@ -150,11 +137,9 @@ const Messages: React.FC = () => {
       setSearchResults([]);
       return;
     }
-
     try {
       setIsSearching(true);
       const response = await messagesAPI.searchRecipients(token, query);
-      
       if (response.success) {
         setSearchResults(response.results);
       }
@@ -187,7 +172,6 @@ const Messages: React.FC = () => {
     if (!token || composeData.recipients.length === 0 || !composeData.subject.trim() || !composeData.content.trim()) {
       return;
     }
-
     try {
       setIsSending(true);
       const messageRequest: SendMessageRequest = {
@@ -195,13 +179,11 @@ const Messages: React.FC = () => {
         subject: composeData.subject,
         content: composeData.content,
       };
-
       const response = await messagesAPI.sendMessage(token, messageRequest);
-      
       if (response.success) {
         setShowCompose(false);
         setComposeData({ recipients: [], subject: '', content: '' });
-        loadMessages(); // Refresh messages
+        loadMessages();
       }
     } catch (error) {
       console.error('Error sending message:', error);
@@ -225,15 +207,14 @@ const Messages: React.FC = () => {
     }
   };
 
-  // Show cached state immediately, but if no cached and loading, show skeleton
   if (isLoading && (!messages || messages.length === 0)) {
     return (
       <div className="p-6">
-        <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-gray-300 rounded w-1/4"></div>
+        <div className="space-y-4">
+          <div className="skeleton h-8 w-48" />
           <div className="space-y-2">
             {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="h-16 bg-gray-300 rounded"></div>
+              <div key={i} className="skeleton h-16" />
             ))}
           </div>
         </div>
@@ -242,33 +223,31 @@ const Messages: React.FC = () => {
   }
 
   return (
-    <div className="h-full flex">
+    <div className="h-full flex overflow-hidden">
       {/* Messages list */}
-      <div className="w-1/3 border-r border-gray-200 flex flex-col">
-        {/* Header */}
-        <div className="p-4 border-b border-gray-200">
+      <div className="w-80 lg:w-1/3 border-r border-surface-100 dark:border-surface-800 flex flex-col bg-white dark:bg-surface-900">
+        <div className="p-4 border-b border-surface-100 dark:border-surface-800">
           <div className="flex items-center justify-between mb-4">
-            <h1 className="text-2xl font-bold text-gray-900">Nachrichten</h1>
+            <h1 className="text-lg font-bold text-surface-900 dark:text-surface-100 tracking-tight">Nachrichten</h1>
             <button
               onClick={() => setShowCompose(true)}
-              className="btn btn-primary"
+              className="btn btn-primary h-9 px-3 text-xs"
             >
-              <PlusIcon className="h-4 w-4 mr-2" />
-              Neue Nachricht
+              <PlusIcon className="h-4 w-4 mr-1.5" />
+              Neue
             </button>
           </div>
 
-          {/* Message type filter */}
-          <div className="flex bg-gray-100 rounded-lg p-1 mb-3">
+          <div className="flex bg-surface-100 dark:bg-surface-800 rounded-lg p-0.5 mb-3">
             {(['All', 'Unread', 'Sent'] as const).map((type) => (
               <button
                 key={type}
                 onClick={() => setMessageType(type)}
                 className={clsx(
-                  'flex-1 py-2 px-3 text-sm font-medium rounded-md transition-colors',
+                  'flex-1 py-1.5 px-2 text-xs font-medium rounded-md transition-all duration-200',
                   messageType === type
-                    ? 'bg-white text-primary-600 shadow-sm'
-                    : 'text-gray-500 hover:text-gray-700'
+                    ? 'bg-white dark:bg-surface-800 text-primary-600 shadow-soft'
+                    : 'text-surface-500 dark:text-surface-400 hover:text-surface-700 dark:hover:text-surface-200'
                 )}
               >
                 {type === 'All' ? 'Alle' : type === 'Unread' ? 'Ungelesen' : 'Gesendet'}
@@ -276,48 +255,43 @@ const Messages: React.FC = () => {
             ))}
           </div>
 
-          {/* Search bar for messages */}
-          <div className="mb-2">
-            <input
-              type="text"
-              className="input w-full"
-              placeholder="Nachrichten durchsuchen... (Betreff, Absender, Empfänger)"
-              value={messageSearch}
-              onChange={e => setMessageSearch(e.target.value)}
-            />
-          </div>
+          <input
+            type="text"
+            className="input text-sm"
+            placeholder="Nachrichten durchsuchen..."
+            value={messageSearch}
+            onChange={e => setMessageSearch(e.target.value)}
+          />
         </div>
-        {/* Spinner indicator for updating */}
+
         {isUpdating && (
-          <div className="flex items-center gap-2 px-4 py-2 text-primary-600">
-            <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-600 inline-block"></span>
+          <div className="flex items-center gap-2 px-4 py-2 text-xs text-primary-600 border-b border-surface-100 dark:border-surface-800">
+            <span className="w-2.5 h-2.5 rounded-full border-2 border-primary-300 border-t-primary-600 animate-spin" />
             <span>Aktualisiere...</span>
           </div>
         )}
 
-        {/* Messages list */}
         <div className="flex-1 overflow-y-auto">
           {error && (
-            <div className="p-4 bg-red-50 border border-red-200 text-red-600 text-sm">
+            <div className="m-4 p-3 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-900 text-red-600 dark:text-red-400 rounded-xl text-xs">
               {error}
             </div>
           )}
 
           {messages && messages.length === 0 ? (
-            <div className="p-8 text-center">
-              <InboxArrowDownIcon className="mx-auto h-12 w-12 text-gray-400" />
-              <h3 className="mt-2 text-sm font-medium text-gray-900">Keine Nachrichten</h3>
-              <p className="mt-1 text-sm text-gray-500">
+            <div className="empty-state">
+              <InboxArrowDownIcon className="empty-state-icon" />
+              <h3 className="empty-state-title">Keine Nachrichten</h3>
+              <p className="empty-state-text">
                 {messageType === 'Unread' ? 'Keine ungelesenen Nachrichten vorhanden.' : 'Keine Nachrichten vorhanden.'}
               </p>
             </div>
           ) : (
-            <div className="divide-y divide-gray-200">
+            <div className="divide-y divide-surface-100 dark:divide-surface-800">
               {(messages && messages
                 .filter(message => {
                   if (!messageSearch.trim()) return true;
                   const search = messageSearch.toLowerCase();
-                  // Search in subject, sender, and recipients (empf)
                   const subject = (message.Betreff || '').toLowerCase();
                   const sender = (message.Sender || '').toLowerCase();
                   const empf = Array.isArray(message.empf) ? message.empf.join(' ').toLowerCase() : '';
@@ -331,32 +305,38 @@ const Messages: React.FC = () => {
                   <div
                     key={message.id}
                     className={clsx(
-                      'p-4 hover:bg-gray-50 cursor-pointer transition-colors',
-                      selectedConversation === message.Uniquid && 'bg-primary-50',
-                      message.unread && 'font-semibold'
+                      'px-4 py-3 hover:bg-surface-100 dark:hover:bg-surface-800 cursor-pointer transition-colors duration-150',
+                      selectedConversation === message.Uniquid && 'bg-surface-100 dark:bg-surface-800',
+                      message.unread && 'bg-surface-50 dark:bg-surface-800/50'
                     )}
                     onClick={() => loadConversation(message.Uniquid)}
                   >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center min-w-0 flex-1">
-                        <UserIcon className="h-8 w-8 text-gray-400 flex-shrink-0 mr-3" />
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium text-gray-900 truncate">
-                            Sender {message.Sender}
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-surface-100 dark:bg-surface-700 flex items-center justify-center flex-shrink-0">
+                        <UserIcon className="w-4 h-4 text-surface-400" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className={clsx(
+                            'text-sm truncate',
+                            message.unread ? 'font-semibold text-surface-900 dark:text-surface-100' : 'font-medium text-surface-700 dark:text-surface-400'
+                          )}>
+                            {message.Sender}
                           </p>
-                          <p className="text-sm text-gray-500 truncate">
-                            {message.Betreff}
+                          <p className="text-[11px] text-surface-400 whitespace-nowrap">
+                            {message.date ? formatDate(message.date) : 'Heute'}
                           </p>
                         </div>
-                      </div>
-                      <div className="flex flex-col items-end">
-                        <p className="text-xs text-gray-500">
-                          {message.date ? formatDate(message.date) : 'Heute'}
+                        <p className={clsx(
+                          'text-xs truncate mt-0.5',
+                          message.unread ? 'text-surface-700 dark:text-surface-300' : 'text-surface-500 dark:text-surface-400'
+                        )}>
+                          {message.Betreff}
                         </p>
-                        {message.unread && (
-                          <div className="w-2 h-2 bg-primary-600 rounded-full mt-1"></div>
-                        )}
                       </div>
+                      {message.unread && (
+                        <span className="w-2 h-2 rounded-full bg-primary-600 flex-shrink-0" />
+                      )}
                     </div>
                   </div>
                 )))}
@@ -366,48 +346,47 @@ const Messages: React.FC = () => {
       </div>
 
       {/* Conversation view */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col min-w-0">
         {selectedConversation ? (
           <>
-            {/* Conversation header */}
-            <div className="border-b border-gray-200 p-4 bg-white">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <h2 className="text-lg font-medium text-gray-900">
-                    {messages.find(m => m.Uniquid === selectedConversation)?.Betreff || 'Unterhaltung'}
-                  </h2>
-                </div>
+            <div className="border-b border-surface-100 dark:border-surface-800 p-4 bg-white/80 dark:bg-surface-900/80 backdrop-blur-sm">
+              <div className="flex items-center justify-between gap-4">
+                <h2 className="text-sm font-semibold text-surface-900 dark:text-surface-100 truncate">
+                  {messages.find(m => m.Uniquid === selectedConversation)?.Betreff || 'Unterhaltung'}
+                </h2>
                 <button
                   onClick={() => setShowParticipants(true)}
-                  className="btn btn-secondary flex items-center"
+                  className="btn btn-secondary h-8 px-3 text-xs flex-shrink-0"
                 >
-                  <UsersIcon className="h-4 w-4 mr-2" />
-                  Teilnehmer anzeigen
+                  <UsersIcon className="h-3.5 w-3.5 mr-1.5" />
+                  Teilnehmer
                 </button>
               </div>
             </div>
 
             {isConversationLoading ? (
               <div className="flex-1 flex items-center justify-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+                <div className="w-6 h-6 rounded-full border-2 border-primary-300 border-t-primary-600 animate-spin" />
               </div>
             ) : (
               <div className="flex-1 overflow-y-auto p-6 space-y-4">
                 {conversationMessages && conversationMessages.map((message) => (
                   <div key={message.id} className="card">
-                    <div className="flex items-start">
-                      <UserIcon className="h-8 w-8 text-gray-400 flex-shrink-0 mr-3" />
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between mb-2">
-                          <p className="text-sm font-medium text-gray-900">
+                    <div className="flex items-start gap-3">
+                      <div className="w-8 h-8 rounded-full bg-primary-100 dark:bg-primary-900/50 flex items-center justify-center flex-shrink-0">
+                        <UserIcon className="w-4 h-4 text-primary-600 dark:text-primary-400" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2 mb-2">
+                          <p className="text-sm font-medium text-surface-900 dark:text-surface-100">
                             {message.sender}
                           </p>
-                          <p className="text-xs text-gray-500">
+                          <p className="text-[11px] text-surface-400 whitespace-nowrap">
                             {formatDate(message.date)}
                           </p>
                         </div>
-                        <div 
-                          className="prose text-sm text-gray-700 max-w-none"
+                        <div
+                          className="text-sm text-surface-700 dark:text-surface-300 leading-relaxed [&_a]:text-primary-600 [&_a:hover]:underline"
                           dangerouslySetInnerHTML={{ __html: message.content }}
                         />
                       </div>
@@ -418,10 +397,10 @@ const Messages: React.FC = () => {
             )}
           </>
         ) : (
-          <div className="flex-1 flex items-center justify-center text-gray-500">
+          <div className="flex-1 flex items-center justify-center">
             <div className="text-center">
-              <InboxArrowDownIcon className="mx-auto h-12 w-12 text-gray-400" />
-              <p className="mt-2">Wählen Sie eine Nachricht aus, um sie anzuzeigen</p>
+              <InboxArrowDownIcon className="mx-auto h-12 w-12 text-surface-300" />
+              <p className="mt-3 text-sm text-surface-500 dark:text-surface-400">Wählen Sie eine Nachricht aus, um sie anzuzeigen</p>
             </div>
           </div>
         )}
@@ -429,53 +408,45 @@ const Messages: React.FC = () => {
 
       {/* Compose modal */}
       {showCompose && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg max-w-2xl w-full m-4 max-h-[80vh] flex flex-col">
-            {/* Header */}
-            <div className="flex items-center justify-between p-6 border-b border-gray-200">
-              <h3 className="text-lg font-medium text-gray-900">Neue Nachricht</h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-surface-900/40 backdrop-blur-sm">
+          <div className="bg-white dark:bg-surface-800 rounded-2xl shadow-soft-lg max-w-lg w-full max-h-[85vh] flex flex-col animate-scale-in">
+            <div className="flex items-center justify-between p-5 border-b border-surface-100 dark:border-surface-800">
+              <h3 className="text-base font-semibold text-surface-900 dark:text-surface-100">Neue Nachricht</h3>
               <button
                 onClick={() => setShowCompose(false)}
-                className="text-gray-400 hover:text-gray-500"
+                className="w-8 h-8 flex items-center justify-center rounded-lg text-surface-400 dark:text-surface-500 hover:text-surface-600 dark:hover:text-surface-300 hover:bg-surface-100 dark:hover:bg-surface-700 transition-colors"
               >
-                <XMarkIcon className="h-6 w-6" />
+                <XMarkIcon className="h-5 w-5" />
               </button>
             </div>
 
-            {/* Content */}
-            <div className="flex-1 p-6 space-y-4 overflow-y-auto">
-              {/* Recipients */}
+            <div className="flex-1 p-5 space-y-4 overflow-y-auto">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Empfänger
-                </label>
+                <label className="label">Empfänger</label>
                 <div className="space-y-2">
-                  {/* Selected recipients */}
                   {composeData.recipients.length > 0 && (
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap gap-1.5">
                       {composeData.recipients.map((recipient) => (
                         <span
                           key={recipient.id}
-                          className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-primary-100 text-primary-800"
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 border border-primary-200 dark:border-primary-800"
                         >
                           {recipient.name}
                           <button
                             onClick={() => removeRecipient(recipient.id)}
-                            className="ml-2 text-primary-600 hover:text-primary-800"
+                            className="text-primary-400 dark:text-primary-500 hover:text-primary-600 dark:hover:text-primary-300"
                           >
-                            <XMarkIcon className="h-4 w-4" />
+                            <XMarkIcon className="h-3 w-3" />
                           </button>
                         </span>
                       ))}
                     </div>
                   )}
-                  
-                  {/* Search input */}
                   <div className="relative">
                     <input
                       type="text"
                       placeholder="Empfänger suchen..."
-                      className="input"
+                      className="input text-sm"
                       value={recipientSearch}
                       onChange={(e) => {
                         setRecipientSearch(e.target.value);
@@ -483,23 +454,21 @@ const Messages: React.FC = () => {
                       }}
                     />
                     {isSearching && (
-                      <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-600"></div>
-                      </div>
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2">
+                        <span className="w-3 h-3 rounded-full border-2 border-primary-300 border-t-primary-600 animate-spin block" />
+                      </span>
                     )}
                   </div>
-                  
-                  {/* Search results */}
                   {searchResults.length > 0 && (
-                    <div className="border border-gray-200 rounded-lg max-h-40 overflow-y-auto">
+                    <div className="border border-surface-200 rounded-xl overflow-hidden">
                       {searchResults.map((result) => (
                         <button
                           key={result.id}
                           onClick={() => addRecipient(result)}
-                          className="w-full text-left p-3 hover:bg-gray-50 border-b border-gray-100 last:border-b-0"
+                          className="w-full text-left px-3.5 py-2.5 hover:bg-surface-50 dark:hover:bg-surface-800 border-b border-surface-100 dark:border-surface-700 last:border-b-0 transition-colors text-sm"
                         >
-                          <div className="font-medium text-gray-900">{result.name}</div>
-                          <div className="text-sm text-gray-500">{result.username}</div>
+                          <div className="font-medium text-surface-900 dark:text-surface-100">{result.name}</div>
+                          <div className="text-xs text-surface-500 dark:text-surface-400">{result.username}</div>
                         </button>
                       ))}
                     </div>
@@ -507,56 +476,49 @@ const Messages: React.FC = () => {
                 </div>
               </div>
 
-              {/* Subject */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Betreff
-                </label>
+                <label className="label">Betreff</label>
                 <input
                   type="text"
-                  className="input"
+                  className="input text-sm"
                   value={composeData.subject}
                   onChange={(e) => setComposeData(prev => ({ ...prev, subject: e.target.value }))}
                 />
               </div>
 
-              {/* Content */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Nachricht
-                </label>
+                <label className="label">Nachricht</label>
                 <textarea
                   rows={8}
-                  className="input"
+                  className="input text-sm resize-none"
                   value={composeData.content}
                   onChange={(e) => setComposeData(prev => ({ ...prev, content: e.target.value }))}
                 />
               </div>
             </div>
 
-            {/* Footer */}
-            <div className="flex items-center justify-end space-x-3 p-6 border-t border-gray-200">
+            <div className="flex items-center justify-end gap-3 p-5 border-t border-surface-100 dark:border-surface-800">
               <button
                 onClick={() => setShowCompose(false)}
-                className="btn btn-secondary"
+                className="btn btn-secondary h-9 text-xs"
               >
                 Abbrechen
               </button>
               <button
                 onClick={sendMessage}
                 disabled={isSending || composeData.recipients.length === 0 || !composeData.subject.trim() || !composeData.content.trim()}
-                className="btn btn-primary disabled:opacity-50"
+                className="btn btn-primary h-9 text-xs disabled:opacity-50"
               >
                 {isSending ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  <span className="flex items-center gap-1.5">
+                    <span className="w-3 h-3 rounded-full border-2 border-white/30 border-t-white animate-spin" />
                     Senden...
-                  </>
+                  </span>
                 ) : (
-                  <>
-                    <PaperAirplaneIcon className="h-4 w-4 mr-2" />
+                  <span className="flex items-center gap-1.5">
+                    <PaperAirplaneIcon className="h-3.5 w-3.5" />
                     Senden
-                  </>
+                  </span>
                 )}
               </button>
             </div>
@@ -566,70 +528,55 @@ const Messages: React.FC = () => {
 
       {/* Participants modal */}
       {showParticipants && selectedConversation && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg max-w-md w-full m-4 max-h-[60vh] flex flex-col">
-            {/* Header */}
-            <div className="flex items-center justify-between p-6 border-b border-gray-200">
-              <h3 className="text-lg font-medium text-gray-900">Teilnehmer</h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-surface-900/40 backdrop-blur-sm">
+          <div className="bg-white dark:bg-surface-800 rounded-2xl shadow-soft-lg max-w-md w-full max-h-[70vh] flex flex-col animate-scale-in">
+            <div className="flex items-center justify-between p-5 border-b border-surface-100 dark:border-surface-800">
+              <h3 className="text-base font-semibold text-surface-900 dark:text-surface-100">Teilnehmer</h3>
               <button
                 onClick={closeParticipantsModal}
-                className="text-gray-400 hover:text-gray-500"
+                className="w-8 h-8 flex items-center justify-center rounded-lg text-surface-400 dark:text-surface-500 hover:text-surface-600 dark:hover:text-surface-300 hover:bg-surface-100 dark:hover:bg-surface-700 transition-colors"
               >
-                <XMarkIcon className="h-6 w-6" />
+                <XMarkIcon className="h-5 w-5" />
               </button>
             </div>
 
-            {/* Content */}
-            <div className="flex-1 p-6 overflow-y-auto">
+            <div className="flex-1 p-5 overflow-y-auto">
               {(() => {
-                // Get statistics from the first message in the conversation
                 const conversationMessage = conversationMessages.find(msg => msg.statistik);
                 const stats = conversationMessage?.statistik;
-                
-                // Get the original message header data to access all recipients
                 const messageHeader = messages.find(m => m.Uniquid === selectedConversation);
-                
+
                 if (!stats && !messageHeader) {
                   return (
-                    <div className="text-center py-8">
-                      <UsersIcon className="mx-auto h-12 w-12 text-gray-400" />
-                      <p className="mt-2 text-sm text-gray-500">
-                        Keine Teilnehmerinformationen verfügbar
-                      </p>
+                    <div className="empty-state">
+                      <UsersIcon className="empty-state-icon" />
+                      <p className="empty-state-text">Keine Teilnehmerinformationen verfügbar</p>
                     </div>
                   );
                 }
 
-                // Get all participants from the message header
                 const getAllParticipants = () => {
                   const participants = new Map();
-                  
-                  // Add sender
                   if (messageHeader?.Sender) {
-                    const senderMessage = conversationMessages.find(msg => 
+                    const senderMessage = conversationMessages.find(msg =>
                       msg.Sender === messageHeader.Sender || msg.sender === messageHeader.Sender
                     );
                     const senderName = senderMessage?.username || senderMessage?.SenderName || `Sender ${messageHeader.Sender}`;
                     const senderRole = senderMessage?.SenderArt || 'Sender';
-                    participants.set(messageHeader.Sender, { 
+                    participants.set(messageHeader.Sender, {
                       id: messageHeader.Sender,
-                      name: senderName, 
-                      role: senderRole, 
+                      name: senderName,
+                      role: senderRole,
                       type: 'sender',
                       class: ''
                     });
                   }
-                  
-                  // Add all recipients from empf array
                   if (messageHeader?.empf && Array.isArray(messageHeader.empf)) {
                     messageHeader.empf.forEach((recipient, index) => {
-                      // Parse the HTML span to extract name and class
                       const cleanText = recipient.replace(/<[^>]*>/g, '').trim();
-                      // Extract name and class from format like "Wegener, Bennet Joan (09B)"
                       const match = cleanText.match(/^(.*?)\s*\(([^)]+)\)$/);
                       const name = match ? match[1].trim() : cleanText;
                       const className = match ? match[2].trim() : '';
-                      
                       participants.set(`recipient-${index}`, {
                         id: `recipient-${index}`,
                         name: name,
@@ -639,65 +586,52 @@ const Messages: React.FC = () => {
                       });
                     });
                   }
-                  
                   return Array.from(participants.values());
                 };
 
                 const allParticipants = getAllParticipants();
-                
-                // Filter participants by search
-                const filteredParticipants = allParticipants.filter(participant => 
-                  participantSearch === '' || 
+                const filteredParticipants = allParticipants.filter(participant =>
+                  participantSearch === '' ||
                   participant.name.toLowerCase().includes(participantSearch.toLowerCase()) ||
                   (participant.class && participant.class.toLowerCase().includes(participantSearch.toLowerCase()))
                 );
 
                 return (
-                  <div className="space-y-4">
-                    {stats && (
-                      <div className="bg-gray-50 rounded-lg p-4">
-                        <h4 className="text-sm font-medium text-gray-900 mb-3">Übersicht</h4>
-                        <div className="grid grid-cols-2 gap-4 text-sm">
-                          <div className="flex items-center">
-                            <div className="w-3 h-3 bg-blue-500 rounded-full mr-2"></div>
-                            <span className="text-gray-600">Teilnehmer:</span>
-                            <span className="font-medium ml-1">{stats.teilnehmer}</span>
-                          </div>
-                          <div className="flex items-center">
-                            <div className="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
-                            <span className="text-gray-600">Betreuer:</span>
-                            <span className="font-medium ml-1">{stats.betreuer}</span>
-                          </div>
-                          <div className="flex items-center">
-                            <div className="w-3 h-3 bg-purple-500 rounded-full mr-2"></div>
-                            <span className="text-gray-600">Eltern:</span>
-                            <span className="font-medium ml-1">{stats.eltern}</span>
-                          </div>
-                          <div className="flex items-center">
-                            <div className="w-3 h-3 bg-gray-500 rounded-full mr-2"></div>
-                            <span className="text-gray-600">Gesamt:</span>
-                            <span className="font-medium ml-1">{stats.teilnehmer + stats.betreuer + stats.eltern}</span>
-                          </div>
-                        </div>
-                        <div className="mt-3 pt-3 border-t border-gray-200">
-                          <div className="flex items-center text-sm">
-                            <div className="w-3 h-3 bg-indigo-500 rounded-full mr-2"></div>
-                            <span className="text-gray-600">Alle Teilnehmer:</span>
-                            <span className="font-medium ml-1">{allParticipants.length}</span>
+<div className="space-y-4">
+                      {stats && (
+                        <div className="bg-surface-50 dark:bg-surface-800 rounded-xl p-4">
+                          <h4 className="text-xs font-semibold text-surface-700 dark:text-surface-300 mb-3 uppercase tracking-wider">Übersicht</h4>
+                          <div className="grid grid-cols-2 gap-3 text-sm">
+                            <div className="flex items-center gap-2">
+                              <span className="w-2.5 h-2.5 rounded-full bg-blue-500 dark:bg-blue-400" />
+                              <span className="text-surface-500">Teilnehmer:</span>
+                              <span className="font-medium text-surface-900 dark:text-surface-100">{stats.teilnehmer}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="w-2.5 h-2.5 rounded-full bg-green-500 dark:bg-green-400" />
+                              <span className="text-surface-500">Betreuer:</span>
+                              <span className="font-medium text-surface-900 dark:text-surface-100">{stats.betreuer}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="w-2.5 h-2.5 rounded-full bg-purple-500 dark:bg-purple-400" />
+                              <span className="text-surface-500">Eltern:</span>
+                              <span className="font-medium text-surface-900 dark:text-surface-100">{stats.eltern}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="w-2.5 h-2.5 rounded-full bg-surface-400 dark:bg-surface-500" />
+                              <span className="text-surface-500">Gesamt:</span>
+                              <span className="font-medium text-surface-900 dark:text-surface-100">{stats.teilnehmer + stats.betreuer + stats.eltern}</span>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    )}
+                      )}
 
-                    {/* Search input */}
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Teilnehmer suchen
-                      </label>
+                      <label className="label">Teilnehmer suchen</label>
                       <input
                         type="text"
                         placeholder="Name oder Klasse eingeben..."
-                        className="input"
+                        className="input text-sm"
                         value={participantSearch}
                         onChange={(e) => setParticipantSearch(e.target.value)}
                       />
@@ -705,58 +639,48 @@ const Messages: React.FC = () => {
 
                     <div>
                       <div className="flex items-center justify-between mb-3">
-                        <h4 className="text-sm font-medium text-gray-900">
-                          Alle Teilnehmer
-                        </h4>
-                        <span className="text-xs text-gray-500">
-                          {filteredParticipants.length} von {allParticipants.length} Teilnehmern
+                        <h4 className="text-xs font-semibold text-surface-700">Alle Teilnehmer</h4>
+                        <span className="text-[11px] text-surface-400">
+                          {filteredParticipants.length} von {allParticipants.length}
                         </span>
                       </div>
-                      <div className="space-y-2">
+                      <div className="space-y-1.5">
                         {filteredParticipants.length === 0 && participantSearch !== '' ? (
-                          <div className="text-center py-8">
-                            <UserIcon className="mx-auto h-8 w-8 text-gray-400" />
-                            <p className="mt-2 text-sm text-gray-500">
-                              Keine Teilnehmer gefunden für "{participantSearch}"
-                            </p>
+                          <div className="text-center py-6">
+                            <UserIcon className="mx-auto h-8 w-8 text-surface-300" />
+                            <p className="mt-2 text-sm text-surface-500">Keine Teilnehmer gefunden</p>
                           </div>
                         ) : (
                           filteredParticipants.map((participant, index) => {
-                            // Determine the color based on participant type and role
-                            let roleColor = 'bg-gray-100 text-gray-800';
-                            // Icon component to render for the participant
+                            let roleColor = 'bg-surface-100 text-surface-700';
                             let IconComponent = UserIcon;
-                            
                             if (participant.type === 'sender') {
-                              roleColor = 'bg-green-100 text-green-800';
-                              IconComponent = ChatBubbleLeftIcon;
+                              roleColor = 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300';
                             } else {
-                              roleColor = 'bg-blue-100 text-blue-800';
+                              roleColor = 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300';
                               IconComponent = UserIcon;
                             }
-                            
                             if (participant.role === 'Betreuer') {
-                              roleColor = 'bg-purple-100 text-purple-800';
+                              roleColor = 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300';
                               IconComponent = AcademicCapIcon;
                             }
-                            
                             return (
-                              <div key={participant.id} className="flex items-center p-3 bg-gray-50 rounded-lg">
-                                <div className="h-8 w-8 flex items-center justify-center bg-gray-200 rounded-full text-sm mr-3">
-                                  <IconComponent className="h-5 w-5 text-gray-700" aria-hidden />
+                              <div key={participant.id} className="flex items-center gap-3 p-3 bg-surface-50 dark:bg-surface-800 rounded-xl">
+                                <div className="w-8 h-8 flex items-center justify-center bg-white dark:bg-surface-700 rounded-full shadow-soft">
+                                  <IconComponent className="w-4 h-4 text-surface-600" />
                                 </div>
-                                <div className="flex-1">
-                                  <p className="text-sm font-medium text-gray-900">{participant.name}</p>
-                                  <div className="flex items-center space-x-2">
-                                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${roleColor}`}>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium text-surface-900 dark:text-surface-100 truncate">{participant.name}</p>
+                                  <div className="flex items-center gap-1.5 mt-0.5">
+                                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium ${roleColor}`}>
                                       {participant.role}
                                     </span>
                                     {participant.class && (
-                                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
+                                      <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-surface-100 dark:bg-surface-700 text-surface-600 dark:text-surface-400">
                                         {participant.class}
                                       </span>
                                     )}
-                                    <span className="text-xs text-gray-500">
+                                    <span className="text-[10px] text-surface-400">
                                       {participant.type === 'sender' ? 'Absender' : 'Empfänger'}
                                     </span>
                                   </div>
@@ -768,16 +692,14 @@ const Messages: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* Additional recipients info if available */}
                     {(() => {
                       const firstMessage = conversationMessages[0];
                       const weitereEmpfaenger = firstMessage?.WeitereEmpfaenger;
-                      
                       if (weitereEmpfaenger && weitereEmpfaenger.trim() !== '') {
                         return (
                           <div>
-                            <h4 className="text-sm font-medium text-gray-900 mb-2">Weitere Empfänger</h4>
-                            <div className="text-sm text-gray-600 bg-gray-50 rounded-lg p-3">
+                            <h4 className="text-xs font-semibold text-surface-700 dark:text-surface-300 mb-2">Weitere Empfänger</h4>
+                            <div className="text-sm text-surface-600 dark:text-surface-400 bg-surface-50 dark:bg-surface-800 rounded-xl p-3">
                               {weitereEmpfaenger}
                             </div>
                           </div>
@@ -790,11 +712,10 @@ const Messages: React.FC = () => {
               })()}
             </div>
 
-            {/* Footer */}
-            <div className="flex justify-end p-6 border-t border-gray-200">
+            <div className="flex justify-end p-5 border-t border-surface-100 dark:border-surface-800">
               <button
                 onClick={closeParticipantsModal}
-                className="btn btn-secondary"
+                className="btn btn-secondary h-9 text-xs"
               >
                 Schließen
               </button>

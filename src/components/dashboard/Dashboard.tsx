@@ -5,9 +5,9 @@ import { appsAPI } from '../../services/api';
 import { Module } from '../../types';
 import {
   FolderIcon,
-  ArrowTopRightOnSquareIcon as ExternalLinkIcon,
+  ArrowTopRightOnSquareIcon,
   MagnifyingGlassIcon,
-  Squares2X2Icon as GridViewIcon,
+  Squares2X2Icon,
   ListBulletIcon,
 } from '@heroicons/react/24/outline';
 import clsx from 'clsx';
@@ -24,7 +24,6 @@ interface CombinedModule {
 const Dashboard: React.FC = () => {
   const { token } = useAuth();
   const navigate = useNavigate();
-  // Cached modules state
   const [modules, setModules] = useState<CombinedModule[]>(() => {
     const cached = localStorage.getItem('modules_cache');
     return cached ? JSON.parse(cached) : [];
@@ -37,13 +36,12 @@ const Dashboard: React.FC = () => {
   const [selectedFolder, setSelectedFolder] = useState<string>('all');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
-  // Early return if no token
   if (!token) {
     return (
       <div className="p-6">
         <div className="text-center py-12">
-          <h3 className="text-lg font-medium text-gray-900">Nicht authentifiziert</h3>
-          <p className="text-gray-500">Bitte melden Sie sich an, um das Dashboard zu sehen.</p>
+          <h3 className="text-lg font-medium text-surface-900 dark:text-surface-100">Nicht authentifiziert</h3>
+          <p className="text-surface-500">Bitte melden Sie sich an, um das Dashboard zu sehen.</p>
         </div>
       </div>
     );
@@ -51,10 +49,8 @@ const Dashboard: React.FC = () => {
 
   useEffect(() => {
     if (token) {
-      // Show cached state immediately, then update
       loadModules();
     }
-    // eslint-disable-next-line
   }, [token]);
 
   const loadModules = async () => {
@@ -66,7 +62,6 @@ const Dashboard: React.FC = () => {
       if (modulesResponse.success) {
         setModules(modulesResponse.modules);
         localStorage.setItem('modules_cache', JSON.stringify(modulesResponse.modules));
-        // Collect unique folder names as strings
         const allFolders: string[] = [];
         modulesResponse.modules.forEach((module: Module) => {
           module.folders.forEach((folder) => {
@@ -87,7 +82,6 @@ const Dashboard: React.FC = () => {
   };
 
   const handleModuleClick = (module: CombinedModule) => {
-    // Check if URL contains nachrichten.php or meinunterricht.php and navigate internally
     if (module.url.includes('/nachrichten.php')) {
       navigate('/messages');
       return;
@@ -96,29 +90,23 @@ const Dashboard: React.FC = () => {
       navigate('/courses');
       return;
     }
-    // Open external links in a new tab
     window.open(module.url, '_blank', 'noopener,noreferrer');
   };
 
   const filteredModules = modules.filter((module) => {
     const matchesSearch = module.name.toLowerCase().includes(searchTerm.toLowerCase());
-    // Defensive: sanitize folder names for comparison
     const moduleFolders = module.folders.map(f => f.trim());
     const matchesFolder = selectedFolder === 'all' || moduleFolders.includes(selectedFolder);
     return matchesSearch && matchesFolder;
   });
 
   const getModuleIcon = (logo: string, color: string) => {
-    // Clean up logo string: remove newlines, extra spaces
     let trimmed = logo ? logo.replace(/\r?\n/g, '').replace(/\s+/g, ' ').trim() : '';
-    
-    // Normalize color (add # if missing for hex colors)
     let bgColor = color ? color.trim() : '#888888';
     if (bgColor && !bgColor.startsWith('#') && /^[0-9a-fA-F]{6}$/.test(bgColor)) {
       bgColor = '#' + bgColor;
     }
 
-    // Map old Font Awesome 4 icons to Font Awesome 6 equivalents
     const iconMap: Record<string, string> = {
       'fa fa-files-o': 'fa-regular fa-copy',
       'fa fa-check-square-o': 'fa-regular fa-square-check',
@@ -142,27 +130,24 @@ const Dashboard: React.FC = () => {
       'glyphicon glyphicon-trash': 'fa-regular fa-trash-can',
     };
 
-    // Check if we need to map this icon
     if (iconMap[trimmed]) {
       trimmed = iconMap[trimmed];
     }
 
-    // If we have a valid icon class, render it
     if (trimmed.length > 0) {
       return (
         <div
-          className="w-12 h-12 rounded-lg flex items-center justify-center text-white text-xl"
+          className="w-11 h-11 rounded-xl flex items-center justify-center text-white text-lg"
           style={{ backgroundColor: bgColor }}
         >
           <i className={trimmed} aria-hidden="true" />
         </div>
       );
     }
-    
-    // Fallback: show first letter of module name
+
     return (
       <div
-        className="w-12 h-12 rounded-lg flex items-center justify-center text-white text-xl font-bold"
+        className="w-11 h-11 rounded-xl flex items-center justify-center text-white text-base font-bold"
         style={{ backgroundColor: bgColor }}
       >
         ?
@@ -170,15 +155,15 @@ const Dashboard: React.FC = () => {
     );
   };
 
-  // Show cached state immediately, but if no cached and loading, show skeleton
   if (isLoading && (!modules || modules.length === 0)) {
     return (
       <div className="p-6">
-        <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-gray-300 rounded w-1/4"></div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        <div className="space-y-6">
+          <div className="skeleton h-8 w-48" />
+          <div className="skeleton h-4 w-72" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="h-32 bg-gray-300 rounded-lg"></div>
+              <div key={i} className="skeleton h-32" />
             ))}
           </div>
         </div>
@@ -187,22 +172,21 @@ const Dashboard: React.FC = () => {
   }
 
   return (
-    <div className="p-6">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Dashboard</h1>
-        <p className="text-gray-600">Alle verfügbaren Apps und Module</p>
+    <div className="p-6 max-w-7xl mx-auto">
+      <div className="page-header">
+        <h1 className="page-title">Dashboard</h1>
+        <p className="page-subtitle">Alle verfügbaren Apps und Module</p>
       </div>
 
       {error && (
-        <div className="mb-6 bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg">
+        <div className="mb-6 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-900 text-red-600 dark:text-red-400 px-4 py-3 rounded-xl text-sm animate-scale-in">
           {error}
         </div>
       )}
 
-      {/* Search and filters */}
       <div className="mb-6 flex flex-col sm:flex-row gap-4 items-center justify-between">
-        <div className="flex-1 max-w-lg relative">
-          <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+        <div className="flex-1 max-w-md relative w-full">
+          <MagnifyingGlassIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-surface-400" />
           <input
             type="text"
             placeholder="Apps und Module durchsuchen..."
@@ -212,12 +196,11 @@ const Dashboard: React.FC = () => {
           />
         </div>
 
-        <div className="flex items-center gap-4">
-          {/* Folder filter */}
+        <div className="flex items-center gap-3 w-full sm:w-auto">
           <select
             value={selectedFolder}
             onChange={(e) => setSelectedFolder(e.target.value)}
-            className="input"
+            className="input text-sm"
           >
             <option value="all">Alle Ordner</option>
             {folders.map((folder) => (
@@ -227,49 +210,45 @@ const Dashboard: React.FC = () => {
             ))}
           </select>
 
-          {/* View mode toggle */}
-          <div className="flex bg-gray-100 rounded-lg p-1">
+          <div className="flex bg-surface-100 dark:bg-surface-800 rounded-lg p-0.5 flex-shrink-0">
             <button
               onClick={() => setViewMode('grid')}
               className={clsx(
-                'p-2 rounded-md transition-colors',
+                'p-2 rounded-md transition-all duration-200',
                 viewMode === 'grid'
-                  ? 'bg-white text-primary-600 shadow-sm'
-                  : 'text-gray-500 hover:text-gray-700'
+                  ? 'bg-white dark:bg-surface-700 text-primary-600 shadow-soft'
+                  : 'text-surface-400 dark:text-surface-400 hover:text-surface-600 dark:hover:text-surface-200'
               )}
             >
-              <GridViewIcon className="h-5 w-5" />
+              <Squares2X2Icon className="h-4 w-4" />
             </button>
             <button
               onClick={() => setViewMode('list')}
               className={clsx(
-                'p-2 rounded-md transition-colors',
+                'p-2 rounded-md transition-all duration-200',
                 viewMode === 'list'
-                  ? 'bg-white text-primary-600 shadow-sm'
-                  : 'text-gray-500 hover:text-gray-700'
+                  ? 'bg-white dark:bg-surface-700 text-primary-600 shadow-soft'
+                  : 'text-surface-400 dark:text-surface-400 hover:text-surface-600 dark:hover:text-surface-200'
               )}
             >
-              <ListBulletIcon className="h-5 w-5" />
+              <ListBulletIcon className="h-4 w-4" />
             </button>
           </div>
         </div>
       </div>
 
-      {/* Spinner indicator for updating */}
       {isUpdating && (
-        <div className="flex items-center gap-2 px-4 py-2 text-primary-600">
-          <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-600 inline-block"></span>
+        <div className="flex items-center gap-2 mb-4 text-sm text-primary-600">
+          <span className="w-3 h-3 rounded-full border-2 border-primary-300 border-t-primary-600 animate-spin" />
           <span>Aktualisiere...</span>
         </div>
       )}
-      {/* Modules grid/list */}
+
       {filteredModules.length === 0 ? (
-        <div className="text-center py-12">
-          <FolderIcon className="mx-auto h-12 w-12 text-gray-400" />
-          <h3 className="mt-2 text-sm font-medium text-gray-900">Keine Module gefunden</h3>
-          <p className="mt-1 text-sm text-gray-500">
-            Versuchen Sie, Ihre Suchkriterien zu ändern.
-          </p>
+        <div className="empty-state">
+          <FolderIcon className="empty-state-icon" />
+          <h3 className="empty-state-title">Keine Module gefunden</h3>
+          <p className="empty-state-text">Versuchen Sie, Ihre Suchkriterien zu ändern.</p>
         </div>
       ) : (
         <div
@@ -285,40 +264,52 @@ const Dashboard: React.FC = () => {
               key={index}
               className={clsx(
                 'card card-hover group',
-                viewMode === 'list' && 'flex items-center p-4'
+                viewMode === 'list' && 'flex items-center gap-4 p-4'
               )}
               onClick={() => handleModuleClick(module)}
             >
-              <div className={clsx('flex items-center', viewMode === 'grid' ? 'flex-col text-center' : 'flex-row')}>
-                <div className={clsx('flex-shrink-0', viewMode === 'list' && 'mr-4')}>
-                  {getModuleIcon(module.logo, module.color)}
-                </div>
-                <div className={clsx('flex-1', viewMode === 'grid' ? 'mt-4' : 'ml-0')}>
-                  <h3 className="font-medium text-gray-900 group-hover:text-primary-600 transition-colors">
+              {viewMode === 'grid' ? (
+                <div className="flex flex-col items-center text-center">
+                  <div className="relative">
+                    {getModuleIcon(module.logo, module.color)}
+                    <div className="absolute -top-1 -right-1 w-4 h-4 bg-white dark:bg-surface-800 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-soft">
+                      <ArrowTopRightOnSquareIcon className="w-2.5 h-2.5 text-surface-400" />
+                    </div>
+                  </div>
+                  <h3 className="mt-4 font-medium text-surface-900 dark:text-surface-100 group-hover:text-primary-600 transition-colors text-sm">
                     {module.name}
                   </h3>
                   {module.folders.length > 0 && (
-                    <div className={clsx('flex flex-wrap gap-1', viewMode === 'grid' ? 'mt-2 justify-center' : 'mt-1')}>
+                    <div className="flex flex-wrap gap-1 mt-2 justify-center">
                       {module.folders.map((folder) => (
-                        <span
-                          key={folder}
-                          className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600"
-                        >
+                        <span key={folder} className="badge badge-surface text-[11px]">
                           {folder}
                         </span>
                       ))}
                     </div>
                   )}
-                  <div className={clsx('text-xs text-gray-500', viewMode === 'grid' ? 'mt-2' : 'mt-1')}>
-                    Modul
-                  </div>
+                  <span className="mt-2 text-[11px] text-surface-400 font-medium">Modul</span>
                 </div>
-                {viewMode === 'list' && (
-                  <div className="flex-shrink-0 ml-4">
-                    <ExternalLinkIcon className="h-5 w-5 text-gray-400 group-hover:text-primary-600 transition-colors" />
+              ) : (
+                <>
+                  {getModuleIcon(module.logo, module.color)}
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-medium text-surface-900 dark:text-surface-100 group-hover:text-primary-600 transition-colors text-sm">
+                      {module.name}
+                    </h3>
+                    {module.folders.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {module.folders.map((folder) => (
+                          <span key={folder} className="badge badge-surface text-[11px]">
+                            {folder}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
+                  <ArrowTopRightOnSquareIcon className="w-4 h-4 text-surface-300 group-hover:text-primary-500 transition-colors flex-shrink-0" />
+                </>
+              )}
             </div>
           ))}
         </div>

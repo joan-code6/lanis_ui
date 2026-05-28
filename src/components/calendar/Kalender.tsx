@@ -37,8 +37,8 @@ const Kalender: React.FC = () => {
     return (
       <div className="p-6">
         <div className="text-center py-12">
-          <h3 className="text-lg font-medium text-gray-900">Nicht authentifiziert</h3>
-          <p className="text-gray-500">Bitte melden Sie sich an, um den Kalender zu sehen.</p>
+          <h3 className="text-lg font-medium text-surface-900">Nicht authentifiziert</h3>
+          <p className="text-surface-500">Bitte melden Sie sich an, um den Kalender zu sehen.</p>
         </div>
       </div>
     );
@@ -136,11 +136,11 @@ const Kalender: React.FC = () => {
   if (isLoading && events.length === 0) {
     return (
       <div className="p-6">
-        <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-gray-300 rounded w-1/4"></div>
+        <div className="space-y-4">
+          <div className="skeleton h-8 w-48"></div>
           <div className="grid grid-cols-7 gap-2">
             {Array.from({ length: 35 }).map((_, i) => (
-              <div key={i} className="h-24 bg-gray-300 rounded"></div>
+              <div key={i} className="skeleton h-24"></div>
             ))}
           </div>
         </div>
@@ -149,12 +149,11 @@ const Kalender: React.FC = () => {
   }
 
   return (
-    <div className="p-6">
-      {/* Header */}
-      <div className="mb-6">
+    <div className="p-6 max-w-7xl mx-auto">
+      <div className="page-header">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Kalender</h1>
+            <h1 className="page-title">Kalender</h1>
           </div>
 
           <div className="flex items-center gap-2">
@@ -164,18 +163,18 @@ const Kalender: React.FC = () => {
             >
               Heute
             </button>
-            <div className="flex border border-gray-300 rounded-lg overflow-hidden">
+            <div className="flex bg-surface-100 rounded-xl overflow-hidden border border-surface-200">
               <button
                 onClick={goToPrevMonth}
-                className="p-2 bg-white text-gray-600 hover:bg-gray-50"
+                className="p-2 text-surface-500 hover:text-surface-700 hover:bg-surface-50 transition-colors"
               >
-                <ChevronLeftIcon className="h-5 w-5" />
+                <ChevronLeftIcon className="h-4 w-4" />
               </button>
               <button
                 onClick={goToNextMonth}
-                className="p-2 bg-white text-gray-600 hover:bg-gray-50 border-l border-gray-300"
+                className="p-2 text-surface-500 hover:text-surface-700 hover:bg-surface-50 transition-colors border-l border-surface-200"
               >
-                <ChevronRightIcon className="h-5 w-5" />
+                <ChevronRightIcon className="h-4 w-4" />
               </button>
             </div>
           </div>
@@ -183,23 +182,22 @@ const Kalender: React.FC = () => {
       </div>
 
       {error && (
-        <div className="mb-6 bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg">
+        <div className="mb-6 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-900 text-red-600 dark:text-red-400 px-4 py-3 rounded-xl text-sm animate-scale-in">
           {error}
         </div>
       )}
 
-      {/* Filters */}
       <div className="mb-6 card">
-        <div className="flex flex-wrap items-center gap-4">
-          <div className="flex items-center gap-2">
-            <FunnelIcon className="h-4 w-4 text-gray-500" />
-            <span className="text-sm font-medium text-gray-700">Filter:</span>
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-1.5">
+            <FunnelIcon className="h-3.5 w-3.5 text-surface-400" />
+            <span className="text-xs font-medium text-surface-600">Filter:</span>
           </div>
 
           <select
             value={selectedCategory}
             onChange={(e) => setSelectedCategory(e.target.value)}
-            className="text-sm border border-gray-300 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary-500"
+            className="input text-xs py-1.5 w-auto"
           >
             <option value="">Alle Kategorien</option>
             {categories.map((cat) => (
@@ -210,13 +208,13 @@ const Kalender: React.FC = () => {
           </select>
 
           <div className="relative">
-            <MagnifyingGlassIcon className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <MagnifyingGlassIcon className="h-3.5 w-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-surface-400" />
             <input
               type="text"
               placeholder="Suchen..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 text-sm border border-gray-300 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="input text-xs py-1.5 pl-9 w-48"
             />
           </div>
         </div>
@@ -224,20 +222,18 @@ const Kalender: React.FC = () => {
 
       {/* Month View */}
       <div>
-        {/* Weekday headers */}
         <div className="grid grid-cols-7 gap-px mb-1">
           {['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'].map((day) => (
             <div
               key={day}
-              className="text-center text-sm font-medium text-gray-500 py-2"
+              className="text-center text-xs font-medium text-surface-400 py-2"
             >
               {day}
             </div>
           ))}
         </div>
 
-        {/* Calendar grid */}
-        <div className="grid grid-cols-7 gap-px bg-gray-200 rounded-lg overflow-hidden">
+        <div className="grid grid-cols-7 gap-px bg-surface-200 dark:bg-surface-700 rounded-xl overflow-hidden border border-surface-100 dark:border-surface-700">
           {calendarDays.map((day) => {
             const dateKey = format(day, 'yyyy-MM-dd');
             const dayEvents = eventsByDate.get(dateKey) || [];
@@ -248,13 +244,13 @@ const Kalender: React.FC = () => {
               <div
                 key={dateKey}
                 className={clsx(
-                  'bg-white min-h-[120px] p-1',
-                  !isCurrentMonth && 'bg-gray-50 text-gray-400'
+                  'bg-white dark:bg-surface-900 min-h-[120px] p-1.5 transition-colors',
+                  !isCurrentMonth && 'bg-surface-50 dark:!bg-surface-900 text-surface-300 dark:text-surface-600'
                 )}
               >
                 <div className={clsx(
-                  'text-sm font-medium mb-1',
-                  isCurrentDay && 'bg-primary-600 text-white w-6 h-6 rounded-full flex items-center justify-center'
+                  'text-xs font-medium mb-1 w-6 h-6 flex items-center justify-center',
+                  isCurrentDay && 'bg-primary-600 text-white rounded-full'
                 )}>
                   {format(day, 'd')}
                 </div>
@@ -267,7 +263,7 @@ const Kalender: React.FC = () => {
                         'w-full text-left text-xs px-1 py-0.5 rounded truncate block',
                         category?.color
                           ? 'text-white'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          : 'bg-surface-100 text-surface-700 hover:bg-surface-200'
                       )}
                       style={category?.color ? { backgroundColor: category.color } : {}}
                     >
@@ -275,7 +271,7 @@ const Kalender: React.FC = () => {
                     </button>
                   ))}
                   {dayEvents.length > 3 && (
-                    <div className="text-xs text-gray-500 px-1">
+                    <div className="text-xs text-surface-500 px-1">
                       +{dayEvents.length - 3} weitere
                     </div>
                   )}
@@ -288,20 +284,16 @@ const Kalender: React.FC = () => {
 
       {/* Event Popup Modal */}
       {selectedEvent && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          {/* Backdrop */}
-          <div 
-            className="absolute inset-0 bg-black/50" 
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-surface-900/40 backdrop-blur-sm">
+          <div
+            className="absolute inset-0"
             onClick={closeEventPopup}
           />
-          
-          {/* Modal */}
-          <div className="relative bg-white rounded-xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
-            {/* Header */}
-            <div className="flex items-start justify-between p-6 border-b border-gray-200">
+          <div className="relative bg-white dark:bg-surface-800 rounded-2xl shadow-soft-lg max-w-lg w-full max-h-[90vh] overflow-y-auto animate-scale-in">
+            <div className="flex items-start justify-between p-6 border-b border-surface-100 dark:border-surface-700">
               <div>
-                <h2 className="text-xl font-bold text-gray-900">{selectedEvent.title}</h2>
-                <div className="flex items-center gap-2 mt-1 text-gray-600">
+                <h2 className="text-xl font-bold text-surface-900 dark:text-surface-100">{selectedEvent.title}</h2>
+                <div className="flex items-center gap-2 mt-1.5 text-surface-500 text-sm">
                   <CalendarDaysIcon className="h-4 w-4" />
                   <span>
                     {selectedEvent.start && format(parseISO(selectedEvent.start), 'EEEE, d. MMMM yyyy', { locale: de })}
@@ -310,7 +302,7 @@ const Kalender: React.FC = () => {
               </div>
               <button
                 onClick={closeEventPopup}
-                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg"
+                className="w-8 h-8 flex items-center justify-center rounded-lg text-surface-400 hover:text-surface-600 hover:bg-surface-100 transition-colors"
               >
                 <XMarkIcon className="h-5 w-5" />
               </button>
@@ -326,17 +318,17 @@ const Kalender: React.FC = () => {
                     style={{ backgroundColor: selectedEvent.category_color }}
                   />
                 )}
-                <span className="text-sm text-gray-600">
+                <span className="text-sm text-surface-600">
                   {selectedEvent.category_name || 'Keine Kategorie'}
                 </span>
                 {selectedEvent.all_day && (
-                  <span className="ml-2 text-xs bg-gray-100 px-2 py-0.5 rounded">Ganztägig</span>
+                  <span className="ml-2 text-xs bg-surface-100 text-surface-600 px-2 py-0.5 rounded">Ganztägig</span>
                 )}
               </div>
 
               {/* Time */}
               {!selectedEvent.all_day && selectedEvent.start && (
-                <div className="text-sm text-gray-600 mb-4">
+                <div className="text-sm text-surface-600 mb-4">
                   {format(parseISO(selectedEvent.start), 'HH:mm', { locale: de })}
                   {selectedEvent.end && ` - ${format(parseISO(selectedEvent.end), 'HH:mm', { locale: de })}`}
                 </div>
@@ -344,19 +336,19 @@ const Kalender: React.FC = () => {
 
               {/* Description */}
               {selectedEvent.description && (
-                <div className="prose prose-sm max-w-none">
+                <div className="prose prose-sm dark:prose-invert max-w-none">
                   <div dangerouslySetInnerHTML={{ __html: selectedEvent.description }} />
                 </div>
               )}
 
               {/* Properties */}
               {selectedEvent.properties && Object.keys(selectedEvent.properties).length > 0 && (
-                <div className="mt-4 pt-4 border-t border-gray-200">
+                <div className="mt-4 pt-4 border-t border-surface-200 dark:border-surface-700">
                   <dl className="space-y-2">
                     {Object.entries(selectedEvent.properties).map(([key, value]) => (
                       <div key={key} className="flex">
-                        <dt className="text-sm text-gray-500 w-24 flex-shrink-0">{key}</dt>
-                        <dd className="text-sm text-gray-900">{value}</dd>
+                        <dt className="text-sm text-surface-500 w-24 flex-shrink-0">{key}</dt>
+                        <dd className="text-sm text-surface-900 dark:text-surface-100">{value}</dd>
                       </div>
                     ))}
                   </dl>

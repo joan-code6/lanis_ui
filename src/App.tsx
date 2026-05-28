@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { ThemeProvider } from './contexts/ThemeContext';
 import Layout from './components/layout/Layout';
 import LoginForm from './components/auth/LoginForm';
 import Dashboard from './components/dashboard/Dashboard';
@@ -8,35 +9,28 @@ import Messages from './components/messages/Messages';
 import Courses from './components/courses/Courses';
 import Kalender from './components/calendar/Kalender';
 import Profile from './components/profile/Profile';
+import Settings from './components/settings/Settings';
 
-// Protected Route component
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated } = useAuth();
-  
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
-  
   return <>{children}</>;
 };
 
-// Public Route component (redirects to dashboard if authenticated)
 const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated } = useAuth();
-  
   if (isAuthenticated) {
     return <Navigate to="/" replace />;
   }
-  
   return <>{children}</>;
 };
 
-// App Routes component (needs to be inside AuthProvider)
 const AppRoutes: React.FC = () => {
   return (
     <Router>
       <Routes>
-        {/* Public routes */}
         <Route
           path="/login"
           element={
@@ -45,8 +39,6 @@ const AppRoutes: React.FC = () => {
             </PublicRoute>
           }
         />
-
-        {/* Protected routes */}
         <Route
           path="/*"
           element={
@@ -56,9 +48,10 @@ const AppRoutes: React.FC = () => {
                   <Route path="/" element={<Dashboard />} />
                   <Route path="/messages" element={<Messages />} />
                   <Route path="/courses" element={<Courses />} />
+                  <Route path="/courses/:id" element={<Courses />} />
                   <Route path="/calendar" element={<Kalender />} />
                   <Route path="/profile" element={<Profile />} />
-                  {/* Redirect any unknown routes to dashboard */}
+                  <Route path="/settings" element={<Settings />} />
                   <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
               </Layout>
@@ -70,12 +63,13 @@ const AppRoutes: React.FC = () => {
   );
 };
 
-// Main App component
 const App: React.FC = () => {
   return (
-    <AuthProvider>
-      <AppRoutes />
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <AppRoutes />
+      </AuthProvider>
+    </ThemeProvider>
   );
 };
 
