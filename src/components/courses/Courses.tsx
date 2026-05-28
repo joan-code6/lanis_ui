@@ -536,7 +536,7 @@ title="Timeline-Ansicht"
                   {filteredEntries.map((entry) => (
                     <div
                       key={entry.entry_id}
-                      className="card hover:shadow-lg transition-shadow duration-200"
+                      className="card bg-transparent hover:shadow-lg transition-shadow duration-200"
                     >
                       {/* Header with Date and Attendance */}
                       <div className="flex items-center justify-between mb-4 pb-3 border-b border-surface-200 dark:border-surface-700">
@@ -618,23 +618,22 @@ title="Timeline-Ansicht"
                             <PaperClipIcon className="h-4 w-4 mr-2 text-surface-500 dark:text-surface-400" />
                             Anhänge ({entry.files.length})
                           </h5>
-                          <div className="grid grid-cols-1 gap-2 w-fit">
+                          <div className="inline-grid grid-cols-1 gap-2">
                             {entry.files.map((file, index) => (
                               <a
                                 key={index}
                                 href={file.url !== '#' ? file.url : undefined}
                                 className={clsx(
-                                  "inline-flex items-center p-3 rounded-lg border transition-all",
+                                  "inline-flex items-center p-3 rounded-lg border transition-all min-w-48",
                                   file.url !== '#' 
-                                    ? "border-primary-200 bg-primary-50 hover:bg-primary-100 hover:border-primary-300 cursor-pointer group" 
-                                    : "border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-800 cursor-not-allowed opacity-60"
+                                    ? "border-primary-200 hover:border-primary-300 cursor-pointer group" 
+                                    : "border-surface-200 dark:border-surface-700 cursor-not-allowed opacity-60"
                                 )}
                                 target="_blank"
                                 rel="noopener noreferrer"
                               >
                                 <div className={clsx(
-                                  "h-8 w-8 rounded flex items-center justify-center flex-shrink-0",
-                                  file.url !== '#' ? "bg-primary-100 dark:bg-primary-900/40 group-hover:bg-primary-200 dark:group-hover:bg-primary-800" : "bg-surface-200 dark:bg-surface-700"
+                                  "h-8 w-8 rounded flex items-center justify-center flex-shrink-0"
                                 )}>
                                   <DocumentTextIcon className={clsx(
                                     "h-4 w-4",
@@ -669,7 +668,7 @@ title="Timeline-Ansicht"
                           <div className="h-2 w-2 rounded-full bg-white dark:bg-surface-300"></div>
                         </div>
                         
-                        <div className="card hover:shadow-lg transition-shadow duration-200">
+                        <div className="card bg-transparent hover:shadow-lg transition-shadow duration-200">
                           <div className="flex items-start justify-between mb-3">
                             <div>
                               <div className="text-xs text-surface-500 mb-1">
@@ -726,8 +725,8 @@ title="Timeline-Ansicht"
                                   className={clsx(
                                     "inline-flex items-center px-3 py-1.5 rounded-lg text-xs border",
                                     file.url !== '#'
-                                      ? "border-primary-200 bg-primary-50 text-primary-700 hover:bg-primary-100 cursor-pointer"
-                                      : "border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-800 text-surface-400 dark:text-surface-500 cursor-not-allowed"
+                                      ? "border-primary-200 text-primary-700 cursor-pointer"
+                                      : "border-surface-200 dark:border-surface-700 text-surface-400 dark:text-surface-500 cursor-not-allowed"
                                   )}
                                   target="_blank"
                                   rel="noopener noreferrer"
@@ -751,7 +750,7 @@ title="Timeline-Ansicht"
 
       {viewMode === 'entry-detail' && selectedEntry && (
         <div className="max-w-4xl">
-          <div className="card">
+          <div className="card bg-transparent">
             <div className="mb-6">
               <h2 className="text-2xl font-bold text-surface-900 dark:text-surface-100 mb-2">
                 {selectedEntry.title}
@@ -778,7 +777,7 @@ title="Timeline-Ansicht"
                       href={attachment.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center p-3 border border-surface-200 dark:border-surface-700 rounded-lg hover:bg-surface-50 dark:hover:bg-surface-800 transition-colors"
+                      className="flex items-center p-3 border border-surface-200 dark:border-surface-700 rounded-lg transition-colors"
                     >
                       <PaperClipIcon className="h-5 w-5 text-surface-400 dark:text-surface-500 mr-3" />
                       <span className="text-surface-900 dark:text-surface-100">{attachment.name}</span>
