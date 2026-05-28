@@ -10,6 +10,7 @@ import Courses from './components/courses/Courses';
 import Kalender from './components/calendar/Kalender';
 import Profile from './components/profile/Profile';
 import Settings from './components/settings/Settings';
+import Dsbmobile from './components/dsb/Dsbmobile';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated } = useAuth();
@@ -50,6 +51,7 @@ const AppRoutes: React.FC = () => {
                   <Route path="/courses" element={<Courses />} />
                   <Route path="/courses/:id" element={<Courses />} />
                   <Route path="/calendar" element={<Kalender />} />
+                  <Route path="/dsb" element={<Dsbmobile />} />
                   <Route path="/profile" element={<Profile />} />
                   <Route path="/settings" element={<Settings />} />
                   <Route path="*" element={<Navigate to="/" replace />} />

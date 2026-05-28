@@ -264,12 +264,7 @@ const Messages: React.FC = () => {
           />
         </div>
 
-        {isUpdating && (
-          <div className="flex items-center gap-2 px-4 py-2 text-xs text-primary-600 border-b border-surface-100 dark:border-surface-800">
-            <span className="w-2.5 h-2.5 rounded-full border-2 border-primary-300 border-t-primary-600 animate-spin" />
-            <span>Aktualisiere...</span>
-          </div>
-        )}
+        
 
         <div className="flex-1 overflow-y-auto">
           {error && (

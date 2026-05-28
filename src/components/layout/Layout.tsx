@@ -1,5 +1,6 @@
 import React from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { appsAPI } from '../../services/api';
 import {
   HomeIcon,
   ChatBubbleLeftRightIcon,
@@ -10,6 +11,7 @@ import {
   ArrowRightOnRectangleIcon,
   Bars3Icon,
   XMarkIcon,
+  DocumentIcon,
 } from '@heroicons/react/24/outline';
 import { Link, useLocation } from 'react-router-dom';
 
@@ -17,19 +19,46 @@ interface LayoutProps {
   children: React.ReactNode;
 }
 
-const navigation = [
-  { name: 'Dashboard', href: '/', icon: HomeIcon },
-  { name: 'Nachrichten', href: '/messages', icon: ChatBubbleLeftRightIcon },
-  { name: 'Mein Unterricht', href: '/courses', icon: AcademicCapIcon },
-  { name: 'Kalender', href: '/calendar', icon: CalendarDaysIcon },
-  { name: 'Profil', href: '/profile', icon: UserIcon },
-  { name: 'Einstellungen', href: '/settings', icon: Cog6ToothIcon },
-];
-
 const Layout: React.FC<LayoutProps> = ({ children }) => {
-  const { user, logout } = useAuth();
+  const { user, token, logout } = useAuth();
   const location = useLocation();
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
+  const [hasDsbModule, setHasDsbModule] = React.useState(false);
+
+  React.useEffect(() => {
+    const checkDsbModule = async () => {
+      if (!token) return;
+      try {
+        const response = await appsAPI.getModules(token);
+        if (response.success) {
+          const dsbExists = response.modules.some(
+            m => m.name.toLowerCase().includes('dsb') ||
+                 m.name.toLowerCase().includes('vertretungsplan') ||
+                 m.url.toLowerCase().includes('dsb') ||
+                 m.url.toLowerCase().includes('vertretung')
+          );
+          setHasDsbModule(dsbExists);
+        }
+      } catch (error) {
+        console.error('Error checking for DSB module:', error);
+      }
+    };
+
+    checkDsbModule();
+  }, [token]);
+
+  const baseNavigation = [
+    { name: 'Dashboard', href: '/', icon: HomeIcon },
+    { name: 'Nachrichten', href: '/messages', icon: ChatBubbleLeftRightIcon },
+    { name: 'Mein Unterricht', href: '/courses', icon: AcademicCapIcon },
+    { name: 'Kalender', href: '/calendar', icon: CalendarDaysIcon },
+    { name: 'Profil', href: '/profile', icon: UserIcon },
+    { name: 'Einstellungen', href: '/settings', icon: Cog6ToothIcon },
+  ];
+
+  const dsbNavItem = hasDsbModule ? { name: 'Vertretungsplan', href: '/dsb', icon: DocumentIcon } : null;
+
+  const navigation = dsbNavItem ? [...baseNavigation.slice(0, 2), dsbNavItem, ...baseNavigation.slice(2)] : baseNavigation;
 
   const handleLogout = () => {
     logout();
@@ -50,49 +79,18 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 <XMarkIcon className="h-6 w-6 text-white" />
               </button>
             </div>
-            <SidebarContent />
+            <SidebarContent navigation={navigation} />
           </div>
         </div>
       )}
 
       <div className="hidden md:flex md:w-64 md:flex-col md:fixed md:inset-y-0">
         <div className="flex-1 flex flex-col min-h-0 bg-white dark:bg-surface-900 border-r border-surface-100 dark:border-surface-800">
-          <SidebarContent />
+          <SidebarContent navigation={navigation} />
         </div>
       </div>
 
       <div className="flex flex-col w-0 flex-1 md:ml-64">
-        <header className="sticky top-0 z-20 flex-shrink-0 flex h-16 bg-white/80 dark:bg-surface-900/80 backdrop-blur-xl border-b border-surface-100 dark:border-surface-800">
-          <button
-            type="button"
-            className="px-4 border-r border-surface-100 dark:border-surface-800 text-surface-500 dark:text-surface-400 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary-500/40 md:hidden hover:text-surface-700 dark:hover:text-surface-300 transition-colors"
-            onClick={() => setIsSidebarOpen(true)}
-          >
-            <Bars3Icon className="h-6 w-6" />
-          </button>
-          <div className="flex-1 px-4 flex justify-between items-center">
-            <div className="flex-1 flex" />
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-2 pl-2 border-l border-surface-200 dark:border-surface-700">
-                <div className="flex items-center gap-2 px-2.5 py-1.5 bg-surface-100 dark:bg-surface-800 rounded-lg">
-                  <span className="w-2 h-2 rounded-full bg-primary-500 animate-pulse-soft" />
-                  <span className="text-xs font-medium text-surface-700 dark:text-surface-300">
-                    {user?.username || 'Benutzer'}
-                  </span>
-                </div>
-                <button
-                  onClick={handleLogout}
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-surface-500 dark:text-surface-400 hover:text-surface-700 dark:hover:text-surface-300 hover:bg-surface-100 dark:hover:bg-surface-800 rounded-lg transition-all duration-200 ease-out-expo active:scale-95"
-                  title="Abmelden"
-                >
-                  <ArrowRightOnRectangleIcon className="h-4 w-4" />
-                  <span className="hidden sm:inline">Abmelden</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        </header>
-
         <main className="flex-1 relative overflow-y-auto focus:outline-none">
           <div className="animate-fade-in">
             {children}
@@ -102,7 +100,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     </div>
   );
 
-  function SidebarContent() {
+  function SidebarContent({ navigation }: { navigation: typeof baseNavigation }) {
     return (
       <>
         <div className="flex items-center flex-shrink-0 px-5 py-5">
@@ -140,6 +138,16 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               );
             })}
           </nav>
+          <div className="mt-auto pt-4 border-t border-surface-100 dark:border-surface-800">
+            <button
+              onClick={handleLogout}
+              className="nav-link w-full text-surface-500 dark:text-surface-400 hover:text-surface-700 dark:hover:text-surface-300"
+              title="Abmelden"
+            >
+              <ArrowRightOnRectangleIcon className="nav-link-icon text-surface-400 dark:text-surface-500" />
+              Abmelden
+            </button>
+          </div>
         </div>
       </>
     );

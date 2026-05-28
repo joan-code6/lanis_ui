@@ -123,12 +123,7 @@ const Profile: React.FC = () => {
           <p className="page-subtitle">Ihre Benutzerinformationen und Kontodetails</p>
         </div>
 
-        {isUpdating && (
-          <div className="flex items-center gap-2 px-4 py-2 text-sm text-primary-600">
-            <span className="w-3 h-3 rounded-full border-2 border-primary-300 border-t-primary-600 animate-spin"></span>
-            <span>Aktualisiere...</span>
-          </div>
-        )}
+        
         {error && (
           <div className="mb-6 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-900 text-red-600 dark:text-red-400 px-4 py-3 rounded-xl text-sm animate-scale-in">
             {error}

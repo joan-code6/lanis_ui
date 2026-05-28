@@ -352,3 +352,41 @@ export interface SingleCalendarEventResponse {
     view_id: string;
   };
 }
+
+// DSB Mobile types
+export interface DSBLoginRequest {
+  username: string;
+  password: string;
+}
+
+export interface DSBLoginResponse {
+  success: boolean;
+  session_cookie?: string;
+  session_id?: string;
+  response_url?: string;
+  error?: string;
+}
+
+export interface DSBPlanUrlsResponse {
+  success: boolean;
+  plan_urls: string[];
+  html_plan_url?: string;
+  menu_items: string[];
+  count: number;
+  error?: string;
+}
+
+export interface DSBPlanTable {
+  caption: string;
+  headers: string[];
+  rows: Record<string, string>[] | string[][];
+}
+
+export interface DSBPlanResponse {
+  success: boolean;
+  plan_url?: string;
+  title?: string;
+  tables: DSBPlanTable[];
+  raw_html?: string | null;
+  error?: string;
+}

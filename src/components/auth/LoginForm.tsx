@@ -6,6 +6,17 @@ import { EyeIcon, EyeSlashIcon, AcademicCapIcon, SunIcon, MoonIcon } from '@hero
 import { schoolListAPI } from '../../services/api';
 import { School, District } from '../../types';
 
+const COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
+
+function setCookie(name: string, value: string, maxAge: number = COOKIE_MAX_AGE) {
+  document.cookie = `${name}=${encodeURIComponent(value)};max-age=${maxAge};path=/;SameSite=Lax`;
+}
+
+function getCookie(name: string): string | null {
+  const match = document.cookie.match(new RegExp(`(^| )${name}=([^;]+)`));
+  return match ? decodeURIComponent(match[2]) : null;
+}
+
 function useDebounce<T>(value: T, delay: number): T {
   const [debouncedValue, setDebouncedValue] = useState<T>(value);
   useEffect(() => {
@@ -33,6 +44,16 @@ const LoginForm: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    const savedSchoolId = getCookie('lastSchoolId');
+    const savedSchoolName = getCookie('lastSchoolName');
+    const savedSchoolLocation = getCookie('lastSchoolLocation');
+    if (savedSchoolId && savedSchoolName) {
+      setFormData((prev) => ({ ...prev, school_id: savedSchoolId }));
+      setSchoolSearch(`${savedSchoolName} (${savedSchoolLocation || ''})`.replace(' ()', ''));
+    }
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
@@ -79,6 +100,9 @@ const LoginForm: React.FC = () => {
     setSchoolSearch(`${school.name} (${school.location})${school.district_name ? ' – ' + school.district_name : ''}`);
     setFormData((prev) => ({ ...prev, school_id: school.id }));
     setShowSchoolDropdown(false);
+    setCookie('lastSchoolId', school.id);
+    setCookie('lastSchoolName', school.name);
+    setCookie('lastSchoolLocation', school.location);
     if (schoolInputRef.current) schoolInputRef.current.blur();
   };
 

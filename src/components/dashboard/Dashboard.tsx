@@ -9,6 +9,8 @@ import {
   MagnifyingGlassIcon,
   Squares2X2Icon,
   ListBulletIcon,
+  PencilIcon,
+  StarIcon,
 } from '@heroicons/react/24/outline';
 import clsx from 'clsx';
 
@@ -35,6 +37,11 @@ const Dashboard: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFolder, setSelectedFolder] = useState<string>('all');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [pinnedModules, setPinnedModules] = useState<string[]>(() => {
+    const cached = localStorage.getItem('pinned_modules');
+    return cached ? JSON.parse(cached) : [];
+  });
 
   if (!token) {
     return (
@@ -82,6 +89,7 @@ const Dashboard: React.FC = () => {
   };
 
   const handleModuleClick = (module: CombinedModule) => {
+    if (isEditMode) return;
     if (module.url.includes('/nachrichten.php')) {
       navigate('/messages');
       return;
@@ -90,7 +98,21 @@ const Dashboard: React.FC = () => {
       navigate('/courses');
       return;
     }
+    if (module.url.includes('/kalender.php')) {
+      navigate('/calendar');
+      return;
+    }
     window.open(module.url, '_blank', 'noopener,noreferrer');
+  };
+
+  const togglePin = (moduleName: string) => {
+    setPinnedModules(prev => {
+      const newPinned = prev.includes(moduleName)
+        ? prev.filter(n => n !== moduleName)
+        : [...prev, moduleName];
+      localStorage.setItem('pinned_modules', JSON.stringify(newPinned));
+      return newPinned;
+    });
   };
 
   const filteredModules = modules.filter((module) => {
@@ -98,6 +120,14 @@ const Dashboard: React.FC = () => {
     const moduleFolders = module.folders.map(f => f.trim());
     const matchesFolder = selectedFolder === 'all' || moduleFolders.includes(selectedFolder);
     return matchesSearch && matchesFolder;
+  });
+
+  const sortedModules = [...filteredModules].sort((a, b) => {
+    const aPinned = pinnedModules.includes(a.name);
+    const bPinned = pinnedModules.includes(b.name);
+    if (aPinned && !bPinned) return -1;
+    if (!aPinned && bPinned) return 1;
+    return 0;
   });
 
   const getModuleIcon = (logo: string, color: string) => {
@@ -234,17 +264,29 @@ const Dashboard: React.FC = () => {
               <ListBulletIcon className="h-4 w-4" />
             </button>
           </div>
+
+          <button
+            onClick={() => setIsEditMode(!isEditMode)}
+            className={clsx(
+              'p-2 rounded-lg transition-all duration-200',
+              isEditMode
+                ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400'
+                : 'bg-surface-100 dark:bg-surface-800 text-surface-400 hover:text-surface-600 dark:hover:text-surface-200'
+            )}
+            title="Pinnen bearbeiten"
+          >
+            <PencilIcon className="h-4 w-4" />
+          </button>
         </div>
       </div>
 
-      {isUpdating && (
-        <div className="flex items-center gap-2 mb-4 text-sm text-primary-600">
-          <span className="w-3 h-3 rounded-full border-2 border-primary-300 border-t-primary-600 animate-spin" />
-          <span>Aktualisiere...</span>
+      {isEditMode && (
+        <div className="mb-6 bg-primary-50 dark:bg-primary-950/30 border border-primary-200 dark:border-primary-800 rounded-xl p-4">
+          <p className="text-sm text-primary-700 dark:text-primary-300 font-medium">Bearbeitungsmodus aktiv — Klicken Sie auf einen Stern um Module zu pinnen</p>
         </div>
       )}
 
-      {filteredModules.length === 0 ? (
+      {sortedModules.length === 0 ? (
         <div className="empty-state">
           <FolderIcon className="empty-state-icon" />
           <h3 className="empty-state-title">Keine Module gefunden</h3>
@@ -259,11 +301,11 @@ const Dashboard: React.FC = () => {
               : 'grid-cols-1'
           )}
         >
-          {filteredModules.map((module, index) => (
+          {sortedModules.map((module, index) => (
             <div
               key={index}
               className={clsx(
-                'card card-hover group',
+                'card card-hover group relative',
                 viewMode === 'list' && 'flex items-center gap-4 p-4'
               )}
               onClick={() => handleModuleClick(module)}
@@ -275,6 +317,22 @@ const Dashboard: React.FC = () => {
                     <div className="absolute -top-1 -right-1 w-4 h-4 bg-white dark:bg-surface-800 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-soft">
                       <ArrowTopRightOnSquareIcon className="w-2.5 h-2.5 text-surface-400" />
                     </div>
+                    {isEditMode && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          togglePin(module.name);
+                        }}
+                        className={clsx(
+                          'absolute -top-1 -left-1 w-6 h-6 rounded-full flex items-center justify-center transition-all shadow-soft',
+                          pinnedModules.includes(module.name)
+                            ? 'bg-primary-500 text-white'
+                            : 'bg-surface-200 dark:bg-surface-700 text-surface-500 hover:bg-primary-100 hover:text-primary-500'
+                        )}
+                      >
+                        <StarIcon className={clsx('w-3.5 h-3.5', pinnedModules.includes(module.name) && 'fill-current')} />
+                      </button>
+                    )}
                   </div>
                   <h3 className="mt-4 font-medium text-surface-900 dark:text-surface-100 group-hover:text-primary-600 transition-colors text-sm">
                     {module.name}
@@ -290,7 +348,7 @@ const Dashboard: React.FC = () => {
                   )}
                   <span className="mt-2 text-[11px] text-surface-400 font-medium">Modul</span>
                 </div>
-              ) : (
+                  ) : (
                 <>
                   {getModuleIcon(module.logo, module.color)}
                   <div className="flex-1 min-w-0">
@@ -307,6 +365,22 @@ const Dashboard: React.FC = () => {
                       </div>
                     )}
                   </div>
+                  {isEditMode && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        togglePin(module.name);
+                      }}
+                      className={clsx(
+                        'p-1.5 rounded-full transition-all',
+                        pinnedModules.includes(module.name)
+                          ? 'text-primary-500'
+                          : 'text-surface-300 hover:text-primary-500'
+                      )}
+                    >
+                      <StarIcon className={clsx('w-4 h-4', pinnedModules.includes(module.name) && 'fill-current')} />
+                    </button>
+                  )}
                   <ArrowTopRightOnSquareIcon className="w-4 h-4 text-surface-300 group-hover:text-primary-500 transition-colors flex-shrink-0" />
                 </>
               )}

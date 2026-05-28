@@ -59,6 +59,7 @@ const Courses: React.FC = () => {
   const [showOnlyHomework, setShowOnlyHomework] = useState(false);
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
   const [detailViewMode, setDetailViewMode] = useState<'cards' | 'timeline'>('cards');
+  const [dynamicAttendanceOptions, setDynamicAttendanceOptions] = useState<string[]>([]);
 
   // Early return if no token
   if (!token) {
@@ -119,6 +120,12 @@ const Courses: React.FC = () => {
       if (response.success) {
         setSelectedCourse(response);
         setViewMode('course-detail');
+        
+        const presetAttendance = ['anwesend', 'entschuldigt', 'unentschuldigt', 'fehlend'];
+        const allAttendances = response.entries.map((entry: CourseDetailEntry) => entry.attendance.trim()).filter(Boolean);
+        const uniqueAttendances = [...new Set(allAttendances)];
+        const dynamicOptions = uniqueAttendances.filter((att) => !presetAttendance.includes(att.toLowerCase()));
+        setDynamicAttendanceOptions(dynamicOptions);
       } else {
         setError('Fehler beim Laden der Kursdetails.');
       }
@@ -266,12 +273,7 @@ const Courses: React.FC = () => {
   return (
     <div className="p-6">
       {/* Spinner indicator for updating */}
-      {isUpdating && (
-        <div className="flex items-center gap-2 px-4 py-2 text-primary-600">
-          <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-600 inline-block"></span>
-          <span>Aktualisiere...</span>
-        </div>
-      )}
+      
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center justify-between">
@@ -413,6 +415,9 @@ const Courses: React.FC = () => {
                   <option value="entschuldigt">Entschuldigt</option>
                   <option value="unentschuldigt">Unentschuldigt</option>
                   <option value="fehlend">Fehlend</option>
+                  {dynamicAttendanceOptions.map((option) => (
+                    <option key={option} value={option}>{option}</option>
+                  ))}
                 </select>
 
                 <button
@@ -478,12 +483,14 @@ title="Timeline-Ansicht"
             (() => {
               // Filter and sort entries
               let filteredEntries = selectedCourse.entries.filter((entry) => {
-                const trimmedAttendance = entry.attendance.trim().toLowerCase();
+                const trimmedAttendance = entry.attendance.trim();
                 if (filterAttendance !== 'all') {
-                  if (filterAttendance === 'anwesend' && trimmedAttendance !== 'anwesend') return false;
-                  if (filterAttendance === 'entschuldigt' && !trimmedAttendance.includes('entschuldigt')) return false;
-                  if (filterAttendance === 'unentschuldigt' && trimmedAttendance !== 'unentschuldigt') return false;
-                  if (filterAttendance === 'fehlend' && trimmedAttendance !== 'fehlend' && trimmedAttendance !== 'unentschuldigt') return false;
+                  const lowerAtt = trimmedAttendance.toLowerCase();
+                  if (filterAttendance === 'anwesend' && lowerAtt !== 'anwesend') return false;
+                  if (filterAttendance === 'entschuldigt' && !lowerAtt.includes('entschuldigt')) return false;
+                  if (filterAttendance === 'unentschuldigt' && lowerAtt !== 'unentschuldigt') return false;
+                  if (filterAttendance === 'fehlend' && lowerAtt !== 'fehlend' && lowerAtt !== 'unentschuldigt') return false;
+                  if (!['anwesend', 'entschuldigt', 'unentschuldigt', 'fehlend'].includes(filterAttendance.toLowerCase()) && trimmedAttendance !== filterAttendance) return false;
                 }
                 if (showOnlyHomework && !entry.homework.trim()) return false;
                 return true;
@@ -543,21 +550,18 @@ title="Timeline-Ansicht"
                               <div className="flex items-center gap-1 mt-1">
                                 {(() => {
                                   const att = entry.attendance.trim().toLowerCase();
-                                  return att === 'anwesend' ? (
+                                  return att === 'anwesend' || att === 'entschuldigt' ? (
                                     <CheckCircleIcon className="h-4 w-4 text-green-600" />
                                   ) : att === 'fehlend' || att === 'unentschuldigt' ? (
                                     <XCircleIcon className="h-4 w-4 text-red-600" />
-                                  ) : att === 'entschuldigt' ? (
-                                    <CheckCircleIcon className="h-4 w-4 text-blue-600" />
                                   ) : (
                                     <ExclamationCircleIcon className="h-4 w-4 text-yellow-600" />
                                   );
                                 })()}
                                 <span className={clsx(
                                   "text-xs font-medium",
-                                  entry.attendance.trim().toLowerCase() === 'anwesend' ? 'text-green-700' :
+                                  entry.attendance.trim().toLowerCase() === 'anwesend' || entry.attendance.trim().toLowerCase() === 'entschuldigt' ? 'text-green-700' :
                                   entry.attendance.trim().toLowerCase() === 'fehlend' || entry.attendance.trim().toLowerCase() === 'unentschuldigt' ? 'text-red-700' :
-                                  entry.attendance.trim().toLowerCase() === 'entschuldigt' ? 'text-blue-700' :
                                   'text-yellow-700'
                                 )}>
                                   {entry.attendance}
@@ -614,13 +618,13 @@ title="Timeline-Ansicht"
                             <PaperClipIcon className="h-4 w-4 mr-2 text-surface-500 dark:text-surface-400" />
                             Anhänge ({entry.files.length})
                           </h5>
-                          <div className="grid grid-cols-1 gap-2">
+                          <div className="grid grid-cols-1 gap-2 w-fit">
                             {entry.files.map((file, index) => (
                               <a
                                 key={index}
                                 href={file.url !== '#' ? file.url : undefined}
                                 className={clsx(
-                                  "flex items-center p-3 rounded-lg border transition-all",
+                                  "inline-flex items-center p-3 rounded-lg border transition-all",
                                   file.url !== '#' 
                                     ? "border-primary-200 bg-primary-50 hover:bg-primary-100 hover:border-primary-300 cursor-pointer group" 
                                     : "border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-800 cursor-not-allowed opacity-60"
@@ -675,10 +679,9 @@ title="Timeline-Ansicht"
                               {entry.attendance && (
                                 <span className={clsx(
                                   "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium mt-1",
-                                  entry.attendance.trim().toLowerCase() === 'anwesend' ? 'bg-green-100 text-green-700' :
-                                  entry.attendance.trim().toLowerCase() === 'fehlend' || entry.attendance.trim().toLowerCase() === 'unentschuldigt' ? 'bg-red-100 text-red-700' :
-                                  entry.attendance.trim().toLowerCase() === 'entschuldigt' ? 'bg-blue-100 text-blue-700' :
-                                  'bg-yellow-100 text-yellow-700'
+                                  entry.attendance.trim().toLowerCase() === 'anwesend' || entry.attendance.trim().toLowerCase() === 'entschuldigt' ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300' :
+                                  entry.attendance.trim().toLowerCase() === 'fehlend' || entry.attendance.trim().toLowerCase() === 'unentschuldigt' ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300' :
+                                  'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300'
                                 )}>
                                   {entry.attendance}
                                 </span>
