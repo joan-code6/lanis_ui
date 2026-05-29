@@ -1,12 +1,46 @@
 import {
   SchoolListResponse,
   DistrictSchoolsResponse,
-  SchoolSearchResponse
+  SchoolSearchResponse,
+  SchoolSearchResult,
 } from '../types';
 // School List API
+const SCHOOL_CACHE_KEY = 'school_cache';
+const SCHOOL_CACHE_TTL = 24 * 60 * 60 * 1000;
+
+interface CachedSchoolData {
+  data: SchoolListResponse;
+  timestamp: number;
+}
+
+function getCachedSchoolData(): SchoolListResponse | null {
+  const cached = localStorage.getItem(SCHOOL_CACHE_KEY);
+  if (!cached) return null;
+  try {
+    const parsed: CachedSchoolData = JSON.parse(cached);
+    if (Date.now() - parsed.timestamp > SCHOOL_CACHE_TTL) {
+      localStorage.removeItem(SCHOOL_CACHE_KEY);
+      return null;
+    }
+    return parsed.data;
+  } catch {
+    return null;
+  }
+}
+
+function setCachedSchoolData(data: SchoolListResponse): void {
+  const cached: CachedSchoolData = { data, timestamp: Date.now() };
+  localStorage.setItem(SCHOOL_CACHE_KEY, JSON.stringify(cached));
+}
+
 export const schoolListAPI = {
   async getAllSchools(): Promise<SchoolListResponse> {
+    const cached = getCachedSchoolData();
+    if (cached) return cached;
     const response = await apiClient.get<SchoolListResponse>('/school-list');
+    if (response.data.success) {
+      setCachedSchoolData(response.data);
+    }
     return response.data;
   },
 
@@ -16,10 +50,26 @@ export const schoolListAPI = {
   },
 
   async searchSchools(query: string): Promise<SchoolSearchResponse> {
-    const response = await apiClient.get<SchoolSearchResponse>('/school-list/search', {
-      params: { q: query },
-    });
-    return response.data;
+    const allSchools = await schoolListAPI.getAllSchools();
+    const q = query.toLowerCase();
+    const results: SchoolSearchResult[] = [];
+    for (const district of allSchools.districts) {
+      for (const school of district.schools) {
+        if (school.name.toLowerCase().includes(q) || school.location.toLowerCase().includes(q)) {
+          results.push({
+            district_id: district.id,
+            district_name: district.name,
+            school,
+          });
+        }
+      }
+    }
+    return {
+      success: true,
+      query,
+      count: results.length,
+      results,
+    };
   },
 };
 import axios, { AxiosInstance } from 'axios';
@@ -43,6 +93,10 @@ import {
   CalendarOverviewResponse,
   CalendarEventsResponse,
   SingleCalendarEventResponse,
+  DSBLoginRequest,
+  DSBLoginResponse,
+  DSBPlanUrlsResponse,
+  DSBPlanResponse,
 } from '../types';
 
 // Configuration
@@ -216,6 +270,40 @@ export const calendarAPI = {
     const response = await apiClient.get<SingleCalendarEventResponse>(`/kalender/event/${eventId}`, {
       headers: { 'X-Session-Token': token },
       params: { view_id: viewId },
+    });
+    return response.data;
+  },
+};
+
+// DSB Mobile API
+export const dsbAPI = {
+  async login(token: string, credentials: DSBLoginRequest): Promise<DSBLoginResponse> {
+    const response = await apiClient.post<DSBLoginResponse>('/dsb/login', credentials, {
+      headers: { 'X-Session-Token': token },
+    });
+    return response.data;
+  },
+
+  async getPlanUrls(token: string, credentials: DSBLoginRequest): Promise<DSBPlanUrlsResponse> {
+    const response = await apiClient.post<DSBPlanUrlsResponse>('/dsb/plan-urls', credentials, {
+      headers: { 'X-Session-Token': token },
+    });
+    return response.data;
+  },
+
+  async getPlan(
+    token: string,
+    credentials: { username?: string; password?: string },
+    options: { plan_index?: number; plan_url?: string; include_raw?: boolean } = {}
+  ): Promise<DSBPlanResponse> {
+    const response = await apiClient.post<DSBPlanResponse>('/dsb/plan', {
+      username: credentials.username,
+      password: credentials.password,
+      plan_index: options.plan_index ?? 0,
+      plan_url: options.plan_url ?? null,
+      include_raw: options.include_raw ?? false,
+    }, {
+      headers: { 'X-Session-Token': token },
     });
     return response.data;
   },
