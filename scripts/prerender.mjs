@@ -80,16 +80,42 @@ const routes = [
   { path: '/login', file: 'login/index.html' },
 ];
 
+function hasMissingBrowserRuntime(error) {
+  const message = String(error?.message || error || '');
+  return (
+    message.includes('Failed to launch the browser process') &&
+    (message.includes('Error loading shared library') || message.includes('symbol not found'))
+  );
+}
+
 async function prerender() {
+  if (process.env.SKIP_PRERENDER === '1') {
+    console.log('SKIP_PRERENDER=1, skipping prerender step.');
+    return;
+  }
+
   console.log('Starting prerender server...');
 
   await new Promise((resolve) => server.listen(port, resolve));
   console.log(`Server running at http://localhost:${port}`);
 
-  const browser = await puppeteer.launch({
-    headless: 'new',
-    args: ['--no-sandbox', '--disable-setuid-sandbox'],
-  });
+  const strictPrerender = process.env.PRERENDER_STRICT === '1';
+  let browser;
+
+  try {
+    browser = await puppeteer.launch({
+      headless: 'new',
+      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    });
+  } catch (error) {
+    server.close();
+    if (!strictPrerender && hasMissingBrowserRuntime(error)) {
+      console.warn('\nSkipping prerender: browser runtime dependencies are unavailable in this build environment.');
+      console.warn('Set PRERENDER_STRICT=1 to fail the build instead.');
+      return;
+    }
+    throw error;
+  }
 
   try {
     for (const route of routes) {
@@ -148,4 +174,3 @@ prerender().catch((err) => {
   server.close();
   process.exit(1);
 });
-
