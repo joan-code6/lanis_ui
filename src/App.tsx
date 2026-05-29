@@ -11,6 +11,16 @@ import Kalender from './components/calendar/Kalender';
 import Profile from './components/profile/Profile';
 import Settings from './components/settings/Settings';
 import Dsbmobile from './components/dsb/Dsbmobile';
+import Landingpage from './components/landing/Landingpage';
+import Impressum from './components/legal/Impressum';
+
+const LandingRoot: React.FC = () => {
+  const { isAuthenticated } = useAuth();
+  if (isAuthenticated) {
+    return <Navigate to="/dashboard" replace />;
+  }
+  return <Landingpage />;
+};
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated } = useAuth();
@@ -23,7 +33,7 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated } = useAuth();
   if (isAuthenticated) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/dashboard" replace />;
   }
   return <>{children}</>;
 };
@@ -32,6 +42,9 @@ const AppRoutes: React.FC = () => {
   return (
     <Router>
       <Routes>
+        <Route path="/" element={<LandingRoot />} />
+        <Route path="/landing" element={<Navigate to="/" replace />} />
+        <Route path="/impressum" element={<Impressum />} />
         <Route
           path="/login"
           element={
@@ -46,7 +59,7 @@ const AppRoutes: React.FC = () => {
             <ProtectedRoute>
               <Layout>
                 <Routes>
-                  <Route path="/" element={<Dashboard />} />
+                  <Route path="/dashboard" element={<Dashboard />} />
                   <Route path="/messages" element={<Messages />} />
                   <Route path="/courses" element={<Courses />} />
                   <Route path="/courses/:id" element={<Courses />} />
@@ -54,7 +67,7 @@ const AppRoutes: React.FC = () => {
                   <Route path="/dsb" element={<Dsbmobile />} />
                   <Route path="/profile" element={<Profile />} />
                   <Route path="/settings" element={<Settings />} />
-                  <Route path="*" element={<Navigate to="/" replace />} />
+                  <Route path="*" element={<Navigate to="/dashboard" replace />} />
                 </Routes>
               </Layout>
             </ProtectedRoute>

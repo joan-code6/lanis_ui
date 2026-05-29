@@ -48,7 +48,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   }, [token]);
 
   const baseNavigation = [
-    { name: 'Dashboard', href: '/', icon: HomeIcon },
+    { name: 'Dashboard', href: '/dashboard', icon: HomeIcon },
     { name: 'Nachrichten', href: '/messages', icon: ChatBubbleLeftRightIcon },
     { name: 'Mein Unterricht', href: '/courses', icon: AcademicCapIcon },
     { name: 'Kalender', href: '/calendar', icon: CalendarDaysIcon },
@@ -105,9 +105,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       <>
         <div className="flex items-center flex-shrink-0 px-5 py-5">
           <div className="flex items-center gap-3">
-            <div className="h-9 w-9 bg-primary-600 rounded-xl flex items-center justify-center shadow-soft">
-              <AcademicCapIcon className="h-5 w-5 text-white" />
-            </div>
+            <img src="/favicon/android-chrome-192x192.png" alt="Schulportal" className="h-9 w-9 rounded-xl" />
             <div>
               <h1 className="text-base font-semibold text-surface-900 dark:text-surface-100 tracking-tight">Schulportal</h1>
               <p className="text-[11px] text-surface-500 dark:text-surface-400 font-medium tracking-wide uppercase">Hessen</p>

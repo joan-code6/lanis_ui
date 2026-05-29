@@ -371,23 +371,7 @@ const Courses: React.FC = () => {
                     </div>
                   )}
                   
-                  <div className="mt-3 pt-3 border-t border-surface-200 dark:border-surface-700 flex justify-end">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        // Convert course_link to use schulportal domain
-                        const url = course.course_link.startsWith('http') 
-                          ? course.course_link 
-                          : `https://start.schulportal.hessen.de/${course.course_link}`;
-                        window.open(url, '_blank');
-                      }}
-                      className="text-xs text-surface-500 dark:text-surface-400 hover:text-surface-700 dark:text-surface-300 flex items-center"
-                    >
-                      <ArrowTopRightOnSquareIcon className="h-3 w-3 mr-1" />
-                      Original öffnen
-                    </button>
                   </div>
-                </div>
               </div>
             ))
           )}

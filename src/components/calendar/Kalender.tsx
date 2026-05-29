@@ -163,16 +163,16 @@ const Kalender: React.FC = () => {
             >
               Heute
             </button>
-            <div className="flex bg-surface-100 rounded-xl overflow-hidden border border-surface-200">
+            <div className="flex bg-surface-100 dark:bg-surface-800 rounded-xl overflow-hidden border border-surface-200 dark:border-surface-700">
               <button
                 onClick={goToPrevMonth}
-                className="p-2 text-surface-500 hover:text-surface-700 hover:bg-surface-50 transition-colors"
+                className="p-2 text-surface-500 dark:text-surface-400 hover:text-surface-700 dark:hover:text-surface-200 hover:bg-surface-50 dark:hover:bg-surface-700 transition-colors"
               >
                 <ChevronLeftIcon className="h-4 w-4" />
               </button>
               <button
                 onClick={goToNextMonth}
-                className="p-2 text-surface-500 hover:text-surface-700 hover:bg-surface-50 transition-colors border-l border-surface-200"
+                className="p-2 text-surface-500 dark:text-surface-400 hover:text-surface-700 dark:hover:text-surface-200 hover:bg-surface-50 dark:hover:bg-surface-700 transition-colors border-l border-surface-200 dark:border-surface-700"
               >
                 <ChevronRightIcon className="h-4 w-4" />
               </button>
@@ -263,7 +263,7 @@ const Kalender: React.FC = () => {
                         'w-full text-left text-xs px-1 py-0.5 rounded truncate block',
                         category?.color
                           ? 'text-white'
-                          : 'bg-surface-100 text-surface-700 hover:bg-surface-200'
+                          : 'bg-surface-100 dark:bg-surface-700 text-surface-700 dark:text-surface-300 hover:bg-surface-200 dark:hover:bg-surface-600'
                       )}
                       style={category?.color ? { backgroundColor: category.color } : {}}
                     >
@@ -302,7 +302,7 @@ const Kalender: React.FC = () => {
               </div>
               <button
                 onClick={closeEventPopup}
-                className="w-8 h-8 flex items-center justify-center rounded-lg text-surface-400 hover:text-surface-600 hover:bg-surface-100 transition-colors"
+                className="w-8 h-8 flex items-center justify-center rounded-lg text-surface-400 dark:text-surface-500 hover:text-surface-600 dark:hover:text-surface-300 hover:bg-surface-100 dark:hover:bg-surface-700 transition-colors"
               >
                 <XMarkIcon className="h-5 w-5" />
               </button>
@@ -322,7 +322,7 @@ const Kalender: React.FC = () => {
                   {selectedEvent.category_name || 'Keine Kategorie'}
                 </span>
                 {selectedEvent.all_day && (
-                  <span className="ml-2 text-xs bg-surface-100 text-surface-600 px-2 py-0.5 rounded">Ganztägig</span>
+                  <span className="ml-2 text-xs bg-surface-100 dark:bg-surface-700 text-surface-600 dark:text-surface-300 px-2 py-0.5 rounded">Ganztägig</span>
                 )}
               </div>
 

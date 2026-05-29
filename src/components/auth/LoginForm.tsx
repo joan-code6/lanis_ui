@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
-import { EyeIcon, EyeSlashIcon, AcademicCapIcon, SunIcon, MoonIcon } from '@heroicons/react/24/outline';
+import { EyeIcon, EyeSlashIcon, SunIcon, MoonIcon } from '@heroicons/react/24/outline';
 
 import { schoolListAPI } from '../../services/api';
 import { School, District } from '../../types';
@@ -140,9 +140,7 @@ const LoginForm: React.FC = () => {
       </button>
       <div className="w-full max-w-sm">
         <div className="text-center mb-10">
-          <div className="mx-auto h-14 w-14 bg-primary-600 rounded-2xl flex items-center justify-center mb-6 shadow-soft-md">
-            <AcademicCapIcon className="h-7 w-7 text-white" />
-          </div>
+            <img src="/favicon/android-chrome-192x192.png" alt="Schulportal" className="mx-auto h-14 w-14 rounded-2xl mb-6 shadow-soft-md" />
           <h2 className="text-3xl font-bold text-surface-900 dark:text-surface-100 tracking-tight">
             Schulportal Hessen
           </h2>
