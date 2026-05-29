@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate, useParams } from 'react-router-dom';
 import { coursesAPI } from '../../services/api';
+import SEO from '../seo/SEO';
 import { 
   CourseEntry,
   CoursesResponse,
@@ -272,6 +273,12 @@ const Courses: React.FC = () => {
 
   return (
     <div className="p-6">
+      <SEO
+        title="Mein Unterricht"
+        description="Lanis Unterricht — Deine Kurse, Aufgaben und Materialien aus dem Schulportal Hessen im Überblick."
+        path="/courses"
+        noindex
+      />
       {/* Spinner indicator for updating */}
       
       {/* Header */}

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { appsAPI } from '../../services/api';
 import { Module } from '../../types';
+import SEO from '../seo/SEO';
 import {
   FolderIcon,
   ArrowTopRightOnSquareIcon,
@@ -210,6 +211,12 @@ const Dashboard: React.FC = () => {
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
+      <SEO
+        title="Dashboard"
+        description="Lanis Dashboard — Deine persönliche Übersicht über alle Apps und Module des Schulportal Hessen."
+        path="/dashboard"
+        noindex
+      />
       <div className="page-header">
         <h1 className="page-title">Dashboard</h1>
         <p className="page-subtitle">Alle verfügbaren Apps und Module</p>

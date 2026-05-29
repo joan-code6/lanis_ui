@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { authAPI } from '../../services/api';
 import { User } from '../../types';
+import SEO from '../seo/SEO';
 import {
   UserIcon,
   BuildingOfficeIcon,
@@ -118,6 +119,12 @@ const Profile: React.FC = () => {
 
   return (
     <div className="p-6 max-w-6xl">
+      <SEO
+        title="Mein Profil"
+        description="Lanis Profil — Deine Benutzerinformationen und Kontodetails im Schulportal Hessen."
+        path="/profile"
+        noindex
+      />
         <div className="page-header">
           <h1 className="page-title">Profil</h1>
           <p className="page-subtitle">Ihre Benutzerinformationen und Kontodetails</p>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { calendarAPI } from '../../services/api';
+import SEO from '../seo/SEO';
 import {
   CalendarCategory,
   CalendarEvent,
@@ -150,6 +151,12 @@ const Kalender: React.FC = () => {
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
+      <SEO
+        title="Kalender"
+        description="Lanis Kalender — Behalte den Überblick über Termine, Klausuren und Veranstaltungen im Schulportal Hessen."
+        path="/calendar"
+        noindex
+      />
       <div className="page-header">
         <div className="flex items-center justify-between">
           <div>

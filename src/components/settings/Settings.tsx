@@ -1,6 +1,7 @@
 import React from 'react';
 import { useTheme, ThemeColor } from '../../contexts/ThemeContext';
 import { SunIcon, MoonIcon, CheckIcon } from '@heroicons/react/24/outline';
+import SEO from '../seo/SEO';
 
 const themeColors: { key: ThemeColor; label: string; hex: string }[] = [
   { key: 'emerald', label: 'Emerald', hex: '#10b981' },
@@ -16,6 +17,12 @@ const Settings: React.FC = () => {
 
   return (
     <div className="p-6 max-w-2xl mx-auto">
+      <SEO
+        title="Einstellungen"
+        description="Lanis Einstellungen — Passe das Erscheinungsbild und Design von Lanis an deine Wünsche an."
+        path="/settings"
+        noindex
+      />
       <div className="page-header">
         <h1 className="page-title">Einstellungen</h1>
         <p className="page-subtitle">Erscheinungsbild und Design anpassen</p>

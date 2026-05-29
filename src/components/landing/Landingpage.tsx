@@ -1,5 +1,6 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import SEO from '../seo/SEO';
 
 /* ─── Scroll-Reveal Helper ─── */
 
@@ -97,6 +98,11 @@ const Landingpage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#fcfcf9] text-[#1a1a1a] font-['Outfit',sans-serif] overflow-x-hidden">
+      <SEO
+        title="Lanis | Moderne Benutzeroberfläche für das Schulportal Hessen"
+        description="Lanis ist eine moderne, inoffizielle Benutzeroberfläche für das Schulportal Hessen. Übersichtlich, schnell und zuverlässig — für den hessischen Schulalltag."
+        path="/"
+      />
       {/* Background atmosphere */}
       <div className="fixed inset-0 pointer-events-none z-0">
         <div className="absolute top-0 right-0 w-[60vw] h-[60vh] bg-gradient-to-bl from-[#00c0e0]/[0.03] to-transparent" />
@@ -182,8 +188,6 @@ const Landingpage: React.FC = () => {
                   </svg>
                 </div>
               </div>
-              <div className="absolute bottom-3 left-4 text-[10px] text-white/50 font-medium tracking-wider pointer-events-none z-10 mix-blend-difference">LANIS UI</div>
-              <div className="absolute bottom-3 right-4 text-[10px] text-white/50 font-medium tracking-wider pointer-events-none z-10 mix-blend-difference">ORIGINAL SCHULPORTAL</div>
             </div>
           </Reveal>
         </section>

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { messagesAPI } from '../../services/api';
 import { MessageHeader, Message, SearchResult, SendMessageRequest } from '../../types';
+import SEO from '../seo/SEO';
 import {
   PlusIcon,
   PaperAirplaneIcon,
@@ -224,6 +225,12 @@ const Messages: React.FC = () => {
 
   return (
     <div className="h-full flex overflow-hidden">
+      <SEO
+        title="Nachrichten"
+        description="Lanis Nachrichten — Kommuniziere mit Lehrkräften und Mitschülern über das Schulportal Hessen."
+        path="/messages"
+        noindex
+      />
       {/* Messages list */}
       <div className="w-80 lg:w-1/3 border-r border-surface-100 dark:border-surface-800 flex flex-col bg-white dark:bg-surface-900">
         <div className="p-4 border-b border-surface-100 dark:border-surface-800">

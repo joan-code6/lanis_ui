@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { dsbAPI } from '../../services/api';
 import { DSBPlanTable } from '../../types';
+import SEO from '../seo/SEO';
 import {
   CalendarDaysIcon,
 } from '@heroicons/react/24/outline';
@@ -184,6 +185,12 @@ const Dsbmobile: React.FC = () => {
 
   return (
     <div className="p-6 max-w-6xl mx-auto">
+      <SEO
+        title="Vertretungsplan"
+        description="Lanis Vertretungsplan — Aktuelle Vertretungen, Abwesenheiten und Raumänderungen für deine Schule."
+        path="/dsb"
+        noindex
+      />
       <div className="page-header">
         <h1 className="page-title">Vertretungsplan</h1>
         <p className="page-subtitle">

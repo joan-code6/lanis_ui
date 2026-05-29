@@ -179,7 +179,7 @@ const LandingV1: React.FC = () => {
   }, [isDragging, handleMove]);
 
   return (
-    <div className="min-h-screen bg-[#050510] text-white overflow-x-hidden font-['Outfit',sans-serif]">
+    <div className="min-h-screen bg-[#050510] text-white overflow-x-hidden font-['Outfit',sans-serif] selection:bg-emerald-500/40 selection:text-white">
       <div className="fixed inset-0 pointer-events-none z-0">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_-10%,rgba(16,185,129,0.08),transparent)]" />
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_40%_40%_at_80%_80%,rgba(59,130,246,0.05),transparent)]" />
@@ -311,7 +311,7 @@ const LandingV1: React.FC = () => {
             >
               Los geht&apos;s
             </button>
-            <p className="mt-4 text-[11px] text-[#444]">Inoffiziell. Open Source. Keine Daten werden gespeichert.</p>
+            <p className="mt-4 text-[11px] text-[#444]">Inoffiziell. Keine Daten werden gespeichert.</p>
           </div>
         </section>
       </div>

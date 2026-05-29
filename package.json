@@ -9,6 +9,7 @@
     "date-fns": "^2.30.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "react-helmet-async": "^3.0.0",
     "react-router-dom": "^6.20.1"
   },
   "devDependencies": {
@@ -17,6 +18,7 @@
     "@vitejs/plugin-react": "^4.1.1",
     "autoprefixer": "^10.4.16",
     "postcss": "^8.4.31",
+    "puppeteer": "^25.1.0",
     "sharp": "^0.34.5",
     "tailwindcss": "^3.3.5",
     "to-ico": "^1.1.5",
@@ -26,6 +28,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "postbuild": "node scripts/prerender.mjs",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview"
   },

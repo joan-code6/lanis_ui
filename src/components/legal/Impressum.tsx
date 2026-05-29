@@ -1,9 +1,16 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import SEO from '../seo/SEO';
 
 const Impressum: React.FC = () => {
   return (
     <div className="min-h-screen bg-[#fcfcf9] text-[#1a1a1a] font-['Outfit',sans-serif]">
+      <SEO
+        title="Impressum"
+        description="Impressum und rechtliche Hinweise zu Lanis — der modernen Benutzeroberfläche für das Schulportal Hessen."
+        path="/impressum"
+        noindex
+      />
       <div className="max-w-2xl mx-auto px-6 py-24">
         <Link to="/" className="inline-flex items-center gap-2 text-sm text-[#999] hover:text-[#555] transition-colors mb-12">
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M9 3L5 7L9 11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
@@ -30,7 +37,7 @@ const Impressum: React.FC = () => {
               </p>
             </div>
             <p className="mt-3 text-xs text-[#aaa]">
-              Bei diesem Angebot handelt es sich um ein privates, nicht-kommerzielles Open-Source-Projekt.
+              Bei diesem Angebot handelt es sich um ein privates, nicht-kommerzielles Projekt.
               Eine Umsatzsteuer-Identifikationsnummer gemäß § 27 a Umsatzsteuergesetz ist nicht vorhanden.
               Das Projekt wird nicht gewerblich betrieben und unterliegt keinen berufsrechtlichen
               Regelungen.
@@ -102,30 +109,9 @@ const Impressum: React.FC = () => {
             </p>
           </div>
 
-          {/* ─── Lizenz ─── */}
-          <div>
-            <h2 className="text-base font-semibold text-[#111] mb-3">§ 5 Open-Source-Lizenz</h2>
-            <p>
-              Die Software Lanis UI ist quelloffene Software und wird unter den Bedingungen der
-              MIT-Lizenz (Massachusetts Institute of Technology License) veröffentlicht und vertrieben.
-              Der vollständige Lizenztext ist im Quellcode-Repository dieser Software einsehbar.
-            </p>
-            <p className="mt-2">
-              Die MIT-Lizenz erlaubt es jeder Person, die eine Kopie dieser Software und der
-              dazugehörigen Dokumentationsdateien erhält, die Software ohne Einschränkung zu nutzen,
-              einschließlich der Rechte zur Nutzung, zum Kopieren, Modifizieren, Zusammenführen,
-              Veröffentlichen, Verteilen, Unterlizenzieren und zum Verkauf von Kopien der Software.
-              Personen, denen die Software zur Verfügung gestellt wird, ist dies unter den folgenden
-              Bedingungen gestattet: Der obige Urheberrechtsvermerk und dieser Genehmigungsvermerk
-              sind in allen Kopien oder wesentlichen Teilen der Software beizulegen. Die Software
-              wird ohne Mängelgewähr und ohne jegliche ausdrückliche oder stillschweigende Gewähr
-              bereitgestellt.
-            </p>
-          </div>
-
           {/* ─── Keine Abmahnung ─── */}
           <div>
-            <h2 className="text-base font-semibold text-[#111] mb-3">§ 6 Keine Abmahnung ohne vorherigen Kontakt</h2>
+            <h2 className="text-base font-semibold text-[#111] mb-3">§ 5 Keine Abmahnung ohne vorherigen Kontakt</h2>
             <p>
               Sollten Inhalte oder die Aufmachung dieser Webseite Rechte Dritter oder gesetzliche
               Bestimmungen verletzen, wird um eine entsprechende Nachricht ohne Kostennote gebeten.
@@ -145,7 +131,7 @@ const Impressum: React.FC = () => {
 
           {/* ─── Datenschutz ─── */}
           <div>
-            <h2 className="text-base font-semibold text-[#111] mb-3">§ 7 Datenschutz</h2>
+            <h2 className="text-base font-semibold text-[#111] mb-3">§ 6 Datenschutz</h2>
             <p>
               Der Schutz Ihrer persönlichen Daten ist dem Anbieter ein wichtiges Anliegen. Die Nutzung
               dieser Webseite ist in der Regel ohne Angabe personenbezogener Daten möglich. Soweit auf
@@ -199,7 +185,7 @@ const Impressum: React.FC = () => {
 
           {/* ─── Salvatorische Klausel ─── */}
           <div>
-            <h2 className="text-base font-semibold text-[#111] mb-3">§ 8 Salvatorische Klausel</h2>
+            <h2 className="text-base font-semibold text-[#111] mb-3">§ 7 Salvatorische Klausel</h2>
             <p>
               Sollten einzelne Bestimmungen dieses Impressums ganz oder teilweise unwirksam oder
               undurchführbar sein oder werden, so wird hiervon die Wirksamkeit der übrigen
@@ -212,7 +198,7 @@ const Impressum: React.FC = () => {
 
           {/* ─── Gerichtsstand ─── */}
           <div>
-            <h2 className="text-base font-semibold text-[#111] mb-3">§ 9 Gerichtsstand und anwendbares Recht</h2>
+            <h2 className="text-base font-semibold text-[#111] mb-3">§ 8 Gerichtsstand und anwendbares Recht</h2>
             <p>
               Für sämtliche Rechtsbeziehungen zwischen dem Anbieter und den Nutzern dieses Angebots
               gilt ausschließlich das Recht der Bundesrepublik Deutschland. Gerichtsstand ist — soweit
