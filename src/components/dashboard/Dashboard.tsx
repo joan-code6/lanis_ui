@@ -102,6 +102,13 @@ const Dashboard: React.FC = () => {
       navigate('/calendar');
       return;
     }
+    if (module.url.toLowerCase().includes('dsb') ||
+        module.name.toLowerCase().includes('dsb') ||
+        module.name.toLowerCase().includes('vertretungsplan') ||
+        module.url.toLowerCase().includes('vertretung')) {
+      navigate('/dsb');
+      return;
+    }
     window.open(module.url, '_blank', 'noopener,noreferrer');
   };
 

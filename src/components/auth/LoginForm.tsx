@@ -72,28 +72,27 @@ const LoginForm: React.FC = () => {
   };
 
   useEffect(() => {
-    const abortController = new AbortController();
-    const searchSchools = async () => {
-      if (debouncedSchoolSearch.length < 2) {
-        setSchoolResults([]);
-        return;
-      }
-      try {
-        const res = await schoolListAPI.searchSchools(debouncedSchoolSearch);
-        if (!abortController.signal.aborted) {
-          setSchoolResults(res.results.map(r => ({ ...r.school, district_id: r.district_id, district_name: r.district_name })));
+    schoolListAPI.getAllSchools().then(res => {
+      setAllDistricts(res.districts);
+    }).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    const q = debouncedSchoolSearch.toLowerCase();
+    const results: (School & { district_id?: string; district_name?: string })[] = [];
+    for (const district of allDistricts) {
+      for (const school of district.schools) {
+        if (q.length >= 2) {
+          if (school.name.toLowerCase().includes(q) || school.location.toLowerCase().includes(q)) {
+            results.push({ ...school, district_id: district.id, district_name: district.name });
+          }
+        } else {
+          results.push({ ...school, district_id: district.id, district_name: district.name });
         }
-      } catch (e) {
-        if (!abortController.signal.aborted) {
-          setSchoolResults([]);
-        }
       }
-    };
-    searchSchools();
-    return () => {
-      abortController.abort();
-    };
-  }, [debouncedSchoolSearch]);
+    }
+    setSchoolResults(results);
+  }, [debouncedSchoolSearch, allDistricts]);
 
   const handleSelectSchool = (school: School & { district_id?: string; district_name?: string }) => {
     setSelectedSchool(school);
@@ -144,10 +143,10 @@ const LoginForm: React.FC = () => {
           <div className="mx-auto h-14 w-14 bg-primary-600 rounded-2xl flex items-center justify-center mb-6 shadow-soft-md">
             <AcademicCapIcon className="h-7 w-7 text-white" />
           </div>
-          <h2 className="text-3xl font-bold text-surface-900 tracking-tight">
+          <h2 className="text-3xl font-bold text-surface-900 dark:text-surface-100 tracking-tight">
             Schulportal Hessen
           </h2>
-          <p className="mt-2 text-sm text-surface-500">
+          <p className="mt-2 text-sm text-surface-500 dark:text-surface-400">
             Inoffizielle, moderne Benutzeroberfläche
           </p>
         </div>
@@ -169,9 +168,9 @@ const LoginForm: React.FC = () => {
                 autoComplete="off"
                 ref={schoolInputRef}
                 required
-                onFocus={() => setShowSchoolDropdown(schoolSearch.length > 1)}
+                onFocus={() => setShowSchoolDropdown(allDistricts.length > 0)}
               />
-              {showSchoolDropdown && schoolSearch.length > 1 && (
+              {showSchoolDropdown && allDistricts.length > 0 && (
                 <div className="absolute left-0 right-0 z-10 mt-1.5 bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-xl shadow-soft-lg max-h-60 overflow-y-auto">
                   {schoolResults.length === 0 ? (
                     <div className="px-4 py-3 text-surface-400 dark:text-surface-500 text-sm">Keine Schulen gefunden</div>

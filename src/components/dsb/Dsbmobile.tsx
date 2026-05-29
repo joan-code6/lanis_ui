@@ -6,18 +6,64 @@ import {
   CalendarDaysIcon,
 } from '@heroicons/react/24/outline';
 
+const DSB_CACHE_KEY = 'dsb_plan_cache';
+const DSB_CACHE_TTL = 6 * 60 * 60 * 1000;
+
+interface CachedDSBData {
+  menuItems: string[];
+  planUrls: string[];
+  tables: DSBPlanTable[];
+  selectedPlanIndex: number;
+  timestamp: number;
+}
+
+function getCachedDSBData(): CachedDSBData | null {
+  const cached = localStorage.getItem(DSB_CACHE_KEY);
+  if (!cached) return null;
+  try {
+    const parsed: CachedDSBData = JSON.parse(cached);
+    if (Date.now() - parsed.timestamp > DSB_CACHE_TTL) {
+      localStorage.removeItem(DSB_CACHE_KEY);
+      return null;
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function setCachedDSBData(data: Omit<CachedDSBData, 'timestamp'>): void {
+  const cached: CachedDSBData = { ...data, timestamp: Date.now() };
+  localStorage.setItem(DSB_CACHE_KEY, JSON.stringify(cached));
+}
+
 const Dsbmobile: React.FC = () => {
   const { token, user } = useAuth();
-  const [menuItems, setMenuItems] = useState<string[]>([]);
-  const [planUrls, setPlanUrls] = useState<string[]>([]);
-  const [selectedPlanIndex, setSelectedPlanIndex] = useState(0);
-  const [tables, setTables] = useState<DSBPlanTable[]>([]);
+  const [menuItems, setMenuItems] = useState<string[]>(() => {
+    const cached = getCachedDSBData();
+    return cached?.menuItems || [];
+  });
+  const [planUrls, setPlanUrls] = useState<string[]>(() => {
+    const cached = getCachedDSBData();
+    return cached?.planUrls || [];
+  });
+  const [selectedPlanIndex, setSelectedPlanIndex] = useState(() => {
+    const cached = getCachedDSBData();
+    return cached?.selectedPlanIndex ?? 0;
+  });
+  const [tables, setTables] = useState<DSBPlanTable[]>(() => {
+    const cached = getCachedDSBData();
+    return cached?.tables || [];
+  });
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingPlan, setIsLoadingPlan] = useState(false);
   const [error, setError] = useState('');
+  const [showAllClasses, setShowAllClasses] = useState(false);
 
   const credentials = { username: '282822', password: 'berlin' };
   const userClass = user?.klasse || user?.class || user?.Klasse || '';
+  const cachedData = getCachedDSBData();
+  const hasCache = !!cachedData && cachedData.tables.length > 0;
 
   useEffect(() => {
     if (token) {
@@ -27,21 +73,24 @@ const Dsbmobile: React.FC = () => {
 
   const loginAndFetchPlans = async () => {
     if (!token) return;
-    setIsLoading(true);
+    const initialHasCache = hasCache;
+    if (!initialHasCache) {
+      setIsLoading(true);
+    }
     setError('');
 
     try {
       const loginResponse = await dsbAPI.login(token, credentials);
       if (!loginResponse.success) {
         setError(loginResponse.error || 'Anmeldung bei DSBmobile fehlgeschlagen.');
-        setIsLoading(false);
+        if (!initialHasCache) setIsLoading(false);
         return;
       }
 
       const urlsResponse = await dsbAPI.getPlanUrls(token, credentials);
       if (!urlsResponse.success) {
         setError(urlsResponse.error || 'Abrufen der Plan-URLs fehlgeschlagen.');
-        setIsLoading(false);
+        if (!initialHasCache) setIsLoading(false);
         return;
       }
 
@@ -57,15 +106,18 @@ const Dsbmobile: React.FC = () => {
       console.error('DSB login error:', err);
       setError('Verbindung zu DSBmobile fehlgeschlagen.');
     } finally {
-      setIsLoading(false);
+      if (!initialHasCache) setIsLoading(false);
     }
   };
 
-  const fetchPlan = async (planUrl: string) => {
+  const fetchPlan = async (planUrl: string, planIndex?: number) => {
     if (!token) return;
-    setIsLoadingPlan(true);
+    const isManualChange = planIndex !== undefined;
+    if (isManualChange || !hasCache) {
+      setIsLoadingPlan(true);
+      setTables([]);
+    }
     setError('');
-    setTables([]);
 
     try {
       const response = await dsbAPI.getPlan(token, credentials, {
@@ -75,16 +127,22 @@ const Dsbmobile: React.FC = () => {
 
       if (!response.success) {
         setError(response.error || 'Abrufen des Plans fehlgeschlagen.');
-        setIsLoadingPlan(false);
+        if (isManualChange || !hasCache) setIsLoadingPlan(false);
         return;
       }
 
       setTables(response.tables || []);
+      setCachedDSBData({
+        menuItems,
+        planUrls,
+        tables: response.tables || [],
+        selectedPlanIndex: planIndex ?? selectedPlanIndex,
+      });
     } catch (err) {
       console.error('DSB plan fetch error:', err);
-      setError('Abrufen des Vertretungsplans fehlgeschlagen.');
+      if (!hasCache) setError('Abrufen des Vertretungsplans fehlgeschlagen.');
     } finally {
-      setIsLoadingPlan(false);
+      if (isManualChange || !hasCache) setIsLoadingPlan(false);
     }
   };
 
@@ -129,28 +187,20 @@ const Dsbmobile: React.FC = () => {
       <div className="page-header">
         <h1 className="page-title">Vertretungsplan</h1>
         <p className="page-subtitle">
-          {userClass ? `Vertretungen für Klasse ${userClass}` : 'Aktuelle Vertretungen und Abwesenheiten'}
+          {showAllClasses ? 'Vertretungen für alle Klassen' : userClass ? `Vertretungen für Klasse ${userClass}` : 'Aktuelle Vertretungen und Abwesenheiten'}
         </p>
       </div>
 
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          {menuItems.length > 0 && (
-            <select
-              value={selectedPlanIndex}
-              onChange={(e) => {
-                const idx = parseInt(e.target.value);
-                setSelectedPlanIndex(idx);
-                if (planUrls[idx]) {
-                  fetchPlan(planUrls[idx]);
-                }
-              }}
-              className="input w-auto"
+          {userClass && (
+            <button
+              type="button"
+              onClick={() => setShowAllClasses(!showAllClasses)}
+              className="w-40 px-3 py-2 text-sm font-medium rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800 text-surface-600 dark:text-surface-400 hover:bg-surface-100 dark:hover:bg-surface-700 transition-colors"
             >
-              {menuItems.map((item, idx) => (
-                <option key={idx} value={idx}>{item}</option>
-              ))}
-            </select>
+              {showAllClasses ? 'Nur meine Klasse' : 'Alle Klassen'}
+            </button>
           )}
         </div>
       </div>
@@ -192,14 +242,16 @@ const Dsbmobile: React.FC = () => {
           {tables
             .filter(table => {
               if (table.headers.length === 0) return false;
-              const caption = table.caption || '';
-              if (caption.toLowerCase() === 'inhalte') return false;
-              const filteredRows = table.rows ? table.rows.filter(row => findClassColumnAndMatch(row, table.headers)) : [];
+              const filteredRows = showAllClasses
+                ? (table.rows || [])
+                : (table.rows ? table.rows.filter(row => findClassColumnAndMatch(row, table.headers)) : []);
               if (filteredRows.length === 0) return false;
               return true;
             })
             .map((table, tableIdx) => {
-              const filteredRows = table.rows ? table.rows.filter(row => findClassColumnAndMatch(row, table.headers)) : [];
+              const filteredRows = showAllClasses
+                ? (table.rows || [])
+                : (table.rows ? table.rows.filter(row => findClassColumnAndMatch(row, table.headers)) : []);
               const dateLabel = menuItems[selectedPlanIndex] || 'Vertretungen';
               
               return (

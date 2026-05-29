@@ -11,7 +11,7 @@ import {
   ArrowRightOnRectangleIcon,
   Bars3Icon,
   XMarkIcon,
-  DocumentIcon,
+  ClipboardDocumentListIcon,
 } from '@heroicons/react/24/outline';
 import { Link, useLocation } from 'react-router-dom';
 
@@ -56,7 +56,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     { name: 'Einstellungen', href: '/settings', icon: Cog6ToothIcon },
   ];
 
-  const dsbNavItem = hasDsbModule ? { name: 'Vertretungsplan', href: '/dsb', icon: DocumentIcon } : null;
+  const dsbNavItem = hasDsbModule ? { name: 'Vertretungsplan', href: '/dsb', icon: ClipboardDocumentListIcon } : null;
 
   const navigation = dsbNavItem ? [...baseNavigation.slice(0, 2), dsbNavItem, ...baseNavigation.slice(2)] : baseNavigation;
 
