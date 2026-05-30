@@ -24,6 +24,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const location = useLocation();
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
   const [hasDsbModule, setHasDsbModule] = React.useState(false);
+  const mainRef = React.useRef<HTMLElement>(null);
+
+  React.useEffect(() => {
+    mainRef.current?.scrollTo(0, 0);
+  }, [location.pathname]);
 
   React.useEffect(() => {
     const checkDsbModule = async () => {
@@ -105,7 +110,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           </div>
           <div className="w-9" />
         </div>
-        <main className="flex-1 relative overflow-y-auto focus:outline-none">
+        <main ref={mainRef} className="flex-1 relative overflow-y-auto focus:outline-none">
           <div className="animate-fade-in">
             {children}
           </div>
