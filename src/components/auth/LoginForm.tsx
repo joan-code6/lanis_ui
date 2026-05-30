@@ -18,15 +18,6 @@ function getCookie(name: string): string | null {
   return match ? decodeURIComponent(match[2]) : null;
 }
 
-function useDebounce<T>(value: T, delay: number): T {
-  const [debouncedValue, setDebouncedValue] = useState<T>(value);
-  useEffect(() => {
-    const timer = setTimeout(() => setDebouncedValue(value), delay);
-    return () => clearTimeout(timer);
-  }, [value, delay]);
-  return debouncedValue;
-}
-
 const LoginForm: React.FC = () => {
   const { login } = useAuth();
   const { isDark, toggleDark } = useTheme();
@@ -36,7 +27,6 @@ const LoginForm: React.FC = () => {
     password: '',
   });
   const [schoolSearch, setSchoolSearch] = useState('');
-  const debouncedSchoolSearch = useDebounce(schoolSearch, 300);
   const [schoolResults, setSchoolResults] = useState<School[]>([]);
   const [allDistricts, setAllDistricts] = useState<District[]>([]);
   const [selectedSchool, setSelectedSchool] = useState<School | null>(null);
@@ -79,7 +69,7 @@ const LoginForm: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    const q = debouncedSchoolSearch.toLowerCase();
+    const q = schoolSearch.toLowerCase();
     const results: (School & { district_id?: string; district_name?: string })[] = [];
     for (const district of allDistricts) {
       for (const school of district.schools) {
@@ -93,7 +83,7 @@ const LoginForm: React.FC = () => {
       }
     }
     setSchoolResults(results);
-  }, [debouncedSchoolSearch, allDistricts]);
+  }, [schoolSearch, allDistricts]);
 
   const handleSelectSchool = (school: School & { district_id?: string; district_name?: string }) => {
     setSelectedSchool(school);
