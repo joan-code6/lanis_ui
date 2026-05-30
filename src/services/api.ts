@@ -33,6 +33,63 @@ function setCachedSchoolData(data: SchoolListResponse): void {
   localStorage.setItem(SCHOOL_CACHE_KEY, JSON.stringify(cached));
 }
 
+function normalize(text: string): string {
+  return text.toLowerCase().replace(/[-_]+/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function levenshtein(a: string, b: string): number {
+  const m = a.length;
+  const n = b.length;
+  const prev: number[] = Array(n + 1).fill(0);
+  for (let j = 0; j <= n; j++) prev[j] = j;
+  for (let i = 1; i <= m; i++) {
+    const curr: number[] = Array(n + 1);
+    curr[0] = i;
+    for (let j = 1; j <= n; j++) {
+      curr[j] = Math.min(
+        prev[j] + 1,
+        curr[j - 1] + 1,
+        prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1),
+      );
+    }
+    for (let j = 0; j <= n; j++) prev[j] = curr[j];
+  }
+  return prev[n];
+}
+
+function fuzzyScore(query: string, target: string): number {
+  const q = normalize(query);
+  const t = normalize(target);
+  if (!q || !t) return 0;
+
+  if (t.includes(q)) return q.length / t.length + 1;
+
+  const qTokens = q.split(/\s+/);
+  const tTokens = t.split(/\s+/);
+
+  let total = 0;
+  for (const qToken of qTokens) {
+    let best = 0;
+    for (const tToken of tTokens) {
+      if (tToken === qToken) {
+        best = Math.max(best, 1);
+      } else if (tToken.includes(qToken)) {
+        best = Math.max(best, 0.7);
+      } else if (qToken.includes(tToken)) {
+        best = Math.max(best, 0.5);
+      } else {
+        const dist = levenshtein(qToken, tToken);
+        const maxLen = Math.max(qToken.length, tToken.length);
+        if (dist <= 2 && dist / maxLen <= 0.5) {
+          best = Math.max(best, 0.3 * (1 - dist / maxLen));
+        }
+      }
+    }
+    total += best;
+  }
+  return total / qTokens.length;
+}
+
 export const schoolListAPI = {
   async getAllSchools(): Promise<SchoolListResponse> {
     const cached = getCachedSchoolData();
@@ -51,24 +108,30 @@ export const schoolListAPI = {
 
   async searchSchools(query: string): Promise<SchoolSearchResponse> {
     const allSchools = await schoolListAPI.getAllSchools();
-    const q = query.toLowerCase();
-    const results: SchoolSearchResult[] = [];
+    const q = query.trim();
+    if (!q) {
+      return { success: true, query, count: 0, results: [] };
+    }
+    const scored: { result: SchoolSearchResult; score: number }[] = [];
     for (const district of allSchools.districts) {
       for (const school of district.schools) {
-        if (school.name.toLowerCase().includes(q) || school.location.toLowerCase().includes(q)) {
-          results.push({
-            district_id: district.id,
-            district_name: district.name,
-            school,
+        const s1 = fuzzyScore(q, school.name);
+        const s2 = fuzzyScore(q, school.location);
+        const bestScore = Math.max(s1, s2);
+        if (bestScore > 0) {
+          scored.push({
+            result: { district_id: district.id, district_name: district.name, school },
+            score: bestScore,
           });
         }
       }
     }
+    scored.sort((a, b) => b.score - a.score);
     return {
       success: true,
       query,
-      count: results.length,
-      results,
+      count: scored.length,
+      results: scored.map(s => s.result),
     };
   },
 };
