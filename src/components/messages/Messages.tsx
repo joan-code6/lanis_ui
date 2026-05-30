@@ -83,6 +83,14 @@ const Messages: React.FC = () => {
 
   const usernameCache = useRef<Record<string, string>>(loadUsernameCache());
 
+  const applyUsernameCache = (msgs: MessageHeader[]) => {
+    if (Object.keys(usernameCache.current).length === 0) return msgs;
+    return msgs.map(m => ({
+      ...m,
+      Sender: usernameCache.current[m.Sender] || m.Sender,
+    }));
+  };
+
   useEffect(() => {
     if (!token) return;
     const abortController = new AbortController();
@@ -124,15 +132,15 @@ const Messages: React.FC = () => {
             try {
               const searchRes = await messagesAPI.searchRecipients(token, senderId, signal);
               if (!signal?.aborted && searchRes.success && searchRes.results.length > 0) {
-                usernameCache.current[senderId] = searchRes.results[0].username || searchRes.results[0].name;
+                usernameCache.current[senderId] = searchRes.results[0].name || searchRes.results[0].username;
+                saveUsernameCache(usernameCache.current);
+              } else {
+                usernameCache.current[senderId] = senderId;
                 saveUsernameCache(usernameCache.current);
               }
             } catch {}
           }
-          const resolved = transformedMessages.map(m => ({
-            ...m,
-            Sender: usernameCache.current[m.Sender] || m.Sender,
-          }));
+          const resolved = applyUsernameCache(transformedMessages);
           setMessages(resolved);
           localStorage.setItem('messages_cache', JSON.stringify(resolved));
         }
@@ -165,6 +173,25 @@ const Messages: React.FC = () => {
         }));
         setConversationMessages(transformedMessages);
         setError('');
+
+        const newMappings: Record<string, string> = {};
+        response.messages.forEach((msg: any) => {
+          if (msg.username && msg.Sender && msg.username !== msg.Sender && !usernameCache.current[msg.Sender]) {
+            newMappings[msg.Sender] = msg.username;
+          }
+        });
+        if (Object.keys(newMappings).length > 0) {
+          Object.assign(usernameCache.current, newMappings);
+          saveUsernameCache(usernameCache.current);
+          setMessages(prev => {
+            const updated = prev.map(m => ({
+              ...m,
+              Sender: usernameCache.current[m.Sender] || m.Sender,
+            }));
+            localStorage.setItem('messages_cache', JSON.stringify(updated));
+            return updated;
+          });
+        }
       } else {
         if (response && typeof response === 'object' && 'error' in response) {
           if (response.error === 'No message data in response: {\'error\': \'-1\'}') {
