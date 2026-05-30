@@ -205,7 +205,7 @@ const Courses: React.FC = () => {
     }
   };
 
-  const toggleHomework = async (entryId: string, currentDone: boolean) => {
+  const toggleHomework = async (courseId: string, entryId: string, currentDone: boolean) => {
     if (!token) return;
     const newDone = !currentDone;
 
@@ -235,7 +235,7 @@ const Courses: React.FC = () => {
     }
 
     try {
-      await coursesAPI.toggleHomework(token, entryId, newDone);
+      await coursesAPI.toggleHomework(token, courseId, entryId, newDone);
     } catch (error) {
       console.error('Error toggling homework:', error);
     }
@@ -674,7 +674,7 @@ const Courses: React.FC = () => {
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
-                                toggleHomework(entry.entry_id, entry.homework_done);
+                                toggleHomework(selectedCourse.course_id, entry.entry_id, entry.homework_done);
                               }}
                               className={clsx(
                                 "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border transition-colors",
@@ -799,7 +799,7 @@ const Courses: React.FC = () => {
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    toggleHomework(entry.entry_id, entry.homework_done);
+                                    toggleHomework(selectedCourse.course_id, entry.entry_id, entry.homework_done);
                                   }}
                                   className="focus:outline-none"
                                   title={entry.homework_done ? 'Als nicht erledigt markieren' : 'Als erledigt markieren'}
