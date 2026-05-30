@@ -389,17 +389,17 @@ const Courses: React.FC = () => {
         <div className="space-y-6">
           {/* Filters and Controls */}
           <div className="card">
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-2">
-                  <FunnelIcon className="h-4 w-4 text-surface-500 dark:text-surface-400" />
-                  <span className="text-sm font-medium text-surface-700 dark:text-surface-300">Filter:</span>
+            <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                <div className="flex items-center gap-1.5">
+                  <FunnelIcon className="h-3.5 w-3.5 text-surface-500 dark:text-surface-400" />
+                  <span className="text-xs font-medium text-surface-700 dark:text-surface-300 hidden sm:inline">Filter:</span>
                 </div>
                 
                 <select
                   value={filterAttendance}
                   onChange={(e) => setFilterAttendance(e.target.value)}
-                  className="text-sm border border-surface-300 dark:border-surface-600 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white dark:bg-surface-800 text-surface-700 dark:text-surface-300"
+                  className="text-xs sm:text-sm border border-surface-300 dark:border-surface-600 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white dark:bg-surface-800 text-surface-700 dark:text-surface-300 min-w-0"
                 >
                   <option value="all">Alle Einträge</option>
                   <option value="anwesend">Anwesend</option>
@@ -414,25 +414,25 @@ const Courses: React.FC = () => {
                 <button
                   onClick={() => setShowOnlyHomework(!showOnlyHomework)}
                   className={clsx(
-                    "text-sm px-3 py-1.5 rounded-lg transition-colors",
+                    "text-xs sm:text-sm px-2.5 py-1.5 rounded-lg transition-colors whitespace-nowrap",
                     showOnlyHomework 
                       ? "bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-300 border border-yellow-300 dark:border-yellow-700" 
                       : "bg-surface-200 dark:bg-surface-700 text-surface-600 dark:text-surface-400 border border-surface-300 dark:border-surface-600 hover:bg-surface-200 dark:hover:bg-surface-700"
                   )}
                 >
-                  {showOnlyHomework ? '✓ ' : ''}Nur Hausaufgaben
+                  {showOnlyHomework ? '✓ ' : ''}Nur HA
                 </button>
               </div>
 
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setSortOrder(sortOrder === 'newest' ? 'oldest' : 'newest')}
-                  className="text-sm px-3 py-1.5 rounded-lg bg-surface-200 dark:bg-surface-700 text-surface-700 dark:text-surface-300 hover:bg-surface-200 dark:hover:bg-surface-700 transition-colors border border-surface-300 dark:border-surface-600"
+                  className="text-xs sm:text-sm px-2.5 py-1.5 rounded-lg bg-surface-200 dark:bg-surface-700 text-surface-700 dark:text-surface-300 hover:bg-surface-200 dark:hover:bg-surface-700 transition-colors border border-surface-300 dark:border-surface-600 whitespace-nowrap"
                 >
-                  {sortOrder === 'newest' ? '↓ Neueste zuerst' : '↑ Älteste zuerst'}
+                  {sortOrder === 'newest' ? '↓ Neu' : '↑ Alt'}
                 </button>
 
-<div className="flex border border-surface-300 dark:border-surface-600 rounded-lg overflow-hidden">
+                <div className="flex border border-surface-300 dark:border-surface-600 rounded-lg overflow-hidden">
                   <button
                     onClick={() => setDetailViewMode('cards')}
                     className={clsx(
@@ -453,7 +453,7 @@ const Courses: React.FC = () => {
                         ? "bg-primary-600 text-white"
                         : "bg-surface-50 dark:bg-surface-800 text-surface-600 dark:text-surface-400 hover:bg-surface-100 dark:hover:bg-surface-700"
                     )}
-title="Timeline-Ansicht"
+                    title="Timeline-Ansicht"
                   >
                     <ListBulletIcon className="h-4 w-4" />
                   </button>
@@ -615,7 +615,7 @@ title="Timeline-Ansicht"
                                 key={index}
                                 href={file.url !== '#' ? file.url : undefined}
                                 className={clsx(
-                                  "inline-flex items-center p-3 rounded-lg border transition-all min-w-48",
+                                  "inline-flex items-center p-2.5 sm:p-3 rounded-lg border transition-all min-w-0 sm:min-w-48",
                                   file.url !== '#' 
                                     ? "border-primary-200 hover:border-primary-300 cursor-pointer group" 
                                     : "border-surface-200 dark:border-surface-700 cursor-not-allowed opacity-60"

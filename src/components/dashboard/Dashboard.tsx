@@ -210,7 +210,7 @@ const Dashboard: React.FC = () => {
   }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className="p-4 sm:p-6 max-w-7xl mx-auto">
       <SEO
         title="Dashboard"
         description="Lanis Dashboard — Deine persönliche Übersicht über alle Apps und Module des Schulportal Hessen."
@@ -228,23 +228,23 @@ const Dashboard: React.FC = () => {
         </div>
       )}
 
-      <div className="mb-6 flex flex-col sm:flex-row gap-4 items-center justify-between">
+      <div className="mb-6 flex flex-col sm:flex-row gap-3 sm:gap-4 items-stretch sm:items-center justify-between">
         <div className="flex-1 max-w-md relative w-full">
           <MagnifyingGlassIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-surface-400" />
           <input
             type="text"
             placeholder="Apps und Module durchsuchen..."
-            className="input pl-10"
+            className="input pl-10 text-sm"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
 
-        <div className="flex items-center gap-3 w-full sm:w-auto">
+        <div className="flex items-center gap-2 w-full sm:w-auto">
           <select
             value={selectedFolder}
             onChange={(e) => setSelectedFolder(e.target.value)}
-            className="input text-sm"
+            className="input text-sm flex-1 sm:flex-none"
           >
             <option value="all">Alle Ordner</option>
             {folders.map((folder) => (
@@ -282,7 +282,7 @@ const Dashboard: React.FC = () => {
           <button
             onClick={() => setIsEditMode(!isEditMode)}
             className={clsx(
-              'p-2 rounded-lg transition-all duration-200',
+              'p-2 rounded-lg transition-all duration-200 flex-shrink-0',
               isEditMode
                 ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400'
                 : 'bg-surface-100 dark:bg-surface-800 text-surface-400 hover:text-surface-600 dark:hover:text-surface-200'

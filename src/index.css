@@ -251,15 +251,15 @@ html[data-theme="cyan"] {
   }
 
   .page-header {
-    @apply mb-8;
+    @apply mb-6 sm:mb-8;
   }
 
   .page-title {
-    @apply text-3xl font-bold text-surface-900 dark:text-surface-100 tracking-tight;
+    @apply text-2xl sm:text-3xl font-bold text-surface-900 dark:text-surface-100 tracking-tight;
   }
 
   .page-subtitle {
-    @apply text-surface-500 dark:text-surface-400 mt-1;
+    @apply text-sm sm:text-base text-surface-500 dark:text-surface-400 mt-1;
   }
 
   .empty-state {

@@ -118,7 +118,7 @@ const Profile: React.FC = () => {
   }
 
   return (
-    <div className="p-6 max-w-6xl">
+    <div className="p-4 sm:p-6 max-w-6xl">
       <SEO
         title="Mein Profil"
         description="Lanis Profil — Deine Benutzerinformationen und Kontodetails im Schulportal Hessen."
@@ -155,7 +155,7 @@ const Profile: React.FC = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {renderUserField('Benutzername', userDetails?.username, UserIcon)}
                 {renderUserField('Vorname', userDetails?.firstname, IdentificationIcon)}
                 {renderUserField('Nachname', userDetails?.lastname, IdentificationIcon)}
