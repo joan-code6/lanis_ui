@@ -213,6 +213,7 @@ const Messages: React.FC = () => {
       const response = await messagesAPI.replyMessage(token, replyRequest);
       if (response.success) {
         setReplyBody('');
+        loadMessages();
         loadConversation(selectedConversation);
       }
     } catch (error) {
