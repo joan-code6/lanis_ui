@@ -237,6 +237,17 @@ export const coursesAPI = {
     });
     return response.data;
   },
+
+  async toggleHomework(token: string, entryId: string, homeworkDone: boolean): Promise<{ success: boolean }> {
+    const response = await apiClient.post<{ success: boolean }>(
+      `/meinunterricht/entry/${entryId}/homework`,
+      { homework_done: homeworkDone },
+      {
+        headers: { 'X-Session-Token': token },
+      }
+    );
+    return response.data;
+  },
 };
 
 // Calendar API

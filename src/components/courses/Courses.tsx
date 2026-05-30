@@ -205,6 +205,42 @@ const Courses: React.FC = () => {
     }
   };
 
+  const toggleHomework = async (entryId: string, currentDone: boolean) => {
+    if (!token) return;
+    const newDone = !currentDone;
+
+    if (selectedCourse) {
+      setSelectedCourse(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          entries: prev.entries.map(entry =>
+            entry.entry_id === entryId ? { ...entry, homework_done: newDone } : entry
+          ),
+        };
+      });
+    }
+
+    setCourses(prev => prev.map(course =>
+      course.entry_id === entryId ? { ...course, homework_done: newDone } : course
+    ));
+
+    const cached = localStorage.getItem('courses_cache');
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      const updated = parsed.map((c: CourseEntry) =>
+        c.entry_id === entryId ? { ...c, homework_done: newDone } : c
+      );
+      localStorage.setItem('courses_cache', JSON.stringify(updated));
+    }
+
+    try {
+      await coursesAPI.toggleHomework(token, entryId, newDone);
+    } catch (error) {
+      console.error('Error toggling homework:', error);
+    }
+  };
+
   const formatDate = (dateString: string) => {
     if (!dateString) return '';
     
@@ -635,16 +671,26 @@ const Courses: React.FC = () => {
                               <ClockIcon className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
                               <span className="text-sm font-semibold text-yellow-900 dark:text-yellow-200">Hausaufgaben</span>
                             </div>
-                            {entry.homework_done && (
-                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 border border-green-200 dark:border-green-700">
-                                <CheckCircleIcon className="h-3.5 w-3.5 mr-1" />
-                                Erledigt
-                              </span>
-                            )}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleHomework(entry.entry_id, entry.homework_done);
+                              }}
+                              className={clsx(
+                                "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border transition-colors",
+                                entry.homework_done
+                                  ? "bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 border-green-200 dark:border-green-700 hover:bg-green-200 dark:hover:bg-green-900/60"
+                                  : "bg-surface-100 dark:bg-surface-800 text-surface-500 dark:text-surface-400 border-surface-200 dark:border-surface-700 hover:bg-surface-200 dark:hover:bg-surface-700"
+                              )}
+                            >
+                              <CheckCircleIcon className={clsx("h-3.5 w-3.5 mr-1", !entry.homework_done && "opacity-40")} />
+                              {entry.homework_done ? 'Erledigt' : 'Erledigt?'}
+                            </button>
                           </div>
                           <div className="text-sm text-surface-800 dark:text-surface-200 whitespace-pre-wrap leading-relaxed">{entry.homework?.trim()}</div>
                         </div>
                       )}
+
                       
                       {/* Files Section */}
                       {entry.files && entry.files.length > 0 && (
@@ -750,9 +796,21 @@ const Courses: React.FC = () => {
                               <div className="flex items-center gap-2 mb-1">
                                 <ClockIcon className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
                                 <span className="text-xs font-semibold text-yellow-900 dark:text-yellow-200">Hausaufgaben</span>
-                                {entry.homework_done && (
-                                  <CheckCircleIcon className="h-4 w-4 text-green-600 dark:text-green-400" />
-                                )}
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    toggleHomework(entry.entry_id, entry.homework_done);
+                                  }}
+                                  className="focus:outline-none"
+                                  title={entry.homework_done ? 'Als nicht erledigt markieren' : 'Als erledigt markieren'}
+                                >
+                                  <CheckCircleIcon className={clsx(
+                                    "h-4 w-4 transition-colors",
+                                    entry.homework_done
+                                      ? "text-green-600 dark:text-green-400"
+                                      : "text-surface-300 dark:text-surface-600 hover:text-green-600 dark:hover:text-green-400"
+                                  )} />
+                                </button>
                               </div>
                               <div className="text-xs text-surface-700 dark:text-surface-300 whitespace-pre-wrap">{entry.homework?.trim()}</div>
                             </div>
