@@ -254,7 +254,7 @@ const Messages: React.FC = () => {
   }
 
   return (
-    <div className="h-full flex overflow-hidden">
+    <div className="h-[calc(100dvh-3.5rem)] md:h-screen flex overflow-hidden">
       <SEO
         title="Nachrichten"
         description="Lanis Nachrichten — Kommuniziere mit Lehrkräften und Mitschülern über das Schulportal Hessen."
