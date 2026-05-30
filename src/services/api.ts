@@ -34,10 +34,10 @@ function setCachedSchoolData(data: SchoolListResponse): void {
 }
 
 export const schoolListAPI = {
-  async getAllSchools(): Promise<SchoolListResponse> {
+  async getAllSchools(signal?: AbortSignal): Promise<SchoolListResponse> {
     const cached = getCachedSchoolData();
     if (cached) return cached;
-    const response = await apiClient.get<SchoolListResponse>('/school-list');
+    const response = await apiClient.get<SchoolListResponse>('/school-list', { signal });
     if (response.data.success) {
       setCachedSchoolData(response.data);
     }
@@ -125,31 +125,34 @@ export const authAPI = {
     return response.data;
   },
 
-  async getUserProfile(token: string): Promise<{ success: boolean; data: User }> {
+  async getUserProfile(token: string, signal?: AbortSignal): Promise<{ success: boolean; data: User }> {
     const response = await apiClient.get<{ success: boolean; data: User }>('/benutzer', {
       headers: { 'X-Session-Token': token },
+      signal,
     });
     return response.data;
   },
 
-  async checkHealth(): Promise<HealthResponse> {
-    const response = await apiClient.get<HealthResponse>('/health');
+  async checkHealth(signal?: AbortSignal): Promise<HealthResponse> {
+    const response = await apiClient.get<HealthResponse>('/health', { signal });
     return response.data;
   },
 };
 
 // Apps and Modules API
 export const appsAPI = {
-  async getModules(token: string): Promise<ModulesResponse> {
+  async getModules(token: string, signal?: AbortSignal): Promise<ModulesResponse> {
     const response = await apiClient.get<ModulesResponse>('/modules', {
       headers: { 'X-Session-Token': token },
+      signal,
     });
     return response.data;
   },
 
-  async getApps(token: string): Promise<AppsResponse> {
+  async getApps(token: string, signal?: AbortSignal): Promise<AppsResponse> {
     const response = await apiClient.get<AppsResponse>('/apps', {
       headers: { 'X-Session-Token': token },
+      signal,
     });
     return response.data;
   },
@@ -160,11 +163,13 @@ export const messagesAPI = {
   async getMessageHeaders(
     token: string,
     getType: string = 'All',
-    last: number = 0
+    last: number = 0,
+    signal?: AbortSignal,
   ): Promise<MessagesResponse> {
     const response = await apiClient.get<MessagesResponse>('/nachrichten/headers', {
       headers: { 'X-Session-Token': token },
       params: { get_type: getType, last },
+      signal,
     });
     return response.data;
   },
@@ -172,29 +177,33 @@ export const messagesAPI = {
   async getConversation(
     token: string,
     conversationId: string,
-    last: number = 0
+    last: number = 0,
+    signal?: AbortSignal,
   ): Promise<ConversationResponse> {
     const response = await apiClient.get<ConversationResponse>(
       `/nachrichten/${conversationId}`,
       {
         headers: { 'X-Session-Token': token },
         params: { last },
+        signal,
       }
     );
     return response.data;
   },
 
-  async searchRecipients(token: string, query: string): Promise<SearchResponse> {
+  async searchRecipients(token: string, query: string, signal?: AbortSignal): Promise<SearchResponse> {
     const response = await apiClient.get<SearchResponse>('/nachrichten/search', {
       headers: { 'X-Session-Token': token },
       params: { q: query },
+      signal,
     });
     return response.data;
   },
 
-  async sendMessage(token: string, message: SendMessageRequest): Promise<SendMessageResponse> {
+  async sendMessage(token: string, message: SendMessageRequest, signal?: AbortSignal): Promise<SendMessageResponse> {
     const response = await apiClient.post<SendMessageResponse>('/nachrichten/send', message, {
       headers: { 'X-Session-Token': token },
+      signal,
     });
     return response.data;
   },
@@ -202,43 +211,48 @@ export const messagesAPI = {
 
 // Courses API
 export const coursesAPI = {
-  async getCourses(token: string): Promise<CoursesResponse> {
+  async getCourses(token: string, signal?: AbortSignal): Promise<CoursesResponse> {
     const response = await apiClient.get<CoursesResponse>('/meinunterricht', {
       headers: { 'X-Session-Token': token },
+      signal,
     });
     return response.data;
   },
 
-  async getCourseDetails(token: string, courseId: string): Promise<CourseDetailsResponse> {
+  async getCourseDetails(token: string, courseId: string, signal?: AbortSignal): Promise<CourseDetailsResponse> {
     const response = await apiClient.get<CourseDetailsResponse>(`/meinunterricht/course/${courseId}`, {
       headers: { 'X-Session-Token': token },
+      signal,
     });
     return response.data;
   },
 
-  async getEntryDetails(token: string, url: string): Promise<EntryDetailsResponse> {
+  async getEntryDetails(token: string, url: string, signal?: AbortSignal): Promise<EntryDetailsResponse> {
     const response = await apiClient.get<EntryDetailsResponse>('/meinunterricht/entry', {
       headers: { 'X-Session-Token': token },
       params: { url },
+      signal,
     });
     return response.data;
   },
 
-  async getWeeklyView(token: string): Promise<WeeklyViewResponse> {
+  async getWeeklyView(token: string, signal?: AbortSignal): Promise<WeeklyViewResponse> {
     const response = await apiClient.get<WeeklyViewResponse>('/meinunterricht/weekly', {
       headers: { 'X-Session-Token': token },
+      signal,
     });
     return response.data;
   },
 
-  async getSubmissions(token: string): Promise<SubmissionsResponse> {
+  async getSubmissions(token: string, signal?: AbortSignal): Promise<SubmissionsResponse> {
     const response = await apiClient.get<SubmissionsResponse>('/meinunterricht/submissions', {
       headers: { 'X-Session-Token': token },
+      signal,
     });
     return response.data;
   },
 
-  async toggleHomework(token: string, courseId: string, entryId: string, done: boolean): Promise<{ success: boolean }> {
+  async toggleHomework(token: string, courseId: string, entryId: string, done: boolean, signal?: AbortSignal): Promise<{ success: boolean }> {
     const params = new URLSearchParams();
     params.append('course_id', courseId);
     params.append('entry_id', entryId);
@@ -251,6 +265,7 @@ export const coursesAPI = {
           'X-Session-Token': token,
           'Content-Type': 'application/x-www-form-urlencoded',
         },
+        signal,
       }
     );
     return response.data;
@@ -259,9 +274,10 @@ export const coursesAPI = {
 
 // Calendar API
 export const calendarAPI = {
-  async getOverview(token: string): Promise<CalendarOverviewResponse> {
+  async getOverview(token: string, signal?: AbortSignal): Promise<CalendarOverviewResponse> {
     const response = await apiClient.get<CalendarOverviewResponse>('/kalender', {
       headers: { 'X-Session-Token': token },
+      signal,
     });
     return response.data;
   },
@@ -275,19 +291,22 @@ export const calendarAPI = {
       search?: string;
       target?: string;
       view_id?: string;
-    } = {}
+    } = {},
+    signal?: AbortSignal,
   ): Promise<CalendarEventsResponse> {
     const response = await apiClient.get<CalendarEventsResponse>('/kalender/events', {
       headers: { 'X-Session-Token': token },
       params: options,
+      signal,
     });
     return response.data;
   },
 
-  async getEvent(token: string, eventId: string, viewId?: string): Promise<SingleCalendarEventResponse> {
+  async getEvent(token: string, eventId: string, viewId?: string, signal?: AbortSignal): Promise<SingleCalendarEventResponse> {
     const response = await apiClient.get<SingleCalendarEventResponse>(`/kalender/event/${eventId}`, {
       headers: { 'X-Session-Token': token },
       params: { view_id: viewId },
+      signal,
     });
     return response.data;
   },
@@ -295,16 +314,18 @@ export const calendarAPI = {
 
 // DSB Mobile API
 export const dsbAPI = {
-  async login(token: string, credentials: DSBLoginRequest): Promise<DSBLoginResponse> {
+  async login(token: string, credentials: DSBLoginRequest, signal?: AbortSignal): Promise<DSBLoginResponse> {
     const response = await apiClient.post<DSBLoginResponse>('/dsb/login', credentials, {
       headers: { 'X-Session-Token': token },
+      signal,
     });
     return response.data;
   },
 
-  async getPlanUrls(token: string, credentials: DSBLoginRequest): Promise<DSBPlanUrlsResponse> {
+  async getPlanUrls(token: string, credentials: DSBLoginRequest, signal?: AbortSignal): Promise<DSBPlanUrlsResponse> {
     const response = await apiClient.post<DSBPlanUrlsResponse>('/dsb/plan-urls', credentials, {
       headers: { 'X-Session-Token': token },
+      signal,
     });
     return response.data;
   },
@@ -312,7 +333,8 @@ export const dsbAPI = {
   async getPlan(
     token: string,
     credentials: { username?: string; password?: string },
-    options: { plan_index?: number; plan_url?: string; include_raw?: boolean } = {}
+    options: { plan_index?: number; plan_url?: string; include_raw?: boolean } = {},
+    signal?: AbortSignal,
   ): Promise<DSBPlanResponse> {
     const response = await apiClient.post<DSBPlanResponse>('/dsb/plan', {
       username: credentials.username,
@@ -322,6 +344,7 @@ export const dsbAPI = {
       include_raw: options.include_raw ?? false,
     }, {
       headers: { 'X-Session-Token': token },
+      signal,
     });
     return response.data;
   },

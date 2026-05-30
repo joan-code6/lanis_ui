@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate, useParams } from 'react-router-dom';
 import { coursesAPI } from '../../services/api';
+import axios from 'axios';
 import SEO from '../seo/SEO';
 import { 
   CourseEntry,
@@ -75,29 +76,29 @@ const Courses: React.FC = () => {
   }
 
   useEffect(() => {
-    if (token && viewMode === 'overview') {
-      // Show cached state immediately, then update
-      loadCourses();
-    }
-    // eslint-disable-next-line
+    if (!token || viewMode !== 'overview') return;
+    const abortController = new AbortController();
+    loadCourses(abortController.signal);
+    return () => abortController.abort();
   }, [token, viewMode]);
 
   useEffect(() => {
-    if (token && courseIdFromUrl) {
-      setViewMode('course-detail');
-      setSelectedCourse(null);
-      setIsLoading(true);
-      loadCourseDetails(courseIdFromUrl);
-    }
-    // eslint-disable-next-line
+    if (!token || !courseIdFromUrl) return;
+    const abortController = new AbortController();
+    setViewMode('course-detail');
+    setSelectedCourse(null);
+    setIsLoading(true);
+    loadCourseDetails(courseIdFromUrl, abortController.signal);
+    return () => abortController.abort();
   }, [token, courseIdFromUrl]);
 
-  const loadCourses = async () => {
+  const loadCourses = async (signal?: AbortSignal) => {
     if (!token) return;
     setIsUpdating(true);
     try {
       setError('');
-      const response = await coursesAPI.getCourses(token);
+      const response = await coursesAPI.getCourses(token, signal);
+      if (signal?.aborted) return;
       if (response.success) {
         setCourses(response.entries);
         localStorage.setItem('courses_cache', JSON.stringify(response.entries));
@@ -105,6 +106,7 @@ const Courses: React.FC = () => {
         setError('Fehler beim Laden der Kurse.');
       }
     } catch (error) {
+      if (axios.isCancel(error)) return;
       console.error('Error loading courses:', error);
       setError('Fehler beim Laden der Kurse.');
     } finally {
@@ -113,12 +115,13 @@ const Courses: React.FC = () => {
     }
   };
 
-  const loadCourseDetails = async (courseId: string) => {
+  const loadCourseDetails = async (courseId: string, signal?: AbortSignal) => {
     if (!token) return;
 
     try {
       setError('');
-      const response = await coursesAPI.getCourseDetails(token, courseId);
+      const response = await coursesAPI.getCourseDetails(token, courseId, signal);
+      if (signal?.aborted) return;
       
       if (response.success) {
         setSelectedCourse(response);
@@ -132,6 +135,7 @@ const Courses: React.FC = () => {
         setError('Fehler beim Laden der Kursdetails.');
       }
     } catch (error) {
+      if (axios.isCancel(error)) return;
       console.error('Error loading course details:', error);
       setError('Fehler beim Laden der Kursdetails.');
     } finally {

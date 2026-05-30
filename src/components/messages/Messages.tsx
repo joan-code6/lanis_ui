@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { messagesAPI } from '../../services/api';
+import axios from 'axios';
 import { MessageHeader, Message, SearchResult, SendMessageRequest } from '../../types';
 import SEO from '../seo/SEO';
 import {
@@ -59,17 +60,19 @@ const Messages: React.FC = () => {
   const [isSending, setIsSending] = useState(false);
 
   useEffect(() => {
-    if (token) {
-      loadMessages();
-    }
+    if (!token) return;
+    const abortController = new AbortController();
+    loadMessages(abortController.signal);
+    return () => abortController.abort();
   }, [token, messageType]);
 
-  const loadMessages = async () => {
+  const loadMessages = async (signal?: AbortSignal) => {
     if (!token) return;
     setIsUpdating(true);
     try {
       setError('');
-      const response = await messagesAPI.getMessageHeaders(token, messageType);
+      const response = await messagesAPI.getMessageHeaders(token, messageType, 0, signal);
+      if (signal?.aborted) return;
       if (response.success) {
         const transformedMessages = response.conversations.map(msg => ({
           ...msg,
@@ -85,6 +88,7 @@ const Messages: React.FC = () => {
         setError('Fehler beim Laden der Nachrichten.');
       }
     } catch (error) {
+      if (axios.isCancel(error)) return;
       console.error('Error loading messages:', error);
       setError('Fehler beim Laden der Nachrichten.');
     } finally {

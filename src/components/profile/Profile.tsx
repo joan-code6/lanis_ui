@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { authAPI } from '../../services/api';
+import axios from 'axios';
 import { User } from '../../types';
 import SEO from '../seo/SEO';
 import {
@@ -37,20 +38,21 @@ const Profile: React.FC = () => {
   }
 
   useEffect(() => {
-    if (token) {
-      // Show cached state immediately, then update
-      loadUserProfile();
-      checkApiHealth();
-    }
-    // eslint-disable-next-line
+    if (!token) return;
+    const abortController = new AbortController();
+    const { signal } = abortController;
+    loadUserProfile(signal);
+    checkApiHealth(signal);
+    return () => abortController.abort();
   }, [token]);
 
-  const loadUserProfile = async () => {
+  const loadUserProfile = async (signal?: AbortSignal) => {
     if (!token) return;
     setIsUpdating(true);
     try {
       setError('');
-      const response = await authAPI.getUserProfile(token);
+      const response = await authAPI.getUserProfile(token, signal);
+      if (signal?.aborted) return;
       if (response.success) {
         setUserDetails(response.data);
         localStorage.setItem('profile_cache', JSON.stringify(response.data));
@@ -58,6 +60,7 @@ const Profile: React.FC = () => {
         setError('Fehler beim Laden des Benutzerprofils.');
       }
     } catch (error) {
+      if (axios.isCancel(error)) return;
       console.error('Error loading user profile:', error);
       setError('Fehler beim Laden des Benutzerprofils.');
     } finally {
@@ -66,11 +69,13 @@ const Profile: React.FC = () => {
     }
   };
 
-  const checkApiHealth = async () => {
+  const checkApiHealth = async (signal?: AbortSignal) => {
     try {
-      const response = await authAPI.checkHealth();
+      const response = await authAPI.checkHealth(signal);
+      if (signal?.aborted) return;
       setHealthStatus(response.status);
     } catch (error) {
+      if (axios.isCancel(error)) return;
       console.error('Error checking API health:', error);
       setHealthStatus('error');
     }

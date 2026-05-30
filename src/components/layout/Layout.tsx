@@ -1,6 +1,7 @@
 import React from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { appsAPI } from '../../services/api';
+import axios from 'axios';
 import {
   HomeIcon,
   ChatBubbleLeftRightIcon,
@@ -31,10 +32,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   }, [location.pathname]);
 
   React.useEffect(() => {
+    if (!token) return;
+    const abortController = new AbortController();
+
     const checkDsbModule = async () => {
-      if (!token) return;
       try {
-        const response = await appsAPI.getModules(token);
+        const response = await appsAPI.getModules(token, abortController.signal);
+        if (abortController.signal.aborted) return;
         if (response.success) {
           const dsbExists = response.modules.some(
             m => m.name.toLowerCase().includes('dsb') ||
@@ -45,11 +49,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           setHasDsbModule(dsbExists);
         }
       } catch (error) {
+        if (axios.isCancel(error)) return;
         console.error('Error checking for DSB module:', error);
       }
     };
 
     checkDsbModule();
+    return () => abortController.abort();
   }, [token]);
 
   const baseNavigation = [

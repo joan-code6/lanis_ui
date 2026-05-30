@@ -5,6 +5,7 @@ import { EyeIcon, EyeSlashIcon, SunIcon, MoonIcon } from '@heroicons/react/24/ou
 import SEO from '../seo/SEO';
 
 import { schoolListAPI } from '../../services/api';
+import axios from 'axios';
 import { School, District } from '../../types';
 
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
@@ -63,9 +64,13 @@ const LoginForm: React.FC = () => {
   };
 
   useEffect(() => {
-    schoolListAPI.getAllSchools().then(res => {
+    const abortController = new AbortController();
+    schoolListAPI.getAllSchools(abortController.signal).then(res => {
       setAllDistricts(res.districts);
-    }).catch(() => {});
+    }).catch((err) => {
+      if (axios.isCancel(err)) return;
+    });
+    return () => abortController.abort();
   }, []);
 
   useEffect(() => {
