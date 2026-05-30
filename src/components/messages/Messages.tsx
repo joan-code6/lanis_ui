@@ -60,7 +60,28 @@ const Messages: React.FC = () => {
   const [isSending, setIsSending] = useState(false);
   const [replyBody, setReplyBody] = useState('');
   const [isReplying, setIsReplying] = useState(false);
-  const usernameCache = useRef<Record<string, string>>({});
+
+  const USERNAME_CACHE_KEY = 'username_cache';
+  const USERNAME_CACHE_TTL = 365 * 24 * 60 * 60 * 1000;
+
+  const loadUsernameCache = (): Record<string, string> => {
+    try {
+      const raw = localStorage.getItem(USERNAME_CACHE_KEY);
+      if (!raw) return {};
+      const parsed: { data: Record<string, string>; ts: number } = JSON.parse(raw);
+      if (Date.now() - parsed.ts > USERNAME_CACHE_TTL) {
+        localStorage.removeItem(USERNAME_CACHE_KEY);
+        return {};
+      }
+      return parsed.data;
+    } catch { return {}; }
+  };
+
+  const saveUsernameCache = (data: Record<string, string>) => {
+    localStorage.setItem(USERNAME_CACHE_KEY, JSON.stringify({ data, ts: Date.now() }));
+  };
+
+  const usernameCache = useRef<Record<string, string>>(loadUsernameCache());
 
   useEffect(() => {
     if (!token) return;
@@ -104,6 +125,7 @@ const Messages: React.FC = () => {
               const searchRes = await messagesAPI.searchRecipients(token, senderId, signal);
               if (!signal?.aborted && searchRes.success && searchRes.results.length > 0) {
                 usernameCache.current[senderId] = searchRes.results[0].username || searchRes.results[0].name;
+                saveUsernameCache(usernameCache.current);
               }
             } catch {}
           }
