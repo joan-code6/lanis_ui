@@ -107,43 +107,21 @@ const Messages: React.FC = () => {
       if (signal?.aborted) return;
       if (response.success) {
         const transformedMessages = response.conversations.map(msg => ({
-          Id: msg.Id || msg.Uniquid,
-          Uniquid: msg.Uniquid,
-          Sender: msg.Sender,
+          Id: msg.Id || msg.id,
+          Uniquid: msg.id || msg.Uniquid,
+          Sender: msg.sender || msg.Sender,
           Betreff: msg.Betreff,
           WeitereEmpfaenger: msg.WeitereEmpfaenger,
-          private: msg.private,
-          empf: msg.empf,
+          private: msg.private || 0,
+          empf: msg.empf || [],
           Papierkorb: msg.Papierkorb,
-          unread: msg.private > 0,
+          unread: msg.unread === 1 ? 1 : 0,
+          read: msg.read !== undefined ? msg.read : !(msg.unread === 1),
           date: msg.date || new Date().toISOString(),
         }));
-        setMessages(transformedMessages);
-        localStorage.setItem('messages_cache', JSON.stringify(transformedMessages));
-
-        const numericSenders = transformedMessages
-          .map(m => m.Sender)
-          .filter((s, i, arr) => arr.indexOf(s) === i)
-          .filter(s => !usernameCache.current[s]);
-
-        const unresolved = numericSenders.filter(s => /^\d+$/.test(s));
-        if (unresolved.length > 0) {
-          for (const senderId of unresolved) {
-            try {
-              const searchRes = await messagesAPI.searchRecipients(token, senderId, signal);
-              if (!signal?.aborted && searchRes.success && searchRes.results.length > 0) {
-                usernameCache.current[senderId] = searchRes.results[0].name || searchRes.results[0].username;
-                saveUsernameCache(usernameCache.current);
-              } else {
-                usernameCache.current[senderId] = senderId;
-                saveUsernameCache(usernameCache.current);
-              }
-            } catch {}
-          }
-          const resolved = applyUsernameCache(transformedMessages);
-          setMessages(resolved);
-          localStorage.setItem('messages_cache', JSON.stringify(resolved));
-        }
+        const resolved = applyUsernameCache(transformedMessages);
+        setMessages(resolved);
+        localStorage.setItem('messages_cache', JSON.stringify(resolved));
       } else {
         setError('Fehler beim Laden der Nachrichten.');
       }
@@ -166,32 +144,14 @@ const Messages: React.FC = () => {
       if (response.success && response.messages) {
         const transformedMessages = response.messages.map((msg: any) => ({
           id: msg.Id || msg.id,
-          sender: msg.username || msg.Sender || 'Unbekannter Sender',
+          sender: msg.username || msg.sender || msg.Sender || 'Unbekannter Sender',
           content: msg.Inhalt || msg.content || '',
           date: msg.Datum || msg.date || new Date().toISOString(),
           ...msg
         }));
         setConversationMessages(transformedMessages);
         setError('');
-
-        const newMappings: Record<string, string> = {};
-        response.messages.forEach((msg: any) => {
-          if (msg.username && msg.Sender && msg.username !== msg.Sender && !usernameCache.current[msg.Sender]) {
-            newMappings[msg.Sender] = msg.username;
-          }
-        });
-        if (Object.keys(newMappings).length > 0) {
-          Object.assign(usernameCache.current, newMappings);
-          saveUsernameCache(usernameCache.current);
-          setMessages(prev => {
-            const updated = prev.map(m => ({
-              ...m,
-              Sender: usernameCache.current[m.Sender] || m.Sender,
-            }));
-            localStorage.setItem('messages_cache', JSON.stringify(updated));
-            return updated;
-          });
-        }
+        loadMessages();
       } else {
         if (response && typeof response === 'object' && 'error' in response) {
           if (response.error === 'No message data in response: {\'error\': \'-1\'}') {
