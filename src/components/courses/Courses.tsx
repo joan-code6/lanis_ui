@@ -563,13 +563,7 @@ const Courses: React.FC = () => {
                   {filteredEntries.map((entry) => (
                     <div
                       key={entry.entry_id}
-                      className={clsx(
-                        'card bg-transparent transition-shadow duration-200',
-                        entry.url && 'card-hover cursor-pointer'
-                      )}
-                      onClick={() => {
-                        if (entry.url) loadEntryDetails(entry.url);
-                      }}
+                      className="card bg-transparent hover:shadow-lg transition-shadow duration-200"
                     >
                       {/* Header with Date and Attendance */}
                       <div className="flex items-center justify-between mb-4 pb-3 border-b border-surface-200 dark:border-surface-700">
@@ -578,10 +572,7 @@ const Courses: React.FC = () => {
                             <CalendarDaysIcon className="h-5 w-5 text-white" />
                           </div>
                           <div>
-                            <div className="text-sm font-medium text-surface-900 dark:text-surface-100">{formatDate(entry.date)}</div>
-                            {entry.hours && (
-                              <div className="text-xs text-surface-500 dark:text-surface-400 mt-0.5">{entry.hours}</div>
-                            )}
+                            <div className="text-sm font-medium text-surface-900 dark:text-surface-100">{formatDate(entry.date) || entry.hours}</div>
                             {entry.attendance && (
                               <div className="flex items-center gap-1 mt-1">
                                 {(() => {
@@ -704,24 +695,13 @@ const Courses: React.FC = () => {
                           <div className="h-2 w-2 rounded-full bg-white dark:bg-surface-300"></div>
                         </div>
                         
-                        <div
-                          className={clsx(
-                            'card bg-transparent transition-shadow duration-200',
-                            entry.url && 'card-hover cursor-pointer'
-                          )}
-                          onClick={() => {
-                            if (entry.url) loadEntryDetails(entry.url);
-                          }}
-                        >
+                        <div className="card bg-transparent hover:shadow-lg transition-shadow duration-200">
                           <div className="flex items-start justify-between mb-3">
                             <div>
                               <div className="text-xs text-surface-500 mb-1">
                                 Eintrag #{filteredEntries.length - index}
                               </div>
-                              <div className="text-sm font-semibold text-surface-900 dark:text-surface-100">{formatDate(entry.date)}</div>
-                              {entry.hours && (
-                                <div className="text-xs text-surface-500 dark:text-surface-400 mt-0.5">{entry.hours}</div>
-                              )}
+                              <div className="text-sm font-semibold text-surface-900 dark:text-surface-100">{formatDate(entry.date) || entry.hours}</div>
                               {entry.attendance && (
                                 <span className={clsx(
                                   "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium mt-1",
