@@ -106,7 +106,7 @@ const Messages: React.FC = () => {
       const response = await messagesAPI.getMessageHeaders(token, messageType, 0, signal);
       if (signal?.aborted) return;
       if (response.success) {
-        const transformedMessages = response.conversations.map(msg => ({
+        const transformedMessages = response.conversations.map((msg: any) => ({
           Id: msg.Id || msg.id,
           Uniquid: msg.id || msg.Uniquid,
           Sender: msg.sender || msg.Sender,
@@ -115,8 +115,7 @@ const Messages: React.FC = () => {
           private: msg.private || 0,
           empf: msg.empf || [],
           Papierkorb: msg.Papierkorb,
-          unread: msg.unread === 1 ? 1 : 0,
-          read: msg.read !== undefined ? msg.read : !(msg.unread === 1),
+          unread: !!(msg.unread === 1),
           date: msg.date || new Date().toISOString(),
         }));
         const resolved = applyUsernameCache(transformedMessages);

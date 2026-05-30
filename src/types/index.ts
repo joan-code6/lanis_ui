@@ -103,7 +103,7 @@ export interface MessageHeader {
   private: number;
   WeitereEmpfaenger: string;
   empf: string[];
-  unread: number;
+  unread: boolean;
   read?: boolean;
   date?: string;
   [key: string]: any;
