@@ -184,7 +184,7 @@ const Dsbmobile: React.FC = () => {
   }
 
   return (
-    <div className="p-6 max-w-6xl mx-auto">
+    <div className="p-4 sm:p-6 max-w-6xl mx-auto">
       <SEO
         title="Vertretungsplan"
         description="Lanis Vertretungsplan — Aktuelle Vertretungen, Abwesenheiten und Raumänderungen für deine Schule."
@@ -267,16 +267,20 @@ const Dsbmobile: React.FC = () => {
                     <h3 className="text-lg font-semibold text-surface-900 dark:text-surface-100">
                       {dateLabel}
                     </h3>
+                    <p className="text-xs text-surface-500 dark:text-surface-400 mt-0.5">
+                      {filteredRows.length} {filteredRows.length === 1 ? 'Eintrag' : 'Einträge'}
+                    </p>
                   </div>
 
-                  <div className="overflow-x-auto">
+                  {/* Desktop table view */}
+                  <div className="hidden md:block overflow-x-auto">
                     <table className="w-full">
                       <thead>
                         <tr className="bg-surface-50 dark:bg-surface-800/50">
                           {table.headers.map((header, idx) => (
                             <th
                               key={idx}
-                              className="px-4 py-3 text-left text-xs font-semibold text-surface-600 dark:text-surface-400 uppercase tracking-wider"
+                              className="px-4 py-3 text-left text-xs font-semibold text-surface-600 dark:text-surface-400 uppercase tracking-wider whitespace-nowrap"
                             >
                               {header}
                             </th>
@@ -292,7 +296,7 @@ const Dsbmobile: React.FC = () => {
                             {table.headers.map((_, colIdx) => (
                               <td
                                 key={colIdx}
-                                className="px-4 py-3 text-sm text-surface-700 dark:text-surface-300"
+                                className="px-4 py-3 text-sm text-surface-700 dark:text-surface-300 whitespace-nowrap"
                               >
                                 {getCellValue(row, colIdx, table.headers)}
                               </td>
@@ -301,6 +305,26 @@ const Dsbmobile: React.FC = () => {
                         ))}
                       </tbody>
                     </table>
+                  </div>
+
+                  {/* Mobile card view */}
+                  <div className="md:hidden divide-y divide-surface-100 dark:divide-surface-700">
+                    {filteredRows.map((row, rowIdx) => (
+                      <div key={rowIdx} className="px-4 py-3 space-y-1.5">
+                        {table.headers.map((header, colIdx) => {
+                          const value = getCellValue(row, colIdx, table.headers);
+                          if (!value) return null;
+                          return (
+                            <div key={colIdx} className="flex gap-2 text-sm">
+                              <span className="text-[11px] font-medium text-surface-400 dark:text-surface-500 uppercase tracking-wider w-24 flex-shrink-0 pt-0.5">
+                                {header}
+                              </span>
+                              <span className="text-surface-700 dark:text-surface-300 leading-snug">{value}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ))}
                   </div>
                 </div>
               );

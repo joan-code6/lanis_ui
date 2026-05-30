@@ -12,6 +12,7 @@ import {
   UsersIcon,
   ChatBubbleLeftIcon,
   AcademicCapIcon,
+  ArrowLeftIcon,
 } from '@heroicons/react/24/outline';
 import { format, parseISO } from 'date-fns';
 import { de } from 'date-fns/locale';
@@ -231,8 +232,8 @@ const Messages: React.FC = () => {
         path="/messages"
         noindex
       />
-      {/* Messages list */}
-      <div className="w-80 lg:w-1/3 border-r border-surface-100 dark:border-surface-800 flex flex-col bg-white dark:bg-surface-900">
+      {/* Messages list - hidden on mobile when conversation is selected */}
+      <div className={`${selectedConversation ? 'hidden lg:flex' : 'flex'} w-full lg:w-80 xl:w-1/3 border-r border-surface-100 dark:border-surface-800 flex-col bg-white dark:bg-surface-900`}>
         <div className="p-4 border-b border-surface-100 dark:border-surface-800">
           <div className="flex items-center justify-between mb-4">
             <h1 className="text-lg font-bold text-surface-900 dark:text-surface-100 tracking-tight">Nachrichten</h1>
@@ -347,15 +348,23 @@ const Messages: React.FC = () => {
         </div>
       </div>
 
-      {/* Conversation view */}
-      <div className="flex-1 flex flex-col min-w-0">
+      {/* Conversation view - visible on mobile only when conversation selected */}
+      <div className={`${selectedConversation ? 'flex' : 'hidden lg:flex'} flex-1 flex-col min-w-0`}>
         {selectedConversation ? (
           <>
             <div className="border-b border-surface-100 dark:border-surface-800 p-4 bg-white/80 dark:bg-surface-900/80 backdrop-blur-sm">
               <div className="flex items-center justify-between gap-4">
-                <h2 className="text-sm font-semibold text-surface-900 dark:text-surface-100 truncate">
-                  {messages.find(m => m.Uniquid === selectedConversation)?.Betreff || 'Unterhaltung'}
-                </h2>
+                <div className="flex items-center gap-3 min-w-0">
+                  <button
+                    onClick={() => setSelectedConversation(null)}
+                    className="lg:hidden flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-lg text-surface-400 dark:text-surface-500 hover:text-surface-600 dark:hover:text-surface-300 hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors"
+                  >
+                    <ArrowLeftIcon className="h-5 w-5" />
+                  </button>
+                  <h2 className="text-sm font-semibold text-surface-900 dark:text-surface-100 truncate">
+                    {messages.find(m => m.Uniquid === selectedConversation)?.Betreff || 'Unterhaltung'}
+                  </h2>
+                </div>
                 <button
                   onClick={() => setShowParticipants(true)}
                   className="btn btn-secondary h-8 px-3 text-xs flex-shrink-0"
@@ -411,7 +420,7 @@ const Messages: React.FC = () => {
       {/* Compose modal */}
       {showCompose && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-surface-900/40 backdrop-blur-sm">
-          <div className="bg-white dark:bg-surface-800 rounded-2xl shadow-soft-lg max-w-lg w-full max-h-[85vh] flex flex-col animate-scale-in">
+          <div className="bg-white dark:bg-surface-800 rounded-2xl sm:rounded-2xl shadow-soft-lg max-w-lg w-full max-h-[85vh] flex flex-col animate-scale-in mx-2 sm:mx-0">
             <div className="flex items-center justify-between p-5 border-b border-surface-100 dark:border-surface-800">
               <h3 className="text-base font-semibold text-surface-900 dark:text-surface-100">Neue Nachricht</h3>
               <button
@@ -531,7 +540,7 @@ const Messages: React.FC = () => {
       {/* Participants modal */}
       {showParticipants && selectedConversation && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-surface-900/40 backdrop-blur-sm">
-          <div className="bg-white dark:bg-surface-800 rounded-2xl shadow-soft-lg max-w-md w-full max-h-[70vh] flex flex-col animate-scale-in">
+          <div className="bg-white dark:bg-surface-800 rounded-2xl sm:rounded-2xl shadow-soft-lg max-w-md w-full max-h-[70vh] flex flex-col animate-scale-in mx-2 sm:mx-0">
             <div className="flex items-center justify-between p-5 border-b border-surface-100 dark:border-surface-800">
               <h3 className="text-base font-semibold text-surface-900 dark:text-surface-100">Teilnehmer</h3>
               <button

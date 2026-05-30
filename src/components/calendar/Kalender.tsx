@@ -13,6 +13,8 @@ import {
   XMarkIcon,
   FunnelIcon,
   MagnifyingGlassIcon,
+  ListBulletIcon,
+  Squares2X2Icon,
 } from '@heroicons/react/24/outline';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, parseISO, addMonths, subMonths, startOfWeek, endOfWeek, isToday } from 'date-fns';
 import { de } from 'date-fns/locale';
@@ -33,6 +35,7 @@ const Kalender: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+  const [calendarViewMode, setCalendarViewMode] = useState<'month' | 'list'>('month');
 
   if (!token) {
     return (
@@ -150,7 +153,7 @@ const Kalender: React.FC = () => {
   }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className="p-4 sm:p-6 max-w-7xl mx-auto">
       <SEO
         title="Kalender"
         description="Lanis Kalender — Behalte den Überblick über Termine, Klausuren und Veranstaltungen im Schulportal Hessen."
@@ -170,6 +173,32 @@ const Kalender: React.FC = () => {
             >
               Heute
             </button>
+            <div className="flex bg-surface-100 dark:bg-surface-800 rounded-xl overflow-hidden border border-surface-200 dark:border-surface-700">
+              <button
+                onClick={() => setCalendarViewMode('month')}
+                className={clsx(
+                  'p-2 transition-colors',
+                  calendarViewMode === 'month'
+                    ? 'bg-white dark:bg-surface-700 text-primary-600 dark:text-primary-400'
+                    : 'text-surface-500 dark:text-surface-400 hover:text-surface-700 dark:hover:text-surface-200 hover:bg-surface-50 dark:hover:bg-surface-700'
+                )}
+                title="Monatsansicht"
+              >
+                <Squares2X2Icon className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => setCalendarViewMode('list')}
+                className={clsx(
+                  'p-2 transition-colors border-l border-surface-200 dark:border-surface-700',
+                  calendarViewMode === 'list'
+                    ? 'bg-white dark:bg-surface-700 text-primary-600 dark:text-primary-400'
+                    : 'text-surface-500 dark:text-surface-400 hover:text-surface-700 dark:hover:text-surface-200 hover:bg-surface-50 dark:hover:bg-surface-700'
+                )}
+                title="Listenansicht"
+              >
+                <ListBulletIcon className="h-4 w-4" />
+              </button>
+            </div>
             <div className="flex bg-surface-100 dark:bg-surface-800 rounded-xl overflow-hidden border border-surface-200 dark:border-surface-700">
               <button
                 onClick={goToPrevMonth}
@@ -228,6 +257,7 @@ const Kalender: React.FC = () => {
       </div>
 
       {/* Month View */}
+      {calendarViewMode === 'month' && (
       <div>
         <div className="grid grid-cols-7 gap-px mb-1">
           {['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'].map((day) => (
@@ -251,7 +281,7 @@ const Kalender: React.FC = () => {
               <div
                 key={dateKey}
                 className={clsx(
-                  'bg-white dark:bg-surface-900 min-h-[120px] p-1.5 transition-colors',
+                  'bg-white dark:bg-surface-900 min-h-[100px] sm:min-h-[120px] p-1 sm:p-1.5 transition-colors',
                   !isCurrentMonth && 'bg-surface-50 dark:!bg-surface-900 text-surface-300 dark:text-surface-600'
                 )}
               >
@@ -261,13 +291,13 @@ const Kalender: React.FC = () => {
                 )}>
                   {format(day, 'd')}
                 </div>
-                <div className="space-y-1">
+                <div className="space-y-0.5">
                   {dayEvents.slice(0, 3).map(({ event, category }, idx) => (
                     <button
                       key={idx}
                       onClick={() => handleEventClick(event)}
                       className={clsx(
-                        'w-full text-left text-xs px-1 py-0.5 rounded truncate block',
+                        'w-full text-left text-[11px] px-1 py-0.5 rounded truncate block',
                         category?.color
                           ? 'text-white'
                           : 'bg-surface-100 dark:bg-surface-700 text-surface-700 dark:text-surface-300 hover:bg-surface-200 dark:hover:bg-surface-600'
@@ -278,7 +308,7 @@ const Kalender: React.FC = () => {
                     </button>
                   ))}
                   {dayEvents.length > 3 && (
-                    <div className="text-xs text-surface-500 px-1">
+                    <div className="text-[11px] text-surface-500 px-1">
                       +{dayEvents.length - 3} weitere
                     </div>
                   )}
@@ -288,6 +318,67 @@ const Kalender: React.FC = () => {
           })}
         </div>
       </div>
+      )}
+
+      {/* List / Agenda View */}
+      {calendarViewMode === 'list' && (
+        <div className="space-y-1">
+          {(() => {
+            const sortedDates = Array.from(eventsByDate.entries()).sort(([a], [b]) => a.localeCompare(b));
+            if (sortedDates.length === 0) {
+              return (
+                <div className="card text-center py-12">
+                  <CalendarDaysIcon className="mx-auto h-12 w-12 text-surface-300 dark:text-surface-600" />
+                  <h3 className="mt-2 text-sm font-medium text-surface-700 dark:text-surface-300">Keine Termine</h3>
+                  <p className="mt-1 text-sm text-surface-500 dark:text-surface-400">Keine Termine in diesem Zeitraum gefunden.</p>
+                </div>
+              );
+            }
+            return sortedDates.map(([dateKey, dayEvents]) => {
+              const dayDate = parseISO(dateKey);
+              return (
+                <div key={dateKey} className="card bg-transparent">
+                  <h3 className="text-sm font-semibold text-surface-900 dark:text-surface-100 mb-3 flex items-center gap-2">
+                    <span className={clsx(
+                      'w-7 h-7 flex items-center justify-center rounded-full text-xs font-bold',
+                      isToday(dayDate) ? 'bg-primary-600 text-white' : 'bg-surface-100 dark:bg-surface-800 text-surface-600 dark:text-surface-400'
+                    )}>
+                      {format(dayDate, 'd')}
+                    </span>
+                    {format(dayDate, 'EEEE, d. MMMM yyyy', { locale: de })}
+                  </h3>
+                  <div className="space-y-2">
+                    {dayEvents.map(({ event, category }, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => handleEventClick(event)}
+                        className="w-full text-left p-3 rounded-xl bg-surface-50 dark:bg-surface-800 hover:bg-surface-100 dark:hover:bg-surface-700 transition-colors flex items-center gap-3"
+                      >
+                        <div
+                          className="w-3 h-3 rounded-full flex-shrink-0"
+                          style={{ backgroundColor: category?.color || '#888' }}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-surface-900 dark:text-surface-100 truncate">{event.title}</p>
+                          {!event.all_day && event.start && (
+                            <p className="text-xs text-surface-500 dark:text-surface-400 mt-0.5">
+                              {format(parseISO(event.start), 'HH:mm', { locale: de })}
+                              {event.end && ` - ${format(parseISO(event.end), 'HH:mm', { locale: de })}`}
+                            </p>
+                          )}
+                        </div>
+                        {category?.name && (
+                          <span className="text-[11px] text-surface-400 flex-shrink-0">{category.name}</span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              );
+            });
+          })()}
+        </div>
+      )}
 
       {/* Event Popup Modal */}
       {selectedEvent && (
@@ -296,7 +387,7 @@ const Kalender: React.FC = () => {
             className="absolute inset-0"
             onClick={closeEventPopup}
           />
-          <div className="relative bg-white dark:bg-surface-800 rounded-2xl shadow-soft-lg max-w-lg w-full max-h-[90vh] overflow-y-auto animate-scale-in">
+          <div className="relative bg-white dark:bg-surface-800 rounded-2xl sm:rounded-2xl shadow-soft-lg max-w-lg w-full max-h-[90vh] overflow-y-auto animate-scale-in mx-2 sm:mx-0">
             <div className="flex items-start justify-between p-6 border-b border-surface-100 dark:border-surface-700">
               <div>
                 <h2 className="text-xl font-bold text-surface-900 dark:text-surface-100">{selectedEvent.title}</h2>
