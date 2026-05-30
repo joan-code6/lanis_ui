@@ -184,6 +184,7 @@ export interface CourseDetailEntry {
   homework_done: boolean;
   attendance: string;
   files: EntryAttachment[];
+  url?: string;
 }
 
 // Course details from API
