@@ -84,6 +84,9 @@ const Courses: React.FC = () => {
 
   useEffect(() => {
     if (token && courseIdFromUrl) {
+      setViewMode('course-detail');
+      setSelectedCourse(null);
+      setIsLoading(true);
       loadCourseDetails(courseIdFromUrl);
     }
     // eslint-disable-next-line
@@ -114,13 +117,11 @@ const Courses: React.FC = () => {
     if (!token) return;
 
     try {
-      setIsLoading(true);
       setError('');
       const response = await coursesAPI.getCourseDetails(token, courseId);
       
       if (response.success) {
         setSelectedCourse(response);
-        setViewMode('course-detail');
         
         const presetAttendance = ['anwesend', 'entschuldigt', 'unentschuldigt', 'fehlend'];
         const allAttendances = response.entries.map((entry: CourseDetailEntry) => entry.attendance.trim()).filter(Boolean);
@@ -255,8 +256,43 @@ const Courses: React.FC = () => {
     }
   };
 
-  // Show cached state immediately, but if no cached and loading, show skeleton
-  if (isLoading && (!courses || courses.length === 0)) {
+  // Show course detail skeleton when navigating to a course
+  if (viewMode === 'course-detail' && !selectedCourse) {
+    return (
+      <div className="p-6">
+        <div className="animate-pulse space-y-6">
+          <div className="flex items-center gap-4 mb-8">
+            <div className="h-8 w-8 bg-surface-300 dark:bg-surface-600 rounded-lg" />
+            <div className="h-8 bg-surface-300 dark:bg-surface-600 rounded w-48" />
+          </div>
+          <div className="card">
+            <div className="flex gap-4">
+              <div className="h-10 w-24 bg-surface-300 dark:bg-surface-600 rounded-lg" />
+              <div className="h-10 w-32 bg-surface-300 dark:bg-surface-600 rounded-lg" />
+            </div>
+          </div>
+          <div className="space-y-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="card">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="h-10 w-10 bg-surface-300 dark:bg-surface-600 rounded-lg" />
+                  <div className="space-y-2 flex-1">
+                    <div className="h-4 bg-surface-300 dark:bg-surface-600 rounded w-1/3" />
+                    <div className="h-3 bg-surface-300 dark:bg-surface-600 rounded w-1/4" />
+                  </div>
+                </div>
+                <div className="h-5 bg-surface-300 dark:bg-surface-600 rounded w-3/4 mb-3" />
+                <div className="h-4 bg-surface-300 dark:bg-surface-600 rounded w-full" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show overview skeleton only when on overview and loading
+  if (isLoading && (!courses || courses.length === 0) && viewMode === 'overview') {
     return (
       <div className="p-6">
         <div className="animate-pulse space-y-4">
@@ -536,7 +572,7 @@ const Courses: React.FC = () => {
                             <CalendarDaysIcon className="h-5 w-5 text-white" />
                           </div>
                           <div>
-                            <div className="text-sm font-medium text-surface-900 dark:text-surface-100">{formatDate(entry.date)}</div>
+                            <div className="text-sm font-medium text-surface-900 dark:text-surface-100">{formatDate(entry.date) || entry.hours}</div>
                             {entry.attendance && (
                               <div className="flex items-center gap-1 mt-1">
                                 {(() => {
@@ -581,8 +617,16 @@ const Courses: React.FC = () => {
                       </div>
                       
                       {/* Topic */}
-                      <h4 className="text-lg font-semibold text-surface-900 dark:text-surface-100 mb-4">{entry.thema}</h4>
-                      
+                      <h4 className="text-lg font-semibold text-surface-900 dark:text-surface-100 mb-3">{entry.thema}</h4>
+
+                      {/* Content / Description */}
+                      {entry.content && (
+                        <div
+                          className="mb-4 text-sm text-surface-700 dark:text-surface-300 leading-relaxed [&_br]:mb-1"
+                          dangerouslySetInnerHTML={{ __html: entry.content }}
+                        />
+                      )}
+
                       {/* Homework Section */}
                       {entry.homework && (
                         <div className="mb-4 p-4 border-l-4 border-yellow-400 dark:border-yellow-600 rounded-lg">
@@ -665,7 +709,7 @@ const Courses: React.FC = () => {
                               <div className="text-xs text-surface-500 mb-1">
                                 Eintrag #{filteredEntries.length - index}
                               </div>
-                              <div className="text-sm font-semibold text-surface-900 dark:text-surface-100">{formatDate(entry.date)}</div>
+                              <div className="text-sm font-semibold text-surface-900 dark:text-surface-100">{formatDate(entry.date) || entry.hours}</div>
                               {entry.attendance && (
                                 <span className={clsx(
                                   "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium mt-1",
@@ -693,7 +737,14 @@ const Courses: React.FC = () => {
                           </div>
                           
                           <h4 className="text-base font-semibold text-surface-900 dark:text-surface-100 mb-3">{entry.thema}</h4>
-                          
+
+                          {entry.content && (
+                            <div
+                              className="mb-3 text-sm text-surface-700 dark:text-surface-300 leading-relaxed [&_br]:mb-1"
+                              dangerouslySetInnerHTML={{ __html: entry.content }}
+                            />
+                          )}
+
                           {entry.homework && (
                             <div className="mb-3 p-3 border-l-4 border-yellow-400 dark:border-yellow-600 rounded">
                               <div className="flex items-center gap-2 mb-1">
