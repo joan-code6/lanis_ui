@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { messagesAPI } from '../../services/api';
 import axios from 'axios';
@@ -60,6 +60,7 @@ const Messages: React.FC = () => {
   const [isSending, setIsSending] = useState(false);
   const [replyBody, setReplyBody] = useState('');
   const [isReplying, setIsReplying] = useState(false);
+  const usernameCache = useRef<Record<string, string>>({});
 
   useEffect(() => {
     if (!token) return;
@@ -90,6 +91,29 @@ const Messages: React.FC = () => {
         }));
         setMessages(transformedMessages);
         localStorage.setItem('messages_cache', JSON.stringify(transformedMessages));
+
+        const numericSenders = transformedMessages
+          .map(m => m.Sender)
+          .filter((s, i, arr) => arr.indexOf(s) === i)
+          .filter(s => !usernameCache.current[s]);
+
+        const unresolved = numericSenders.filter(s => /^\d+$/.test(s));
+        if (unresolved.length > 0) {
+          for (const senderId of unresolved) {
+            try {
+              const searchRes = await messagesAPI.searchRecipients(token, senderId, signal);
+              if (!signal?.aborted && searchRes.success && searchRes.results.length > 0) {
+                usernameCache.current[senderId] = searchRes.results[0].username || searchRes.results[0].name;
+              }
+            } catch {}
+          }
+          const resolved = transformedMessages.map(m => ({
+            ...m,
+            Sender: usernameCache.current[m.Sender] || m.Sender,
+          }));
+          setMessages(resolved);
+          localStorage.setItem('messages_cache', JSON.stringify(resolved));
+        }
       } else {
         setError('Fehler beim Laden der Nachrichten.');
       }
