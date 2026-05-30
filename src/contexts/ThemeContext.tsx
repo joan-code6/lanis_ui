@@ -95,7 +95,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   });
 
   const [themeColor, setThemeColorState] = useState<ThemeColor>(() => {
-    return (localStorage.getItem(THEME_COLOR_KEY) as ThemeColor) || 'emerald';
+    return (localStorage.getItem(THEME_COLOR_KEY) as ThemeColor) || 'cyan';
   });
 
   const toggleDark = useCallback(() => {
