@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { calendarAPI } from '../../services/api';
+import axios from 'axios';
 import SEO from '../seo/SEO';
 import {
   CalendarCategory,
@@ -49,26 +50,29 @@ const Kalender: React.FC = () => {
   }
 
   useEffect(() => {
-    if (token) {
-      loadCalendarData();
-    }
+    if (!token) return;
+    const abortController = new AbortController();
+    loadCalendarData(abortController.signal);
+    return () => abortController.abort();
   }, [token, currentDate.getMonth(), currentDate.getFullYear()]);
 
-  const loadCalendarData = async () => {
+  const loadCalendarData = async (signal?: AbortSignal) => {
     if (!token) return;
     setIsLoading(true);
     setError('');
 
     try {
       const [overviewRes, eventsRes] = await Promise.all([
-        calendarAPI.getOverview(token),
+        calendarAPI.getOverview(token, signal),
         calendarAPI.getEvents(token, {
           year: 0,
           start: 'year',
           category: selectedCategory,
           search: searchQuery,
-        }),
+        }, signal),
       ]);
+
+      if (signal?.aborted) return;
 
       if (overviewRes.success) {
         setCategories(overviewRes.categories);
@@ -80,6 +84,7 @@ const Kalender: React.FC = () => {
         setError('Fehler beim Laden der Termine.');
       }
     } catch (err) {
+      if (axios.isCancel(err)) return;
       console.error('Error loading calendar:', err);
       setError('Fehler beim Laden der Termine.');
     } finally {

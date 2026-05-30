@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { dsbAPI } from '../../services/api';
+import axios from 'axios';
 import { DSBPlanTable } from '../../types';
 import SEO from '../seo/SEO';
 import {
@@ -67,12 +68,14 @@ const Dsbmobile: React.FC = () => {
   const hasCache = !!cachedData && cachedData.tables.length > 0;
 
   useEffect(() => {
-    if (token) {
-      loginAndFetchPlans();
-    }
+    if (!token) return;
+    const abortController = new AbortController();
+    const { signal } = abortController;
+    loginAndFetchPlans(signal);
+    return () => abortController.abort();
   }, [token]);
 
-  const loginAndFetchPlans = async () => {
+  const loginAndFetchPlans = async (signal?: AbortSignal) => {
     if (!token) return;
     const initialHasCache = hasCache;
     if (!initialHasCache) {
@@ -81,14 +84,16 @@ const Dsbmobile: React.FC = () => {
     setError('');
 
     try {
-      const loginResponse = await dsbAPI.login(token, credentials);
+      const loginResponse = await dsbAPI.login(token, credentials, signal);
+      if (signal?.aborted) return;
       if (!loginResponse.success) {
         setError(loginResponse.error || 'Anmeldung bei DSBmobile fehlgeschlagen.');
         if (!initialHasCache) setIsLoading(false);
         return;
       }
 
-      const urlsResponse = await dsbAPI.getPlanUrls(token, credentials);
+      const urlsResponse = await dsbAPI.getPlanUrls(token, credentials, signal);
+      if (signal?.aborted) return;
       if (!urlsResponse.success) {
         setError(urlsResponse.error || 'Abrufen der Plan-URLs fehlgeschlagen.');
         if (!initialHasCache) setIsLoading(false);
@@ -99,11 +104,12 @@ const Dsbmobile: React.FC = () => {
       setMenuItems(urlsResponse.menu_items);
 
       if (urlsResponse.html_plan_url) {
-        await fetchPlan(urlsResponse.html_plan_url);
+        await fetchPlan(urlsResponse.html_plan_url, undefined, signal);
       } else if (urlsResponse.plan_urls.length > 0) {
-        await fetchPlan(urlsResponse.plan_urls[0]);
+        await fetchPlan(urlsResponse.plan_urls[0], undefined, signal);
       }
     } catch (err) {
+      if (axios.isCancel(err)) return;
       console.error('DSB login error:', err);
       setError('Verbindung zu DSBmobile fehlgeschlagen.');
     } finally {
@@ -111,7 +117,7 @@ const Dsbmobile: React.FC = () => {
     }
   };
 
-  const fetchPlan = async (planUrl: string, planIndex?: number) => {
+  const fetchPlan = async (planUrl: string, planIndex?: number, signal?: AbortSignal) => {
     if (!token) return;
     const isManualChange = planIndex !== undefined;
     if (isManualChange || !hasCache) {
@@ -124,8 +130,9 @@ const Dsbmobile: React.FC = () => {
       const response = await dsbAPI.getPlan(token, credentials, {
         plan_url: planUrl,
         include_raw: false,
-      });
+      }, signal);
 
+      if (signal?.aborted) return;
       if (!response.success) {
         setError(response.error || 'Abrufen des Plans fehlgeschlagen.');
         if (isManualChange || !hasCache) setIsLoadingPlan(false);
@@ -140,6 +147,7 @@ const Dsbmobile: React.FC = () => {
         selectedPlanIndex: planIndex ?? selectedPlanIndex,
       });
     } catch (err) {
+      if (axios.isCancel(err)) return;
       console.error('DSB plan fetch error:', err);
       if (!hasCache) setError('Abrufen des Vertretungsplans fehlgeschlagen.');
     } finally {
