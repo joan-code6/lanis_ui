@@ -26,7 +26,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [hasDsbModule, setHasDsbModule] = React.useState(false);
   const mainRef = React.useRef<HTMLElement>(null);
 
-  React.useEffect(() => {
+  React.useLayoutEffect(() => {
     mainRef.current?.scrollTo(0, 0);
   }, [location.pathname]);
 
@@ -70,7 +70,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   };
 
   return (
-    <div className="min-h-[100dvh] flex bg-surface-50 dark:bg-surface-950">
+    <div className="h-[100dvh] flex bg-surface-50 dark:bg-surface-950">
       {isSidebarOpen && (
         <div className="fixed inset-0 flex z-40 md:hidden">
           <div className="fixed inset-0 bg-surface-900/40 backdrop-blur-sm" onClick={() => setIsSidebarOpen(false)} />
