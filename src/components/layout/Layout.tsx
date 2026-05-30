@@ -141,7 +141,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         <div className="flex-1 flex flex-col overflow-y-auto px-3 pb-4">
           <nav className="flex-1 space-y-1">
             {navigation.map((item, index) => {
-              const isActive = location.pathname === item.href;
+              const isActive = item.href === '/'
+                ? location.pathname === item.href
+                : location.pathname === item.href || location.pathname.startsWith(item.href + '/');
               return (
                 <Link
                   key={item.name}

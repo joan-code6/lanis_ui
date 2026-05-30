@@ -276,7 +276,7 @@ const Courses: React.FC = () => {
     if (viewMode === 'entry-detail') {
       setViewMode('course-detail');
     } else {
-      setViewMode('overview');
+      navigate('/courses');
     }
   };
 
