@@ -77,12 +77,16 @@ const Messages: React.FC = () => {
       if (signal?.aborted) return;
       if (response.success) {
         const transformedMessages = response.conversations.map(msg => ({
-          ...msg,
-          id: msg.Uniquid,
-          sender: msg.Sender,
-          subject: msg.Betreff,
+          Id: msg.Id || msg.Uniquid,
+          Uniquid: msg.Uniquid,
+          Sender: msg.Sender,
+          Betreff: msg.Betreff,
+          WeitereEmpfaenger: msg.WeitereEmpfaenger,
+          private: msg.private,
+          empf: msg.empf,
+          Papierkorb: msg.Papierkorb,
           unread: msg.private > 0,
-          date: new Date().toISOString(),
+          date: msg.date || new Date().toISOString(),
         }));
         setMessages(transformedMessages);
         localStorage.setItem('messages_cache', JSON.stringify(transformedMessages));
@@ -335,7 +339,7 @@ const Messages: React.FC = () => {
                 })
                 .map((message) => (
                   <div
-                    key={message.id}
+                    key={message.Uniquid}
                     className={clsx(
                       'px-4 py-3 hover:bg-surface-100 dark:hover:bg-surface-800 cursor-pointer transition-colors duration-150',
                       selectedConversation === message.Uniquid && 'bg-surface-100 dark:bg-surface-800',
@@ -353,17 +357,14 @@ const Messages: React.FC = () => {
                             'text-sm truncate',
                             message.unread ? 'font-semibold text-surface-900 dark:text-surface-100' : 'font-medium text-surface-700 dark:text-surface-400'
                           )}>
-                            {message.Sender}
+                            {message.Betreff}
                           </p>
                           <p className="text-[11px] text-surface-400 whitespace-nowrap">
                             {message.date ? formatDate(message.date) : 'Heute'}
                           </p>
                         </div>
-                        <p className={clsx(
-                          'text-xs truncate mt-0.5',
-                          message.unread ? 'text-surface-700 dark:text-surface-300' : 'text-surface-500 dark:text-surface-400'
-                        )}>
-                          {message.Betreff}
+                        <p className="text-xs truncate mt-0.5 text-surface-500 dark:text-surface-400">
+                          {message.Sender}
                         </p>
                       </div>
                       {message.unread && (
