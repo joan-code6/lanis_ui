@@ -147,6 +147,10 @@ import {
   SearchResponse,
   SendMessageRequest,
   SendMessageResponse,
+  ReplyMessageRequest,
+  ReplyMessageResponse,
+  MarkReadRequest,
+  MarkReadResponse,
   CoursesResponse,
   CourseDetailsResponse,
   EntryDetailsResponse,
@@ -265,6 +269,22 @@ export const messagesAPI = {
 
   async sendMessage(token: string, message: SendMessageRequest, signal?: AbortSignal): Promise<SendMessageResponse> {
     const response = await apiClient.post<SendMessageResponse>('/nachrichten/send', message, {
+      headers: { 'X-Session-Token': token },
+      signal,
+    });
+    return response.data;
+  },
+
+  async replyMessage(token: string, reply: ReplyMessageRequest, signal?: AbortSignal): Promise<ReplyMessageResponse> {
+    const response = await apiClient.post<ReplyMessageResponse>('/nachrichten/reply', reply, {
+      headers: { 'X-Session-Token': token },
+      signal,
+    });
+    return response.data;
+  },
+
+  async markRead(token: string, data: MarkReadRequest, signal?: AbortSignal): Promise<MarkReadResponse> {
+    const response = await apiClient.post<MarkReadResponse>('/nachrichten/mark-read', data, {
       headers: { 'X-Session-Token': token },
       signal,
     });

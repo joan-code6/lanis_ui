@@ -103,7 +103,8 @@ export interface MessageHeader {
   private: number;
   WeitereEmpfaenger: string;
   empf: string[];
-  unread?: boolean;
+  unread: boolean;
+  read?: boolean;
   date?: string;
   [key: string]: any;
 }
@@ -151,6 +152,28 @@ export interface SendMessageResponse {
   success: boolean;
   message_id: string;
   sent_at: string;
+}
+
+export interface ReplyMessageRequest {
+  conversation_id: string;
+  body: string;
+  to: string;
+}
+
+export interface ReplyMessageResponse {
+  success: boolean;
+  details: {
+    back: boolean;
+    id: string;
+  };
+}
+
+export interface MarkReadRequest {
+  conversation_id: string;
+}
+
+export interface MarkReadResponse {
+  success: boolean;
 }
 
 // Course types

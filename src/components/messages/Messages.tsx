@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { messagesAPI } from '../../services/api';
 import axios from 'axios';
-import { MessageHeader, Message, SearchResult, SendMessageRequest } from '../../types';
+import { MessageHeader, Message, SearchResult, SendMessageRequest, ReplyMessageRequest } from '../../types';
 import SEO from '../seo/SEO';
 import {
   PlusIcon,
@@ -58,6 +58,38 @@ const Messages: React.FC = () => {
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [replyBody, setReplyBody] = useState('');
+  const [isReplying, setIsReplying] = useState(false);
+
+  const USERNAME_CACHE_KEY = 'username_cache';
+  const USERNAME_CACHE_TTL = 365 * 24 * 60 * 60 * 1000;
+
+  const loadUsernameCache = (): Record<string, string> => {
+    try {
+      const raw = localStorage.getItem(USERNAME_CACHE_KEY);
+      if (!raw) return {};
+      const parsed: { data: Record<string, string>; ts: number } = JSON.parse(raw);
+      if (Date.now() - parsed.ts > USERNAME_CACHE_TTL) {
+        localStorage.removeItem(USERNAME_CACHE_KEY);
+        return {};
+      }
+      return parsed.data;
+    } catch { return {}; }
+  };
+
+  const saveUsernameCache = (data: Record<string, string>) => {
+    localStorage.setItem(USERNAME_CACHE_KEY, JSON.stringify({ data, ts: Date.now() }));
+  };
+
+  const usernameCache = useRef<Record<string, string>>(loadUsernameCache());
+
+  const applyUsernameCache = (msgs: MessageHeader[]) => {
+    if (Object.keys(usernameCache.current).length === 0) return msgs;
+    return msgs.map(m => ({
+      ...m,
+      Sender: usernameCache.current[m.Sender] || m.Sender,
+    }));
+  };
 
   useEffect(() => {
     if (!token) return;
@@ -74,16 +106,21 @@ const Messages: React.FC = () => {
       const response = await messagesAPI.getMessageHeaders(token, messageType, 0, signal);
       if (signal?.aborted) return;
       if (response.success) {
-        const transformedMessages = response.conversations.map(msg => ({
-          ...msg,
-          id: msg.Uniquid,
-          sender: msg.Sender,
-          subject: msg.Betreff,
-          unread: msg.private > 0,
-          date: new Date().toISOString(),
+        const transformedMessages = response.conversations.map((msg: any) => ({
+          Id: msg.Id || msg.id,
+          Uniquid: msg.id || msg.Uniquid,
+          Sender: msg.sender || msg.Sender,
+          Betreff: msg.Betreff,
+          WeitereEmpfaenger: msg.WeitereEmpfaenger,
+          private: msg.private || 0,
+          empf: msg.empf || [],
+          Papierkorb: msg.Papierkorb,
+          unread: !!(msg.unread === 1),
+          date: msg.date || new Date().toISOString(),
         }));
-        setMessages(transformedMessages);
-        localStorage.setItem('messages_cache', JSON.stringify(transformedMessages));
+        const resolved = applyUsernameCache(transformedMessages);
+        setMessages(resolved);
+        localStorage.setItem('messages_cache', JSON.stringify(resolved));
       } else {
         setError('Fehler beim Laden der Nachrichten.');
       }
@@ -106,13 +143,14 @@ const Messages: React.FC = () => {
       if (response.success && response.messages) {
         const transformedMessages = response.messages.map((msg: any) => ({
           id: msg.Id || msg.id,
-          sender: msg.username || msg.Sender || 'Unbekannter Sender',
+          sender: msg.username || msg.sender || msg.Sender || 'Unbekannter Sender',
           content: msg.Inhalt || msg.content || '',
           date: msg.Datum || msg.date || new Date().toISOString(),
           ...msg
         }));
         setConversationMessages(transformedMessages);
         setError('');
+        loadMessages();
       } else {
         if (response && typeof response === 'object' && 'error' in response) {
           if (response.error === 'No message data in response: {\'error\': \'-1\'}') {
@@ -199,6 +237,29 @@ const Messages: React.FC = () => {
     }
   };
 
+  const sendReply = async () => {
+    if (!token || !selectedConversation || !replyBody.trim()) return;
+    try {
+      setIsReplying(true);
+      const replyRequest: ReplyMessageRequest = {
+        conversation_id: selectedConversation,
+        body: replyBody,
+        to: 'all',
+      };
+      const response = await messagesAPI.replyMessage(token, replyRequest);
+      if (response.success) {
+        setReplyBody('');
+        loadMessages();
+        loadConversation(selectedConversation);
+      }
+    } catch (error) {
+      console.error('Error sending reply:', error);
+      setError('Fehler beim Senden der Antwort.');
+    } finally {
+      setIsReplying(false);
+    }
+  };
+
   const closeParticipantsModal = () => {
     setShowParticipants(false);
     setParticipantSearch('');
@@ -229,7 +290,7 @@ const Messages: React.FC = () => {
   }
 
   return (
-    <div className="h-full flex overflow-hidden">
+    <div className="h-[calc(100dvh-3.5rem)] md:h-screen flex overflow-hidden">
       <SEO
         title="Nachrichten"
         description="Lanis Nachrichten — Kommuniziere mit Lehrkräften und Mitschülern über das Schulportal Hessen."
@@ -310,7 +371,7 @@ const Messages: React.FC = () => {
                 })
                 .map((message) => (
                   <div
-                    key={message.id}
+                    key={message.Uniquid}
                     className={clsx(
                       'px-4 py-3 hover:bg-surface-100 dark:hover:bg-surface-800 cursor-pointer transition-colors duration-150',
                       selectedConversation === message.Uniquid && 'bg-surface-100 dark:bg-surface-800',
@@ -328,17 +389,14 @@ const Messages: React.FC = () => {
                             'text-sm truncate',
                             message.unread ? 'font-semibold text-surface-900 dark:text-surface-100' : 'font-medium text-surface-700 dark:text-surface-400'
                           )}>
-                            {message.Sender}
+                            {message.Betreff}
                           </p>
                           <p className="text-[11px] text-surface-400 whitespace-nowrap">
                             {message.date ? formatDate(message.date) : 'Heute'}
                           </p>
                         </div>
-                        <p className={clsx(
-                          'text-xs truncate mt-0.5',
-                          message.unread ? 'text-surface-700 dark:text-surface-300' : 'text-surface-500 dark:text-surface-400'
-                        )}>
-                          {message.Betreff}
+                        <p className="text-xs truncate mt-0.5 text-surface-500 dark:text-surface-400">
+                          {message.Sender}
                         </p>
                       </div>
                       {message.unread && (
@@ -384,6 +442,7 @@ const Messages: React.FC = () => {
                 <div className="w-6 h-6 rounded-full border-2 border-primary-300 border-t-primary-600 animate-spin" />
               </div>
             ) : (
+              <>
               <div className="flex-1 overflow-y-auto p-6 space-y-4">
                 {conversationMessages && conversationMessages.map((message) => (
                   <div key={message.id} className="card">
@@ -409,6 +468,42 @@ const Messages: React.FC = () => {
                   </div>
                 ))}
               </div>
+
+              <div className="border-t border-surface-100 dark:border-surface-800 p-4 bg-white/80 dark:bg-surface-900/80 backdrop-blur-sm">
+                <textarea
+                  rows={3}
+                  className="input text-sm resize-none mb-3"
+                  placeholder="Antwort schreiben..."
+                  value={replyBody}
+                  onChange={(e) => setReplyBody(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      sendReply();
+                    }
+                  }}
+                />
+                <div className="flex items-center justify-end">
+                  <button
+                    onClick={sendReply}
+                    disabled={isReplying || !replyBody.trim()}
+                    className="btn btn-primary h-9 text-xs disabled:opacity-50"
+                  >
+                    {isReplying ? (
+                      <span className="flex items-center gap-1.5">
+                        <span className="w-3 h-3 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+                        Senden...
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-1.5">
+                        <PaperAirplaneIcon className="h-3.5 w-3.5" />
+                        Antworten
+                      </span>
+                    )}
+                  </button>
+                </div>
+              </div>
+              </>
             )}
           </>
         ) : (
