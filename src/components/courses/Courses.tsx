@@ -617,8 +617,16 @@ const Courses: React.FC = () => {
                       </div>
                       
                       {/* Topic */}
-                      <h4 className="text-lg font-semibold text-surface-900 dark:text-surface-100 mb-4">{entry.thema}</h4>
-                      
+                      <h4 className="text-lg font-semibold text-surface-900 dark:text-surface-100 mb-3">{entry.thema}</h4>
+
+                      {/* Content / Description */}
+                      {entry.content && (
+                        <div
+                          className="mb-4 text-sm text-surface-700 dark:text-surface-300 leading-relaxed [&_br]:mb-1"
+                          dangerouslySetInnerHTML={{ __html: entry.content }}
+                        />
+                      )}
+
                       {/* Homework Section */}
                       {entry.homework && (
                         <div className="mb-4 p-4 border-l-4 border-yellow-400 dark:border-yellow-600 rounded-lg">
@@ -729,7 +737,14 @@ const Courses: React.FC = () => {
                           </div>
                           
                           <h4 className="text-base font-semibold text-surface-900 dark:text-surface-100 mb-3">{entry.thema}</h4>
-                          
+
+                          {entry.content && (
+                            <div
+                              className="mb-3 text-sm text-surface-700 dark:text-surface-300 leading-relaxed [&_br]:mb-1"
+                              dangerouslySetInnerHTML={{ __html: entry.content }}
+                            />
+                          )}
+
                           {entry.homework && (
                             <div className="mb-3 p-3 border-l-4 border-yellow-400 dark:border-yellow-600 rounded">
                               <div className="flex items-center gap-2 mb-1">
