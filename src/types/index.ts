@@ -153,6 +153,20 @@ export interface SendMessageResponse {
   sent_at: string;
 }
 
+export interface ReplyMessageRequest {
+  conversation_id: string;
+  body: string;
+  to: string;
+}
+
+export interface ReplyMessageResponse {
+  success: boolean;
+  details: {
+    back: boolean;
+    id: string;
+  };
+}
+
 // Course types
 export interface CourseEntry {
   entry_id: string | null;

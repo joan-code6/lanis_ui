@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { messagesAPI } from '../../services/api';
 import axios from 'axios';
-import { MessageHeader, Message, SearchResult, SendMessageRequest } from '../../types';
+import { MessageHeader, Message, SearchResult, SendMessageRequest, ReplyMessageRequest } from '../../types';
 import SEO from '../seo/SEO';
 import {
   PlusIcon,
@@ -58,6 +58,8 @@ const Messages: React.FC = () => {
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [replyBody, setReplyBody] = useState('');
+  const [isReplying, setIsReplying] = useState(false);
 
   useEffect(() => {
     if (!token) return;
@@ -196,6 +198,28 @@ const Messages: React.FC = () => {
       setError('Fehler beim Senden der Nachricht.');
     } finally {
       setIsSending(false);
+    }
+  };
+
+  const sendReply = async () => {
+    if (!token || !selectedConversation || !replyBody.trim()) return;
+    try {
+      setIsReplying(true);
+      const replyRequest: ReplyMessageRequest = {
+        conversation_id: selectedConversation,
+        body: replyBody,
+        to: 'all',
+      };
+      const response = await messagesAPI.replyMessage(token, replyRequest);
+      if (response.success) {
+        setReplyBody('');
+        loadConversation(selectedConversation);
+      }
+    } catch (error) {
+      console.error('Error sending reply:', error);
+      setError('Fehler beim Senden der Antwort.');
+    } finally {
+      setIsReplying(false);
     }
   };
 
@@ -384,6 +408,7 @@ const Messages: React.FC = () => {
                 <div className="w-6 h-6 rounded-full border-2 border-primary-300 border-t-primary-600 animate-spin" />
               </div>
             ) : (
+              <>
               <div className="flex-1 overflow-y-auto p-6 space-y-4">
                 {conversationMessages && conversationMessages.map((message) => (
                   <div key={message.id} className="card">
@@ -409,6 +434,42 @@ const Messages: React.FC = () => {
                   </div>
                 ))}
               </div>
+
+              <div className="border-t border-surface-100 dark:border-surface-800 p-4 bg-white/80 dark:bg-surface-900/80 backdrop-blur-sm">
+                <textarea
+                  rows={3}
+                  className="input text-sm resize-none mb-3"
+                  placeholder="Antwort schreiben..."
+                  value={replyBody}
+                  onChange={(e) => setReplyBody(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      sendReply();
+                    }
+                  }}
+                />
+                <div className="flex items-center justify-end">
+                  <button
+                    onClick={sendReply}
+                    disabled={isReplying || !replyBody.trim()}
+                    className="btn btn-primary h-9 text-xs disabled:opacity-50"
+                  >
+                    {isReplying ? (
+                      <span className="flex items-center gap-1.5">
+                        <span className="w-3 h-3 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+                        Senden...
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-1.5">
+                        <PaperAirplaneIcon className="h-3.5 w-3.5" />
+                        Antworten
+                      </span>
+                    )}
+                  </button>
+                </div>
+              </div>
+              </>
             )}
           </>
         ) : (
