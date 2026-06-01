@@ -76,7 +76,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   };
 
   return (
-    <div className="h-[100dvh] flex bg-surface-50 dark:bg-surface-950">
+    <div className="h-[100dvh] flex overflow-hidden bg-surface-50 dark:bg-surface-950">
       {isSidebarOpen && (
         <div className="fixed inset-0 flex z-40 md:hidden">
           <div className="fixed inset-0 bg-surface-900/40 backdrop-blur-sm" onClick={() => setIsSidebarOpen(false)} />
@@ -101,8 +101,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         </div>
       </div>
 
-      <div className="flex flex-col w-0 flex-1 md:ml-64">
-        <div className="md:hidden sticky top-0 z-30 flex items-center justify-between h-14 px-4 bg-white/80 dark:bg-surface-900/80 backdrop-blur-md border-b border-surface-100 dark:border-surface-800">
+      <div className="flex-1 w-0 md:ml-64 grid grid-rows-[auto_1fr] md:grid-rows-1 overflow-hidden">
+        <div className="md:hidden relative h-14 z-30 flex items-center justify-between px-4 bg-white/80 dark:bg-surface-900/80 backdrop-blur-md border-b border-surface-100 dark:border-surface-800">
           <button
             type="button"
             className="flex items-center justify-center h-9 w-9 rounded-lg text-surface-500 dark:text-surface-400 hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors"
@@ -116,7 +116,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           </div>
           <div className="w-9" />
         </div>
-        <main ref={mainRef} className="flex-1 min-h-0 relative overflow-y-auto focus:outline-none">
+        <main ref={mainRef} className="overflow-y-auto min-h-0 relative focus:outline-none">
           <div className="animate-fade-in">
             {children}
           </div>
