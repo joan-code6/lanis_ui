@@ -158,14 +158,14 @@ const Kalender: React.FC = () => {
   }
 
   return (
-    <div className="p-4 sm:p-6 max-w-7xl mx-auto">
+    <div className="h-full flex flex-col p-4 sm:p-6 max-w-7xl mx-auto">
       <SEO
         title="Kalender"
         description="Lanis Kalender — Behalte den Überblick über Termine, Klausuren und Veranstaltungen im Schulportal Hessen."
         path="/calendar"
         noindex
       />
-      <div className="page-header">
+      <div className="page-header flex-shrink-0">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="page-title">Kalender</h1>
@@ -223,12 +223,12 @@ const Kalender: React.FC = () => {
       </div>
 
       {error && (
-        <div className="mb-6 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-900 text-red-600 dark:text-red-400 px-4 py-3 rounded-xl text-sm animate-scale-in">
+        <div className="mb-6 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-900 text-red-600 dark:text-red-400 px-4 py-3 rounded-xl text-sm animate-scale-in flex-shrink-0">
           {error}
         </div>
       )}
 
-      <div className="mb-6 card">
+      <div className="mb-6 card flex-shrink-0">
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-1.5">
             <FunnelIcon className="h-3.5 w-3.5 text-surface-400" />
@@ -263,8 +263,8 @@ const Kalender: React.FC = () => {
 
       {/* Month View */}
       {calendarViewMode === 'month' && (
-      <div>
-        <div className="grid grid-cols-7 gap-px mb-1">
+      <div className="flex-1 min-h-0 flex flex-col">
+        <div className="grid grid-cols-7 gap-px mb-1 flex-shrink-0">
           {['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'].map((day) => (
             <div
               key={day}
@@ -275,7 +275,7 @@ const Kalender: React.FC = () => {
           ))}
         </div>
 
-        <div className="grid grid-cols-7 gap-px bg-surface-200 dark:bg-surface-700 rounded-xl overflow-hidden border border-surface-100 dark:border-surface-700">
+        <div className="flex-1 min-h-0 grid grid-cols-7 auto-rows-fr gap-px bg-surface-200 dark:bg-surface-700 rounded-xl overflow-hidden border border-surface-100 dark:border-surface-700">
           {calendarDays.map((day) => {
             const dateKey = format(day, 'yyyy-MM-dd');
             const dayEvents = eventsByDate.get(dateKey) || [];
@@ -286,7 +286,7 @@ const Kalender: React.FC = () => {
               <div
                 key={dateKey}
                 className={clsx(
-                  'bg-white dark:bg-surface-900 min-h-[100px] sm:min-h-[120px] p-1 sm:p-1.5 transition-colors',
+                  'bg-white dark:bg-surface-900 min-h-0 p-1 sm:p-1.5 transition-colors overflow-hidden',
                   !isCurrentMonth && 'bg-surface-50 dark:!bg-surface-900 text-surface-300 dark:text-surface-600'
                 )}
               >
@@ -327,7 +327,7 @@ const Kalender: React.FC = () => {
 
       {/* List / Agenda View */}
       {calendarViewMode === 'list' && (
-        <div className="space-y-1">
+        <div className="flex-1 min-h-0 overflow-y-auto space-y-1">
           {(() => {
             const sortedDates = Array.from(eventsByDate.entries()).sort(([a], [b]) => a.localeCompare(b));
             if (sortedDates.length === 0) {

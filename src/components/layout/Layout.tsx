@@ -76,7 +76,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   };
 
   return (
-    <div className="h-[100dvh] flex overflow-hidden bg-surface-50 dark:bg-surface-950">
+    <div className="h-[100dvh] overflow-hidden relative bg-surface-50 dark:bg-surface-950">
       {isSidebarOpen && (
         <div className="fixed inset-0 flex z-40 md:hidden">
           <div className="fixed inset-0 bg-surface-900/40 backdrop-blur-sm" onClick={() => setIsSidebarOpen(false)} />
@@ -101,27 +101,25 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         </div>
       </div>
 
-      <div className="flex-1 w-0 md:ml-64 grid grid-rows-[auto_1fr] md:grid-rows-1 overflow-hidden">
-        <div className="md:hidden relative h-14 z-30 flex items-center justify-between px-4 bg-white/80 dark:bg-surface-900/80 backdrop-blur-md border-b border-surface-100 dark:border-surface-800">
-          <button
-            type="button"
-            className="flex items-center justify-center h-9 w-9 rounded-lg text-surface-500 dark:text-surface-400 hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors"
-            onClick={() => setIsSidebarOpen(true)}
-          >
-            <Bars3Icon className="h-5 w-5" />
-          </button>
-          <div className="flex items-center gap-2">
-            <img src="/favicon/android-chrome-192x192.png" alt="Schulportal" className="h-7 w-7 rounded-lg" />
-            <span className="text-sm font-semibold text-surface-900 dark:text-surface-100">Schulportal</span>
-          </div>
-          <div className="w-9" />
+      <div className="md:hidden absolute top-0 inset-x-0 h-14 z-30 flex items-center justify-between px-4 bg-white/80 dark:bg-surface-900/80 backdrop-blur-md border-b border-surface-100 dark:border-surface-800">
+        <button
+          type="button"
+          className="flex items-center justify-center h-9 w-9 rounded-lg text-surface-500 dark:text-surface-400 hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors"
+          onClick={() => setIsSidebarOpen(true)}
+        >
+          <Bars3Icon className="h-5 w-5" />
+        </button>
+        <div className="flex items-center gap-2">
+          <img src="/favicon/android-chrome-192x192.png" alt="Schulportal" className="h-7 w-7 rounded-lg" />
+          <span className="text-sm font-semibold text-surface-900 dark:text-surface-100">Schulportal</span>
         </div>
-        <main ref={mainRef} className="overflow-y-auto min-h-0 relative focus:outline-none">
-          <div className="animate-fade-in">
-            {children}
-          </div>
-        </main>
+        <div className="w-9" />
       </div>
+      <main ref={mainRef} className="h-full overflow-y-auto pt-14 md:pt-0 md:ml-64 focus:outline-none">
+        <div className="animate-fade-in">
+          {children}
+        </div>
+      </main>
     </div>
   );
 
