@@ -116,7 +116,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           </div>
           <div className="w-9" />
         </div>
-        <main ref={mainRef} className="flex-1 relative overflow-y-auto focus:outline-none">
+        <main ref={mainRef} className="flex-1 min-h-0 relative overflow-y-auto focus:outline-none">
           <div className="animate-fade-in">
             {children}
           </div>
