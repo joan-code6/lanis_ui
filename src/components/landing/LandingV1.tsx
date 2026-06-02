@@ -272,7 +272,7 @@ const LandingV1: React.FC = () => {
                 label: 'Navigation',
                 title: 'Alles ein Klick',
                 desc: 'Kein tiefes Menugeklicke. Module per Suche finden, anpinnen, sortieren. Sidebar mit direktem Zugriff auf alles.',
-                stat: '1 Klick',
+                stat: '3 Klick',
                 statLabel: 'zu jedem Modul',
                 delay: 700,
               },

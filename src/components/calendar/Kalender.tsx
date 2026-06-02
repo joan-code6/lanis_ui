@@ -83,11 +83,11 @@ const Kalender: React.FC = () => {
       } else {
         setError('Fehler beim Laden der Termine.');
       }
+      setIsLoading(false);
     } catch (err) {
       if (axios.isCancel(err)) return;
       console.error('Error loading calendar:', err);
       setError('Fehler beim Laden der Termine.');
-    } finally {
       setIsLoading(false);
     }
   };

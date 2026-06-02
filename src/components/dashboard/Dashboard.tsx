@@ -83,12 +83,13 @@ const Dashboard: React.FC = () => {
         });
         setFolders(allFolders);
       }
+      setIsLoading(false);
     } catch (error) {
       if (axios.isCancel(error)) return;
       console.error('Error loading modules:', error);
       setError('Fehler beim Laden der Module.');
-    } finally {
       setIsLoading(false);
+    } finally {
       setIsUpdating(false);
     }
   };
@@ -233,7 +234,7 @@ const Dashboard: React.FC = () => {
       )}
 
       <div className="mb-6 flex flex-col sm:flex-row gap-3 sm:gap-4 items-stretch sm:items-center justify-between">
-        <div className="flex-1 max-w-md relative w-full">
+        <div className="flex-1 max-w-sm lg:max-w-md relative w-full min-w-0">
           <MagnifyingGlassIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-surface-400" />
           <input
             type="text"
@@ -248,7 +249,7 @@ const Dashboard: React.FC = () => {
           <select
             value={selectedFolder}
             onChange={(e) => setSelectedFolder(e.target.value)}
-            className="input text-sm flex-1 sm:flex-none"
+            className="input text-sm flex-1 min-w-0 sm:flex-none sm:w-auto sm:max-w-[200px]"
           >
             <option value="all">Alle Ordner</option>
             {folders.map((folder) => (

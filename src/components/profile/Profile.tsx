@@ -59,12 +59,13 @@ const Profile: React.FC = () => {
       } else {
         setError('Fehler beim Laden des Benutzerprofils.');
       }
+      setIsLoading(false);
     } catch (error) {
       if (axios.isCancel(error)) return;
       console.error('Error loading user profile:', error);
       setError('Fehler beim Laden des Benutzerprofils.');
-    } finally {
       setIsLoading(false);
+    } finally {
       setIsUpdating(false);
     }
   };
