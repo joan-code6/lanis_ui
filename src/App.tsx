@@ -12,6 +12,7 @@ import Kalender from './components/calendar/Kalender';
 import Profile from './components/profile/Profile';
 import Settings from './components/settings/Settings';
 import Dsbmobile from './components/dsb/Dsbmobile';
+import DemoRoute from './components/demo/DemoRoute';
 import Landingpage from './components/landing/Landingpage';
 import Impressum from './components/legal/Impressum';
 
@@ -46,6 +47,17 @@ const AppRoutes: React.FC = () => {
         <Route path="/" element={<LandingRoot />} />
         <Route path="/landing" element={<Navigate to="/" replace />} />
         <Route path="/impressum" element={<Impressum />} />
+        <Route path="/demo" element={<DemoRoute />}>
+          <Route index element={<Navigate to="/demo/dashboard" replace />} />
+          <Route path="dashboard" element={<Dashboard />} />
+          <Route path="messages" element={<Messages />} />
+          <Route path="courses" element={<Courses />} />
+          <Route path="courses/:id" element={<Courses />} />
+          <Route path="calendar" element={<Kalender />} />
+          <Route path="dsb" element={<Dsbmobile />} />
+          <Route path="profile" element={<Profile />} />
+          <Route path="settings" element={<Settings />} />
+        </Route>
         <Route
           path="/login"
           element={

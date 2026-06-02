@@ -311,7 +311,7 @@ const LandingV1: React.FC = () => {
             >
               Los geht&apos;s
             </button>
-            <p className="mt-4 text-[11px] text-[#444]">Inoffiziell. Keine Daten werden gespeichert.</p>
+            <p className="mt-4 text-[11px] text-[#444]">Inoffizielle Benutzeroberfläche.</p>
           </div>
         </section>
       </div>

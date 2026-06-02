@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { calendarAPI } from '../../services/api';
+import { useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import SEO from '../seo/SEO';
 import {
@@ -28,6 +29,7 @@ interface DayEvent {
 
 const Kalender: React.FC = () => {
   const { token } = useAuth();
+  const [searchParams] = useSearchParams();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [categories, setCategories] = useState<CalendarCategory[]>([]);
@@ -37,6 +39,7 @@ const Kalender: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [calendarViewMode, setCalendarViewMode] = useState<'month' | 'list'>('month');
+  const overviewRef = useRef<{ key: string } | null>(null);
 
   if (!token) {
     return (
@@ -55,6 +58,21 @@ const Kalender: React.FC = () => {
     loadCalendarData(abortController.signal);
     return () => abortController.abort();
   }, [token, currentDate.getMonth(), currentDate.getFullYear()]);
+
+  useEffect(() => {
+    const eventId = searchParams.get('event');
+    const viewId = overviewRef.current?.key;
+    if (!eventId || !token || !viewId) return;
+    const abort = new AbortController();
+    calendarAPI.getEvent(token, eventId, viewId, abort.signal)
+      .then(res => {
+        if (res.success && res.event) {
+          setSelectedEvent(res.event as unknown as CalendarEvent);
+        }
+      })
+      .catch(() => {});
+    return () => abort.abort();
+  }, [searchParams, token]);
 
   const loadCalendarData = async (signal?: AbortSignal) => {
     if (!token) return;
@@ -76,6 +94,7 @@ const Kalender: React.FC = () => {
 
       if (overviewRes.success) {
         setCategories(overviewRes.categories);
+        overviewRef.current = overviewRes.calendar;
       }
 
       if (eventsRes.success) {

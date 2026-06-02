@@ -247,7 +247,7 @@ const Profile: React.FC = () => {
                     <p className="font-medium">Hinweis</p>
                     <p className="mt-0.5 leading-relaxed">
                       Dies ist eine inoffizielle Benutzeroberfläche für das Schulportal Hessen.
-                      Alle Daten werden sicher über die offiziellen APIs abgerufen.
+                      Alle Daten werden über die offiziellen APIs abgerufen.
                     </p>
                   </div>
                 </div>

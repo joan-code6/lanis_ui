@@ -4,6 +4,7 @@ import {
   SchoolSearchResponse,
   SchoolSearchResult,
 } from '../types';
+import { getMockResponse } from '../components/demo/mockApi';
 // School List API
 const SCHOOL_CACHE_KEY = 'school_cache';
 const SCHOOL_CACHE_TTL = 24 * 60 * 60 * 1000;
@@ -433,10 +434,22 @@ export const dsbAPI = {
   },
 };
 
-// Request interceptor to handle token automatically
+// Request interceptor - mock all API calls in demo mode
 apiClient.interceptors.request.use(
   (config) => {
-    // You can add global request handling here if needed
+    if (localStorage.getItem('__demo_mode') === '1' && window.location.pathname.startsWith('/demo')) {
+      config.adapter = (mockConfig: any) => {
+        const mock = getMockResponse(mockConfig.url || '', mockConfig.method || 'get', mockConfig);
+        return Promise.resolve({
+          data: mock.data,
+          status: mock.status,
+          statusText: 'OK',
+          headers: { 'content-type': 'application/json' },
+          config: mockConfig,
+          request: {},
+        });
+      };
+    }
     return config;
   },
   (error) => {
@@ -450,7 +463,7 @@ apiClient.interceptors.response.use(
     return response;
   },
   (error) => {
-    if (error.response?.status === 401) {
+    if (error.response?.status === 401 && localStorage.getItem('__demo_mode') !== '1') {
       // Token expired or invalid - redirect to login
       localStorage.removeItem('auth_token');
       localStorage.removeItem('auth_user');

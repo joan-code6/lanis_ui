@@ -43,7 +43,7 @@ const FeatureRow: React.FC<{
       </div>
       <div className="flex-1 w-full">
         <div className="w-full aspect-[4/3] rounded-3xl bg-[#f5f5f2] border border-black/[0.03] flex items-center justify-center overflow-hidden">
-          <div className="text-6xl opacity-[0.06] select-none"><img src={imagePath} alt={title} /></div>
+          <div className="text-6xl select-none"><img src={imagePath} alt={title} /></div>
         </div>
       </div>
     </div>
@@ -139,11 +139,14 @@ const Landingpage: React.FC = () => {
               onClick={() => navigate('/login')}
               className="px-7 py-3.5 rounded-xl bg-[#00c0e0] hover:bg-[#00d8f8] text-white font-semibold text-sm transition-all duration-300 active:scale-[0.97] shadow-[0_4px_16px_rgba(0,192,224,0.2)]"
             >
-              Jetzt ausprobieren
+              Jetzt nutzen
             </button>
-            <a href="#compare" className="px-7 py-3.5 rounded-xl bg-white hover:bg-[#f5f5f5] text-[#555] font-medium text-sm transition-all duration-300 border border-black/[0.06] shadow-sm">
-              Vergleich ansehen
-            </a>
+            <button
+              onClick={() => navigate('/demo')} 
+              className="px-7 py-3.5 rounded-xl bg-white hover:bg-[#f5f5f5] text-[#555] font-medium text-sm transition-all duration-300 border border-black/[0.06] shadow-sm"
+            > 
+              Demo ansehen
+            </button>
           </div>
         </section>
 
@@ -194,25 +197,24 @@ const Landingpage: React.FC = () => {
 
         {/* ═══ Stats bar ═══ */}
         <section className="max-w-6xl mx-auto px-6 pb-24">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
             <Stat value="47ms" label="Ladezeit (Cache)" delay={100} />
             <Stat value="6" label="Farbthemen" delay={200} />
             <Stat value="3 Klick" label="zu jedem Modul" delay={300} />
-            <Stat value="0" label="gespeicherte Daten" delay={400} />
           </div>
         </section>
 
         {/* ═══ Feature Rows ═══ */}
         <section className="max-w-6xl mx-auto px-6 pb-32 space-y-32">
           <FeatureRow
-            imagePath="/landing/performance.png"
+            imagePath="/landing/loading-screen.png"
             label="Performance"
             title="Sofort da"
             desc="Dank intelligentem Caching laden bereits besuchte Seiten in unter 50 Millisekunden. Kein Warten, kein Spinner - einfach weitermachen."
             delay={200}
           />
           <FeatureRow
-            imagePath="/landing/design.png"
+            imagePath="/landing/themes.png"
             label="Design"
             title="Für Menschen gemacht"
             desc="Dark Mode, sechs sorgfältig abgestimmte Farbthemen, klare Typografie und ein Interface, das sich wie moderne Software anfühlt - nicht wie ein Behördenformular."
@@ -236,7 +238,7 @@ const Landingpage: React.FC = () => {
                 Bereit für ein besseres Schulportal-Erlebnis?
               </h2>
               <p className="text-[#888] text-sm max-w-md mx-auto mb-8">
-                Keine Registrierung nötig. Einfach mit deinem bestehenden Account einloggen.
+                Einfach mit deinem bestehenden Account einloggen.
               </p>
               <button
                 onClick={() => navigate('/login')}
