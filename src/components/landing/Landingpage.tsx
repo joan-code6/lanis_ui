@@ -197,7 +197,7 @@ const Landingpage: React.FC = () => {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <Stat value="47ms" label="Ladezeit (Cache)" delay={100} />
             <Stat value="6" label="Farbthemen" delay={200} />
-            <Stat value="1 Klick" label="zu jedem Modul" delay={300} />
+            <Stat value="3 Klick" label="zu jedem Modul" delay={300} />
             <Stat value="0" label="gespeicherte Daten" delay={400} />
           </div>
         </section>
@@ -223,16 +223,8 @@ const Landingpage: React.FC = () => {
             imagePath="/landing/navigation.png"
             label="Navigation"
             title="Ohne Suchen finden"
-            desc="Statt durch verschachtelte Menüs zu klicken: Sidebar mit direktem Zugriff, globale Suche und anheftbare Module. Alles ist maximal einen Klick entfernt."
-            delay={400}
-          />
-          <FeatureRow
-            imagePath="/landing/privacy.png"
-            label="Datenschutz"
-            title="Keine Datenspeicherung"
-            desc="Lanis UI speichert keine deiner Daten. Alles läuft über den offiziellen Schulportal-Zugang. Wir sind nur die schönere Schicht darüber."
-            reversed
-            delay={500}
+            desc="Statt durch verschachtelte Menüs zu klicken: Sidebar mit direktem Zugriff, globale Suche und anheftbare Module. Alles ist maximal drei Klicke entfernt."
+            delay={400} 
           />
         </section>
 

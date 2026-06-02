@@ -124,12 +124,13 @@ const Messages: React.FC = () => {
       } else {
         setError('Fehler beim Laden der Nachrichten.');
       }
+      setIsLoading(false);
     } catch (error) {
       if (axios.isCancel(error)) return;
       console.error('Error loading messages:', error);
       setError('Fehler beim Laden der Nachrichten.');
-    } finally {
       setIsLoading(false);
+    } finally {
       setIsUpdating(false);
     }
   };

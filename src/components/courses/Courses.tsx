@@ -105,12 +105,13 @@ const Courses: React.FC = () => {
       } else {
         setError('Fehler beim Laden der Kurse.');
       }
+      setIsLoading(false);
     } catch (error) {
       if (axios.isCancel(error)) return;
       console.error('Error loading courses:', error);
       setError('Fehler beim Laden der Kurse.');
-    } finally {
       setIsLoading(false);
+    } finally {
       setIsUpdating(false);
     }
   };
@@ -134,11 +135,11 @@ const Courses: React.FC = () => {
       } else {
         setError('Fehler beim Laden der Kursdetails.');
       }
+      setIsLoading(false);
     } catch (error) {
       if (axios.isCancel(error)) return;
       console.error('Error loading course details:', error);
       setError('Fehler beim Laden der Kursdetails.');
-    } finally {
       setIsLoading(false);
     }
   };
@@ -157,10 +158,10 @@ const Courses: React.FC = () => {
       } else {
         setError('Fehler beim Laden der Eintragsdetails.');
       }
+      setIsLoading(false);
     } catch (error) {
       console.error('Error loading entry details:', error);
       setError('Fehler beim Laden der Eintragsdetails.');
-    } finally {
       setIsLoading(false);
     }
   };
@@ -179,10 +180,10 @@ const Courses: React.FC = () => {
       } else {
         setError('Fehler beim Laden der Wochenansicht.');
       }
+      setIsLoading(false);
     } catch (error) {
       console.error('Error loading weekly view:', error);
       setError('Fehler beim Laden der Wochenansicht.');
-    } finally {
       setIsLoading(false);
     }
   };
@@ -201,10 +202,10 @@ const Courses: React.FC = () => {
       } else {
         setError('Fehler beim Laden der Abgaben.');
       }
+      setIsLoading(false);
     } catch (error) {
       console.error('Error loading submissions:', error);
       setError('Fehler beim Laden der Abgaben.');
-    } finally {
       setIsLoading(false);
     }
   };
@@ -894,7 +895,23 @@ const Courses: React.FC = () => {
         </div>
       )}
 
-      {viewMode === 'weekly' && (
+      {viewMode === 'weekly' && isLoading && (
+        <div className="animate-pulse space-y-3">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="card">
+              <div className="flex items-center justify-between">
+                <div className="flex-1 space-y-2">
+                  <div className="h-4 bg-surface-300 dark:bg-surface-600 rounded w-1/3" />
+                  <div className="h-3 bg-surface-300 dark:bg-surface-600 rounded w-1/4" />
+                </div>
+                <div className="h-5 w-5 bg-surface-300 dark:bg-surface-600 rounded" />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {viewMode === 'weekly' && !isLoading && (
         <div className="space-y-4">
           {!weeklyEntries || weeklyEntries.length === 0 ? (
             <div className="text-center py-12">
@@ -927,7 +944,24 @@ const Courses: React.FC = () => {
         </div>
       )}
 
-      {viewMode === 'submissions' && (
+      {viewMode === 'submissions' && isLoading && (
+        <div className="animate-pulse space-y-3">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="card">
+              <div className="flex items-center justify-between">
+                <div className="flex-1 space-y-2">
+                  <div className="h-4 bg-surface-300 dark:bg-surface-600 rounded w-1/3" />
+                  <div className="h-3 bg-surface-300 dark:bg-surface-600 rounded w-2/3" />
+                  <div className="h-3 bg-surface-300 dark:bg-surface-600 rounded w-1/4" />
+                </div>
+                <div className="h-8 w-16 bg-surface-300 dark:bg-surface-600 rounded-lg" />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {viewMode === 'submissions' && !isLoading && (
         <div className="space-y-4">
           {!submissions || submissions.length === 0 ? (
             <div className="text-center py-12">

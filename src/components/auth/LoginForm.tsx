@@ -26,19 +26,22 @@ function normalize(text: string): string {
 function levenshtein(a: string, b: string): number {
   const m = a.length;
   const n = b.length;
-  const prev: number[] = Array(n + 1).fill(0);
+  if (m === 0) return n;
+  if (n === 0) return m;
+  let prev = new Uint16Array(n + 1);
+  let curr = new Uint16Array(n + 1);
   for (let j = 0; j <= n; j++) prev[j] = j;
   for (let i = 1; i <= m; i++) {
-    const curr: number[] = Array(n + 1);
     curr[0] = i;
+    const ai = a.charCodeAt(i - 1);
     for (let j = 1; j <= n; j++) {
-      curr[j] = Math.min(
-        prev[j] + 1,
-        curr[j - 1] + 1,
-        prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1),
-      );
+      const cost = ai === b.charCodeAt(j - 1) ? 0 : 1;
+      const d1 = prev[j] + 1;
+      const d2 = curr[j - 1] + 1;
+      const d3 = prev[j - 1] + cost;
+      curr[j] = d1 < d2 ? (d1 < d3 ? d1 : d3) : (d2 < d3 ? d2 : d3);
     }
-    for (let j = 0; j <= n; j++) prev[j] = curr[j];
+    [prev, curr] = [curr, prev];
   }
   return prev[n];
 }
@@ -89,6 +92,7 @@ const LoginForm: React.FC = () => {
   const [allDistricts, setAllDistricts] = useState<District[]>([]);
   const [selectedSchool, setSelectedSchool] = useState<School | null>(null);
   const [showSchoolDropdown, setShowSchoolDropdown] = useState(false);
+  const [resultTruncated, setResultTruncated] = useState(false);
   const schoolInputRef = useRef<HTMLInputElement>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -115,7 +119,7 @@ const LoginForm: React.FC = () => {
   const handleSchoolSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setSchoolSearch(value);
-    setShowSchoolDropdown(true);
+    setShowSchoolDropdown(value.trim().length >= 2);
     setSelectedSchool(null);
     setFormData((prev) => ({ ...prev, school_id: '' }));
   };
@@ -130,25 +134,33 @@ const LoginForm: React.FC = () => {
     return () => abortController.abort();
   }, []);
 
+  const MAX_RESULTS = 50;
+
   useEffect(() => {
-    const q = schoolSearch.trim();
-    const scored: { school: School & { district_id?: string; district_name?: string }; score: number }[] = [];
-    for (const district of allDistricts) {
-      for (const school of district.schools) {
-        if (q.length >= 2) {
+    const timer = setTimeout(() => {
+      const q = schoolSearch.trim();
+      if (q.length < 2) {
+        setSchoolResults([]);
+        return;
+      }
+      const scored: { school: School & { district_id?: string; district_name?: string }; score: number }[] = [];
+      for (const district of allDistricts) {
+        for (const school of district.schools) {
           const s1 = fuzzyScore(q, school.name);
           const s2 = fuzzyScore(q, school.location);
           const bestScore = Math.max(s1, s2);
           if (bestScore > 0) {
             scored.push({ school: { ...school, district_id: district.id, district_name: district.name }, score: bestScore });
           }
-        } else {
-          scored.push({ school: { ...school, district_id: district.id, district_name: district.name }, score: 0 });
         }
       }
-    }
-    scored.sort((a, b) => b.score - a.score);
-    setSchoolResults(scored.map(s => s.school));
+      scored.sort((a, b) => b.score - a.score);
+      setResultTruncated(scored.length > MAX_RESULTS);
+      const results = scored.slice(0, MAX_RESULTS);
+      setSchoolResults(results.map(s => s.school));
+    }, 150);
+
+    return () => clearTimeout(timer);
   }, [schoolSearch, allDistricts]);
 
   const handleSelectSchool = (school: School & { district_id?: string; district_name?: string }) => {
@@ -228,26 +240,33 @@ const LoginForm: React.FC = () => {
                 autoComplete="off"
                 ref={schoolInputRef}
                 required
-                onFocus={() => setShowSchoolDropdown(allDistricts.length > 0)}
+                onFocus={() => { if (schoolSearch.trim().length >= 2 && allDistricts.length > 0) setShowSchoolDropdown(true); }}
               />
               {showSchoolDropdown && allDistricts.length > 0 && (
                 <div className="absolute left-0 right-0 z-10 mt-1.5 bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-xl shadow-soft-lg max-h-60 overflow-y-auto">
                   {schoolResults.length === 0 ? (
                     <div className="px-4 py-3 text-surface-400 dark:text-surface-500 text-sm">Keine Schulen gefunden</div>
                   ) : (
-                    schoolResults.map((school, idx) => (
-                      <div
-                        key={school.id + idx}
-                        className="px-4 py-2.5 hover:bg-primary-50 dark:hover:bg-primary-950 cursor-pointer text-sm transition-colors first:rounded-t-xl last:rounded-b-xl"
-                        onMouseDown={e => { e.preventDefault(); handleSelectSchool(school); }}
-                      >
-                        <span className="font-medium text-surface-900 dark:text-surface-100">{school.name}</span>
-                        <span className="text-surface-400"> ({school.location})</span>
-                        {school.district_name && (
-                          <span className="ml-2 text-xs text-surface-400">{school.district_name}</span>
-                        )}
-                      </div>
-                    ))
+                    <>
+                      {schoolResults.map((school, idx) => (
+                        <div
+                          key={school.id + idx}
+                          className="px-4 py-2.5 hover:bg-primary-50 dark:hover:bg-primary-950 cursor-pointer text-sm transition-colors first:rounded-t-xl"
+                          onMouseDown={e => { e.preventDefault(); handleSelectSchool(school); }}
+                        >
+                          <span className="font-medium text-surface-900 dark:text-surface-100">{school.name}</span>
+                          <span className="text-surface-400"> ({school.location})</span>
+                          {school.district_name && (
+                            <span className="ml-2 text-xs text-surface-400">{school.district_name}</span>
+                          )}
+                        </div>
+                      ))}
+                      {resultTruncated && (
+                        <div className="px-4 py-2 text-xs text-surface-400 italic rounded-b-xl">
+                          Zeige die besten {MAX_RESULTS} Treffer. Bitte genauer suchen.
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               )}
