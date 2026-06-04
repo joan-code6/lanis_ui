@@ -74,6 +74,7 @@ const seedLocalStorage = () => {
         { Stunde: '6–7', Fach: 'Physik', Lehrkraft: 'Fr. Dr. Keller', Vertretung: '---', Raum: 'D17', Info: 'Ausfall' },
         { Stunde: '8–9', Fach: 'Sport', Lehrkraft: 'Hr. Wagner', Vertretung: 'Hr. Fischer', Raum: 'TH1', Info: 'Vertretung' },
       ],
+      date: '2025-06-04',
     }],
     selectedPlanIndex: 0,
     timestamp: Date.now(),
