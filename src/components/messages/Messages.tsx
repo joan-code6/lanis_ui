@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { messagesAPI } from '../../services/api';
+import { useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import { MessageHeader, Message, SearchResult, SendMessageRequest, ReplyMessageRequest } from '../../types';
 import SEO from '../seo/SEO';
@@ -21,6 +22,7 @@ import clsx from 'clsx';
 
 const Messages: React.FC = () => {
   const { token } = useAuth();
+  const [searchParams] = useSearchParams();
   const [messages, setMessages] = useState<MessageHeader[]>(() => {
     const cached = localStorage.getItem('messages_cache');
     return cached ? JSON.parse(cached) : [];
@@ -97,6 +99,13 @@ const Messages: React.FC = () => {
     loadMessages(abortController.signal);
     return () => abortController.abort();
   }, [token, messageType]);
+
+  useEffect(() => {
+    const conversationId = searchParams.get('conversation');
+    if (conversationId && token) {
+      loadConversation(conversationId);
+    }
+  }, [searchParams, token]);
 
   const loadMessages = async (signal?: AbortSignal) => {
     if (!token) return;

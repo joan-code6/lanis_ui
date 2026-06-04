@@ -267,7 +267,9 @@ const Dsbmobile: React.FC = () => {
               const filteredRows = showAllClasses
                 ? (table.rows || [])
                 : (table.rows ? table.rows.filter(row => findClassColumnAndMatch(row, table.headers)) : []);
-              const dateLabel = menuItems[selectedPlanIndex] || 'Vertretungen';
+              const dateLabel = table.date
+                ? new Date(table.date).toLocaleDateString('de-DE', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
+                : (menuItems[selectedPlanIndex] || 'Vertretungen');
               
               return (
                 <div key={tableIdx} className="card overflow-hidden">

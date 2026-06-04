@@ -404,6 +404,7 @@ export interface DSBPlanTable {
   caption: string;
   headers: string[];
   rows: Record<string, string>[] | string[][];
+  date?: string | null;
 }
 
 export interface DSBPlanResponse {

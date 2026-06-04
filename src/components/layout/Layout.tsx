@@ -13,17 +13,21 @@ import {
   Bars3Icon,
   XMarkIcon,
   ClipboardDocumentListIcon,
+  MagnifyingGlassIcon,
 } from '@heroicons/react/24/outline';
 import { Link, useLocation } from 'react-router-dom';
+import GlobalSearch from '../search/GlobalSearch';
 
 interface LayoutProps {
   children: React.ReactNode;
+  basePath?: string;
 }
 
-const Layout: React.FC<LayoutProps> = ({ children }) => {
+const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
   const { user, token, logout } = useAuth();
   const location = useLocation();
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
+  const [isSearchOpen, setIsSearchOpen] = React.useState(false);
   const [hasDsbModule, setHasDsbModule] = React.useState(false);
   const mainRef = React.useRef<HTMLElement>(null);
 
@@ -58,16 +62,27 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     return () => abortController.abort();
   }, [token]);
 
+  React.useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'f')) {
+        e.preventDefault();
+        setIsSearchOpen(prev => !prev);
+      }
+    };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, []);
+
   const baseNavigation = [
-    { name: 'Dashboard', href: '/dashboard', icon: HomeIcon },
-    { name: 'Nachrichten', href: '/messages', icon: ChatBubbleLeftRightIcon },
-    { name: 'Mein Unterricht', href: '/courses', icon: AcademicCapIcon },
-    { name: 'Kalender', href: '/calendar', icon: CalendarDaysIcon },
-    { name: 'Profil', href: '/profile', icon: UserIcon },
-    { name: 'Einstellungen', href: '/settings', icon: Cog6ToothIcon },
+    { name: 'Dashboard', href: `${basePath}/dashboard`, icon: HomeIcon },
+    { name: 'Nachrichten', href: `${basePath}/messages`, icon: ChatBubbleLeftRightIcon },
+    { name: 'Mein Unterricht', href: `${basePath}/courses`, icon: AcademicCapIcon },
+    { name: 'Kalender', href: `${basePath}/calendar`, icon: CalendarDaysIcon },
+    { name: 'Profil', href: `${basePath}/profile`, icon: UserIcon },
+    { name: 'Einstellungen', href: `${basePath}/settings`, icon: Cog6ToothIcon },
   ];
 
-  const dsbNavItem = hasDsbModule ? { name: 'Vertretungsplan', href: '/dsb', icon: ClipboardDocumentListIcon } : null;
+  const dsbNavItem = hasDsbModule ? { name: 'Vertretungsplan', href: `${basePath}/dsb`, icon: ClipboardDocumentListIcon } : null;
 
   const navigation = dsbNavItem ? [...baseNavigation.slice(0, 2), dsbNavItem, ...baseNavigation.slice(2)] : baseNavigation;
 
@@ -113,13 +128,20 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           <img src="/favicon/android-chrome-192x192.png" alt="Schulportal" className="h-7 w-7 rounded-lg" />
           <span className="text-sm font-semibold text-surface-900 dark:text-surface-100">Schulportal</span>
         </div>
-        <div className="w-9" />
+        <button
+          onClick={() => setIsSearchOpen(true)}
+          className="flex items-center justify-center h-9 w-9 rounded-lg text-surface-500 dark:text-surface-400 hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors"
+          title="Suche (Strg+K)"
+        >
+          <MagnifyingGlassIcon className="h-5 w-5" />
+        </button>
       </div>
       <main ref={mainRef} className="h-full overflow-y-auto pt-14 md:pt-0 md:ml-64 focus:outline-none">
         <div className="animate-fade-in">
           {children}
         </div>
       </main>
+      <GlobalSearch isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
     </div>
   );
 
@@ -134,6 +156,21 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               <p className="text-[11px] text-surface-500 dark:text-surface-400 font-medium tracking-wide uppercase">Hessen</p>
             </div>
           </div>
+        </div>
+
+        <div className="px-3 pb-2">
+          <button
+            onClick={() => setIsSearchOpen(true)}
+            className="nav-link w-full justify-between"
+          >
+            <div className="flex items-center gap-3">
+              <MagnifyingGlassIcon className="nav-link-icon text-surface-400 dark:text-surface-500" />
+              <span>Suche</span>
+            </div>
+            <kbd className="hidden md:inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium text-surface-400 dark:text-surface-500 bg-surface-50 dark:bg-surface-800 border border-surface-200 dark:border-surface-700">
+              Strg+K
+            </kbd>
+          </button>
         </div>
 
         <div className="flex-1 flex flex-col overflow-y-auto px-3 pb-4">

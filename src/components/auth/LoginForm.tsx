@@ -341,8 +341,6 @@ const LoginForm: React.FC = () => {
 
           <p className="text-center text-xs text-surface-400 leading-relaxed">
             Dies ist eine inoffizielle Benutzeroberfläche für das Schulportal Hessen.
-            <br />
-            Ihre Anmeldedaten werden sicher an die offiziellen Server übertragen.
           </p>
         </form>
       </div>
