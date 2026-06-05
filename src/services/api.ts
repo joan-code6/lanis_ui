@@ -140,6 +140,8 @@ import axios, { AxiosInstance } from 'axios';
 import {
   LoginRequest,
   LoginResponse,
+  TokenRefreshRequest,
+  TokenRefreshResponse,
   User,
   ModulesResponse,
   AppsResponse,
@@ -180,9 +182,69 @@ const apiClient: AxiosInstance = axios.create({
 });
 
 // Auth API
+const ACCESS_TOKEN_KEY = 'auth_access_token';
+const REFRESH_TOKEN_KEY = 'auth_refresh_token';
+const TOKEN_EXPIRES_KEY = 'auth_expires_at';
+
+function getAccessToken(): string | null {
+  return localStorage.getItem(ACCESS_TOKEN_KEY);
+}
+
+function getRefreshToken(): string | null {
+  return localStorage.getItem(REFRESH_TOKEN_KEY);
+}
+
+function isTokenExpiringSoon(thresholdMs: number = 5 * 60 * 1000): boolean {
+  const expiresAt = localStorage.getItem(TOKEN_EXPIRES_KEY);
+  if (!expiresAt) return true;
+  return Date.now() > parseInt(expiresAt, 10) - thresholdMs;
+}
+
+let refreshPromise: Promise<boolean> | null = null;
+
+async function refreshAccessToken(): Promise<boolean> {
+  const refreshTokenValue = getRefreshToken();
+  if (!refreshTokenValue) return false;
+
+  try {
+    const response = await apiClient.post<TokenRefreshResponse>('/auth/refresh', {
+      refresh_token: refreshTokenValue,
+    } as TokenRefreshRequest);
+
+    const expiresAt = Date.now() + response.data.expires_in * 1000;
+    localStorage.setItem(ACCESS_TOKEN_KEY, response.data.access_token);
+    localStorage.setItem(TOKEN_EXPIRES_KEY, expiresAt.toString());
+
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function ensureValidToken(): Promise<string | null> {
+  if (isTokenExpiringSoon()) {
+    // Deduplicate concurrent refresh calls
+    if (!refreshPromise) {
+      refreshPromise = refreshAccessToken().finally(() => {
+        refreshPromise = null;
+      });
+    }
+    const success = await refreshPromise;
+    if (!success) return null;
+  }
+  return getAccessToken();
+}
+
 export const authAPI = {
   async login(credentials: LoginRequest): Promise<LoginResponse> {
     const response = await apiClient.post<LoginResponse>('/login', credentials);
+    return response.data;
+  },
+
+  async refreshToken(refreshToken: string): Promise<TokenRefreshResponse> {
+    const response = await apiClient.post<TokenRefreshResponse>('/auth/refresh', {
+      refresh_token: refreshToken,
+    } as TokenRefreshRequest);
     return response.data;
   },
 
@@ -434,9 +496,10 @@ export const dsbAPI = {
   },
 };
 
-// Request interceptor - mock all API calls in demo mode
+// Request interceptor - mock all API calls in demo mode + auto-refresh token
 apiClient.interceptors.request.use(
-  (config) => {
+  async (config) => {
+    // Demo mode: mock all responses
     if (localStorage.getItem('__demo_mode') === '1' && window.location.pathname.startsWith('/demo')) {
       config.adapter = (mockConfig: any) => {
         const mock = getMockResponse(mockConfig.url || '', mockConfig.method || 'get', mockConfig);
@@ -449,7 +512,17 @@ apiClient.interceptors.request.use(
           request: {},
         });
       };
+      return config;
     }
+
+    // Auto-refresh access token if it has an X-Session-Token header
+    if (config.headers?.['X-Session-Token']) {
+      const freshToken = await ensureValidToken();
+      if (freshToken) {
+        config.headers['X-Session-Token'] = freshToken;
+      }
+    }
+
     return config;
   },
   (error) => {
@@ -457,15 +530,44 @@ apiClient.interceptors.request.use(
   }
 );
 
-// Response interceptor to handle errors globally
+// Response interceptor to handle 401 — try refresh once then redirect
 apiClient.interceptors.response.use(
   (response) => {
     return response;
   },
-  (error) => {
+  async (error) => {
     if (error.response?.status === 401 && localStorage.getItem('__demo_mode') !== '1') {
-      // Token expired or invalid - redirect to login
-      localStorage.removeItem('auth_token');
+      // Don't try to refresh if the request was already to /auth/refresh
+      const isRefreshRequest = error.config?.url === '/auth/refresh';
+
+      if (!isRefreshRequest) {
+        // Try refreshing the token once
+        const refreshTokenValue = getRefreshToken();
+        if (refreshTokenValue) {
+          try {
+            const refreshResponse = await apiClient.post<TokenRefreshResponse>('/auth/refresh', {
+              refresh_token: refreshTokenValue,
+            } as TokenRefreshRequest);
+
+            const expiresAt = Date.now() + refreshResponse.data.expires_in * 1000;
+            localStorage.setItem(ACCESS_TOKEN_KEY, refreshResponse.data.access_token);
+            localStorage.setItem(TOKEN_EXPIRES_KEY, expiresAt.toString());
+
+            // Retry the original request with the new token
+            if (error.config) {
+              error.config.headers['X-Session-Token'] = refreshResponse.data.access_token;
+              return apiClient.request(error.config);
+            }
+          } catch {
+            // Refresh failed, fall through to redirect
+          }
+        }
+      }
+
+      // Clear auth state and redirect to login
+      localStorage.removeItem(ACCESS_TOKEN_KEY);
+      localStorage.removeItem(REFRESH_TOKEN_KEY);
+      localStorage.removeItem(TOKEN_EXPIRES_KEY);
       localStorage.removeItem('auth_user');
       window.location.href = '/login';
     }

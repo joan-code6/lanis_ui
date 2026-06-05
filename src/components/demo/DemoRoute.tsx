@@ -20,6 +20,7 @@ const mockAuth = {
   user: mockUser,
   login: async () => true,
   logout: () => {},
+  refreshToken: async () => true,
 };
 
 const seedLocalStorage = () => {
