@@ -1,5 +1,7 @@
 import React from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { BasePathProvider } from '../../contexts/BasePathContext';
+import DemoBar from '../demo/DemoBar';
 import { appsAPI } from '../../services/api';
 import axios from 'axios';
 import {
@@ -90,11 +92,14 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
     logout();
   };
 
+  const isDemo = basePath === '/demo';
+
   return (
-    <div className="h-[100dvh] overflow-hidden relative bg-surface-50 dark:bg-surface-950">
+    <div className={'flex flex-col overflow-hidden bg-surface-50 dark:bg-surface-950 ' + (isDemo ? 'h-[calc(100dvh-40px)]' : 'h-[100dvh]')}>
+      {isDemo && <DemoBar />}
       {isSidebarOpen && (
-        <div className="fixed inset-0 flex z-40 md:hidden">
-          <div className="fixed inset-0 bg-surface-900/40 backdrop-blur-sm" onClick={() => setIsSidebarOpen(false)} />
+        <div className={'fixed inset-x-0 bottom-0 flex z-40 md:hidden ' + (isDemo ? 'top-10' : 'inset-0')}>
+          <div className={'fixed inset-x-0 bottom-0 bg-surface-900/40 backdrop-blur-sm ' + (isDemo ? 'top-10' : 'inset-0')} onClick={() => setIsSidebarOpen(false)} />
           <div className="relative flex-1 flex flex-col max-w-xs w-full bg-white dark:bg-surface-900 shadow-soft-lg animate-drawer-in">
             <div className="absolute top-0 right-0 -mr-12 pt-4">
               <button
@@ -110,13 +115,13 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
         </div>
       )}
 
-      <div className="hidden md:flex md:w-64 md:flex-col md:fixed md:inset-y-0">
+      <div className={'hidden md:flex md:w-64 md:flex-col md:fixed ' + (isDemo ? 'md:top-10 md:bottom-0' : 'md:inset-y-0')}>
         <div className="flex-1 flex flex-col min-h-0 bg-white dark:bg-surface-900 border-r border-surface-100 dark:border-surface-800">
           <SidebarContent navigation={navigation} />
         </div>
       </div>
 
-      <div className="md:hidden absolute top-0 inset-x-0 h-14 z-30 flex items-center justify-between px-4 bg-white/80 dark:bg-surface-900/80 backdrop-blur-md border-b border-surface-100 dark:border-surface-800">
+      <div className={'md:hidden absolute inset-x-0 h-14 z-30 flex items-center justify-between px-4 bg-white/80 dark:bg-surface-900/80 backdrop-blur-md border-b border-surface-100 dark:border-surface-800 ' + (isDemo ? 'top-10' : 'top-0')}>
         <button
           type="button"
           className="flex items-center justify-center h-9 w-9 rounded-lg text-surface-500 dark:text-surface-400 hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors"
@@ -136,10 +141,12 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
           <MagnifyingGlassIcon className="h-5 w-5" />
         </button>
       </div>
-      <main ref={mainRef} className="h-full overflow-y-auto pt-14 md:pt-0 md:ml-64 focus:outline-none">
-        <div className="animate-fade-in">
-          {children}
-        </div>
+      <main ref={mainRef} className="flex-1 min-h-0 overflow-y-auto md:ml-64 focus:outline-none pt-14 md:pt-0">
+        <BasePathProvider basePath={basePath}>
+          <div className="animate-fade-in">
+            {children}
+          </div>
+        </BasePathProvider>
       </main>
       <GlobalSearch isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
     </div>

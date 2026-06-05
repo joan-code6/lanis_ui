@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { useBasePath } from '../../contexts/BasePathContext';
 import { appsAPI } from '../../services/api';
 import axios from 'axios';
 import { Module } from '../../types';
@@ -28,6 +29,7 @@ interface CombinedModule {
 const Dashboard: React.FC = () => {
   const { token } = useAuth();
   const navigate = useNavigate();
+  const basePath = useBasePath();
   const [modules, setModules] = useState<CombinedModule[]>(() => {
     const cached = localStorage.getItem('modules_cache');
     return cached ? JSON.parse(cached) : [];
@@ -97,22 +99,22 @@ const Dashboard: React.FC = () => {
   const handleModuleClick = (module: CombinedModule) => {
     if (isEditMode) return;
     if (module.url.includes('/nachrichten.php')) {
-      navigate('/messages');
+      navigate(`${basePath}/messages`);
       return;
     }
     if (module.url.includes('/meinunterricht.php')) {
-      navigate('/courses');
+      navigate(`${basePath}/courses`);
       return;
     }
     if (module.url.includes('/kalender.php')) {
-      navigate('/calendar');
+      navigate(`${basePath}/calendar`);
       return;
     }
     if (module.url.toLowerCase().includes('dsb') ||
         module.name.toLowerCase().includes('dsb') ||
         module.name.toLowerCase().includes('vertretungsplan') ||
         module.url.toLowerCase().includes('vertretung')) {
-      navigate('/dsb');
+      navigate(`${basePath}/dsb`);
       return;
     }
     window.open(module.url, '_blank', 'noopener,noreferrer');
