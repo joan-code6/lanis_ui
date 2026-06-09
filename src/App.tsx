@@ -15,6 +15,7 @@ import Dsbmobile from './components/dsb/Dsbmobile';
 import DemoRoute from './components/demo/DemoRoute';
 import Landingpage from './components/landing/Landingpage';
 import Impressum from './components/legal/Impressum';
+import InstallPrompt from './components/pwa/InstallPrompt';
 
 const LandingRoot: React.FC = () => {
   const { isAuthenticated } = useAuth();
@@ -96,6 +97,7 @@ const App: React.FC = () => {
     <HelmetProvider>
       <ThemeProvider>
         <AuthProvider>
+          <InstallPrompt />
           <AppRoutes />
         </AuthProvider>
       </ThemeProvider>
