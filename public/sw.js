@@ -1,4 +1,13 @@
 const CACHE_NAME = 'lanis-ui-shell-v1'
+const OFFLINE_RESPONSE = () =>
+  new Response('Offline', {
+    status: 503,
+    statusText: 'Service Unavailable',
+    headers: {
+      'Content-Type': 'text/plain;charset=UTF-8',
+    },
+  })
+
 const PRECACHE_URLS = [
   '/',
   '/index.html',
@@ -12,9 +21,16 @@ const PRECACHE_URLS = [
   '/icon.webp',
 ]
 
+const logCacheError = (context, error) => {
+  console.error(`Service worker cache failed for ${context}:`, error)
+}
+
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(PRECACHE_URLS)),
+    caches
+      .open(CACHE_NAME)
+      .then((cache) => cache.addAll(PRECACHE_URLS))
+      .catch((error) => console.error('Service worker install failed:', error)),
   )
   self.skipWaiting()
 })
@@ -41,15 +57,25 @@ self.addEventListener('fetch', (event) => {
   const requestUrl = new URL(request.url)
 
   if (request.mode === 'navigate') {
-    event.respondWith(
-      fetch(request)
-        .then((response) => {
-          const responseClone = response.clone()
-          caches.open(CACHE_NAME).then((cache) => cache.put('/index.html', responseClone))
-          return response
-        })
-        .catch(() => caches.match('/index.html')),
-    )
+    event.respondWith((async () => {
+      try {
+        const response = await fetch(request)
+        event.waitUntil(
+          caches
+            .open(CACHE_NAME)
+            .then((cache) => cache.put('/index.html', response.clone()))
+            .catch((error) => logCacheError('/index.html', error)),
+        )
+        return response
+      } catch {
+        const cachedResponse = await caches.match('/index.html')
+        if (cachedResponse) {
+          return cachedResponse
+        }
+
+        return OFFLINE_RESPONSE()
+      }
+    })())
     return
   }
 
@@ -65,10 +91,22 @@ self.addEventListener('fetch', (event) => {
 
       return fetch(request).then((response) => {
         if (response.ok) {
-          const responseClone = response.clone()
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, responseClone))
+          event.waitUntil(
+            caches
+              .open(CACHE_NAME)
+              .then((cache) => cache.put(request, response.clone()))
+              .catch((error) => logCacheError(request.url, error)),
+          )
         }
         return response
+      }).catch(async (error) => {
+        console.error('Service worker fetch failed:', error)
+        const fallbackResponse = await caches.match('/index.html')
+        if (fallbackResponse) {
+          return fallbackResponse
+        }
+
+        return OFFLINE_RESPONSE()
       })
     }),
   )
