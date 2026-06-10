@@ -83,7 +83,12 @@ const Courses: React.FC = () => {
   }, [token, viewMode]);
 
   useEffect(() => {
-    if (!token || !courseIdFromUrl) return;
+    if (!token) return;
+    if (!courseIdFromUrl) {
+      setViewMode('overview');
+      setSelectedCourse(null);
+      return;
+    }
     const abortController = new AbortController();
     setViewMode('course-detail');
     setSelectedCourse(null);
