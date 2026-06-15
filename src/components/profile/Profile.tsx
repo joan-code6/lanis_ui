@@ -199,15 +199,8 @@ const Profile: React.FC = () => {
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium text-surface-600">Verschlüsselung</span>
-                  <span className={`badge text-xs ${
-                    userDetails?.encryption_ready === 'true' || userDetails?.encryption_ready === 'True'
-                      ? 'bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-300 border border-green-200 dark:border-green-800'
-                      : 'bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800'
-                  }`}>
-                    {userDetails?.encryption_ready === 'true' || userDetails?.encryption_ready === 'True'
-                      ? 'Aktiv'
-                      : 'Inaktiv'
-                    }
+                  <span className="badge bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-300 border border-green-200 dark:border-green-800 text-xs">
+                    Aktiv
                   </span>
                 </div>
                 <div className="flex items-center justify-between">

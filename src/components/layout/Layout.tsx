@@ -1,6 +1,7 @@
 import React from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { BasePathProvider } from '../../contexts/BasePathContext';
+import { useTheme } from '../../contexts/ThemeContext';
 import DemoBar from '../demo/DemoBar';
 import { appsAPI } from '../../services/api';
 import axios from 'axios';
@@ -19,6 +20,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { Link, useLocation } from 'react-router-dom';
 import GlobalSearch from '../search/GlobalSearch';
+import InstallPrompt from '../pwa/InstallPrompt';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -27,11 +29,37 @@ interface LayoutProps {
 
 const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
   const { user, token, logout } = useAuth();
+  const { themeColor } = useTheme();
   const location = useLocation();
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
   const [isSearchOpen, setIsSearchOpen] = React.useState(false);
   const [hasDsbModule, setHasDsbModule] = React.useState(false);
   const mainRef = React.useRef<HTMLElement>(null);
+  const pwaRef = React.useRef<any>(null);
+
+  const tintColors: Record<string, string> = {
+    cyan: '#06b6d4',
+    emerald: '#10b981',
+    sapphire: '#3b82f6',
+    amethyst: '#a855f7',
+    ruby: '#f43f5e',
+    amber: '#f59e0b',
+  };
+
+  React.useLayoutEffect(() => {
+    const el = pwaRef.current;
+    if (!el) return;
+    el.manualApple = true;
+    el.manualChrome = true;
+    el.useLocalStorage = true;
+    el.styles = { '--tint-color': tintColors[themeColor] };
+  }, []);
+
+  React.useEffect(() => {
+    const el = pwaRef.current;
+    if (!el) return;
+    el.styles = { '--tint-color': tintColors[themeColor] };
+  }, [themeColor]);
 
   React.useLayoutEffect(() => {
     mainRef.current?.scrollTo(0, 0);
@@ -149,6 +177,15 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
         </BasePathProvider>
       </main>
       <GlobalSearch isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
+      <pwa-install
+        ref={pwaRef}
+        manifest-url="/favicon/site.webmanifest"
+        name="Lanis"
+        icon="/favicon/android-chrome-192x192.png"
+        description="Moderne Benutzeroberfläche für das Schulportal Hessen"
+        install-description="Direkt vom Homescreen öffnen — wie eine echte App."
+      ></pwa-install>
+      <InstallPrompt />
     </div>
   );
 

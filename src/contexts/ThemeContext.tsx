@@ -61,6 +61,15 @@ const THEMES: Record<ThemeColor, ColorScale> = {
   },
 };
 
+const THEME_COLOR_HEX: Record<ThemeColor, string> = {
+  cyan: '#06b6d4',
+  emerald: '#10b981',
+  sapphire: '#3b82f6',
+  amethyst: '#a855f7',
+  ruby: '#f43f5e',
+  amber: '#f59e0b',
+};
+
 const SURFACE_LIGHT: ColorScale = {
   50: '250 250 250', 100: '245 245 245', 200: '229 229 229',
   300: '212 212 212', 400: '163 163 163', 500: '115 115 115',
@@ -125,6 +134,16 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   useEffect(() => {
     applyPrimaryTheme(themeColor);
   }, [themeColor]);
+
+  useEffect(() => {
+    let meta = document.querySelector('meta[name="theme-color"]');
+    if (!meta) {
+      meta = document.createElement('meta');
+      meta.setAttribute('name', 'theme-color');
+      document.head.appendChild(meta);
+    }
+    meta.setAttribute('content', isDark ? '#0a0a0a' : THEME_COLOR_HEX[themeColor]);
+  }, [themeColor, isDark]);
 
   return (
     <ThemeContext.Provider value={{ isDark, toggleDark, themeColor, setThemeColor }}>
