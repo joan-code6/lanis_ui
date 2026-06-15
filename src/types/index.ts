@@ -43,10 +43,21 @@ export interface LoginRequest {
 }
 
 export interface LoginResponse {
-  token: string;
+  access_token: string;
+  refresh_token: string;
   school_id: string;
   username: string;
   encryption_ready: boolean;
+  expires_in: number;
+}
+
+export interface TokenRefreshRequest {
+  refresh_token: string;
+}
+
+export interface TokenRefreshResponse {
+  access_token: string;
+  expires_in: number;
 }
 
 export interface User {
@@ -297,6 +308,7 @@ export interface AuthContextType {
   user: User | null;
   login: (credentials: LoginRequest) => Promise<boolean>;
   logout: () => void;
+  refreshToken: () => Promise<boolean>;
 }
 
 export interface HealthResponse {
