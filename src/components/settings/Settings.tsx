@@ -1,7 +1,12 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTheme, ThemeColor } from '../../contexts/ThemeContext';
-import { SunIcon, MoonIcon, CheckIcon } from '@heroicons/react/24/outline';
+import { SunIcon, MoonIcon, CheckIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
 import SEO from '../seo/SEO';
+import { getDeferredPrompt } from '../pwa/InstallPrompt';
+
+const isStandalone = () =>
+  window.matchMedia('(display-mode: standalone)').matches ||
+  (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
 
 const themeColors: { key: ThemeColor; label: string; hex: string }[] = [
   { key: 'emerald', label: 'Emerald', hex: '#10b981' },
@@ -14,6 +19,55 @@ const themeColors: { key: ThemeColor; label: string; hex: string }[] = [
 
 const Settings: React.FC = () => {
   const { isDark, toggleDark, themeColor, setThemeColor } = useTheme();
+  const [installStatus, setInstallStatus] = useState<'idle' | 'installed' | 'unsupported'>('unsupported');
+  const [ghostClicks, setGhostClicks] = useState(0);
+
+  useEffect(() => {
+    const prompt = getDeferredPrompt();
+
+    if (prompt) {
+      setInstallStatus('idle');
+      const el = document.querySelector('pwa-install') as PwaInstallElement | null;
+      const onInstalled = () => setInstallStatus('installed');
+      el?.addEventListener('pwa-install-success-event', onInstalled);
+      return () => {
+        el?.removeEventListener('pwa-install-success-event', onInstalled);
+      };
+    }
+
+    if (isStandalone()) {
+      setInstallStatus('installed');
+      return;
+    }
+
+    const el = document.querySelector('pwa-install') as PwaInstallElement | null;
+
+    const ua = window.navigator.userAgent;
+    const isIos = /iPad|iPhone|iPod/.test(ua);
+    const isFirefoxMobile = /android/i.test(ua) && /firefox/i.test(ua);
+    if (isIos || isFirefoxMobile) {
+      setInstallStatus('idle');
+    } else {
+      const timer = setTimeout(() => {
+        const el2 = document.querySelector('pwa-install') as PwaInstallElement | null;
+        if (el2?.isInstallAvailable || el2?.isAppleMobilePlatform || el2?.isAndroid) {
+          setInstallStatus('idle');
+        }
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+
+    const onInstalled = () => setInstallStatus('installed');
+    el?.addEventListener('pwa-install-success-event', onInstalled);
+    return () => {
+      el?.removeEventListener('pwa-install-success-event', onInstalled);
+    };
+  }, []);
+
+  const handleOpenInstall = () => {
+    const el = document.querySelector('pwa-install') as PwaInstallElement | null;
+    el?.showDialog(true);
+  };
 
   return (
     <div className="p-6 max-w-2xl mx-auto">
@@ -106,10 +160,77 @@ const Settings: React.FC = () => {
             <div className="flex gap-2">
               <button className="btn btn-primary text-xs px-3 py-2">Primär Button</button>
               <button className="btn btn-secondary text-xs px-3 py-2">Sekundär</button>
-              <button className="btn btn-ghost text-xs px-3 py-2">Ghost</button>
+              <button className="btn btn-ghost text-xs px-3 py-2" onClick={() => setGhostClicks(c => c + 1)}>Ghost</button>
             </div>
           </div>
         </div>
+
+        {/* App installieren */}
+        {installStatus !== 'unsupported' && (
+          <div className="card">
+          <div className="flex items-start gap-4">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary-50 text-primary-700 dark:bg-primary-950 dark:text-primary-300">
+              <ArrowDownTrayIcon className="h-5 w-5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <h3 className="text-base font-semibold text-surface-900 dark:text-surface-100">
+                {installStatus === 'installed'
+                  ? 'App installiert'
+                  : 'Lanis als App installieren'}
+              </h3>
+
+              {installStatus === 'installed' ? (
+                <p className="text-sm text-surface-500 mt-1">
+                  Lanis ist als App installiert und kann direkt vom Homescreen geöffnet werden.
+                </p>
+              ) : (
+                <>
+                  <p className="text-sm text-surface-500 mt-1">
+                    Für schnelleren Zugriff und ein App-ähnliches Erlebnis
+                    auf deinem Gerät installieren.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleOpenInstall}
+                    className="btn btn-primary mt-4"
+                  >
+                    Installieren
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+          </div>
+        )}
+
+        {ghostClicks >= 5 && (
+          <div className="card border-dashed border-primary-300/50 dark:border-primary-700/50 bg-primary-50/30 dark:bg-primary-950/20">
+            <h3 className="text-base font-semibold text-surface-900 dark:text-surface-100 mb-3">PWA Debug</h3>
+            <div className="text-xs font-mono text-surface-500 space-y-1">
+              {(() => {
+                const el = document.querySelector('pwa-install') as PwaInstallElement | null;
+                const rows: [string, unknown][] = el
+                  ? [
+                      ['_deferredPrompt', getDeferredPrompt() ? 'captured' : 'null'],
+                      ['isInstallAvailable', el.isInstallAvailable],
+                      ['isUnderStandaloneMode', el.isUnderStandaloneMode],
+                      ['isAppleMobilePlatform', el.isAppleMobilePlatform],
+                      ['isAppleDesktopPlatform', el.isAppleDesktopPlatform],
+                      ['isApple26Plus', el.isApple26Plus],
+                      ['isAndroid', el.isAndroid],
+                      ['isAndroidFallback', el.isAndroidFallback],
+                      ['isDialogHidden', el.isDialogHidden],
+                      ['userChoiceResult', el.userChoiceResult],
+                      ['platforms', el.platforms?.join(', ') || '-'],
+                    ]
+                  : [['element', 'not found'] as [string, unknown]];
+                return rows.map(([k, v]) => (
+                  <div key={k}><span className="font-medium">{k}:</span> {String(v)}</div>
+                ));
+              })()}
+            </div>
+          </div>
+        )}
 
         {/* Info */}
         <div className="text-center text-xs text-surface-400">
