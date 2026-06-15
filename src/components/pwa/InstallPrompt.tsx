@@ -19,8 +19,7 @@ const isStandaloneMode = () =>
 
 const isIosDevice = () => /iPad|iPhone|iPod/.test(window.navigator.userAgent);
 
-const isFirefoxAndroid = () =>
-  /android/i.test(window.navigator.userAgent) && /firefox/i.test(window.navigator.userAgent);
+const isAndroid = () => /android/i.test(window.navigator.userAgent);
 
 let _deferredPrompt: BeforeInstallPromptEvent | null = null;
 
@@ -32,7 +31,7 @@ window.addEventListener('beforeinstallprompt', (event) => {
 export const getDeferredPrompt = () => _deferredPrompt;
 
 const canBrowserInstall = () =>
-  _deferredPrompt !== null || isIosDevice() || isFirefoxAndroid();
+  _deferredPrompt !== null || isIosDevice() || isAndroid();
 
 const InstallPrompt: React.FC = () => {
   const location = useLocation();

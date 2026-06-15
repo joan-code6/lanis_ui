@@ -44,8 +44,8 @@ const Settings: React.FC = () => {
 
     const ua = window.navigator.userAgent;
     const isIos = /iPad|iPhone|iPod/.test(ua);
-    const isFirefoxMobile = /android/i.test(ua) && /firefox/i.test(ua);
-    if (isIos || isFirefoxMobile) {
+    const isAndroid = /android/i.test(ua);
+    if (isIos || isAndroid) {
       setInstallStatus('idle');
     } else {
       const timer = setTimeout(() => {
