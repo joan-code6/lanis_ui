@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useBasePath } from '../../contexts/BasePathContext';
 import { useNavigate, useParams } from 'react-router-dom';
 import { coursesAPI } from '../../services/api';
 import axios from 'axios';
@@ -44,6 +45,7 @@ const Courses: React.FC = () => {
   const { token } = useAuth();
   const navigate = useNavigate();
   const { id: courseIdFromUrl } = useParams();
+  const basePath = useBasePath();
   const [viewMode, setViewMode] = useState<ViewMode>('overview');
   // Cached courses state
   const [courses, setCourses] = useState<CourseEntry[]>(() => {
@@ -282,7 +284,7 @@ const Courses: React.FC = () => {
     if (viewMode === 'entry-detail') {
       setViewMode('course-detail');
     } else {
-      navigate('/courses');
+      navigate(`${basePath}/courses`);
     }
   };
 
@@ -425,7 +427,7 @@ const Courses: React.FC = () => {
               <div
                 key={course.book_id}
                 className="card card-hover"
-                onClick={() => navigate(`/courses/${course.book_id}`)}
+                onClick={() => navigate(`${basePath}/courses/${course.book_id}`)}
               >
                 <div className="flex items-center mb-4">
                   <div className="h-12 w-12 bg-primary-600 rounded-lg flex items-center justify-center">

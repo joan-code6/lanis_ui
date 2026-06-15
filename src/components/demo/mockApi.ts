@@ -2,6 +2,10 @@ const now = new Date();
 const fmt = (d: Date) => d.toISOString();
 const daysAgo = (n: number) => fmt(new Date(now.getTime() - n * 86400000));
 const hoursAgo = (n: number) => fmt(new Date(now.getTime() - n * 3600000));
+const daysFromNow = (n: number) => fmt(new Date(now.getTime() + n * 86400000));
+const hoursFromNow = (n: number) => fmt(new Date(now.getTime() + n * 3600000));
+const relDate = (daysOffset: number) => fmt(new Date(now.getTime() + daysOffset * 86400000)).slice(0, 10);
+const relDateTime = (daysOffset: number, time: string) => relDate(daysOffset) + 'T' + time;
 
 const mockUser = {
   username: 'max.mustermann',
@@ -68,11 +72,12 @@ const mockCourses = [
 ];
 
 const mockSubmissions = [
-  { id: 's1', title: 'Mathe-Klausur Q2', course: 'Mathematik GK', due_date: '2025-06-05T08:00:00', status: 'Anstehend', url: '' },
-  { id: 's2', title: 'Faust Essay', course: 'Deutsch LK', due_date: '2025-06-12T23:59:00', status: 'Ausstehend', url: '' },
-  { id: 's3', title: 'Hamlet Reading', course: 'Englisch GK', due_date: '2025-06-03T08:00:00', status: 'Abgegeben', url: '' },
-  { id: 's4', title: 'Physik Berechnungen', course: 'Physik LK', due_date: '2025-06-08T08:00:00', status: 'Anstehend', url: '' },
-  { id: 's5', title: 'Informatik BST', course: 'Informatik LK', due_date: '2025-06-15T23:59:00', status: 'Ausstehend', url: '' },
+  { id: 's1', title: 'Mathe-Klausur Q2', course: 'Mathematik GK', due_date: relDateTime(7, '08:00:00'), status: 'Anstehend', url: '' },
+  { id: 's2', title: 'Faust Essay', course: 'Deutsch LK', due_date: relDateTime(5, '23:59:00'), status: 'Ausstehend', url: '' },
+  { id: 's3', title: 'Hamlet Reading', course: 'Englisch GK', due_date: relDateTime(-2, '08:00:00'), status: 'Abgegeben', url: '' },
+  { id: 's4', title: 'Physik Berechnungen', course: 'Physik LK', due_date: relDateTime(14, '08:00:00'), status: 'Anstehend', url: '' },
+  { id: 's5', title: 'Informatik BST', course: 'Informatik LK', due_date: relDateTime(8, '23:59:00'), status: 'Ausstehend', url: '' },
+  { id: 's6', title: 'Geschichte Quellenanalyse', course: 'Geschichte GK', due_date: relDateTime(-1, '23:59:00'), status: 'Überfällig', url: '' },
 ];
 
 const mockCourseDetails: Record<string, any> = {
@@ -83,9 +88,11 @@ const mockCourseDetails: Record<string, any> = {
       { entry_id: 'b1e2', date: daysAgo(2), hours: '3–4', thema: 'Analysis: Ableitungen höherer Ordnung', homework: 'Arbeitsblatt 3 ausfüllen', homework_done: true, attendance: 'anwesend', files: [{ name: 'Arbeitsblatt_3.pdf', url: '/files/ab3.pdf' }], content: 'Einführung in Ableitungen höherer Ordnung und deren Anwendung bei der Kurvendiskussion.' },
       { entry_id: 'b1e3', date: daysAgo(4), hours: '1–2', thema: 'Analysis: Nullstellenberechnung', homework: '', homework_done: true, attendance: 'anwesend', files: [], content: 'Wiederholung der Nullstellenberechnung mit verschiedenen Verfahren.' },
       { entry_id: 'b1e4', date: daysAgo(7), hours: '5–6', thema: 'Analysis: Einführung Kurvendiskussion', homework: 'Seite 140 lesen', homework_done: true, attendance: 'anwesend', files: [], content: 'Erste Einführung in das Thema Kurvendiskussion.' },
+      { entry_id: 'b1e5', date: daysAgo(10), hours: '1–2', thema: 'Analysis: Grenzwerte und Stetigkeit', homework: 'Aufgaben 1–3 auf dem Arbeitsblatt', homework_done: true, attendance: 'anwesend', files: [{ name: 'Grenzwerte.pdf', url: '/files/grenzwerte.pdf' }, { name: 'Übungen_Stetigkeit.pdf', url: '/files/stetigkeit.pdf' }], content: 'Einführung in Grenzwerte von Funktionen und das Konzept der Stetigkeit.' },
+      { entry_id: 'b1e6', date: daysAgo(14), hours: '3–4', thema: 'Analysis: Wiederholung Differentialrechnung', homework: '', homework_done: true, attendance: 'entschuldigt', files: [], content: '' },
     ],
-    entry_count: 4,
-    exams: ['Klausur am 05.06.2026: Analysis'],
+    entry_count: 6,
+    exams: ['Klausur am ' + fmt(new Date(now.getTime() + 7 * 86400000)).slice(0, 10) + ': Analysis'],
     attendance_summary: { anwesend: '18', entschuldigt: '1', unentschuldigt: '0' },
   },
   'b2': {
@@ -94,9 +101,11 @@ const mockCourseDetails: Record<string, any> = {
       { entry_id: 'b2e1', date: daysAgo(1), hours: '1–3', thema: 'Faust I: Analyse des Osterspaziergangs', homework: 'Essay: Die Rolle des Erdgeists in Faust I', homework_done: true, attendance: 'anwesend', files: [], content: 'Ausführliche Analyse des Osterspaziergangs als Schlüsselszene.' },
       { entry_id: 'b2e2', date: daysAgo(3), hours: '4–5', thema: 'Faust I: Der Pakt mit Mephisto', homework: 'Szenenanalyse der Paktszene', homework_done: true, attendance: 'anwesend', files: [], content: 'Analyse der Paktszene zwischen Faust und Mephistopheles.' },
       { entry_id: 'b2e3', date: daysAgo(6), hours: '1–2', thema: 'Faust I: Einführung und Prolog', homework: 'Prolog im Himmel lesen', homework_done: true, attendance: 'anwesend', files: [{ name: 'Faust_Leseliste.pdf', url: '/files/faust.pdf' }], content: 'Einführung in die Lektüre. Besprechung des Prologs im Himmel.' },
+      { entry_id: 'b2e4', date: daysAgo(8), hours: '3–4', thema: 'Faust I: Studierzimmer-Szene', homework: 'Vergleich der beiden Seelen in Fausts Brust', homework_done: false, attendance: 'anwesend', files: [], content: 'Analyse der Studierzimmer-Szene. Diskussion von Fausts innerem Zwiespalt.' },
+      { entry_id: 'b2e5', date: daysAgo(12), hours: '5–6', thema: 'Literaturgeschichte: Sturm und Drang', homework: 'Referate vorbereiten', homework_done: true, attendance: 'anwesend', files: [{ name: 'Sturm_und_Drang.pdf', url: '/files/sturm.pdf' }], content: 'Überblick über die Epoche des Sturm und Drang mit Bezügen zu Goethes frühen Werken.' },
     ],
-    entry_count: 3,
-    exams: ['Klausur am 18.06.2026: Faust I'],
+    entry_count: 5,
+    exams: ['Klausur am ' + fmt(new Date(now.getTime() + 14 * 86400000)).slice(0, 10) + ': Faust I'],
     attendance_summary: { anwesend: '15', entschuldigt: '0', unentschuldigt: '0' },
   },
   'b3': {
@@ -104,9 +113,12 @@ const mockCourseDetails: Record<string, any> = {
     entries: [
       { entry_id: 'b3e1', date: daysAgo(2), hours: '3–4', thema: 'Shakespeare: Hamlet Act III — To be or not to be', homework: 'Read Act IV, Scene 1–3', homework_done: false, attendance: 'anwesend', files: [], content: 'Analyse des berühmten Monologs. Diskussion über Hamlets inneren Konflikt.' },
       { entry_id: 'b3e2', date: daysAgo(5), hours: '3–4', thema: 'Shakespeare: Hamlet Act II', homework: 'Summary of Act II', homework_done: true, attendance: 'entschuldigt', files: [], content: '' },
+      { entry_id: 'b3e3', date: daysAgo(8), hours: '1–2', thema: 'Shakespeare: Hamlet Act I — Characters', homework: 'Character sketch of Claudius', homework_done: true, attendance: 'anwesend', files: [], content: 'Einführung in die Charaktere des Stücks. Fokus auf Claudius und Gertrude.' },
+      { entry_id: 'b3e4', date: daysAgo(11), hours: '5–6', thema: 'Shakespeare: Elizabethan Theatre', homework: 'Worksheet: Globe Theatre', homework_done: true, attendance: 'anwesend', files: [{ name: 'Globe_Theatre.pdf', url: '/files/globe.pdf' }], content: 'Historischer Kontext zum elisabethanischen Theater und zur Aufführungspraxis.' },
+      { entry_id: 'b3e5', date: daysAgo(15), hours: '3–4', thema: 'Sonnet Analysis: Shakespeare\'s Sonnet 18', homework: 'Write your own sonnet', homework_done: false, attendance: 'fehlend', files: [], content: '' },
     ],
-    entry_count: 2,
-    exams: [],
+    entry_count: 5,
+    exams: ['Klausur am ' + fmt(new Date(now.getTime() + 21 * 86400000)).slice(0, 10) + ': Hamlet'],
     attendance_summary: { anwesend: '20', entschuldigt: '2', unentschuldigt: '0' },
   },
   'b4': {
@@ -114,10 +126,39 @@ const mockCourseDetails: Record<string, any> = {
     entries: [
       { entry_id: 'b4e1', date: daysAgo(3), hours: '1–2', thema: 'Quantenmechanik: Doppelspaltexperiment', homework: 'Berechnungen zum Doppelspaltexperiment', homework_done: false, attendance: 'anwesend', files: [], content: 'Durchführung und Analyse des Doppelspaltexperiments. Wellen-Teilchen-Dualismus.' },
       { entry_id: 'b4e2', date: daysAgo(6), hours: '5–6', thema: 'Quantenmechanik: Photoeffekt', homework: '', homework_done: true, attendance: 'anwesend', files: [{ name: 'Photoeffekt_Experiment.pdf', url: '/files/photo.pdf' }], content: 'Experimentelle Untersuchung des Photoeffekts.' },
+      { entry_id: 'b4e3', date: daysAgo(9), hours: '1–2', thema: 'Quantenmechanik: Heisenbergsche Unschärferelation', homework: 'Aufgaben zur Unschärferelation', homework_done: true, attendance: 'anwesend', files: [], content: 'Einführung in die Heisenbergsche Unschärferelation und ihre Bedeutung.' },
+      { entry_id: 'b4e4', date: daysAgo(13), hours: '3–4', thema: 'Atomphysik: Bohrsches Atommodell', homework: 'Energieniveaus berechnen', homework_done: true, attendance: 'anwesend', files: [{ name: 'Bohr_Atommodell.pdf', url: '/files/bohr.pdf' }], content: 'Wiederholung des Bohrschen Atommodells und der Energieniveaus.' },
+      { entry_id: 'b4e5', date: daysAgo(17), hours: '5–6', thema: 'Atomphysik: Absorption und Emission', homework: '', homework_done: true, attendance: 'unentschuldigt', files: [], content: '' },
     ],
-    entry_count: 2,
-    exams: ['Klausur am 25.06.2026: Quantenmechanik'],
+    entry_count: 5,
+    exams: ['Klausur am ' + fmt(new Date(now.getTime() + 21 * 86400000)).slice(0, 10) + ': Quantenmechanik'],
     attendance_summary: { anwesend: '12', entschuldigt: '0', unentschuldigt: '1' },
+  },
+  'b5': {
+    course_id: 'b5', course_name: 'Geschichte GK', semester: 'Q2/2. Halbjahr', teacher_short: 'Bg', teacher_full: 'Herr Thomas Bergmann',
+    entries: [
+      { entry_id: 'b5e1', date: daysAgo(4), hours: '1–2', thema: 'Weimarer Republik: Die Goldenen Zwanziger', homework: 'Quellenanalyse: Tagebucheintrag 1925', homework_done: true, attendance: 'anwesend', files: [], content: 'Besprechung der wirtschaftlichen und kulturellen Blütezeit der Weimarer Republik.' },
+      { entry_id: 'b5e2', date: daysAgo(6), hours: '3–4', thema: 'Weimarer Republik: Inflation 1923', homework: 'Schaubild zur Inflation analysieren', homework_done: true, attendance: 'anwesend', files: [{ name: 'Inflation_1923.pdf', url: '/files/inflation.pdf' }], content: 'Analyse der Hyperinflation von 1923 und ihrer sozialen Auswirkungen.' },
+      { entry_id: 'b5e3', date: daysAgo(9), hours: '1–2', thema: 'Weimarer Republik: Versailler Vertrag', homework: 'Karikaturenanalyse', homework_done: true, attendance: 'anwesend', files: [], content: 'Diskussion der Folgen des Versailler Vertrags für die Weimarer Republik.' },
+      { entry_id: 'b5e4', date: daysAgo(12), hours: '5–6', thema: 'Kaiserreich: Erster Weltkrieg', homework: 'Referate vorbereiten', homework_done: false, attendance: 'anwesend', files: [{ name: 'Weltkrieg_Verlauf.pdf', url: '/files/ww1.pdf' }], content: 'Zusammenfassung der Kriegsereignisse und der Kriegsschuldfrage.' },
+      { entry_id: 'b5e5', date: daysAgo(16), hours: '3–4', thema: 'Kaiserreich: Bismarck-Ära', homework: '', homework_done: true, attendance: 'entschuldigt', files: [], content: '' },
+    ],
+    entry_count: 5,
+    exams: ['Klausur am ' + fmt(new Date(now.getTime() + 10 * 86400000)).slice(0, 10) + ': Weimarer Republik'],
+    attendance_summary: { anwesend: '22', entschuldigt: '1', unentschuldigt: '0' },
+  },
+  'b6': {
+    course_id: 'b6', course_name: 'Informatik LK', semester: 'Q2/2. Halbjahr', teacher_short: 'Ch', teacher_full: 'Frau Dr. Laura Chen',
+    entries: [
+      { entry_id: 'b6e1', date: daysAgo(5), hours: '1–3', thema: 'Datenstrukturen: Binäre Suchbäume', homework: 'Implementierung eines BST in Java', homework_done: false, attendance: 'anwesend', files: [], content: 'Einführung in binäre Suchbäume: Eigenschaften, Operationen (Einfügen, Suchen, Löschen) und Traversierung.' },
+      { entry_id: 'b6e2', date: daysAgo(7), hours: '1–2', thema: 'Datenstrukturen: Bäume und Graphen', homework: 'Übungsblatt 4 bearbeiten', homework_done: true, attendance: 'anwesend', files: [{ name: 'Graphen_Einführung.pdf', url: '/files/graphen.pdf' }], content: 'Grundlagen der Graphentheorie: gerichtete/ungerichtete Graphen, Adjazenzmatrix, Adjazenzliste.' },
+      { entry_id: 'b6e3', date: daysAgo(10), hours: '3–4', thema: 'Algorithmen: Sortierverfahren', homework: 'Merge-Sort implementieren', homework_done: true, attendance: 'anwesend', files: [{ name: 'Sortierverfahren.pdf', url: '/files/sorting.pdf' }], content: 'Vergleich von Sortierverfahren: Bubble Sort, Selection Sort, Merge Sort, Quick Sort.' },
+      { entry_id: 'b6e4', date: daysAgo(13), hours: '1–2', thema: 'Algorithmen: Rekursion', homework: 'Rekursive Fibonacci-Funktion', homework_done: true, attendance: 'anwesend', files: [], content: 'Einführung in die rekursive Programmierung anhand von Beispielen.' },
+      { entry_id: 'b6e5', date: daysAgo(18), hours: '5–6', thema: 'Objektorientierung: Vererbung und Polymorphie', homework: '', homework_done: true, attendance: 'anwesend', files: [], content: 'Wiederholung der OOP-Konzepte Vererbung, Polymorphie und Interfaces.' },
+    ],
+    entry_count: 5,
+    exams: ['Klausur am ' + fmt(new Date(now.getTime() + 28 * 86400000)).slice(0, 10) + ': Datenstrukturen'],
+    attendance_summary: { anwesend: '14', entschuldigt: '0', unentschuldigt: '0' },
   },
 };
 
@@ -136,6 +177,111 @@ const mockEntryDetails: Record<string, any> = {
     date: daysAgo(2),
     attachments: [{ name: 'Arbeitsblatt_3.pdf', url: '/files/ab3.pdf' }],
   },
+  'b1e3': {
+    id: 'b1e3',
+    title: 'Analysis: Nullstellenberechnung',
+    content: '<p>Wiederholung der Nullstellenberechnung mit verschiedenen Verfahren:</p><ul><li>Quadratische Ergänzung</li><li>Mitternachtsformel</li><li>Polynomdivision</li><li>Substitutionsverfahren</li></ul><p>Anwendung auf Funktionen dritten und vierten Grades.</p>',
+    date: daysAgo(4),
+    attachments: [],
+  },
+  'b1e5': {
+    id: 'b1e5',
+    title: 'Analysis: Grenzwerte und Stetigkeit',
+    content: '<p>Einführung in die Grenzwertberechnung:</p><ul><li>Grenzwerte für x → ±∞</li><li>Rechts- und linksseitige Grenzwerte</li><li>Stetigkeit von Funktionen</li><li>Zwischenwertsatz</li></ul><p>Beispiele und Übungsaufgaben zur Vertiefung.</p>',
+    date: daysAgo(10),
+    attachments: [{ name: 'Grenzwerte.pdf', url: '/files/grenzwerte.pdf' }, { name: 'Übungen_Stetigkeit.pdf', url: '/files/stetigkeit.pdf' }],
+  },
+  'b2e1': {
+    id: 'b2e1',
+    title: 'Faust I: Analyse des Osterspaziergangs',
+    content: '<p>Ausführliche Analyse des Osterspaziergangs als Schlüsselszene (Vers 808–1177).</p><p>Schwerpunkte:</p><ul><li>Fausts Monolog und seine Weltsicht</li><li>Die Bedeutung des Osterfestes</li><li>Sprachliche Gestaltung und Metrik</li><li>Übergang zur Osterszene</li></ul><p>Der Osterspaziergang zeigt Fausts innere Zerrissenheit zwischen Verzweiflung und Lebensbejahung.</p>',
+    date: daysAgo(1),
+    attachments: [],
+  },
+  'b2e2': {
+    id: 'b2e2',
+    title: 'Faust I: Der Pakt mit Mephisto',
+    content: '<p>Analyse der Paktszene (Studierzimmer II, Verse 1770–1867).</p><ul><li>Die Wettbedingungen</li><li>Fausts und Mephistos Motive</li><li>Sprachliche Analyse des Paktes</li><li>Bezug zur heutigen Rezeption</li></ul>',
+    date: daysAgo(3),
+    attachments: [],
+  },
+  'b2e4': {
+    id: 'b2e4',
+    title: 'Faust I: Studierzimmer-Szene',
+    content: '<p>Analyse der Studierzimmer-Szene.</p><p>Im Mittelpunkt steht Fausts berühmter Monolog "Habe nun, ach! Philosophie, Juristerei und Medizin..." (Verse 354–385).</p><ul><li>Fausts intellektuelle Krise</li><li>Die berühmten "zwei Seelen" in Fausts Brust</li><li>Der Entschluss zum Selbstmord und die Rettung durch die Osterglocken</li></ul>',
+    date: daysAgo(8),
+    attachments: [],
+  },
+  'b3e1': {
+    id: 'b3e1',
+    title: 'Shakespeare: Hamlet Act III — To be or not to be',
+    content: '<p>Analyse des berühmten "To be or not to be"-Monologs (Act III, Scene 1).</p><ul><li>Existenzielle Fragen und Selbstreflexion</li><li>Der Konflikt zwischen Handeln und Zögern</li><li>Sprachliche Mittel: Metaphern, Antithesen</li><li>Bedeutung für die Charakterentwicklung Hamlets</li></ul>',
+    date: daysAgo(2),
+    attachments: [],
+  },
+  'b3e3': {
+    id: 'b3e3',
+    title: 'Shakespeare: Hamlet Act I — Characters',
+    content: '<p>Introduction to the main characters of Hamlet Act I.</p><ul><li>Claudius — the usurping king</li><li>Gertrude — Hamlet\'s mother</li><li>Polonius — the lord chamberlain</li><li>Ophelia and Laertes</li><li>King Hamlet\'s ghost</li></ul><p>Key themes: appearance vs. reality, grief, corruption.</p>',
+    date: daysAgo(8),
+    attachments: [],
+  },
+  'b4e1': {
+    id: 'b4e1',
+    title: 'Quantenmechanik: Doppelspaltexperiment',
+    content: '<p>Durchführung und Analyse des Doppelspaltexperiments.</p><p>Zentrale Erkenntnisse:</p><ul><li>Interferenzmuster bei Licht und Elektronen</li><li>Wellen-Teilchen-Dualismus</li><li>Die Rolle der Messung und Kollaps der Wellenfunktion</li><li>Bedeutung für das Verständnis der Quantenmechanik</li></ul>',
+    date: daysAgo(3),
+    attachments: [],
+  },
+  'b4e3': {
+    id: 'b4e3',
+    title: 'Quantenmechanik: Heisenbergsche Unschärferelation',
+    content: '<p>Einführung in die Heisenbergsche Unschärferelation.</p><ul><li>Δx · Δp ≥ ℏ/2</li><li>Orts-Impuls-Unschärfe</li><li>Energie-Zeit-Unschärfe</li><li>Philosophische und experimentelle Bedeutung</li></ul><p>Diskussion der Grenzen der Messbarkeit in der Quantenwelt.</p>',
+    date: daysAgo(9),
+    attachments: [],
+  },
+  'b5e1': {
+    id: 'b5e1',
+    title: 'Weimarer Republik: Die Goldenen Zwanziger',
+    content: '<p>Besprechung der wirtschaftlichen und kulturellen Blütezeit der Weimarer Republik (1924–1929).</p><ul><li>Wirtschaftliche Stabilisierung durch den Dawes-Plan</li><li>Kulturelle Entwicklungen: Bauhaus, Neue Sachlichkeit, expressionistischer Film</li><li>Gesellschaftlicher Wandel und die "Neue Frau"</li><li>Politische Radikalisierung am Ende der 1920er Jahre</li></ul>',
+    date: daysAgo(4),
+    attachments: [],
+  },
+  'b5e2': {
+    id: 'b5e2',
+    title: 'Weimarer Republik: Inflation 1923',
+    content: '<p>Analyse der Hyperinflation von 1923 und ihrer sozialen Auswirkungen.</p><ul><li>Ursachen der Inflation: Reparationen, Ruhrbesetzung, Geldmengenausweitung</li><li>Soziale Folgen: Verarmung der Mittelschicht, Spekulation</li><li>Die Währungsreform und die Einführung der Rentenmark</li></ul>',
+    date: daysAgo(6),
+    attachments: [{ name: 'Inflation_1923.pdf', url: '/files/inflation.pdf' }],
+  },
+  'b5e3': {
+    id: 'b5e3',
+    title: 'Weimarer Republik: Versailler Vertrag',
+    content: '<p>Diskussion der Folgen des Versailler Vertrags für die Weimarer Republik.</p><ul><li>Die Kriegsschuldthese (Artikel 231)</li><li>Gebietsabtretungen und Reparationen</li><li>Die Dolchstoßlegende</li><li>Auswirkungen auf die politische Stabilität der Weimarer Republik</li></ul>',
+    date: daysAgo(9),
+    attachments: [],
+  },
+  'b6e1': {
+    id: 'b6e1',
+    title: 'Datenstrukturen: Binäre Suchbäume',
+    content: '<p>Einführung in binäre Suchbäume (Binary Search Trees, BST).</p><p>Wichtige Operationen:</p><ul><li>Einfügen (insert): O(log n) im Durchschnitt</li><li>Suchen (search): O(log n) im Durchschnitt</li><li>Löschen (delete): O(log n) im Durchschnitt</li><li>Traversierung: In-Order, Pre-Order, Post-Order</li></ul><p>Implementierung in Java mit generischen Typen.</p>',
+    date: daysAgo(5),
+    attachments: [],
+  },
+  'b6e2': {
+    id: 'b6e2',
+    title: 'Datenstrukturen: Bäume und Graphen',
+    content: '<p>Grundlagen der Graphentheorie:</p><ul><li>Gerichtete vs. ungerichtete Graphen</li><li>Adjazenzmatrix und Adjazenzliste</li><li>Gewichtete und ungewichtete Graphen</li><li>Bäume als spezielle Graphen</li><li>Anwendungen: Routenplanung, soziale Netzwerke</li></ul>',
+    date: daysAgo(7),
+    attachments: [{ name: 'Graphen_Einführung.pdf', url: '/files/graphen.pdf' }],
+  },
+  'b6e3': {
+    id: 'b6e3',
+    title: 'Algorithmen: Sortierverfahren',
+    content: '<p>Vergleich von Sortierverfahren:</p><table><tr><th>Verfahren</th><th>Best-Case</th><th>Worst-Case</th></tr><tr><td>Bubble Sort</td><td>O(n)</td><td>O(n²)</td></tr><tr><td>Selection Sort</td><td>O(n²)</td><td>O(n²)</td></tr><tr><td>Merge Sort</td><td>O(n log n)</td><td>O(n log n)</td></tr><tr><td>Quick Sort</td><td>O(n log n)</td><td>O(n²)</td></tr></table><p>Implementierung von Merge-Sort als Hausaufgabe.</p>',
+    date: daysAgo(10),
+    attachments: [{ name: 'Sortierverfahren.pdf', url: '/files/sorting.pdf' }],
+  },
 };
 
 const mockCalendarCategories = [
@@ -147,14 +293,21 @@ const mockCalendarCategories = [
 ];
 
 const mockCalendarEvents = [
-  { id: 'ev1', title: 'Mathe-Klausur Q2', category: '1', category_name: 'Klausuren', category_color: '#dc2626', description: 'Klausur Analysis', start: '2025-06-05T08:00:00', end: '2025-06-05T09:30:00', all_day: false, new: '0', editable: false, properties: {}, raw: {} },
-  { id: 'ev2', title: 'Schulausflug Oberstufe', category: '2', category_name: 'Veranstaltungen', category_color: '#2563eb', description: 'Goethe-Haus + Senckenbergmuseum', start: '2025-06-20T08:00:00', end: '2025-06-20T16:00:00', all_day: true, new: '0', editable: false, properties: {}, raw: {} },
-  { id: 'ev3', title: 'Faust Essay Abgabe', category: '4', category_name: 'Abgaben', category_color: '#d97706', description: 'Essay Faust I', start: '2025-06-12T23:59:00', end: '2025-06-12T23:59:00', all_day: true, new: '0', editable: false, properties: {}, raw: {} },
-  { id: 'ev4', title: 'Sommerferien', category: '3', category_name: 'Ferien', category_color: '#059669', description: 'Sommerferien Hessen 2025', start: '2025-07-19T00:00:00', end: '2025-08-31T23:59:00', all_day: true, new: '0', editable: false, properties: {}, raw: {} },
-  { id: 'ev5', title: 'Fachkonferenz Mathe', category: '5', category_name: 'Konferenzen', category_color: '#7c3aed', description: 'Fachkonferenz Mathematik', start: '2025-06-10T14:00:00', end: '2025-06-10T16:00:00', all_day: false, new: '1', editable: false, properties: {}, raw: {} },
-  { id: 'ev6', title: 'Zeugnisausgabe', category: '2', category_name: 'Veranstaltungen', category_color: '#2563eb', description: 'Zeugnisausgabe in der Aula', start: '2025-07-18T10:00:00', end: '2025-07-18T11:00:00', all_day: false, new: '0', editable: false, properties: {}, raw: {} },
-  { id: 'ev7', title: 'Physik LK Klausur', category: '1', category_name: 'Klausuren', category_color: '#dc2626', description: 'Quantenmechanik', start: '2025-06-25T08:00:00', end: '2025-06-25T09:30:00', all_day: false, new: '1', editable: false, properties: {}, raw: {} },
-  { id: 'ev8', title: 'Elternsprechtag', category: '2', category_name: 'Veranstaltungen', category_color: '#2563eb', description: 'Elternsprechtag Q2', start: '2025-06-15T16:00:00', end: '2025-06-15T19:00:00', all_day: false, new: '0', editable: false, properties: {}, raw: {} },
+  { id: 'ev1', title: 'Mathe-Klausur Q2', category: '1', category_name: 'Klausuren', category_color: '#dc2626', description: '<p>Klausur zum Thema <strong>Analysis: Kurvendiskussion und Extremwertprobleme</strong>.</p><p>Der Stoff umfasst:</p><ul><li>Bestimmung von Extremwerten</li><li>Wendepunkte und Krümmungsverhalten</li><li>Grenzwerte und Verhalten im Unendlichen</li><li>Symmetrieeigenschaften</li></ul><p>Erlaubte Hilfsmittel: Taschenrechner (nicht programmierbar), Formelsammlung</p>', start: relDateTime(7, '08:00:00'), end: relDateTime(7, '09:30:00'), all_day: false, new: '1', editable: false, properties: { 'Fach': 'Mathematik GK', 'Lehrer': 'Dr. Heinrich Weber', 'Raum': 'A12', 'Dauer': '90 Minuten', 'Hilfsmittel': 'Taschenrechner, Formelsammlung' }, raw: {} },
+  { id: 'ev2', title: 'Schulausflug Oberstufe', category: '2', category_name: 'Veranstaltungen', category_color: '#2563eb', description: '<p>Der jährliche Schulausflug der Oberstufe (Q1–Q4).</p><p><strong>Programm:</strong></p><ul><li>Goethe-Haus (Frankfurt) — Führung durch Goethes Geburtshaus</li><li>Senckenbergmuseum — Naturkundliche Ausstellung mit Fokus auf Evolution</li></ul><p><strong>Abfahrt:</strong> 8:00 Uhr am Schulhof<br><strong>Rückkehr:</strong> ca. 16:00 Uhr</p><p>Bitte an wetterfeste Kleidung und Verpflegung denken.</p>', start: relDateTime(10, '08:00:00'), end: relDateTime(10, '16:00:00'), all_day: true, new: '0', editable: false, properties: { 'Ziel': 'Goethe-Haus + Senckenbergmuseum', 'Abfahrt': '08:00 Uhr', 'Rückkehr': 'ca. 16:00 Uhr', 'Klasse': 'Q1–Q4', 'Kosten': '12,00 € (Eintritt)' }, raw: {} },
+  { id: 'ev3', title: 'Faust Essay Abgabe', category: '4', category_name: 'Abgaben', category_color: '#d97706', description: '<p>Abgabe des Essays zum Thema <strong>"Die Rolle des Erdgeists in Faust I"</strong>.</p><p><strong>Anforderungen:</strong></p><ul><li>Umfang: 3–5 Seiten</li><li>Format: PDF</li><li>Abgabe über das Schulportal</li></ul>', start: relDateTime(5, '23:59:00'), end: relDateTime(5, '23:59:00'), all_day: true, new: '0', editable: false, properties: { 'Fach': 'Deutsch LK', 'Lehrer': 'Prof. Anna Reinhardt', 'Format': 'PDF', 'Umfang': '3–5 Seiten', 'Abgabeweg': 'Schulportal' }, raw: {} },
+  { id: 'ev4', title: 'Sommerferien 2026', category: '3', category_name: 'Ferien', category_color: '#059669', description: '<p>Sommerferien in Hessen 2026.</p><p>Letzter Schultag vor den Ferien: 18.07.2026<br>Erster Schultag nach den Ferien: 31.08.2026</p><p>Wir wünschen allen Schülerinnen und Schülern erholsame Ferien!</p>', start: relDateTime(40, '00:00:00'), end: relDateTime(83, '23:59:00'), all_day: true, new: '0', editable: false, properties: { 'Bundesland': 'Hessen', 'Letzter Schultag': relDate(40), 'Erster Schultag': relDate(84), 'Dauer': '6 Wochen' }, raw: {} },
+  { id: 'ev5', title: 'Fachkonferenz Mathe', category: '5', category_name: 'Konferenzen', category_color: '#7c3aed', description: '<p>Fachkonferenz Mathematik im Lehrerzimmer.</p><p><strong>Tagesordnung:</strong></p><ul><li>Ergebnisse der letzten Klausur</li><li>Planung des nächsten Schuljahres</li><li>Wahl der Lehrbücher für die E-Phase</li><li>Verschiedenes</li></ul>', start: relDateTime(3, '14:00:00'), end: relDateTime(3, '16:00:00'), all_day: false, new: '1', editable: false, properties: { 'Ort': 'Lehrerzimmer', 'Teilnehmer': 'Fachschaft Mathematik', 'Leitung': 'Dr. Heinrich Weber' }, raw: {} },
+  { id: 'ev6', title: 'Zeugnisausgabe', category: '2', category_name: 'Veranstaltungen', category_color: '#2563eb', description: '<p>Zeugnisausgabe für das 2. Halbjahr 2025/2026.</p><p><strong>Hinweise:</strong></p><ul><li>Die Ausgabe findet in der Aula statt</li><li>Bitte pünktlich erscheinen</li><li>Eltern sind ebenfalls willkommen</li></ul>', start: relDateTime(30, '10:00:00'), end: relDateTime(30, '11:00:00'), all_day: false, new: '0', editable: false, properties: { 'Ort': 'Aula', 'Datum': relDate(30), 'Uhrzeit': '10:00–11:00 Uhr', 'Klasse': 'Q2' }, raw: {} },
+  { id: 'ev7', title: 'Physik LK Klausur', category: '1', category_name: 'Klausuren', category_color: '#dc2626', description: '<p>Klausur zum Thema <strong>Quantenmechanik</strong>.</p><p><strong>Stoffgebiete:</strong></p><ul><li>Doppelspaltexperiment</li><li>Photoeffekt</li><li>Heisenbergsche Unschärferelation</li><li>Bohrsches Atommodell</li></ul><p>Erlaubte Hilfsmittel: Taschenrechner, Formelsammlung, selbsterstellte einseitige Notiz</p>', start: relDateTime(14, '08:00:00'), end: relDateTime(14, '09:30:00'), all_day: false, new: '1', editable: false, properties: { 'Fach': 'Physik LK', 'Lehrer': 'Dr. Sabine Keller', 'Raum': 'D17', 'Dauer': '90 Minuten', 'Hilfsmittel': 'Taschenrechner, Formelsammlung, Notiz' }, raw: {} },
+  { id: 'ev8', title: 'Elternsprechtag Q2', category: '2', category_name: 'Veranstaltungen', category_color: '#2563eb', description: '<p>Elternsprechtag für die Qualifikationsphase (Q2).</p><p>Sie haben die Möglichkeit, mit allen Fachlehrkräften Ihrer Kinder zu sprechen.</p><p><strong>Zeitfenster:</strong> 16:00–19:00 Uhr</p><p>Anmeldung im Sekretariat oder online über das Schulportal.</p>', start: relDateTime(2, '16:00:00'), end: relDateTime(2, '19:00:00'), all_day: false, new: '0', editable: false, properties: { 'Zielgruppe': 'Q2', 'Uhrzeit': '16:00–19:00 Uhr', 'Anmeldung': 'Sekretariat / Online', 'Raum': 'Aula + Fachräume' }, raw: {} },
+  { id: 'ev9', title: 'Deutsch LK Klausur', category: '1', category_name: 'Klausuren', category_color: '#dc2626', description: '<p>Klausur zum Thema <strong>Faust I</strong>.</p><ul><li>Osterspaziergang</li><li>Der Pakt mit Mephisto</li><li>Studierzimmer-Szene</li><li>Gattung: Dramenanalyse mit Erörterung</li></ul>', start: relDateTime(12, '08:00:00'), end: relDateTime(12, '11:00:00'), all_day: false, new: '0', editable: false, properties: { 'Fach': 'Deutsch LK', 'Lehrer': 'Prof. Anna Reinhardt', 'Raum': 'B05', 'Dauer': '180 Minuten' }, raw: {} },
+  { id: 'ev10', title: 'Geschichte GK Klausur', category: '1', category_name: 'Klausuren', category_color: '#dc2626', description: '<p>Klausur zum Thema <strong>Weimarer Republik</strong>.</p><p>Stoff: Versailler Vertrag, Inflation 1923, Goldene Zwanziger, Ende der Republik.</p>', start: relDateTime(9, '08:00:00'), end: relDateTime(9, '09:30:00'), all_day: false, new: '0', editable: false, properties: { 'Fach': 'Geschichte GK', 'Lehrer': 'Herr Thomas Bergmann', 'Raum': 'C03', 'Dauer': '90 Minuten' }, raw: {} },
+  { id: 'ev11', title: 'Informatik Projektabgabe', category: '4', category_name: 'Abgaben', category_color: '#d97706', description: '<p>Abgabe des Projekts <strong>"Binärer Suchbaum in Java"</strong>.</p><p>Das Projekt umfasst:</p><ul><li>Vollständige Implementierung eines BST</li><li>Unit-Tests mit JUnit</li><li>Dokumentation (JavaDoc)</li></ul>', start: relDateTime(8, '23:59:00'), end: relDateTime(8, '23:59:00'), all_day: true, new: '0', editable: false, properties: { 'Fach': 'Informatik LK', 'Lehrer': 'Frau Dr. Laura Chen', 'Abgabeweg': 'Schulportal', 'Format': 'ZIP (Quellcode + Dokumentation)' }, raw: {} },
+  { id: 'ev12', title: 'SV-Sitzung', category: '5', category_name: 'Konferenzen', category_color: '#7c3aed', description: '<p>Schülervertretungs-Sitzung zur Planung des Sommerfestes.</p><p><strong>Themen:</strong></p><ul><li>Planung Sommerfest 2026</li><li>Rückblick Projekttage</li><li>Wünsche und Anregungen</li></ul>', start: relDateTime(4, '13:30:00'), end: relDateTime(4, '15:00:00'), all_day: false, new: '0', editable: false, properties: { 'Ort': 'Raum 215', 'Teilnehmer': 'SV Q2', 'Leitung': 'Max Mustermann' }, raw: {} },
+  { id: 'ev13', title: 'Studientag', category: '3', category_name: 'Ferien', category_color: '#059669', description: '<p>Studientag — kein regulärer Unterricht.</p><p>Die Lehrkräfte nehmen an Fortbildungen teil. Die Schülerinnen und Schüler arbeiten eigenständig an Projekten oder haben frei.</p>', start: relDateTime(-3, '00:00:00'), end: relDateTime(-3, '23:59:00'), all_day: true, new: '0', editable: false, properties: { 'Art': 'Studientag', 'Unterricht': 'entfällt' }, raw: {} },
+  { id: 'ev14', title: 'Mündliche Prüfung Englisch', category: '1', category_name: 'Klausuren', category_color: '#dc2626', description: '<p>Mündliche Prüfung in Englisch (Abiturvorbereitung).</p><p>Sie erhalten einen unbekannten Text, den Sie analysieren und diskutieren müssen. Anschließend folgt ein Gespräch über ein zweites Prüfungsthema.</p><p><strong>Dauer:</strong> ca. 20 Minuten + 20 Minuten Vorbereitung</p>', start: relDateTime(15, '09:00:00'), end: relDateTime(15, '12:00:00'), all_day: false, new: '0', editable: false, properties: { 'Fach': 'Englisch GK', 'Prüfer': "James O'Connor", 'Raum': 'B12', 'Dauer': '20 Min. + 20 Min. Vorbereitung' }, raw: {} },
+  { id: 'ev15', title: 'Sporttag Q2', category: '2', category_name: 'Veranstaltungen', category_color: '#2563eb', description: '<p>Sporttag der Q2 in der Sportanlage Nord.</p><p><strong>Angebotene Sportarten:</strong></p><ul><li>Fußball (Turnier)</li><li>Volleyball</li><li>Leichtathletik</li><li>Badminton</li></ul><p>Bitte Sportkleidung und Handtuch mitbringen.</p>', start: relDateTime(13, '08:00:00'), end: relDateTime(13, '15:00:00'), all_day: false, new: '0', editable: false, properties: { 'Ort': 'Sportanlage Nord', 'Klasse': 'Q2', 'Sportarten': 'Fußball, Volleyball, Leichtathletik, Badminton' }, raw: {} },
 ];
 
 const mockDsbData = {
@@ -170,7 +323,7 @@ const mockDsbData = {
       { Stunde: '6–7', Fach: 'Physik', Lehrkraft: 'Fr. Dr. Keller', Vertretung: '---', Raum: 'D17', Info: 'Ausfall' },
       { Stunde: '8–9', Fach: 'Sport', Lehrkraft: 'Hr. Wagner', Vertretung: 'Hr. Fischer', Raum: 'TH1', Info: 'Vertretung' },
     ],
-    date: '2025-06-04',
+    date: relDate(0),
   }],
 };
 
@@ -227,13 +380,13 @@ export function getMockResponse(url: string, method: string, config: any): { dat
     return { status: 200, data: { success: true, entry: { id: 'unknown', title: 'Eintrag', content: '<p>Keine Details verfügbar.</p>', date: fmt(new Date()), attachments: [] } } };
   }
   if (u === '/meinunterricht/weekly' && method === 'get') {
-    return { status: 200, data: { success: true, week: { start_date: '2025-06-02', entries: [
-      { date: '2025-06-02', course: 'Mathematik GK', entry: 'Kurvendiskussion', url: '' },
-      { date: '2025-06-03', course: 'Deutsch LK', entry: 'Faust I', url: '' },
-      { date: '2025-06-03', course: 'Englisch GK', entry: 'Hamlet Act III', url: '' },
-      { date: '2025-06-04', course: 'Physik LK', entry: 'Doppelspaltexperiment', url: '' },
-      { date: '2025-06-05', course: 'Geschichte GK', entry: 'Weimarer Republik', url: '' },
-      { date: '2025-06-05', course: 'Mathematik GK', entry: 'Klausur', url: '' },
+    return { status: 200, data: { success: true, week: { start_date: relDate(-3), entries: [
+      { date: relDate(-3), course: 'Mathematik GK', entry: 'Kurvendiskussion', url: '' },
+      { date: relDate(-2), course: 'Deutsch LK', entry: 'Faust I', url: '' },
+      { date: relDate(-2), course: 'Englisch GK', entry: 'Hamlet Act III', url: '' },
+      { date: relDate(-1), course: 'Physik LK', entry: 'Doppelspaltexperiment', url: '' },
+      { date: relDate(0), course: 'Geschichte GK', entry: 'Weimarer Republik', url: '' },
+      { date: relDate(0), course: 'Mathematik GK', entry: 'Klausur', url: '' },
     ] } } };
   }
   if (u === '/meinunterricht/submissions' && method === 'get') { return { status: 200, data: { success: true, submissions: mockSubmissions } }; }
@@ -264,7 +417,10 @@ export function getMockResponse(url: string, method: string, config: any): { dat
   if (u.startsWith('/kalender/event/') && method === 'get') {
     const eventId = u.split('/')[3]?.split('?')[0];
     const event = mockCalendarEvents.find(e => e.id === eventId);
-    return { status: 200, data: { success: true, event: event ? { ...event } : {}, filters: { event_id: eventId || '', view_id: '' } } };
+    if (event) {
+      return { status: 200, data: { success: true, event: { ...event }, filters: { event_id: eventId || '', view_id: '' } } };
+    }
+    return { status: 200, data: { success: true, event: mockCalendarEvents[0], filters: { event_id: eventId || '', view_id: '' } } };
   }
 
   // DSB

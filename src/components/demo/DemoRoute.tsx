@@ -20,10 +20,14 @@ const mockAuth = {
   user: mockUser,
   login: async () => true,
   logout: () => {},
+  refreshToken: async () => true,
 };
 
 const seedLocalStorage = () => {
   localStorage.setItem('__demo_mode', '1');
+
+  const now = new Date();
+  const daysAgo = (n: number) => new Date(now.getTime() - n * 86400000).toISOString();
 
   const modules = [
     { name: 'Mein Unterricht', url: 'https://schulportal.hessen.de/meinunterricht.php', color: '#4f46e5', logo: 'fa fa-files-o', folders: ['Schule'], target: '_self' },
@@ -39,27 +43,25 @@ const seedLocalStorage = () => {
   localStorage.setItem('pinned_modules', JSON.stringify(['Klassenbuch', 'Notenübersicht']));
 
   const messages = [
-    { Id: 'demo-msg-001', Uniquid: 'demo-uq-001', Sender: 'Herr Müller', Betreff: 'Klausur am Freitag — Wichtige Informationen', Papierkorb: '0', private: 0, WeitereEmpfaenger: '', empf: ['max.mustermann'], unread: true, date: '2025-06-01T10:00:00' },
-    { Id: 'demo-msg-002', Uniquid: 'demo-uq-002', Sender: 'Frau Schmidt', Betreff: 'Projektabgabe verlängert', Papierkorb: '0', private: 0, WeitereEmpfaenger: '', empf: ['max.mustermann'], unread: false, read: true, date: '2025-05-28T14:30:00' },
-    { Id: 'demo-msg-003', Uniquid: 'demo-uq-003', Sender: 'Schulleitung', Betreff: 'Wichtige Mitteilung: Schulausflug', Papierkorb: '0', private: 0, WeitereEmpfaenger: '', empf: ['max.mustermann'], unread: true, date: '2025-05-25T08:00:00' },
-    { Id: 'demo-msg-004', Uniquid: 'demo-uq-004', Sender: 'Hr. Dr. Weber', Betreff: 'Sprechstunde diese Woche', Papierkorb: '0', private: 0, WeitereEmpfaenger: '', empf: ['max.mustermann'], unread: false, read: true, date: '2025-05-22T16:00:00' },
-    { Id: 'demo-msg-005', Uniquid: 'demo-uq-005', Sender: 'Sekretariat', Betreff: 'Zeugnisausgabe', Papierkorb: '0', private: 0, WeitereEmpfaenger: '', empf: ['max.mustermann'], unread: true, date: '2025-05-20T09:00:00' },
+    { Id: 'dm-1', Uniquid: 'uq-1', Sender: 'Herr Müller', Betreff: 'Klausur am Freitag — Wichtige Informationen', Papierkorb: '0', private: 0, WeitereEmpfaenger: '', empf: ['max.mustermann'], unread: true, date: daysAgo(1) },
+    { Id: 'dm-2', Uniquid: 'uq-2', Sender: 'Frau Schmidt', Betreff: 'Projektabgabe verlängert', Papierkorb: '0', private: 0, WeitereEmpfaenger: '', empf: ['max.mustermann'], unread: false, read: true, date: daysAgo(3) },
+    { Id: 'dm-3', Uniquid: 'uq-3', Sender: 'Schulleitung', Betreff: 'Wichtige Mitteilung: Schulausflug', Papierkorb: '0', private: 0, WeitereEmpfaenger: '', empf: ['max.mustermann'], unread: true, date: daysAgo(5) },
+    { Id: 'dm-4', Uniquid: 'uq-4', Sender: 'Hr. Dr. Weber', Betreff: 'Sprechstunde diese Woche', Papierkorb: '0', private: 0, WeitereEmpfaenger: '', empf: ['max.mustermann'], unread: false, read: true, date: daysAgo(7) },
+    { Id: 'dm-5', Uniquid: 'uq-5', Sender: 'Sekretariat', Betreff: 'Zeugnisausgabe', Papierkorb: '0', private: 0, WeitereEmpfaenger: '', empf: ['max.mustermann'], unread: true, date: daysAgo(10) },
   ];
   localStorage.setItem('messages_cache', JSON.stringify(messages));
 
   const courses = [
-    { entry_id: 'demo-e1', book_id: 'demo-b1', name: 'Mathematik GK', course_link: 'https://schulportal.hessen.de/courses/1', teacher_full_name: 'Dr. Heinrich Weber', teacher_short: 'Wb', teacher_message_link: '', thema: 'Analysis: Kurvendiskussion und Extremwertprobleme', datum: '2025-06-02T08:00:00', homework: 'Aufgaben 1–5 auf Seite 142', homework_done: false },
-    { entry_id: 'demo-e2', book_id: 'demo-b2', name: 'Deutsch LK', course_link: 'https://schulportal.hessen.de/courses/2', teacher_full_name: 'Prof. Anna Reinhardt', teacher_short: 'Re', teacher_message_link: '', thema: 'Faust I: Analyse des Osterspaziergangs', datum: '2025-06-01T10:45:00', homework: 'Essay: Die Rolle des Erdgeists in Faust I', homework_done: true },
-    { entry_id: 'demo-e3', book_id: 'demo-b3', name: 'Englisch GK', course_link: 'https://schulportal.hessen.de/courses/3', teacher_full_name: "James O'Connor", teacher_short: "O'C", teacher_message_link: '', thema: 'Shakespeare: Hamlet Act III — To be or not to be', datum: '2025-05-31T09:00:00', homework: 'Read Act IV, Scene 1–3', homework_done: false },
-    { entry_id: 'demo-e4', book_id: 'demo-b4', name: 'Physik LK', course_link: 'https://schulportal.hessen.de/courses/4', teacher_full_name: 'Dr. Sabine Keller', teacher_short: 'Kl', teacher_message_link: '', thema: 'Quantenmechanik: Doppelspaltexperiment', datum: '2025-05-30T11:30:00', homework: 'Berechnungen zum Doppelspaltexperiment', homework_done: false },
-    { entry_id: 'demo-e5', book_id: 'demo-b5', name: 'Geschichte GK', course_link: 'https://schulportal.hessen.de/courses/5', teacher_full_name: 'Herr Thomas Bergmann', teacher_short: 'Bg', teacher_message_link: '', thema: 'Weimarer Republik: Die Goldenen Zwanziger', datum: '2025-05-29T13:00:00', homework: 'Quellenanalyse: Tagebucheintrag 1925', homework_done: true },
-    { entry_id: 'demo-e6', book_id: 'demo-b6', name: 'Informatik LK', course_link: 'https://schulportal.hessen.de/courses/6', teacher_full_name: 'Frau Dr. Laura Chen', teacher_short: 'Ch', teacher_message_link: '', thema: 'Datenstrukturen: Binäre Suchbäume', datum: '2025-05-28T08:00:00', homework: 'Implementierung eines BST in Java', homework_done: false },
+    { entry_id: 'e1', book_id: 'b1', name: 'Mathematik GK', course_link: 'https://schulportal.hessen.de/courses/1', teacher_full_name: 'Dr. Heinrich Weber', teacher_short: 'Wb', teacher_message_link: '', thema: 'Analysis: Kurvendiskussion und Extremwertprobleme', datum: daysAgo(0), homework: 'Aufgaben 1–5 auf Seite 142', homework_done: false },
+    { entry_id: 'e2', book_id: 'b2', name: 'Deutsch LK', course_link: 'https://schulportal.hessen.de/courses/2', teacher_full_name: 'Prof. Anna Reinhardt', teacher_short: 'Re', teacher_message_link: '', thema: 'Faust I: Analyse des Osterspaziergangs', datum: daysAgo(1), homework: 'Essay: Die Rolle des Erdgeists in Faust I', homework_done: true },
+    { entry_id: 'e3', book_id: 'b3', name: 'Englisch GK', course_link: 'https://schulportal.hessen.de/courses/3', teacher_full_name: "James O'Connor", teacher_short: "O'C", teacher_message_link: '', thema: 'Shakespeare: Hamlet Act III — To be or not to be', datum: daysAgo(2), homework: 'Read Act IV, Scene 1–3', homework_done: false },
+    { entry_id: 'e4', book_id: 'b4', name: 'Physik LK', course_link: 'https://schulportal.hessen.de/courses/4', teacher_full_name: 'Dr. Sabine Keller', teacher_short: 'Kl', teacher_message_link: '', thema: 'Quantenmechanik: Doppelspaltexperiment', datum: daysAgo(3), homework: 'Berechnungen zum Doppelspaltexperiment', homework_done: false },
+    { entry_id: 'e5', book_id: 'b5', name: 'Geschichte GK', course_link: 'https://schulportal.hessen.de/courses/5', teacher_full_name: 'Herr Thomas Bergmann', teacher_short: 'Bg', teacher_message_link: '', thema: 'Weimarer Republik: Die Goldenen Zwanziger', datum: daysAgo(4), homework: 'Quellenanalyse: Tagebucheintrag 1925', homework_done: true },
+    { entry_id: 'e6', book_id: 'b6', name: 'Informatik LK', course_link: 'https://schulportal.hessen.de/courses/6', teacher_full_name: 'Frau Dr. Laura Chen', teacher_short: 'Ch', teacher_message_link: '', thema: 'Datenstrukturen: Binäre Suchbäume', datum: daysAgo(5), homework: 'Implementierung eines BST in Java', homework_done: false },
   ];
   localStorage.setItem('courses_cache', JSON.stringify(courses));
 
   localStorage.setItem('profile_cache', JSON.stringify(mockUser));
-  localStorage.setItem('auth_token', mockAuth.token);
-  localStorage.setItem('auth_user', JSON.stringify(mockUser));
 
   const dsbPlan = {
     menuItems: ['Heute', 'Morgen', 'Übermorgen'],
@@ -74,7 +76,7 @@ const seedLocalStorage = () => {
         { Stunde: '6–7', Fach: 'Physik', Lehrkraft: 'Fr. Dr. Keller', Vertretung: '---', Raum: 'D17', Info: 'Ausfall' },
         { Stunde: '8–9', Fach: 'Sport', Lehrkraft: 'Hr. Wagner', Vertretung: 'Hr. Fischer', Raum: 'TH1', Info: 'Vertretung' },
       ],
-      date: '2025-06-04',
+      date: daysAgo(0).slice(0, 10),
     }],
     selectedPlanIndex: 0,
     timestamp: Date.now(),
@@ -93,11 +95,6 @@ const DemoRoute: React.FC = () => {
   return (
     <AuthContext.Provider value={mockAuth}>
       <Layout basePath="/demo">
-        <div className="sticky top-0 z-30 bg-amber-50 dark:bg-amber-950 border-b border-amber-200 dark:border-amber-800 px-4 py-1.5 text-center">
-          <span className="text-xs font-medium text-amber-700 dark:text-amber-300">
-            Demo-Modus — Alle Daten sind Platzhalter
-          </span>
-        </div>
         <Outlet />
       </Layout>
     </AuthContext.Provider>
