@@ -496,6 +496,35 @@ export const dsbAPI = {
   },
 };
 
+// Semantic Search API
+export interface SemanticSearchResult {
+  id: string;
+  category: string;
+  title: string;
+  subtitle: string;
+  href: string;
+  icon: string;
+  score: number;
+}
+
+export interface SemanticSearchResponse {
+  success: boolean;
+  query: string;
+  results: SemanticSearchResult[];
+  count: number;
+}
+
+export const searchAPI = {
+  async semanticSearch(token: string, query: string, topK: number = 20, signal?: AbortSignal): Promise<SemanticSearchResponse> {
+    const response = await apiClient.get<SemanticSearchResponse>('/search/semantic', {
+      headers: { 'X-Session-Token': token },
+      params: { q: query, top_k: topK },
+      signal,
+    });
+    return response.data;
+  },
+};
+
 // Request interceptor - mock all API calls in demo mode + auto-refresh token
 apiClient.interceptors.request.use(
   async (config) => {

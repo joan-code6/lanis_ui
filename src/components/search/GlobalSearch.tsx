@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { messagesAPI, calendarAPI, coursesAPI, appsAPI } from '../../services/api';
+import { messagesAPI, calendarAPI, coursesAPI, appsAPI, searchAPI } from '../../services/api';
+import type { SemanticSearchResult } from '../../services/api';
 import {
   MagnifyingGlassIcon,
   HomeIcon,
@@ -11,7 +12,6 @@ import {
   UserIcon,
   Cog6ToothIcon,
   ClipboardDocumentListIcon,
-  ArrowRightIcon,
   ArrowPathIcon,
 } from '@heroicons/react/24/outline';
 
@@ -222,27 +222,31 @@ export default function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout>>();
-  const deepTimerRef = useRef<ReturnType<typeof setTimeout>>();
   const abortedRef = useRef(false);
 
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
-  const [tier, setTier] = useState<0 | 1 | 2 | 3>(0); // 0=idle 1=cache 2=api-loading 3=api-done
+  const [tier, setTier] = useState<0 | 1 | 2 | 3>(0);
   const [apiResults, setApiResults] = useState<SearchItem[]>([]);
-  const [deepResults, setDeepResults] = useState<SearchItem[]>([]);
-  const [isDeepSearching, setIsDeepSearching] = useState(false);
+  const [semanticResults, setSemanticResults] = useState<SearchItem[]>([]);
 
   const cacheResults = useMemo(() => searchCacheData(query), [query]);
 
   const combinedResults = useMemo(() => {
     const seen = new Set<string>();
     const all: SearchItem[] = [];
-    for (const r of [...cacheResults, ...apiResults, ...deepResults]) {
+    // First: keyword results (cache + API)
+    for (const r of [...cacheResults, ...apiResults]) {
+      const key = r.id + r.title;
+      if (!seen.has(key)) { seen.add(key); all.push(r); }
+    }
+    // Second: semantic results that weren't already found by keyword
+    for (const r of semanticResults) {
       const key = r.id + r.title;
       if (!seen.has(key)) { seen.add(key); all.push(r); }
     }
     return all;
-  }, [cacheResults, apiResults, deepResults]);
+  }, [cacheResults, apiResults, semanticResults]);
 
   const groupedResults = useMemo(() => {
     const groups: Record<string, SearchItem[]> = {};
@@ -258,9 +262,8 @@ export default function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
       setQuery('');
       setSelectedIndex(0);
       setApiResults([]);
-      setDeepResults([]);
+      setSemanticResults([]);
       setTier(0);
-      setIsDeepSearching(false);
       abortedRef.current = false;
       setTimeout(() => inputRef.current?.focus(), 50);
     }
@@ -274,21 +277,16 @@ export default function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
     if (!token || query.length < 1) {
       setTier(0);
       setApiResults([]);
-      setDeepResults([]);
       return;
     }
-    // cache is always searched synchronously via useMemo
     setApiResults([]);
-    setDeepResults([]);
-    setTier(cacheResults.length > 0 ? 1 : 1); // cache results already set
+    setTier(cacheResults.length > 0 ? 1 : 1);
 
     if (timerRef.current) clearTimeout(timerRef.current);
     timerRef.current = setTimeout(async () => {
       if (abortedRef.current || query.length < 1) return;
-      setIsDeepSearching(false);
       setTier(2);
       setApiResults([]);
-      setDeepResults([]);
 
       abortedRef.current = false;
       const r: SearchItem[] = [];
@@ -351,204 +349,58 @@ export default function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
     return () => { if (timerRef.current) clearTimeout(timerRef.current); };
   }, [query, token]);
 
-  // ── Tier 3: deep search (auto when tier-2 yields nothing) ────────
+  // ── Semantic search (parallel to Tier 2) ────────────────────────
 
-  const totalBeforeDeep = cacheResults.length + apiResults.length;
+  const semanticTimerRef = useRef<ReturnType<typeof setTimeout>>();
 
   useEffect(() => {
-    if (tier !== 3 || !token || query.length < 1) return;
-    if (totalBeforeDeep >= 3) return; // enough results, don't go deeper automatically
+    if (!token || query.length < 2) {
+      setSemanticResults([]);
+      return;
+    }
 
-    if (deepTimerRef.current) clearTimeout(deepTimerRef.current);
-    deepTimerRef.current = setTimeout(async () => {
+    if (semanticTimerRef.current) clearTimeout(semanticTimerRef.current);
+    semanticTimerRef.current = setTimeout(async () => {
       if (abortedRef.current) return;
-      setIsDeepSearching(true);
-
-      const r: SearchItem[] = [];
-
-      // ── search inside message bodies ──
       try {
-        const headersRes = await messagesAPI.getMessageHeaders(token, 'All', 0);
-        if (!abortedRef.current && headersRes.success && headersRes.conversations) {
-          const conversations = headersRes.conversations;
-          // load up to 10 conversations in parallel batches of 3
-          const batchSize = 3;
-          for (let i = 0; i < Math.min(conversations.length, 10); i += batchSize) {
-            if (abortedRef.current) return;
-            const batch = conversations.slice(i, i + batchSize);
-            const batchResults = await Promise.allSettled(
-              batch.map(c =>
-                messagesAPI.getConversation(token, c.Id || c.Uniquid || c.id, 0)
-                  .then(convRes => {
-                    if (convRes.success && convRes.messages) {
-                      for (const msg of convRes.messages) {
-                        if (fuzzyMatch(query, msg.content || '') || fuzzyMatch(query, msg.sender || '')) {
-                          return {
-                            id: `deep-msg-${msg.id || Math.random()}`,
-                            title: msg.sender || 'Nachricht',
-                            subtitle: (msg.content || '').slice(0, 120),
-                            category: 'Nachrichten',
-                            icon: ChatBubbleLeftRightIcon,
-                            href: `/messages?conversation=${encodeURIComponent(c.Id || c.Uniquid || c.id)}`,
-                          } as SearchItem;
-                        }
-                      }
-                    }
-                    return null;
-                  })
-                  .catch(() => null)
-              )
-            );
-            for (const result of batchResults) {
-              if (result.status === 'fulfilled' && result.value) r.push(result.value);
-            }
-          }
+        const res = await searchAPI.semanticSearch(token, query, 15);
+        if (!abortedRef.current && res.success && res.results) {
+          const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
+            ChatBubbleLeftRightIcon,
+            AcademicCapIcon,
+            CalendarDaysIcon,
+            HomeIcon,
+            ClipboardDocumentListIcon,
+            UserIcon,
+            Cog6ToothIcon,
+          };
+          const mapped: SearchItem[] = res.results.map((r: SemanticSearchResult) => ({
+            id: r.id,
+            title: r.title,
+            subtitle: r.subtitle,
+            category: r.category,
+            icon: iconMap[r.icon] || MagnifyingGlassIcon,
+            href: r.href,
+          }));
+          setSemanticResults(mapped);
         }
-      } catch {}
-
-      // ── search inside course entries (details) ──
-      try {
-        const coursesRes = await coursesAPI.getCourses(token);
-        if (!abortedRef.current && coursesRes.success && coursesRes.entries) {
-          const courseIds = [...new Set(coursesRes.entries.map(e => e.book_id).filter(Boolean))];
-          const batchSize = 2;
-          for (let i = 0; i < Math.min(courseIds.length, 6); i += batchSize) {
-            if (abortedRef.current) return;
-            const batch = courseIds.slice(i, i + batchSize);
-            const batchResults = await Promise.allSettled(
-              batch.map(id =>
-                coursesAPI.getCourseDetails(token, id as string)
-                  .then(detailsRes => {
-                    if (detailsRes.success && detailsRes.entries) {
-                      for (const entry of detailsRes.entries) {
-                        if (fuzzyMatch(query, entry.thema || '') || fuzzyMatch(query, entry.homework || '') || fuzzyMatch(query, entry.content || '')) {
-                          return {
-                            id: `deep-crs-${entry.entry_id}`,
-                            title: entry.thema || 'Eintrag',
-                            subtitle: (entry.homework || entry.content || '').slice(0, 120),
-                            category: 'Unterricht',
-                            icon: AcademicCapIcon,
-                            href: `/courses/${id}`,
-                          } as SearchItem;
-                        }
-                      }
-                    }
-                    return null;
-                  })
-                  .catch(() => null)
-              )
-            );
-            for (const result of batchResults) {
-              if (result.status === 'fulfilled' && result.value) r.push(result.value);
-            }
-          }
-        }
-      } catch {}
-
-      if (!abortedRef.current) {
-        setDeepResults(r);
-        setIsDeepSearching(false);
+      } catch {
+        // Semantic search is optional — fail silently
       }
     }, 600);
-    return () => { if (deepTimerRef.current) clearTimeout(deepTimerRef.current); };
-  }, [tier, totalBeforeDeep, token, query]);
+
+    return () => { if (semanticTimerRef.current) clearTimeout(semanticTimerRef.current); };
+  }, [query, token]);
 
   // cleanup on unmount
   useEffect(() => {
-    return () => { abortedRef.current = true; };
+    return () => {
+      abortedRef.current = true;
+      if (semanticTimerRef.current) clearTimeout(semanticTimerRef.current);
+    };
   }, []);
 
   // ── actions ─────────────────────────────────────────────────────
-
-  const triggerDeepSearch = useCallback(async () => {
-    if (!token || query.length < 1 || isDeepSearching) return;
-    // manually force deep search even if tier-2 already had results
-    abortedRef.current = false;
-    setIsDeepSearching(true);
-
-    const r: SearchItem[] = [];
-
-    try {
-      const headersRes = await messagesAPI.getMessageHeaders(token, 'All', 0);
-      if (!abortedRef.current && headersRes.success && headersRes.conversations) {
-        const conversations = headersRes.conversations;
-        const batchSize = 3;
-        for (let i = 0; i < Math.min(conversations.length, 10); i += batchSize) {
-          if (abortedRef.current) return;
-          const batch = conversations.slice(i, i + batchSize);
-          const batchResults = await Promise.allSettled(
-            batch.map(c =>
-              messagesAPI.getConversation(token, c.Id || c.Uniquid || c.id, 0)
-                .then(convRes => {
-                  if (convRes.success && convRes.messages) {
-                    for (const msg of convRes.messages) {
-                      if (fuzzyMatch(query, msg.content || '') || fuzzyMatch(query, msg.sender || '')) {
-                        return {
-                          id: `deep-msg-${msg.id || Math.random()}`,
-                          title: msg.sender || 'Nachricht',
-                          subtitle: (msg.content || '').slice(0, 120),
-                          category: 'Nachrichten',
-                          icon: ChatBubbleLeftRightIcon,
-                          href: '/messages',
-                        } as SearchItem;
-                      }
-                    }
-                  }
-                  return null;
-                })
-                .catch(() => null)
-            )
-          );
-          for (const result of batchResults) {
-            if (result.status === 'fulfilled' && result.value) r.push(result.value);
-          }
-        }
-      }
-    } catch {}
-
-    try {
-      const coursesRes = await coursesAPI.getCourses(token);
-      if (!abortedRef.current && coursesRes.success && coursesRes.entries) {
-        const courseIds = [...new Set(coursesRes.entries.map(e => e.book_id).filter(Boolean))];
-        const batchSize = 2;
-        for (let i = 0; i < Math.min(courseIds.length, 6); i += batchSize) {
-          if (abortedRef.current) return;
-          const batch = courseIds.slice(i, i + batchSize);
-          const batchResults = await Promise.allSettled(
-            batch.map(id =>
-              coursesAPI.getCourseDetails(token, id as string)
-                .then(detailsRes => {
-                  if (detailsRes.success && detailsRes.entries) {
-                    for (const entry of detailsRes.entries) {
-                      if (fuzzyMatch(query, entry.thema || '') || fuzzyMatch(query, entry.homework || '') || fuzzyMatch(query, entry.content || '')) {
-                        return {
-                          id: `deep-crs-${entry.entry_id}`,
-                          title: entry.thema || 'Eintrag',
-                          subtitle: (entry.homework || entry.content || '').slice(0, 120),
-                          category: 'Unterricht',
-                          icon: AcademicCapIcon,
-                          href: '/courses',
-                        } as SearchItem;
-                      }
-                    }
-                  }
-                  return null;
-                })
-                .catch(() => null)
-            )
-          );
-          for (const result of batchResults) {
-            if (result.status === 'fulfilled' && result.value) r.push(result.value);
-          }
-        }
-      }
-    } catch {}
-
-    if (!abortedRef.current) {
-      setDeepResults(prev => [...prev, ...r]);
-      setIsDeepSearching(false);
-    }
-  }, [token, query, isDeepSearching]);
 
   const executeAction = useCallback((item: SearchItem) => {
     onClose();
@@ -559,22 +411,7 @@ export default function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Escape') { e.preventDefault(); onClose(); return; }
 
-    const flat: (SearchItem & { isAction?: boolean })[] = [];
-
-    // "Tiefer suchen" button if API is done and we're not already deep searching
-    if (tier >= 3 && !isDeepSearching && query.length >= 1) {
-      flat.push({
-        id: 'deep-trigger',
-        title: `\u201e${query}\u201c tiefer durchsuchen\u2026`,
-        subtitle: 'Durchsucht Nachrichteninhalte und Kursdetails',
-        category: 'Suche',
-        icon: MagnifyingGlassIcon,
-        action: triggerDeepSearch,
-        isAction: true,
-      });
-    }
-
-    for (const r of combinedResults) flat.push(r);
+    const flat = [...combinedResults];
 
     if (e.key === 'ArrowDown') { e.preventDefault(); setSelectedIndex(prev => Math.min(prev + 1, flat.length - 1)); }
     else if (e.key === 'ArrowUp') { e.preventDefault(); setSelectedIndex(prev => Math.max(prev - 1, 0)); }
@@ -583,56 +420,57 @@ export default function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
       const sel = flat[selectedIndex];
       if (sel) executeAction(sel);
     }
-  }, [onClose, query, combinedResults, selectedIndex, executeAction, tier, isDeepSearching, triggerDeepSearch]);
+  }, [onClose, combinedResults, selectedIndex, executeAction]);
 
   if (!isOpen) return null;
 
-  const showDeepTrigger = tier >= 3 && !isDeepSearching && query.length >= 1;
-  const hasAny = combinedResults.length > 0;
-  const showLoading = tier === 2 || isDeepSearching;
-  const showEmpty = tier >= 3 && !isDeepSearching && query.length >= 1 && combinedResults.length === 0;
+  const showLoading = tier === 2;
+  const showEmpty = tier >= 3 && query.length >= 1 && combinedResults.length === 0;
 
   return (
     <div className="fixed inset-0 z-[100] flex items-start justify-center pt-[15vh] sm:pt-[20vh] px-4">
-      <div className="fixed inset-0 bg-surface-900/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-xl bg-white dark:bg-surface-900 rounded-2xl shadow-2xl border border-surface-200 dark:border-surface-700 overflow-hidden animate-scale-in">
-        <div className="flex items-center gap-3 px-5 py-4 border-b border-surface-100 dark:border-surface-800">
-          <MagnifyingGlassIcon className="h-5 w-5 text-surface-400 dark:text-surface-500 flex-shrink-0" />
+      <div className="fixed inset-0 bg-surface-950/50 backdrop-blur-md" onClick={onClose} />
+      <div className="relative w-full max-w-xl backdrop-blur-xl bg-white/80 dark:bg-surface-900/80 rounded-2xl shadow-soft-lg border border-white/30 dark:border-surface-700/40 overflow-hidden animate-scale-in" style={{ boxShadow: '0 4px 40px -8px rgba(0, 0, 0, 0.12), 0 12px 50px -12px rgba(0, 0, 0, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.5)' }}>
+        <div className="flex items-center gap-3 px-4 py-3 border-b border-surface-100/80 dark:border-surface-800/60">
+          <MagnifyingGlassIcon className="h-5 w-5 text-primary-500 dark:text-primary-400 flex-shrink-0" />
           <input
             ref={inputRef}
             type="text"
             value={query}
             onChange={e => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Suche nach Nachrichten, Kursen, Terminen..."
-            className="flex-1 bg-transparent text-surface-900 dark:text-surface-100 text-base placeholder:text-surface-400 dark:placeholder:text-surface-500 focus:outline-none"
+            placeholder="Suchen..."
+            className="flex-1 bg-transparent text-surface-900 dark:text-surface-100 text-[15px] placeholder:text-surface-400 dark:placeholder:text-surface-500 focus:outline-none"
           />
-          <kbd className="hidden sm:inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium text-surface-400 bg-surface-100 dark:bg-surface-800 dark:text-surface-500 border border-surface-200 dark:border-surface-700">ESC</kbd>
+          <kbd className="hidden sm:inline-flex items-center justify-center min-w-[20px] h-[20px] px-1 rounded text-[11px] font-medium text-surface-400 bg-surface-100 dark:bg-surface-800/80 dark:text-surface-500 border border-surface-200/60 dark:border-surface-700/60">esc</kbd>
         </div>
 
         <div ref={listRef} className="max-h-80 overflow-y-auto p-2">
           {query.length === 0 && (
-            <div className="py-8 text-center text-sm text-surface-400 dark:text-surface-500">Tippe um die Suche zu starten...</div>
+            <div className="py-12 text-center">
+              <MagnifyingGlassIcon className="h-8 w-8 text-surface-300 dark:text-surface-600 mx-auto mb-3 opacity-60" />
+              <p className="text-sm text-surface-400 dark:text-surface-500">Tippe um die Suche zu starten</p>
+            </div>
           )}
 
           {showLoading && (
-            <div className="flex items-center gap-3 px-3 py-4 text-sm text-surface-500 dark:text-surface-400">
-              <ArrowPathIcon className="h-5 w-5 animate-spin text-primary-500" />
-              Suche l\u00e4uft...
+            <div className="flex items-center gap-3 px-4 py-4 text-sm text-surface-500 dark:text-surface-400">
+              <ArrowPathIcon className="h-4 w-4 animate-spin text-primary-500" />
+              Suche läuft...
             </div>
           )}
 
           {showEmpty && (
-            <div className="py-8 text-center">
-              <MagnifyingGlassIcon className="h-8 w-8 text-surface-300 dark:text-surface-600 mx-auto mb-3" />
-              <p className="text-sm text-surface-500 dark:text-surface-400">Keine Ergebnisse gefunden</p>
+            <div className="py-12 text-center">
+              <MagnifyingGlassIcon className="h-8 w-8 text-surface-300 dark:text-surface-600 mx-auto mb-3 opacity-50" />
+              <p className="text-sm font-medium text-surface-500 dark:text-surface-400">Keine Ergebnisse</p>
               <p className="text-xs text-surface-400 dark:text-surface-500 mt-1">Versuche einen anderen Suchbegriff</p>
             </div>
           )}
 
           {groupedResults.map(([category, items]) => {
             const CatIcon = CATEGORY_ICONS[category] || MagnifyingGlassIcon;
-            let before = showDeepTrigger ? 1 : 0;
+            let before = 0;
             for (const g of groupedResults) {
               if (g[0] === category) break;
               before += g[1].length;
@@ -640,26 +478,26 @@ export default function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
             return (
               <div key={category} className="mb-1">
                 <div className="flex items-center gap-2 px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-surface-400 dark:text-surface-500">
-                  <CatIcon className="h-3.5 w-3.5" />
+                  <CatIcon className="h-3.5 w-3.5 text-primary-500 dark:text-primary-400" />
                   {category}
-                  <span className="ml-auto text-[10px]">{items.length}</span>
+                  <span className="ml-auto text-[10px] opacity-60">{items.length}</span>
                 </div>
                 {items.map((item, idx) => (
                   <button
                     key={item.id}
                     onClick={() => executeAction(item)}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-colors text-sm ${
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all duration-150 text-sm ${
                       before + idx === selectedIndex
-                        ? 'bg-primary-50 dark:bg-primary-950 text-primary-700 dark:text-primary-300'
-                        : 'text-surface-700 dark:text-surface-300 hover:bg-surface-100 dark:hover:bg-surface-800'
+                        ? 'bg-primary-50 dark:bg-primary-950/60 text-primary-700 dark:text-primary-300 shadow-sm'
+                        : 'text-surface-700 dark:text-surface-300 hover:bg-surface-100/80 dark:hover:bg-surface-800/60'
                     }`}
                   >
-                    <item.icon className={`h-5 w-5 flex-shrink-0 ${
+                    <item.icon className={`h-[18px] w-[18px] flex-shrink-0 transition-colors ${
                       before + idx === selectedIndex ? 'text-primary-500 dark:text-primary-400' : 'text-surface-400 dark:text-surface-500'
                     }`} />
                     <div className="flex-1 min-w-0">
                       <div className="truncate font-medium">{item.title}</div>
-                      <div className="text-xs text-surface-400 dark:text-surface-500 mt-0.5 truncate">{item.subtitle}</div>
+                      <div className="text-[13px] text-surface-400 dark:text-surface-500 mt-0.5 truncate leading-snug">{item.subtitle}</div>
                     </div>
                   </button>
                 ))}
@@ -667,29 +505,12 @@ export default function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
             );
           })}
 
-          {showDeepTrigger && (
-            <div className={hasAny ? 'border-t border-surface-100 dark:border-surface-800 mt-1 pt-1' : ''}>
-              <button
-                onClick={triggerDeepSearch}
-                className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm text-left transition-colors hover:bg-surface-100 dark:hover:bg-surface-800 text-primary-600 dark:text-primary-400 font-medium ${
-                  selectedIndex === 0 ? 'bg-primary-50 dark:bg-primary-950' : ''
-                }`}
-              >
-                <MagnifyingGlassIcon className={`h-5 w-5 flex-shrink-0 ${selectedIndex === 0 ? 'text-primary-500 dark:text-primary-400' : ''}`} />
-                <div className="flex-1 min-w-0">
-                  <div className="truncate">&bdquo;{query}&rdquo; tiefer durchsuchen&hellip;</div>
-                  <div className="text-xs text-surface-400 dark:text-surface-500 mt-0.5">Durchsucht Nachrichteninhalte und Kursdetails</div>
-                </div>
-                <ArrowRightIcon className="h-4 w-4 flex-shrink-0" />
-              </button>
-            </div>
-          )}
         </div>
 
-        <div className="flex items-center gap-4 px-5 py-2.5 border-t border-surface-100 dark:border-surface-800 text-[10px] text-surface-400 dark:text-surface-500">
-          <span className="flex items-center gap-1"><kbd className="inline-flex items-center px-1 py-0.5 rounded text-[10px] font-medium bg-surface-100 dark:bg-surface-800 border border-surface-200 dark:border-surface-700">{'\u2191\u2193'}</kbd> navigieren</span>
-          <span className="flex items-center gap-1"><kbd className="inline-flex items-center px-1 py-0.5 rounded text-[10px] font-medium bg-surface-100 dark:bg-surface-800 border border-surface-200 dark:border-surface-700">{'\u21b5'}</kbd> ausw\u00e4hlen</span>
-          <span className="flex items-center gap-1"><kbd className="inline-flex items-center px-1 py-0.5 rounded text-[10px] font-medium bg-surface-100 dark:bg-surface-800 border border-surface-200 dark:border-surface-700">ESC</kbd> schlie\u00dfen</span>
+        <div className="flex items-center justify-center gap-4 px-5 py-2 border-t border-surface-100/80 dark:border-surface-800/60 text-[11px] text-surface-400 dark:text-surface-500">
+          <span className="flex items-center gap-1"><kbd className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded text-[10px] font-medium bg-surface-100 dark:bg-surface-800/80 border border-surface-200/60 dark:border-surface-700/60">↑↓</kbd> navigieren</span>
+          <span className="flex items-center gap-1"><kbd className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded text-[10px] font-medium bg-surface-100 dark:bg-surface-800/80 border border-surface-200/60 dark:border-surface-700/60">↵</kbd> wählen</span>
+          <span className="flex items-center gap-1"><kbd className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded text-[10px] font-medium bg-surface-100 dark:bg-surface-800/80 border border-surface-200/60 dark:border-surface-700/60">esc</kbd> schließen</span>
         </div>
       </div>
     </div>
