@@ -24,14 +24,14 @@ const mockUser = {
 };
 
 const mockModules = [
-  { name: 'Mein Unterricht', url: 'https://schulportal.hessen.de/meinunterricht.php', color: '#4f46e5', logo: 'fa fa-files-o', folders: ['Schule'], target: '_self' },
-  { name: 'Nachrichten', url: 'https://schulportal.hessen.de/nachrichten.php', color: '#0891b2', logo: 'fa fa-envelope-o', folders: ['Kommunikation'], target: '_self' },
-  { name: 'Kalender', url: 'https://schulportal.hessen.de/kalender.php', color: '#dc2626', logo: 'fa fa-calendar-o', folders: ['Schule'], target: '_self' },
-  { name: 'Vertretungsplan', url: 'https://schulportal.hessen.de/dsb.php', color: '#7c3aed', logo: 'fa fa-files-o', folders: ['Schule'], target: '_self' },
-  { name: 'Klassenbuch', url: 'https://schulportal.hessen.de/klassenbuch.php', color: '#059669', logo: 'fa fa-files-o', folders: ['Schule'], target: '_blank' },
-  { name: 'Stundenplan', url: 'https://schulportal.hessen.de/stundenplan.php', color: '#d97706', logo: 'fa fa-calendar-o', folders: ['Schule'], target: '_blank' },
-  { name: 'Notenübersicht', url: 'https://schulportal.hessen.de/noten.php', color: '#be185d', logo: 'fa fa-files-o', folders: ['Leistung'], target: '_blank' },
-  { name: 'Klausurplan', url: 'https://schulportal.hessen.de/klausuren.php', color: '#2563eb', logo: 'fa fa-files-o', folders: ['Leistung'], target: '_blank' },
+  { name: 'Mein Unterricht', url: 'https://schulportal.hessen.de/meinunterricht.php', direct_url: 'https://schulportal.hessen.de/meinunterricht.php', color: '#4f46e5', logo: 'fa fa-files-o', folders: ['Schule'], target: '_self' },
+  { name: 'Nachrichten', url: 'https://schulportal.hessen.de/nachrichten.php', direct_url: 'https://schulportal.hessen.de/nachrichten.php', color: '#0891b2', logo: 'fa fa-envelope-o', folders: ['Kommunikation'], target: '_self' },
+  { name: 'Kalender', url: 'https://schulportal.hessen.de/kalender.php', direct_url: 'https://schulportal.hessen.de/kalender.php', color: '#dc2626', logo: 'fa fa-calendar-o', folders: ['Schule'], target: '_self' },
+  { name: 'Vertretungsplan', url: 'https://schulportal.hessen.de/dsb.php', direct_url: 'https://schulportal.hessen.de/dsb.php', color: '#7c3aed', logo: 'fa fa-files-o', folders: ['Schule'], target: '_self' },
+  { name: 'Klassenbuch', url: 'https://schulportal.hessen.de/klassenbuch.php', direct_url: 'https://schulportal.hessen.de/klassenbuch.php', color: '#059669', logo: 'fa fa-files-o', folders: ['Schule'], target: '_blank' },
+  { name: 'Stundenplan', url: 'https://schulportal.hessen.de/stundenplan.php', direct_url: 'https://schulportal.hessen.de/stundenplan.php', color: '#d97706', logo: 'fa fa-calendar-o', folders: ['Schule'], target: '_blank' },
+  { name: 'Notenübersicht', url: 'https://schulportal.hessen.de/noten.php', direct_url: 'https://schulportal.hessen.de/noten.php', color: '#be185d', logo: 'fa fa-files-o', folders: ['Leistung'], target: '_blank' },
+  { name: 'Klausurplan', url: 'https://schulportal.hessen.de/klausuren.php', direct_url: 'https://schulportal.hessen.de/klausuren.php', color: '#2563eb', logo: 'fa fa-files-o', folders: ['Leistung'], target: '_blank' },
 ];
 
 const mockMessageHeaders = [

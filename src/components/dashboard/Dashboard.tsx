@@ -20,6 +20,7 @@ import clsx from 'clsx';
 interface CombinedModule {
   name: string;
   url: string;
+  direct_url: string;
   color: string;
   logo: string;
   folders: string[];
@@ -111,13 +112,15 @@ const Dashboard: React.FC = () => {
       return;
     }
     if (module.url.toLowerCase().includes('dsb') ||
+        (module.direct_url && module.direct_url.toLowerCase().includes('dsb')) ||
         module.name.toLowerCase().includes('dsb') ||
         module.name.toLowerCase().includes('vertretungsplan') ||
-        module.url.toLowerCase().includes('vertretung')) {
+        module.url.toLowerCase().includes('vertretung') ||
+        (module.direct_url && module.direct_url.toLowerCase().includes('vertretung'))) {
       navigate(`${basePath}/dsb`);
       return;
     }
-    window.open(module.url, '_blank', 'noopener,noreferrer');
+    window.open(module.direct_url || module.url, '_blank', 'noopener,noreferrer');
   };
 
   const togglePin = (moduleName: string) => {

@@ -68,6 +68,7 @@ export interface User {
 export interface Module {
   name: string;
   url: string;
+  direct_url: string;
   color: string;
   logo: string;
   folders: string[];
