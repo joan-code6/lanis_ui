@@ -21,6 +21,7 @@ interface CombinedModule {
   name: string;
   url: string;
   direct_url: string;
+  proxy_app: boolean;
   color: string;
   logo: string;
   folders: string[];
@@ -118,6 +119,12 @@ const Dashboard: React.FC = () => {
         module.url.toLowerCase().includes('vertretung') ||
         (module.direct_url && module.direct_url.toLowerCase().includes('vertretung'))) {
       navigate(`${basePath}/dsb`);
+      return;
+    }
+    if (module.proxy_app) {
+      const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+      const proxyUrl = `${apiBase}/app/${encodeURIComponent(module.name)}`;
+      window.open(proxyUrl, '_blank', 'noopener,noreferrer');
       return;
     }
     window.open(module.direct_url || module.url, '_blank', 'noopener,noreferrer');

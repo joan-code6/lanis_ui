@@ -69,6 +69,7 @@ export interface Module {
   name: string;
   url: string;
   direct_url: string;
+  proxy_app: boolean;
   color: string;
   logo: string;
   folders: string[];
