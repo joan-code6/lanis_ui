@@ -123,7 +123,7 @@ const Dashboard: React.FC = () => {
     }
     if (module.proxy_app) {
       const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-      const proxyUrl = `${apiBase}/app/${encodeURIComponent(module.name)}`;
+      const proxyUrl = `${apiBase}/app/${encodeURIComponent(module.name)}?token=${encodeURIComponent(token)}`;
       window.open(proxyUrl, '_blank', 'noopener,noreferrer');
       return;
     }
