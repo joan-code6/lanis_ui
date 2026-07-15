@@ -50,10 +50,18 @@ function fuzzyMatch(query: string, text: string): boolean {
 
 function decodeHtmlEntities(text: string): string {
   if (!text) return '';
-  if (typeof document === 'undefined') return text;
-  const textarea = document.createElement('textarea');
-  textarea.innerHTML = text;
-  return textarea.value;
+  const namedEntities: Record<string, string> = {
+    '&amp;': '&',
+    '&lt;': '<',
+    '&gt;': '>',
+    '&quot;': '"',
+    '&#39;': "'",
+    '&nbsp;': ' ',
+  };
+  let decoded = text.replace(/&(amp|lt|gt|quot|#39|nbsp);/g, (entity) => namedEntities[entity] || entity);
+  decoded = decoded.replace(/&#(\d+);/g, (_, decimal) => String.fromCodePoint(Number(decimal)));
+  decoded = decoded.replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCodePoint(parseInt(hex, 16)));
+  return decoded;
 }
 
 function cleanHtmlText(text: string): string {
