@@ -68,6 +68,91 @@ function cleanHtmlText(text: string): string {
   return decodeHtmlEntities(text.replace(/<[^>]*>/g, ' ')).replace(/\s+/g, ' ').trim();
 }
 
+function normalizeClassCode(code: string): string {
+  const match = code.match(/^0*(\d+)([A-Za-z])$/);
+  if (!match) return code.toUpperCase();
+  return `${match[1]}${match[2].toUpperCase()}`;
+}
+
+function extractClassCode(text: string): string | null {
+  const bracket = text.match(/\((\d{1,2}[A-Za-z])\)/);
+  if (bracket) return normalizeClassCode(bracket[1]);
+  const inline = text.match(/\b(\d{1,2}[A-Za-z])\b/);
+  if (inline) return normalizeClassCode(inline[1]);
+  return null;
+}
+
+function recipientEntries(rawRecipients: unknown): string[] {
+  if (Array.isArray(rawRecipients)) {
+    return rawRecipients.map((entry) => cleanHtmlText(String(entry || ''))).filter(Boolean);
+  }
+  if (typeof rawRecipients === 'string' && rawRecipients.trim()) {
+    const cleaned = cleanHtmlText(rawRecipients);
+    const parts = cleaned
+      .split(/(?<=\))\s*,\s*/g)
+      .map((entry) => entry.trim())
+      .filter(Boolean);
+    return parts.length > 1 ? parts : [cleaned];
+  }
+  return [];
+}
+
+function summarizeRecipients(rawRecipients: unknown, usernameMap: Record<string, string>): { text: string; groupLabel?: string } {
+  const entries = recipientEntries(rawRecipients).map((entry) => {
+    const mapped = usernameMap[entry] || entry;
+    return cleanHtmlText(mapped);
+  }).filter(Boolean);
+
+  if (entries.length === 0) return { text: '' };
+  if (entries.length === 1) return { text: entries[0] };
+
+  const classes = entries.map(extractClassCode).filter((code): code is string => Boolean(code));
+  const uniqueClasses = [...new Set(classes)];
+
+  if (entries.length >= 10 && uniqueClasses.length >= 8) {
+    return { text: 'Ganze Schule', groupLabel: 'Ganze Schule' };
+  }
+
+  if (entries.length >= 6 && uniqueClasses.length > 0) {
+    if (uniqueClasses.length === 1) {
+      const label = `Klasse ${uniqueClasses[0]}`;
+      return { text: label, groupLabel: label };
+    }
+
+    const grades = [...new Set(uniqueClasses.map((classCode) => classCode.match(/^(\d+)/)?.[1]).filter(Boolean))];
+    if (grades.length === 1) {
+      const label = `Jahrgangsstufe ${grades[0]}`;
+      return { text: label, groupLabel: label };
+    }
+  }
+
+  if (entries.length > 3) {
+    return { text: `${entries.slice(0, 2).join(', ')} +${entries.length - 2} weitere` };
+  }
+
+  return { text: entries.join(', ') };
+}
+
+function resolveSenderName(message: any, usernameMap: Record<string, string>, recipientsGroupLabel?: string): string {
+  const senderCandidates = [
+    message?.SenderName,
+    message?.sender_name,
+    message?.username,
+    message?.sender,
+    message?.Sender,
+  ];
+
+  for (const candidate of senderCandidates) {
+    const value = cleanHtmlText(String(candidate || ''));
+    if (!value) continue;
+    const mapped = cleanHtmlText(String(usernameMap[value] || value));
+    if (mapped && !/^\d{4,}$/.test(mapped)) return mapped;
+  }
+
+  if (recipientsGroupLabel) return recipientsGroupLabel;
+  return 'Unbekannt';
+}
+
 function loadUsernameMap(): Record<string, string> {
   try {
     const raw = localStorage.getItem('username_cache');
@@ -118,13 +203,11 @@ function searchCacheData(query: string): SearchItem[] {
         for (const m of msgs) {
           if (searchText(query, m)) {
             const subj = cleanHtmlText(String(m.Betreff || ''));
-            const senderRaw = String(m.Sender || '');
-            const sender = cleanHtmlText(usernameMap[senderRaw] || senderRaw);
-            const empf = Array.isArray(m.empf)
-              ? m.empf.map((entry: unknown) => cleanHtmlText(String(entry || ''))).filter(Boolean).join(', ')
-              : '';
+            const recipientSummary = summarizeRecipients(m.empf ?? m.WeitereEmpfaenger, usernameMap);
+            const sender = resolveSenderName(m, usernameMap, recipientSummary.groupLabel);
+            const empf = recipientSummary.text;
             let sub = sender ? `Von: ${sender}` : '';
-            if (empf) sub += sub ? `  An: ${empf}` : `An: ${empf}`;
+            if (empf && empf !== sender) sub += sub ? `  An: ${empf}` : `An: ${empf}`;
             if (m.date) { try { sub += sub ? `  ${new Date(m.date).toLocaleDateString('de-DE')}` : new Date(m.date).toLocaleDateString('de-DE'); } catch {} }
             results.push({
               id: `msg-${m.Uniquid || m.Id || Math.random()}`,
