@@ -48,6 +48,36 @@ function fuzzyMatch(query: string, text: string): boolean {
   return text.toLowerCase().includes(query.toLowerCase().trim());
 }
 
+function decodeHtmlEntities(text: string): string {
+  if (!text) return '';
+  if (typeof document === 'undefined') return text;
+  const textarea = document.createElement('textarea');
+  textarea.innerHTML = text;
+  return textarea.value;
+}
+
+function cleanHtmlText(text: string): string {
+  return decodeHtmlEntities(text.replace(/<[^>]*>/g, ' ')).replace(/\s+/g, ' ').trim();
+}
+
+function loadUsernameMap(): Record<string, string> {
+  try {
+    const raw = localStorage.getItem('username_cache');
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    const data = parsed?.data || parsed;
+    if (!data || typeof data !== 'object') return {};
+    const map: Record<string, string> = {};
+    for (const [key, value] of Object.entries(data)) {
+      if (key === 'ts') continue;
+      if (typeof value === 'string' && value.trim()) map[String(key)] = cleanHtmlText(value);
+    }
+    return map;
+  } catch {
+    return {};
+  }
+}
+
 function collectTexts(obj: unknown, depth: number = 0): string {
   if (depth > 4) return '';
   if (typeof obj === 'string') return obj + ' ';
@@ -70,6 +100,7 @@ function searchText(query: string, obj: unknown): boolean {
 function searchCacheData(query: string): SearchItem[] {
   if (!query || query.length < 1) return [];
   const results: SearchItem[] = [];
+  const usernameMap = loadUsernameMap();
 
   try {
     const raw = localStorage.getItem('messages_cache');
@@ -78,9 +109,12 @@ function searchCacheData(query: string): SearchItem[] {
       if (Array.isArray(msgs)) {
         for (const m of msgs) {
           if (searchText(query, m)) {
-            const subj = m.Betreff || '';
-            const sender = m.Sender || '';
-            const empf = Array.isArray(m.empf) ? m.empf.join(', ') : '';
+            const subj = cleanHtmlText(String(m.Betreff || ''));
+            const senderRaw = String(m.Sender || '');
+            const sender = cleanHtmlText(usernameMap[senderRaw] || senderRaw);
+            const empf = Array.isArray(m.empf)
+              ? m.empf.map((entry: unknown) => cleanHtmlText(String(entry || ''))).filter(Boolean).join(', ')
+              : '';
             let sub = sender ? `Von: ${sender}` : '';
             if (empf) sub += sub ? `  An: ${empf}` : `An: ${empf}`;
             if (m.date) { try { sub += sub ? `  ${new Date(m.date).toLocaleDateString('de-DE')}` : new Date(m.date).toLocaleDateString('de-DE'); } catch {} }
