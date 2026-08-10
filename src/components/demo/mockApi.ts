@@ -449,8 +449,8 @@ export function getMockResponse(url: string, method: string, config: any): { dat
   }
 
   // Timetable
-  if (u === '/timetable' && method === 'get') {
-    return { status: 200, data: { success: true, week_start: mockTimetable[0].date, week_end: mockTimetable[4].date, days: mockTimetable } };
+  if (u === '/stundenplan' && method === 'get') {
+    return { status: 200, data: { success: true, week_start: mockTimetable[0].date, week_end: mockTimetable[4].date, active_week: 'A', days: mockTimetable } };
   }
 
   // DSB

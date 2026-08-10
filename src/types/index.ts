@@ -403,6 +403,8 @@ export interface TimetableLesson {
   class_name?: string;
   info?: string;
   cancelled?: boolean;
+  week_type?: 'A' | 'B';
+  duration?: number;
   [key: string]: unknown;
 }
 
@@ -418,6 +420,14 @@ export interface TimetableResponse {
   week_end?: string;
   days: TimetableDay[];
   message?: string;
+  active_week?: 'A' | 'B';
+  personal_days?: TimetableDay[];
+  all_days?: TimetableDay[];
+  time_slots?: Array<{
+    period: number;
+    start_time: string;
+    end_time: string;
+  }>;
 }
 
 // DSB Mobile types
