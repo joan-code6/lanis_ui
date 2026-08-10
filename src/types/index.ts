@@ -391,6 +391,35 @@ export interface SingleCalendarEventResponse {
   };
 }
 
+// Timetable types
+export interface TimetableLesson {
+  id?: string;
+  period?: string | number;
+  start_time?: string;
+  end_time?: string;
+  subject: string;
+  teacher?: string;
+  room?: string;
+  class_name?: string;
+  info?: string;
+  cancelled?: boolean;
+  [key: string]: unknown;
+}
+
+export interface TimetableDay {
+  date: string;
+  name?: string;
+  lessons: TimetableLesson[];
+}
+
+export interface TimetableResponse {
+  success: boolean;
+  week_start?: string;
+  week_end?: string;
+  days: TimetableDay[];
+  message?: string;
+}
+
 // DSB Mobile types
 export interface DSBLoginRequest {
   username: string;

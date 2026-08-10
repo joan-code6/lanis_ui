@@ -167,6 +167,7 @@ import {
   DSBLoginResponse,
   DSBPlanUrlsResponse,
   DSBPlanResponse,
+  TimetableResponse,
 } from '../types';
 
 // Configuration
@@ -452,6 +453,18 @@ export const calendarAPI = {
     const response = await apiClient.get<SingleCalendarEventResponse>(`/kalender/event/${eventId}`, {
       headers: { 'X-Session-Token': token },
       params: { view_id: viewId },
+      signal,
+    });
+    return response.data;
+  },
+};
+
+// Timetable API
+export const timetableAPI = {
+  async getTimetable(token: string, weekStart?: string, signal?: AbortSignal): Promise<TimetableResponse> {
+    const response = await apiClient.get<TimetableResponse>('/timetable', {
+      headers: { 'X-Session-Token': token },
+      params: weekStart ? { week_start: weekStart } : undefined,
       signal,
     });
     return response.data;
