@@ -80,15 +80,18 @@ const routes = [
   { path: '/login', file: 'login/index.html' },
 ];
 
-function hasMissingBrowserRuntime(error) {
+function hasUnavailableBrowser(error) {
   const message = String(error?.message || error || '');
   const normalized = message.toLowerCase();
   return (
-    normalized.includes('failed to launch the browser process') &&
-    (normalized.includes('error loading shared library') ||
-      normalized.includes('error while loading shared libraries') ||
-      normalized.includes('cannot open shared object file') ||
-      normalized.includes('symbol not found'))
+    normalized.includes('could not find chrome') ||
+    normalized.includes('browser was not found') ||
+    normalized.includes('executable doesn\'t exist') ||
+    (normalized.includes('failed to launch the browser process') &&
+      (normalized.includes('error loading shared library') ||
+        normalized.includes('error while loading shared libraries') ||
+        normalized.includes('cannot open shared object file') ||
+        normalized.includes('symbol not found')))
   );
 }
 
@@ -113,9 +116,9 @@ async function prerender() {
     });
   } catch (error) {
     server.close();
-    if (!strictPrerender && hasMissingBrowserRuntime(error)) {
-      console.warn('\nSkipping prerender: browser runtime dependencies are unavailable in this build environment.');
-      console.warn('Install required Chromium/Puppeteer system libraries (for example, libnss3/libatk/libx11) to enable prerendering.');
+    if (!strictPrerender && hasUnavailableBrowser(error)) {
+      console.warn('\nSkipping prerender: Chrome or its runtime dependencies are unavailable in this build environment.');
+      console.warn('Install the Puppeteer browser and its system libraries to enable prerendering.');
       console.warn('Set PRERENDER_STRICT=1 to fail the build instead.');
       return;
     }
