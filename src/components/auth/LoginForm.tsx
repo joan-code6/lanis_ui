@@ -127,7 +127,7 @@ const LoginForm: React.FC = () => {
   useEffect(() => {
     const abortController = new AbortController();
     schoolListAPI.getAllSchools(abortController.signal).then(res => {
-      setAllDistricts(res.districts);
+      setAllDistricts(Array.isArray(res?.districts) ? res.districts : []);
     }).catch((err) => {
       if (axios.isCancel(err)) return;
     });
@@ -145,7 +145,7 @@ const LoginForm: React.FC = () => {
       }
       const scored: { school: School & { district_id?: string; district_name?: string }; score: number }[] = [];
       for (const district of allDistricts) {
-        for (const school of district.schools) {
+        for (const school of Array.isArray(district.schools) ? district.schools : []) {
           const s1 = fuzzyScore(q, school.name);
           const s2 = fuzzyScore(q, school.location);
           const bestScore = Math.max(s1, s2);
