@@ -163,13 +163,13 @@ import {
   CalendarOverviewResponse,
   CalendarEventsResponse,
   SingleCalendarEventResponse,
-  TimetableResponse,
-  TimetableDay,
-  StudyGroupsResponse,
   DSBLoginRequest,
   DSBLoginResponse,
   DSBPlanUrlsResponse,
   DSBPlanResponse,
+  TimetableResponse,
+  TimetableDay,
+  StudyGroupsResponse,
 } from '../types';
 
 // Configuration
@@ -474,13 +474,14 @@ export const timetableAPI = {
       return { success: false, days: [], message: data?.error || data?.message || 'Der Stundenplan konnte nicht geladen werden.' };
     }
 
+    // Demo responses and future API versions may already use the UI shape.
     if (Array.isArray(data.days) && data.days.every((day: any) => day && Array.isArray(day.lessons))) {
       return data as TimetableResponse;
     }
 
     const monday = new Date();
-    const weekday = monday.getDay();
-    monday.setDate(monday.getDate() - (weekday === 0 ? 6 : weekday - 1));
+    const day = monday.getDay();
+    monday.setDate(monday.getDate() - (day === 0 ? 6 : day - 1));
     const weekMatch = String(data.week_badge || '').toUpperCase().match(/\b([AB])\b/);
     const activeWeek = weekMatch?.[1] as 'A' | 'B' | undefined;
     const mapPlan = (plan: any[]) => (Array.isArray(data.days) ? data.days : []).map((name: string, index: number) => {
@@ -489,7 +490,8 @@ export const timetableAPI = {
       return {
         date: date.toISOString().slice(0, 10),
         name,
-        lessons: (Array.isArray(plan?.[index]) ? plan[index] : []).map((lesson: any) => ({
+        lessons: (Array.isArray(plan?.[index]) ? plan[index] : [])
+          .map((lesson: any) => ({
           id: lesson.id,
           period: lesson.duration > 1
             ? `${lesson.stunde}–${lesson.stunde + lesson.duration - 1}`

@@ -30,7 +30,6 @@ const mockModules = [
   { name: 'Vertretungsplan', url: 'https://schulportal.hessen.de/dsb.php', direct_url: 'https://schulportal.hessen.de/dsb.php', proxy_app: false, color: '#7c3aed', logo: 'fa fa-files-o', folders: ['Schule'], target: '_self' },
   { name: 'Klassenbuch', url: 'https://schulportal.hessen.de/klassenbuch.php', direct_url: 'https://schulportal.hessen.de/klassenbuch.php', proxy_app: false, color: '#059669', logo: 'fa fa-files-o', folders: ['Schule'], target: '_blank' },
   { name: 'Stundenplan', url: 'https://schulportal.hessen.de/stundenplan.php', direct_url: 'https://schulportal.hessen.de/stundenplan.php', proxy_app: false, color: '#d97706', logo: 'fa fa-calendar-o', folders: ['Schule'], target: '_blank' },
-  { name: 'Lerngruppen', url: 'https://schulportal.hessen.de/lerngruppen.php', direct_url: 'https://schulportal.hessen.de/lerngruppen.php', proxy_app: false, color: '#0d9488', logo: 'fa fa-users', folders: ['Schule'], target: '_self' },
   { name: 'Notenübersicht', url: 'https://schulportal.hessen.de/noten.php', direct_url: 'https://schulportal.hessen.de/noten.php', proxy_app: false, color: '#be185d', logo: 'fa fa-files-o', folders: ['Leistung'], target: '_blank' },
   { name: 'Klausurplan', url: 'https://schulportal.hessen.de/klausuren.php', direct_url: 'https://schulportal.hessen.de/klausuren.php', proxy_app: false, color: '#2563eb', logo: 'fa fa-files-o', folders: ['Leistung'], target: '_blank' },
 ];
@@ -332,19 +331,24 @@ const mockTimetable = [
   { date: relDate(0), name: 'Montag', lessons: [
     { id: 'mo-1', period: '1–2', start_time: '08:00', end_time: '09:30', subject: 'Mathematik', teacher: 'Wb', room: 'A12' },
     { id: 'mo-2', period: '3–4', start_time: '09:50', end_time: '11:20', subject: 'Deutsch', teacher: 'Re', room: 'B05' },
+    { id: 'mo-3', period: '5–6', start_time: '11:40', end_time: '13:10', subject: 'Englisch', teacher: "O'C", room: 'C01' },
   ] },
   { date: relDate(1), name: 'Dienstag', lessons: [
     { id: 'di-1', period: '1–2', start_time: '08:00', end_time: '09:30', subject: 'Physik', teacher: 'Kl', room: 'D17' },
     { id: 'di-2', period: '3–4', start_time: '09:50', end_time: '11:20', subject: 'Geschichte', teacher: 'Bg', room: 'C03' },
+    { id: 'di-3', period: '5–6', start_time: '11:40', end_time: '13:10', subject: 'Informatik', teacher: 'Ch', room: 'R204' },
   ] },
   { date: relDate(2), name: 'Mittwoch', lessons: [
     { id: 'mi-1', period: '1–2', start_time: '08:00', end_time: '09:30', subject: 'Deutsch', teacher: 'Re', room: 'B05' },
+    { id: 'mi-2', period: '3–4', start_time: '09:50', end_time: '11:20', subject: 'Mathematik', teacher: 'Wb', room: 'A12' },
   ] },
   { date: relDate(3), name: 'Donnerstag', lessons: [
     { id: 'do-1', period: '1–2', start_time: '08:00', end_time: '09:30', subject: 'Englisch', teacher: "O'C", room: 'C01' },
+    { id: 'do-2', period: '3–4', start_time: '09:50', end_time: '11:20', subject: 'Physik', teacher: 'Kl', room: 'D17', info: 'Experiment mitbringen' },
   ] },
   { date: relDate(4), name: 'Freitag', lessons: [
     { id: 'fr-1', period: '1–2', start_time: '08:00', end_time: '09:30', subject: 'Informatik', teacher: 'Ch', room: 'R204' },
+    { id: 'fr-2', period: '3–4', start_time: '09:50', end_time: '11:20', subject: 'Geschichte', teacher: 'Bg', room: 'C03' },
   ] },
 ];
 
@@ -354,9 +358,9 @@ const mockStudyGroupExams = [
 ];
 
 const mockStudyGroups = [
-  { id: 'group-1', semester: '2026/27 · 1. Halbjahr', course_name: 'Mathematik GK', course_sys_id: 'Q2-M-GK1', teachers: [{ krz: 'Wb', first_name: 'Heinrich', last_name: 'Weber', email: 'h.weber@schule.example' }], exams: [mockStudyGroupExams[0]] },
-  { id: 'group-2', semester: '2026/27 · 1. Halbjahr', course_name: 'Deutsch LK', course_sys_id: 'Q2-D-LK1', teachers: [{ krz: 'Re', first_name: 'Anna', last_name: 'Reinhardt', email: 'a.reinhardt@schule.example' }], exams: [mockStudyGroupExams[1]] },
-  { id: 'group-3', semester: '2026/27 · 1. Halbjahr', course_name: 'Physik LK', course_sys_id: 'Q2-PH-LK1', teachers: [{ krz: 'Kl', first_name: 'Sabine', last_name: 'Keller', email: null }], exams: [] },
+  { id: 'group-1', semester: '2026/27 · 1. Halbjahr', course_name: 'Mathematik GK', course_sys_id: 'Q2-M-GK1', teachers: [{ krz: 'Wb', first_name: 'Heinrich', last_name: 'Weber', email: 'h.weber@schule.example', recipient_id: 'l-1001' }], exams: [mockStudyGroupExams[0]] },
+  { id: 'group-2', semester: '2026/27 · 1. Halbjahr', course_name: 'Deutsch LK', course_sys_id: 'Q2-D-LK1', teachers: [{ krz: 'Re', first_name: 'Anna', last_name: 'Reinhardt', email: 'a.reinhardt@schule.example', recipient_id: 'l-1002' }], exams: [mockStudyGroupExams[1]] },
+  { id: 'group-3', semester: '2026/27 · 1. Halbjahr', course_name: 'Physik LK', course_sys_id: 'Q2-PH-LK1', teachers: [{ krz: 'Kl', first_name: 'Sabine', last_name: 'Keller', email: null, recipient_id: 'l-1003' }], exams: [] },
 ];
 
 function urlMatches(pattern: string, url: string): boolean {
@@ -455,7 +459,7 @@ export function getMockResponse(url: string, method: string, config: any): { dat
     return { status: 200, data: { success: true, event: mockCalendarEvents[0], filters: { event_id: eventId || '', view_id: '' } } };
   }
 
-  // Timetable and study groups
+  // Timetable
   if (u === '/stundenplan' && method === 'get') {
     return { status: 200, data: { success: true, week_start: mockTimetable[0].date, week_end: mockTimetable[4].date, active_week: 'A', days: mockTimetable } };
   }
