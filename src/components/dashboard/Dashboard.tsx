@@ -112,6 +112,16 @@ const Dashboard: React.FC = () => {
       navigate(`${basePath}/calendar`);
       return;
     }
+    if (module.url.toLowerCase().includes('/stundenplan.php') ||
+        module.name.toLowerCase().includes('stundenplan')) {
+      navigate(`${basePath}/timetable`);
+      return;
+    }
+    if (module.url.toLowerCase().includes('/lerngruppen.php') ||
+        module.name.toLowerCase().includes('lerngruppen')) {
+      navigate(`${basePath}/study-groups`);
+      return;
+    }
     if (module.url.toLowerCase().includes('dsb') ||
         (module.direct_url && module.direct_url.toLowerCase().includes('dsb')) ||
         module.name.toLowerCase().includes('dsb') ||

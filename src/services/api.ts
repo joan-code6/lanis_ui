@@ -163,6 +163,9 @@ import {
   CalendarOverviewResponse,
   CalendarEventsResponse,
   SingleCalendarEventResponse,
+  TimetableResponse,
+  TimetableDay,
+  StudyGroupsResponse,
   DSBLoginRequest,
   DSBLoginResponse,
   DSBPlanUrlsResponse,
@@ -452,6 +455,86 @@ export const calendarAPI = {
     const response = await apiClient.get<SingleCalendarEventResponse>(`/kalender/event/${eventId}`, {
       headers: { 'X-Session-Token': token },
       params: { view_id: viewId },
+      signal,
+    });
+    return response.data;
+  },
+};
+
+// Timetable API
+export const timetableAPI = {
+  async getTimetable(token: string, signal?: AbortSignal): Promise<TimetableResponse> {
+    const response = await apiClient.get<any>('/stundenplan', {
+      headers: { 'X-Session-Token': token },
+      signal,
+    });
+
+    const data = response.data;
+    if (!data?.success) {
+      return { success: false, days: [], message: data?.error || data?.message || 'Der Stundenplan konnte nicht geladen werden.' };
+    }
+
+    if (Array.isArray(data.days) && data.days.every((day: any) => day && Array.isArray(day.lessons))) {
+      return data as TimetableResponse;
+    }
+
+    const monday = new Date();
+    const weekday = monday.getDay();
+    monday.setDate(monday.getDate() - (weekday === 0 ? 6 : weekday - 1));
+    const weekMatch = String(data.week_badge || '').toUpperCase().match(/\b([AB])\b/);
+    const activeWeek = weekMatch?.[1] as 'A' | 'B' | undefined;
+    const mapPlan = (plan: any[]) => (Array.isArray(data.days) ? data.days : []).map((name: string, index: number) => {
+      const date = new Date(monday);
+      date.setDate(monday.getDate() + index);
+      return {
+        date: date.toISOString().slice(0, 10),
+        name,
+        lessons: (Array.isArray(plan?.[index]) ? plan[index] : []).map((lesson: any) => ({
+          id: lesson.id,
+          period: lesson.duration > 1
+            ? `${lesson.stunde}–${lesson.stunde + lesson.duration - 1}`
+            : lesson.stunde,
+          start_time: lesson.start_time ? `${String(lesson.start_time.hour).padStart(2, '0')}:${String(lesson.start_time.minute).padStart(2, '0')}` : undefined,
+          end_time: lesson.end_time ? `${String(lesson.end_time.hour).padStart(2, '0')}:${String(lesson.end_time.minute).padStart(2, '0')}` : undefined,
+          subject: lesson.name || 'Unterricht',
+          teacher: lesson.teacher,
+          room: lesson.room,
+          week_type: ['A', 'B'].includes(lesson.badge) ? lesson.badge : undefined,
+          info: lesson.badge && !['A', 'B'].includes(lesson.badge) ? lesson.badge : undefined,
+          duration: lesson.duration || 1,
+        })),
+      };
+    });
+    const allDays = mapPlan(data.plan_for_all || []);
+    const mappedPersonalDays = mapPlan(data.plan_for_own || []);
+    const personalDays = mappedPersonalDays.some((dayEntry: TimetableDay) => dayEntry.lessons.length) ? mappedPersonalDays : allDays;
+    const timeSlots = (Array.isArray(data.hours) ? data.hours : []).map((slot: any, index: number) => {
+      const labelPeriod = Number.parseInt(String(slot.label || '').match(/\d+/)?.[0] || '', 10);
+      return {
+        period: Number.isFinite(labelPeriod) ? labelPeriod : index,
+        start_time: `${String(slot.start_time?.hour ?? '').padStart(2, '0')}:${String(slot.start_time?.minute ?? '').padStart(2, '0')}`,
+        end_time: `${String(slot.end_time?.hour ?? '').padStart(2, '0')}:${String(slot.end_time?.minute ?? '').padStart(2, '0')}`,
+      };
+    });
+
+    return {
+      success: true,
+      week_start: personalDays[0]?.date,
+      week_end: personalDays[personalDays.length - 1]?.date,
+      days: personalDays,
+      active_week: activeWeek,
+      personal_days: personalDays,
+      all_days: allDays,
+      time_slots: timeSlots,
+    };
+  },
+};
+
+// Study Groups API
+export const studyGroupsAPI = {
+  async getStudyGroups(token: string, signal?: AbortSignal): Promise<StudyGroupsResponse> {
+    const response = await apiClient.get<StudyGroupsResponse>('/lerngruppen', {
+      headers: { 'X-Session-Token': token },
       signal,
     });
     return response.data;

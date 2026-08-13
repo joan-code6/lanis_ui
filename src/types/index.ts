@@ -391,6 +391,82 @@ export interface SingleCalendarEventResponse {
   };
 }
 
+// Timetable types
+export interface TimetableLesson {
+  id?: string;
+  period?: string | number;
+  start_time?: string;
+  end_time?: string;
+  subject: string;
+  teacher?: string;
+  room?: string;
+  class_name?: string;
+  info?: string;
+  cancelled?: boolean;
+  week_type?: 'A' | 'B';
+  duration?: number;
+  [key: string]: unknown;
+}
+
+export interface TimetableDay {
+  date: string;
+  name?: string;
+  lessons: TimetableLesson[];
+}
+
+export interface TimetableResponse {
+  success: boolean;
+  week_start?: string;
+  week_end?: string;
+  days: TimetableDay[];
+  message?: string;
+  active_week?: 'A' | 'B';
+  personal_days?: TimetableDay[];
+  all_days?: TimetableDay[];
+  time_slots?: Array<{
+    period: number;
+    start_time: string;
+    end_time: string;
+  }>;
+}
+
+// Study-group types
+export interface StudyGroupTeacher {
+  krz: string;
+  first_name: string;
+  last_name: string;
+  email: string | null;
+}
+
+export interface StudyGroupExam {
+  id: string;
+  course_id: string;
+  course_name: string | null;
+  course_sys_id: string | null;
+  date: string | null;
+  type: string;
+  duration_label: string | null;
+  hours: string | null;
+}
+
+export interface StudyGroup {
+  id: string;
+  semester: string;
+  course_name: string;
+  course_sys_id: string | null;
+  teachers: StudyGroupTeacher[];
+  exams: StudyGroupExam[];
+}
+
+export interface StudyGroupsResponse {
+  success: boolean;
+  groups: StudyGroup[];
+  group_count: number;
+  exams: StudyGroupExam[];
+  exam_count: number;
+  error?: string;
+}
+
 // DSB Mobile types
 export interface DSBLoginRequest {
   username: string;
