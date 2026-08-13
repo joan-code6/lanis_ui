@@ -155,13 +155,19 @@ const StudyGroups: React.FC = () => {
                       };
                       return (
                         <div key={`${teacher.krz}-${index}`} className="flex items-center justify-between gap-3 py-1.5 text-sm">
-                          <span className="flex min-w-0 items-center gap-2 text-surface-700 dark:text-surface-300">
+                          <button
+                            type="button"
+                            onClick={openMessageComposer}
+                            disabled={!teacher.recipient_id}
+                            className="flex min-w-0 items-center gap-2 rounded-lg text-left text-surface-700 transition-colors enabled:hover:text-primary-600 disabled:cursor-default dark:text-surface-300 dark:enabled:hover:text-primary-400"
+                            title={teacher.recipient_id ? `Nachricht an ${name}` : undefined}
+                          >
                             <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-100 text-xs font-semibold uppercase text-primary-700 dark:bg-primary-950 dark:text-primary-300" aria-hidden="true">
                               {initials}
                             </span>
                             <span className="truncate">{name}</span>
                             {teacher.krz && <span className="text-xs text-surface-400">({teacher.krz})</span>}
-                          </span>
+                          </button>
                           {teacher.recipient_id ? (
                             <button type="button" onClick={openMessageComposer} className="rounded-lg p-1.5 text-surface-400 hover:bg-surface-100 hover:text-primary-600 dark:hover:bg-surface-800" title={`Nachricht an ${name}`} aria-label={`Nachricht an ${name}`}>
                               <EnvelopeIcon className="h-4 w-4" />
