@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
 import { format, parseISO } from 'date-fns';
 import { de } from 'date-fns/locale';
 import {
@@ -9,9 +10,9 @@ import {
   ClockIcon,
   EnvelopeIcon,
   UserGroupIcon,
-  UserIcon,
 } from '@heroicons/react/24/outline';
 import { useAuth } from '../../contexts/AuthContext';
+import { useBasePath } from '../../contexts/BasePathContext';
 import { studyGroupsAPI } from '../../services/api';
 import { StudyGroup, StudyGroupExam } from '../../types';
 import SEO from '../seo/SEO';
@@ -27,6 +28,8 @@ const formatExamDate = (date: string | null) => {
 
 const StudyGroups: React.FC = () => {
   const { token } = useAuth();
+  const navigate = useNavigate();
+  const basePath = useBasePath();
   const [groups, setGroups] = useState<StudyGroup[]>([]);
   const [exams, setExams] = useState<StudyGroupExam[]>([]);
   const [loading, setLoading] = useState(true);
@@ -125,7 +128,6 @@ const StudyGroups: React.FC = () => {
                     <div className="min-w-0">
                       <h3 className="font-semibold text-surface-900 dark:text-surface-100">{group.course_name || 'Unbenannte Lerngruppe'}</h3>
                       <div className="mt-1 flex flex-wrap gap-2 text-xs text-surface-500 dark:text-surface-400">
-                        {group.course_sys_id && <span>{group.course_sys_id}</span>}
                         {group.semester && <span className="badge badge-surface">{group.semester}</span>}
                       </div>
                     </div>
@@ -138,18 +140,37 @@ const StudyGroups: React.FC = () => {
                     <p className="mb-2 text-xs font-medium uppercase tracking-wide text-surface-400">Lehrkräfte</p>
                     {group.teachers.length ? group.teachers.map((teacher, index) => {
                       const name = [teacher.first_name, teacher.last_name].filter(Boolean).join(' ') || teacher.krz;
+                      const initials = [teacher.first_name, teacher.last_name]
+                        .filter(Boolean)
+                        .map(part => part.charAt(0))
+                        .join('') || teacher.krz.slice(0, 2);
+                      const openMessageComposer = () => {
+                        const params = new URLSearchParams({
+                          compose: '1',
+                          recipient: teacher.recipient_id || '',
+                          recipientName: name,
+                          recipientUsername: teacher.krz,
+                        });
+                        navigate(`${basePath}/messages?${params.toString()}`);
+                      };
                       return (
                         <div key={`${teacher.krz}-${index}`} className="flex items-center justify-between gap-3 py-1.5 text-sm">
                           <span className="flex min-w-0 items-center gap-2 text-surface-700 dark:text-surface-300">
-                            <UserIcon className="h-4 w-4 shrink-0 text-surface-400" />
+                            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-100 text-xs font-semibold uppercase text-primary-700 dark:bg-primary-950 dark:text-primary-300" aria-hidden="true">
+                              {initials}
+                            </span>
                             <span className="truncate">{name}</span>
                             {teacher.krz && <span className="text-xs text-surface-400">({teacher.krz})</span>}
                           </span>
-                          {teacher.email && (
+                          {teacher.recipient_id ? (
+                            <button type="button" onClick={openMessageComposer} className="rounded-lg p-1.5 text-surface-400 hover:bg-surface-100 hover:text-primary-600 dark:hover:bg-surface-800" title={`Nachricht an ${name}`} aria-label={`Nachricht an ${name}`}>
+                              <EnvelopeIcon className="h-4 w-4" />
+                            </button>
+                          ) : teacher.email ? (
                             <a href={`mailto:${teacher.email}`} className="rounded-lg p-1.5 text-surface-400 hover:bg-surface-100 hover:text-primary-600 dark:hover:bg-surface-800" title={`E-Mail an ${name}`}>
                               <EnvelopeIcon className="h-4 w-4" />
                             </a>
-                          )}
+                          ) : null}
                         </div>
                       );
                     }) : <p className="text-sm text-surface-400">Keine Lehrkraft angegeben</p>}
