@@ -107,6 +107,25 @@ const Messages: React.FC = () => {
     }
   }, [searchParams, token]);
 
+  useEffect(() => {
+    const recipientId = searchParams.get('recipient');
+    if (searchParams.get('compose') !== '1' || !recipientId) return;
+
+    const recipient: SearchResult = {
+      id: recipientId,
+      name: searchParams.get('recipientName') || searchParams.get('recipientUsername') || 'Lehrkraft',
+      username: searchParams.get('recipientUsername') || '',
+      type: 'Lehrkraft',
+    };
+    setComposeData(previous => ({
+      ...previous,
+      recipients: previous.recipients.some(item => item.id === recipient.id)
+        ? previous.recipients
+        : [...previous.recipients, recipient],
+    }));
+    setShowCompose(true);
+  }, [searchParams]);
+
   const loadMessages = async (signal?: AbortSignal) => {
     if (!token) return;
     setIsUpdating(true);

@@ -87,6 +87,7 @@ function hasUnavailableBrowser(error) {
     normalized.includes('could not find chrome') ||
     normalized.includes('browser was not found') ||
     normalized.includes('executable doesn\'t exist') ||
+    normalized.includes('no executable was found') ||
     (normalized.includes('failed to launch the browser process') &&
       (normalized.includes('error loading shared library') ||
         normalized.includes('error while loading shared libraries') ||

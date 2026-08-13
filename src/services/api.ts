@@ -169,6 +169,7 @@ import {
   DSBPlanResponse,
   TimetableResponse,
   TimetableDay,
+  StudyGroupsResponse,
 } from '../types';
 
 // Configuration
@@ -528,6 +529,17 @@ export const timetableAPI = {
       all_days: allDays,
       time_slots: timeSlots,
     };
+  },
+};
+
+// Study Groups API
+export const studyGroupsAPI = {
+  async getStudyGroups(token: string, signal?: AbortSignal): Promise<StudyGroupsResponse> {
+    const response = await apiClient.get<StudyGroupsResponse>('/lerngruppen', {
+      headers: { 'X-Session-Token': token },
+      signal,
+    });
+    return response.data;
   },
 };
 

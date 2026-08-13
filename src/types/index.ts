@@ -430,6 +430,44 @@ export interface TimetableResponse {
   }>;
 }
 
+// Study-group types
+export interface StudyGroupTeacher {
+  krz: string;
+  first_name: string;
+  last_name: string;
+  email: string | null;
+  recipient_id?: string | null;
+}
+
+export interface StudyGroupExam {
+  id: string;
+  course_id: string;
+  course_name: string | null;
+  course_sys_id: string | null;
+  date: string | null;
+  type: string;
+  duration_label: string | null;
+  hours: string | null;
+}
+
+export interface StudyGroup {
+  id: string;
+  semester: string;
+  course_name: string;
+  course_sys_id: string | null;
+  teachers: StudyGroupTeacher[];
+  exams: StudyGroupExam[];
+}
+
+export interface StudyGroupsResponse {
+  success: boolean;
+  groups: StudyGroup[];
+  group_count: number;
+  exams: StudyGroupExam[];
+  exam_count: number;
+  error?: string;
+}
+
 // DSB Mobile types
 export interface DSBLoginRequest {
   username: string;

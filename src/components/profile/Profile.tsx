@@ -124,7 +124,7 @@ const Profile: React.FC = () => {
   }
 
   return (
-    <div className="p-4 sm:p-6 max-w-6xl">
+    <div className="p-4 sm:p-6 max-w-6xl mx-auto">
       <SEO
         title="Mein Profil"
         description="Lanis Profil — Deine Benutzerinformationen und Kontodetails im Schulportal Hessen."
@@ -226,26 +226,6 @@ const Profile: React.FC = () => {
               </div>
             </div>
 
-            <div className="card">
-              <h3 className="text-sm font-semibold text-surface-900 dark:text-surface-100 mb-4">Anwendung</h3>
-              <div className="space-y-1.5 text-sm text-surface-600">
-                <p><span className="font-medium">Version:</span> 1.0.0</p>
-                <p><span className="font-medium">Typ:</span> Inoffizielle UI</p>
-                <p><span className="font-medium">Backend:</span> Schulportal Hessen API</p>
-              </div>
-              <div className="mt-4 p-3.5 bg-blue-50 dark:bg-blue-950 rounded-xl border border-blue-100 dark:border-blue-900">
-                <div className="flex items-start gap-2.5">
-                  <InformationCircleIcon className="h-5 w-5 text-blue-400 dark:text-blue-300 mt-0.5 flex-shrink-0" />
-                  <div className="text-sm text-blue-700 dark:text-blue-300">
-                    <p className="font-medium">Hinweis</p>
-                    <p className="mt-0.5 leading-relaxed">
-                      Dies ist eine inoffizielle Benutzeroberfläche für das Schulportal Hessen.
-                      Alle Daten werden über die offiziellen APIs abgerufen.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
     </div>

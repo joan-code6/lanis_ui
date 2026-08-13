@@ -16,6 +16,7 @@ import DemoRoute from './components/demo/DemoRoute';
 import Landingpage from './components/landing/Landingpage';
 import Impressum from './components/legal/Impressum';
 import Timetable from './components/timetable/Timetable';
+import StudyGroups from './components/study-groups/StudyGroups';
 
 const LandingRoot: React.FC = () => {
   const { isAuthenticated } = useAuth();
@@ -56,6 +57,7 @@ const AppRoutes: React.FC = () => {
           <Route path="courses/:id" element={<Courses />} />
           <Route path="calendar" element={<Kalender />} />
           <Route path="timetable" element={<Timetable />} />
+          <Route path="study-groups" element={<StudyGroups />} />
           <Route path="dsb" element={<Dsbmobile />} />
           <Route path="profile" element={<Profile />} />
           <Route path="settings" element={<Settings />} />
@@ -80,6 +82,7 @@ const AppRoutes: React.FC = () => {
                   <Route path="/courses/:id" element={<Courses />} />
                   <Route path="/calendar" element={<Kalender />} />
                   <Route path="/timetable" element={<Timetable />} />
+                  <Route path="/study-groups" element={<StudyGroups />} />
                   <Route path="/dsb" element={<Dsbmobile />} />
                   <Route path="/profile" element={<Profile />} />
                   <Route path="/settings" element={<Settings />} />

@@ -352,6 +352,17 @@ const mockTimetable = [
   ] },
 ];
 
+const mockStudyGroupExams = [
+  { id: 'exam-1', course_id: 'group-1', course_name: 'Mathematik GK', course_sys_id: 'Q2-M-GK1', date: relDate(7), type: 'Klausur', duration_label: '90 Minuten', hours: '1.–2. Stunde' },
+  { id: 'exam-2', course_id: 'group-2', course_name: 'Deutsch LK', course_sys_id: 'Q2-D-LK1', date: relDate(12), type: 'Klausur', duration_label: '180 Minuten', hours: '1.–4. Stunde' },
+];
+
+const mockStudyGroups = [
+  { id: 'group-1', semester: '2026/27 · 1. Halbjahr', course_name: 'Mathematik GK', course_sys_id: 'Q2-M-GK1', teachers: [{ krz: 'Wb', first_name: 'Heinrich', last_name: 'Weber', email: 'h.weber@schule.example', recipient_id: 'l-1001' }], exams: [mockStudyGroupExams[0]] },
+  { id: 'group-2', semester: '2026/27 · 1. Halbjahr', course_name: 'Deutsch LK', course_sys_id: 'Q2-D-LK1', teachers: [{ krz: 'Re', first_name: 'Anna', last_name: 'Reinhardt', email: 'a.reinhardt@schule.example', recipient_id: 'l-1002' }], exams: [mockStudyGroupExams[1]] },
+  { id: 'group-3', semester: '2026/27 · 1. Halbjahr', course_name: 'Physik LK', course_sys_id: 'Q2-PH-LK1', teachers: [{ krz: 'Kl', first_name: 'Sabine', last_name: 'Keller', email: null, recipient_id: 'l-1003' }], exams: [] },
+];
+
 function urlMatches(pattern: string, url: string): boolean {
   const regex = new RegExp('^' + pattern.replace(/:\w+/g, '[^/]+').replace(/\*/g, '.*') + '$');
   return regex.test(url);
@@ -451,6 +462,9 @@ export function getMockResponse(url: string, method: string, config: any): { dat
   // Timetable
   if (u === '/stundenplan' && method === 'get') {
     return { status: 200, data: { success: true, week_start: mockTimetable[0].date, week_end: mockTimetable[4].date, active_week: 'A', days: mockTimetable } };
+  }
+  if (u === '/lerngruppen' && method === 'get') {
+    return { status: 200, data: { success: true, groups: mockStudyGroups, group_count: mockStudyGroups.length, exams: mockStudyGroupExams, exam_count: mockStudyGroupExams.length } };
   }
 
   // DSB
