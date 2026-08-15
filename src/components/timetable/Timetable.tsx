@@ -233,7 +233,7 @@ const HomeworkPreview: React.FC<{ homework?: TimetableLesson['homework']; compac
       </div>
       <div className={compact ? 'mt-0.5 space-y-0.5 sm:mt-1' : 'mt-1.5 space-y-1'}>
         {homework.map((item, index) => (
-          <p key={item.entry_id || index} className={`${compact ? 'break-words text-[8px] leading-tight sm:text-[10px]' : 'text-xs leading-relaxed'} ${item.done ? 'text-emerald-700 line-through decoration-emerald-500/60 dark:text-emerald-300' : 'text-amber-950 dark:text-amber-100'}`}>
+          <p key={item.entry_id || index} className={`whitespace-pre-wrap break-words ${compact ? 'text-[8px] leading-tight sm:text-[10px]' : 'text-xs leading-relaxed'} ${item.done ? 'text-emerald-700 line-through decoration-emerald-500/60 dark:text-emerald-300' : 'text-amber-950 dark:text-amber-100'}`}>
             {item.text}
           </p>
         ))}
