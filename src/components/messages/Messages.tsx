@@ -489,7 +489,7 @@ const Messages: React.FC = () => {
                           </p>
                         </div>
                         <div
-                          className="text-sm text-surface-700 dark:text-surface-300 leading-relaxed [&_a]:text-primary-600 [&_a:hover]:underline"
+                          className="min-w-0 max-w-full break-words [overflow-wrap:anywhere] text-sm text-surface-700 dark:text-surface-300 leading-relaxed [&_a]:text-primary-600 [&_a:hover]:underline"
                           dangerouslySetInnerHTML={{ __html: message.content }}
                         />
                       </div>
