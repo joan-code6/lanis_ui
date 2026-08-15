@@ -233,7 +233,7 @@ const HomeworkPreview: React.FC<{ homework?: TimetableLesson['homework']; compac
       </div>
       <div className={compact ? 'mt-0.5 space-y-0.5 sm:mt-1' : 'mt-1.5 space-y-1'}>
         {homework.map((item, index) => (
-          <p key={item.entry_id || index} className={`${compact ? 'line-clamp-2 text-[8px] leading-tight sm:text-[10px]' : 'text-xs leading-relaxed'} ${item.done ? 'text-emerald-700 line-through decoration-emerald-500/60 dark:text-emerald-300' : 'text-amber-950 dark:text-amber-100'}`}>
+          <p key={item.entry_id || index} className={`${compact ? 'break-words text-[8px] leading-tight sm:text-[10px]' : 'text-xs leading-relaxed'} ${item.done ? 'text-emerald-700 line-through decoration-emerald-500/60 dark:text-emerald-300' : 'text-amber-950 dark:text-amber-100'}`}>
             {item.text}
           </p>
         ))}
@@ -285,15 +285,15 @@ const TimelineView: React.FC<{
                 const lessons = lessonsStartingAt(day, slot.period);
                 const span = Math.max(1, ...lessons.map(lesson => lesson.duration || 1));
                 return (
-                  <td key={`${day.date}-${slot.period}`} rowSpan={span} className="relative border-t p-0.5 align-top sm:p-1.5">
+                  <td key={`${day.date}-${slot.period}`} rowSpan={span} className="border-t p-0.5 align-top sm:p-1.5">
                     <div
-                      className={lessons.length ? 'absolute inset-0.5 grid gap-0.5 sm:inset-1.5 sm:gap-1.5' : 'grid gap-0.5 sm:gap-1.5'}
+                      className="grid h-full gap-0.5 sm:gap-1.5"
                       style={lessons.length ? { gridTemplateColumns: `repeat(${Math.min(lessons.length, 2)}, minmax(0, 1fr))` } : undefined}
                     >
                       {lessons.map((lesson, index) => (
                         <div
                           key={lesson.id || index}
-                          className={`relative flex min-h-0 flex-col justify-center overflow-hidden rounded-md border border-surface-200 bg-surface-50 p-1 transition-colors sm:rounded-xl sm:p-2.5 dark:border-surface-700 dark:bg-surface-950 ${lesson.course_id ? 'cursor-pointer hover:border-primary-400 hover:bg-primary-50/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-500 dark:hover:border-primary-600 dark:hover:bg-primary-950/20' : ''}`}
+                          className={`relative flex min-w-0 flex-col justify-center rounded-md border border-surface-200 bg-surface-50 p-1 transition-colors sm:rounded-xl sm:p-2.5 dark:border-surface-700 dark:bg-surface-950 ${lesson.course_id ? 'cursor-pointer hover:border-primary-400 hover:bg-primary-50/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-500 dark:hover:border-primary-600 dark:hover:bg-primary-950/20' : ''}`}
                           role={lesson.course_id ? 'link' : undefined}
                           tabIndex={lesson.course_id ? 0 : undefined}
                           aria-label={lesson.course_id ? `${lesson.subject} in Mein Unterricht öffnen` : undefined}
