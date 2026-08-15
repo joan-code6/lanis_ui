@@ -2,20 +2,27 @@ import React, { useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
 import { addDays, format, isToday, startOfWeek } from 'date-fns';
 import { de } from 'date-fns/locale';
+import { useNavigate } from 'react-router-dom';
 import {
   ArrowPathIcon,
+  BookOpenIcon,
   CalendarDaysIcon,
+  CheckCircleIcon,
+  ChevronRightIcon,
   ClockIcon,
   MapPinIcon,
   UserIcon,
 } from '@heroicons/react/24/outline';
 import { useAuth } from '../../contexts/AuthContext';
+import { useBasePath } from '../../contexts/BasePathContext';
 import { timetableAPI } from '../../services/api';
 import { TimetableDay, TimetableLesson, TimetableResponse } from '../../types';
 import SEO from '../seo/SEO';
 
 const Timetable: React.FC = () => {
   const { token } = useAuth();
+  const navigate = useNavigate();
+  const basePath = useBasePath();
   const [weekStart] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
   const [days, setDays] = useState<TimetableDay[]>([]);
   const [personalDays, setPersonalDays] = useState<TimetableDay[]>([]);
@@ -64,6 +71,9 @@ const Timetable: React.FC = () => {
     }));
   }, [activeWeek, allDays, personalDays, planMode, weekMode]);
   const lessonCount = useMemo(() => visibleDays.reduce((total, day) => total + day.lessons.length, 0), [visibleDays]);
+  const openCourse = (lesson: TimetableLesson) => {
+    if (lesson.course_id) navigate(`${basePath}/courses/${lesson.course_id}`);
+  };
 
   return (
     <div className="min-h-full px-3 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
@@ -119,7 +129,7 @@ const Timetable: React.FC = () => {
             <p className="mt-1 text-sm text-surface-500">Für diese Woche wurden keine Unterrichtsstunden gefunden.</p>
           </div>
         ) : viewMode === 'timeline' && timeSlots.length ? (
-          <TimelineView days={visibleDays} timeSlots={timeSlots} activeWeek={activeWeek} />
+          <TimelineView days={visibleDays} timeSlots={timeSlots} onOpenCourse={openCourse} />
         ) : (
           <div className="scrollbar-hide -mx-3 flex snap-x snap-mandatory gap-3 overflow-x-auto px-3 pb-3 sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 sm:pb-0 md:gap-4 xl:grid-cols-5">
             {visibleDays.map(day => {
@@ -136,7 +146,20 @@ const Timetable: React.FC = () => {
                   </div>
                   <div className="space-y-2 p-3">
                     {day.lessons.length === 0 ? <p className="py-8 text-center text-sm text-surface-400">Unterrichtsfrei</p> : day.lessons.map((lesson, index) => (
-                      <article key={lesson.id || `${day.date}-${index}`} className={`rounded-xl border p-3 ${lesson.cancelled ? 'border-red-200 bg-red-50/70 opacity-75 dark:border-red-900 dark:bg-red-950/30' : 'bg-white dark:bg-surface-900'}`}>
+                      <article
+                        key={lesson.id || `${day.date}-${index}`}
+                        className={`rounded-xl border p-3 transition-all ${lesson.cancelled ? 'border-red-200 bg-red-50/70 opacity-75 dark:border-red-900 dark:bg-red-950/30' : 'bg-white dark:bg-surface-900'} ${lesson.course_id ? 'cursor-pointer hover:-translate-y-0.5 hover:border-primary-300 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 dark:hover:border-primary-700 dark:focus-visible:ring-offset-surface-900' : ''}`}
+                        role={lesson.course_id ? 'link' : undefined}
+                        tabIndex={lesson.course_id ? 0 : undefined}
+                        aria-label={lesson.course_id ? `${lesson.subject} in Mein Unterricht öffnen` : undefined}
+                        onClick={() => openCourse(lesson)}
+                        onKeyDown={event => {
+                          if (lesson.course_id && (event.key === 'Enter' || event.key === ' ')) {
+                            event.preventDefault();
+                            openCourse(lesson);
+                          }
+                        }}
+                      >
                         <div className="mb-2 flex items-start justify-between gap-2">
                           <div>
                             <p className={`font-semibold text-surface-900 dark:text-white ${lesson.cancelled ? 'line-through' : ''}`}>{lesson.subject}</p>
@@ -145,6 +168,7 @@ const Timetable: React.FC = () => {
                           <div className="flex shrink-0 items-center gap-1.5">
                             {lesson.week_type && <WeekBadge week={lesson.week_type} />}
                             {lesson.period != null && <span className="badge badge-surface">{lesson.period}{typeof lesson.period === 'number' ? '.' : ''} Std.</span>}
+                            {lesson.course_id && <ChevronRightIcon className="h-4 w-4 text-primary-500" aria-hidden="true" />}
                           </div>
                         </div>
                         <div className="space-y-1 text-xs text-surface-500 dark:text-surface-400">
@@ -153,6 +177,7 @@ const Timetable: React.FC = () => {
                           {lesson.room && <p className="flex items-center gap-1.5"><MapPinIcon className="h-3.5 w-3.5" />{lesson.room}</p>}
                         </div>
                         {lesson.info && <p className="mt-2 border-t pt-2 text-xs text-primary-700 dark:text-primary-300">{lesson.info}</p>}
+                        <HomeworkPreview homework={lesson.homework} />
                       </article>
                     ))}
                   </div>
@@ -193,11 +218,35 @@ const WeekBadge: React.FC<{ week: 'A' | 'B'; compact?: boolean }> = ({ week, com
   </span>
 );
 
+const HomeworkPreview: React.FC<{ homework?: TimetableLesson['homework']; compact?: boolean }> = ({ homework, compact = false }) => {
+  if (!homework?.length) return null;
+  const allDone = homework.every(item => item.done);
+
+  return (
+    <div className={`${compact ? 'mt-1 p-1 sm:mt-2 sm:p-2' : 'mt-3 p-2.5'} rounded-lg border-l-4 text-left ${allDone ? 'border-emerald-400 bg-emerald-50 dark:border-emerald-500 dark:bg-emerald-950/35' : 'border-amber-400 bg-amber-50 dark:border-amber-500 dark:bg-amber-950/35'}`}>
+      <div className={`flex items-center justify-between gap-1 font-semibold uppercase tracking-wide ${allDone ? 'text-emerald-800 dark:text-emerald-200' : 'text-amber-800 dark:text-amber-200'} ${compact ? 'text-[8px] sm:text-[10px]' : 'text-[10px]'}`}>
+        <span className="flex items-center gap-1"><BookOpenIcon className={compact ? 'h-2.5 w-2.5 sm:h-3 sm:w-3' : 'h-3.5 w-3.5'} />{compact ? 'Hausaufgabe' : 'Hausaufgabe · nächste Stunde'}</span>
+        <span className={`flex items-center gap-0.5 ${allDone ? 'text-emerald-700 dark:text-emerald-300' : 'text-amber-700 dark:text-amber-300'}`}>
+          {allDone && <CheckCircleIcon className={compact ? 'h-2.5 w-2.5 sm:h-3 sm:w-3' : 'h-3.5 w-3.5'} />}
+          {allDone ? 'Erledigt' : 'Offen'}
+        </span>
+      </div>
+      <div className={compact ? 'mt-0.5 space-y-0.5 sm:mt-1' : 'mt-1.5 space-y-1'}>
+        {homework.map((item, index) => (
+          <p key={item.entry_id || index} className={`${compact ? 'line-clamp-2 text-[8px] leading-tight sm:text-[10px]' : 'text-xs leading-relaxed'} ${item.done ? 'text-emerald-700 line-through decoration-emerald-500/60 dark:text-emerald-300' : 'text-amber-950 dark:text-amber-100'}`}>
+            {item.text}
+          </p>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 const TimelineView: React.FC<{
   days: TimetableDay[];
   timeSlots: NonNullable<TimetableResponse['time_slots']>;
-  activeWeek?: 'A' | 'B';
-}> = ({ days, timeSlots, activeWeek }) => {
+  onOpenCourse: (lesson: TimetableLesson) => void;
+}> = ({ days, timeSlots, onOpenCourse }) => {
   const lessonsStartingAt = (day: TimetableDay, period: number): TimetableLesson[] =>
     day.lessons.filter(lesson => Number(lesson.period?.toString().split('–')[0]) === period);
   const isCovered = (day: TimetableDay, period: number): boolean => day.lessons.some(lesson => {
@@ -242,7 +291,20 @@ const TimelineView: React.FC<{
                       style={lessons.length ? { gridTemplateColumns: `repeat(${Math.min(lessons.length, 2)}, minmax(0, 1fr))` } : undefined}
                     >
                       {lessons.map((lesson, index) => (
-                        <div key={lesson.id || index} className="relative flex min-h-0 flex-col justify-center overflow-hidden rounded-md border border-surface-200 bg-surface-50 p-1 sm:rounded-xl sm:p-2.5 dark:border-surface-700 dark:bg-surface-950">
+                        <div
+                          key={lesson.id || index}
+                          className={`relative flex min-h-0 flex-col justify-center overflow-hidden rounded-md border border-surface-200 bg-surface-50 p-1 transition-colors sm:rounded-xl sm:p-2.5 dark:border-surface-700 dark:bg-surface-950 ${lesson.course_id ? 'cursor-pointer hover:border-primary-400 hover:bg-primary-50/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-500 dark:hover:border-primary-600 dark:hover:bg-primary-950/20' : ''}`}
+                          role={lesson.course_id ? 'link' : undefined}
+                          tabIndex={lesson.course_id ? 0 : undefined}
+                          aria-label={lesson.course_id ? `${lesson.subject} in Mein Unterricht öffnen` : undefined}
+                          onClick={() => onOpenCourse(lesson)}
+                          onKeyDown={event => {
+                            if (lesson.course_id && (event.key === 'Enter' || event.key === ' ')) {
+                              event.preventDefault();
+                              onOpenCourse(lesson);
+                            }
+                          }}
+                        >
                           <div className="flex items-start justify-between gap-0.5 sm:gap-2">
                             <span className="break-words text-[10px] font-semibold leading-tight sm:text-sm">{lesson.subject}</span>
                             {lesson.week_type && <WeekBadge week={lesson.week_type} compact />}
@@ -251,6 +313,7 @@ const TimelineView: React.FC<{
                             {lesson.teacher && <p>{lesson.teacher}</p>}
                             {lesson.room && <p>{lesson.room}</p>}
                           </div>
+                          <HomeworkPreview homework={lesson.homework} compact />
                         </div>
                       ))}
                       {!lessons.length && <div className="h-10 rounded bg-surface-50 sm:h-12 sm:rounded-lg dark:bg-surface-800/30" />}

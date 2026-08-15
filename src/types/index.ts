@@ -392,6 +392,13 @@ export interface SingleCalendarEventResponse {
 }
 
 // Timetable types
+export interface TimetableHomework {
+  entry_id: string | null;
+  text: string;
+  done: boolean;
+  assigned_date: string;
+}
+
 export interface TimetableLesson {
   id?: string;
   period?: string | number;
@@ -405,6 +412,9 @@ export interface TimetableLesson {
   cancelled?: boolean;
   week_type?: 'A' | 'B';
   duration?: number;
+  course_id?: string;
+  course_name?: string;
+  homework?: TimetableHomework[];
   [key: string]: unknown;
 }
 

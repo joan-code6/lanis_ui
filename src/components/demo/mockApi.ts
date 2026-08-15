@@ -329,26 +329,26 @@ const mockDsbData = {
 
 const mockTimetable = [
   { date: relDate(0), name: 'Montag', lessons: [
-    { id: 'mo-1', period: '1–2', start_time: '08:00', end_time: '09:30', subject: 'Mathematik', teacher: 'Wb', room: 'A12' },
-    { id: 'mo-2', period: '3–4', start_time: '09:50', end_time: '11:20', subject: 'Deutsch', teacher: 'Re', room: 'B05' },
-    { id: 'mo-3', period: '5–6', start_time: '11:40', end_time: '13:10', subject: 'Englisch', teacher: "O'C", room: 'C01' },
+    { id: 'mo-1', period: '1–2', start_time: '08:00', end_time: '09:30', subject: 'Mathematik GK', teacher: 'Wb', room: 'A12', course_id: 'b1', course_name: 'Mathematik GK' },
+    { id: 'mo-2', period: '3–4', start_time: '09:50', end_time: '11:20', subject: 'Deutsch LK', teacher: 'Re', room: 'B05', course_id: 'b2', course_name: 'Deutsch LK', homework: [{ entry_id: 'e2', text: mockCourses[1].homework, done: true, assigned_date: mockCourses[1].datum.slice(0, 10) }] },
+    { id: 'mo-3', period: '5–6', start_time: '11:40', end_time: '13:10', subject: 'Englisch GK', teacher: "O'C", room: 'C01', course_id: 'b3', course_name: 'Englisch GK', homework: [{ entry_id: 'e3', text: mockCourses[2].homework, done: false, assigned_date: mockCourses[2].datum.slice(0, 10) }] },
   ] },
   { date: relDate(1), name: 'Dienstag', lessons: [
-    { id: 'di-1', period: '1–2', start_time: '08:00', end_time: '09:30', subject: 'Physik', teacher: 'Kl', room: 'D17' },
-    { id: 'di-2', period: '3–4', start_time: '09:50', end_time: '11:20', subject: 'Geschichte', teacher: 'Bg', room: 'C03' },
-    { id: 'di-3', period: '5–6', start_time: '11:40', end_time: '13:10', subject: 'Informatik', teacher: 'Ch', room: 'R204' },
+    { id: 'di-1', period: '1–2', start_time: '08:00', end_time: '09:30', subject: 'Physik LK', teacher: 'Kl', room: 'D17', course_id: 'b4', course_name: 'Physik LK', homework: [{ entry_id: 'e4', text: mockCourses[3].homework, done: false, assigned_date: mockCourses[3].datum.slice(0, 10) }] },
+    { id: 'di-2', period: '3–4', start_time: '09:50', end_time: '11:20', subject: 'Geschichte GK', teacher: 'Bg', room: 'C03', course_id: 'b5', course_name: 'Geschichte GK', homework: [{ entry_id: 'e5', text: mockCourses[4].homework, done: true, assigned_date: mockCourses[4].datum.slice(0, 10) }] },
+    { id: 'di-3', period: '5–6', start_time: '11:40', end_time: '13:10', subject: 'Informatik LK', teacher: 'Ch', room: 'R204', course_id: 'b6', course_name: 'Informatik LK', homework: [{ entry_id: 'e6', text: mockCourses[5].homework, done: false, assigned_date: mockCourses[5].datum.slice(0, 10) }] },
   ] },
   { date: relDate(2), name: 'Mittwoch', lessons: [
-    { id: 'mi-1', period: '1–2', start_time: '08:00', end_time: '09:30', subject: 'Deutsch', teacher: 'Re', room: 'B05' },
-    { id: 'mi-2', period: '3–4', start_time: '09:50', end_time: '11:20', subject: 'Mathematik', teacher: 'Wb', room: 'A12' },
+    { id: 'mi-1', period: '1–2', start_time: '08:00', end_time: '09:30', subject: 'Deutsch LK', teacher: 'Re', room: 'B05', course_id: 'b2', course_name: 'Deutsch LK' },
+    { id: 'mi-2', period: '3–4', start_time: '09:50', end_time: '11:20', subject: 'Mathematik GK', teacher: 'Wb', room: 'A12', course_id: 'b1', course_name: 'Mathematik GK', homework: [{ entry_id: 'e1', text: mockCourses[0].homework, done: false, assigned_date: mockCourses[0].datum.slice(0, 10) }] },
   ] },
   { date: relDate(3), name: 'Donnerstag', lessons: [
-    { id: 'do-1', period: '1–2', start_time: '08:00', end_time: '09:30', subject: 'Englisch', teacher: "O'C", room: 'C01' },
-    { id: 'do-2', period: '3–4', start_time: '09:50', end_time: '11:20', subject: 'Physik', teacher: 'Kl', room: 'D17', info: 'Experiment mitbringen' },
+    { id: 'do-1', period: '1–2', start_time: '08:00', end_time: '09:30', subject: 'Englisch GK', teacher: "O'C", room: 'C01', course_id: 'b3', course_name: 'Englisch GK' },
+    { id: 'do-2', period: '3–4', start_time: '09:50', end_time: '11:20', subject: 'Physik LK', teacher: 'Kl', room: 'D17', info: 'Experiment mitbringen', course_id: 'b4', course_name: 'Physik LK' },
   ] },
   { date: relDate(4), name: 'Freitag', lessons: [
-    { id: 'fr-1', period: '1–2', start_time: '08:00', end_time: '09:30', subject: 'Informatik', teacher: 'Ch', room: 'R204' },
-    { id: 'fr-2', period: '3–4', start_time: '09:50', end_time: '11:20', subject: 'Geschichte', teacher: 'Bg', room: 'C03' },
+    { id: 'fr-1', period: '1–2', start_time: '08:00', end_time: '09:30', subject: 'Informatik LK', teacher: 'Ch', room: 'R204', course_id: 'b6', course_name: 'Informatik LK' },
+    { id: 'fr-2', period: '3–4', start_time: '09:50', end_time: '11:20', subject: 'Geschichte GK', teacher: 'Bg', room: 'C03', course_id: 'b5', course_name: 'Geschichte GK' },
   ] },
 ];
 
