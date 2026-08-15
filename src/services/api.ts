@@ -504,6 +504,9 @@ export const timetableAPI = {
           week_type: ['A', 'B'].includes(lesson.badge) ? lesson.badge : undefined,
           info: lesson.badge && !['A', 'B'].includes(lesson.badge) ? lesson.badge : undefined,
           duration: lesson.duration || 1,
+          course_id: lesson.course_id,
+          course_name: lesson.course_name,
+          homework: Array.isArray(lesson.homework) ? lesson.homework : undefined,
         })),
       };
     });
