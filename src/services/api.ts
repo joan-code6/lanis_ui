@@ -330,7 +330,10 @@ export const messagesAPI = {
       params: { q: query },
       signal,
     });
-    return response.data;
+    return {
+      ...response.data,
+      results: response.data.results || response.data.users || [],
+    };
   },
 
   async sendMessage(token: string, message: SendMessageRequest, signal?: AbortSignal): Promise<SendMessageResponse> {

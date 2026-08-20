@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { messagesAPI, calendarAPI, coursesAPI, appsAPI, searchAPI } from '../../services/api';
+import { authAPI, messagesAPI, calendarAPI, coursesAPI, appsAPI, searchAPI, studyGroupsAPI, timetableAPI } from '../../services/api';
 import type { SemanticSearchResult } from '../../services/api';
 import {
   MagnifyingGlassIcon,
@@ -13,6 +13,8 @@ import {
   Cog6ToothIcon,
   ClipboardDocumentListIcon,
   ArrowPathIcon,
+  ClockIcon,
+  UserGroupIcon,
 } from '@heroicons/react/24/outline';
 
 interface SearchItem {
@@ -37,6 +39,8 @@ const CATEGORY_ICONS: Record<string, React.ComponentType<{ className?: string }>
   Kalender: CalendarDaysIcon,
   Module: HomeIcon,
   Vertretungsplan: ClipboardDocumentListIcon,
+  Stundenplan: ClockIcon,
+  Lerngruppen: UserGroupIcon,
   Profil: UserIcon,
   Einstellungen: Cog6ToothIcon,
   Nutzer: UserIcon,
@@ -63,6 +67,11 @@ function collectTexts(obj: unknown, depth: number = 0): string {
 
 function searchText(query: string, obj: unknown): boolean {
   return fuzzyMatch(query, collectTexts(obj));
+}
+
+function htmlToText(value: unknown): string {
+  if (typeof value !== 'string') return '';
+  return new DOMParser().parseFromString(value, 'text/html').body.textContent?.replace(/\s+/g, ' ').trim() || '';
 }
 
 // ── Tier 1: cache search ──────────────────────────────────────────
@@ -203,6 +212,9 @@ function searchCacheData(query: string): SearchItem[] {
     { name: 'Nachrichten', href: '/messages', icon: ChatBubbleLeftRightIcon, cat: 'Nachrichten' },
     { name: 'Mein Unterricht', href: '/courses', icon: AcademicCapIcon, cat: 'Unterricht' },
     { name: 'Kalender', href: '/calendar', icon: CalendarDaysIcon, cat: 'Kalender' },
+    { name: 'Stundenplan', href: '/timetable', icon: ClockIcon, cat: 'Stundenplan' },
+    { name: 'Lerngruppen', href: '/study-groups', icon: UserGroupIcon, cat: 'Lerngruppen' },
+    { name: 'Vertretungsplan', href: '/dsb', icon: ClipboardDocumentListIcon, cat: 'Vertretungsplan' },
     { name: 'Profil', href: '/profile', icon: UserIcon, cat: 'Profil' },
     { name: 'Einstellungen', href: '/settings', icon: Cog6ToothIcon, cat: 'Einstellungen' },
   ];
@@ -280,7 +292,8 @@ export default function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
       return;
     }
     setApiResults([]);
-    setTier(cacheResults.length > 0 ? 1 : 1);
+    setTier(1);
+    const controller = new AbortController();
 
     if (timerRef.current) clearTimeout(timerRef.current);
     timerRef.current = setTimeout(async () => {
@@ -288,65 +301,86 @@ export default function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
       setTier(2);
       setApiResults([]);
 
-      abortedRef.current = false;
-      const r: SearchItem[] = [];
+      const tasks: Array<Promise<SearchItem[]>> = [
+        messagesAPI.searchRecipients(token, query, controller.signal).then(res =>
+          !res.success ? [] : res.results.map(user => ({
+            id: `api-usr-${user.id}`,
+            title: user.name || user.username,
+            subtitle: user.type ? `${user.type} · ${user.username}` : user.username,
+            category: 'Nutzer', icon: UserIcon,
+            href: `/messages?compose=1&recipient=${encodeURIComponent(user.id)}&recipientName=${encodeURIComponent(user.name || user.username)}&recipientUsername=${encodeURIComponent(user.username || '')}`,
+          }))),
+        messagesAPI.getMessageHeaders(token, 'All', 0, controller.signal).then(res =>
+          !res.success ? [] : res.conversations.filter(message => searchText(query, message)).map(message => ({
+            id: `api-msg-${message.Uniquid || message.Id}`,
+            title: message.Betreff || 'Kein Betreff',
+            subtitle: htmlToText(message.SenderName) || message.Sender || 'Nachricht',
+            category: 'Nachrichten', icon: ChatBubbleLeftRightIcon,
+            href: `/messages?conversation=${encodeURIComponent(message.Uniquid || message.Id)}`,
+          }))),
+        calendarAPI.getEvents(token, { search: query }, controller.signal).then(res =>
+          !res.success ? [] : res.events.map(event => ({
+            id: `api-ev-${event.id}`, title: event.title,
+            subtitle: event.start ? new Date(event.start).toLocaleDateString('de-DE') : event.category_name || '',
+            category: 'Kalender', icon: CalendarDaysIcon,
+            href: `/calendar?event=${encodeURIComponent(event.id)}`,
+          }))),
+        coursesAPI.getCourses(token, controller.signal).then(res =>
+          !res.success ? [] : res.entries.filter(entry => searchText(query, entry)).map(entry => ({
+            id: `api-crs-${entry.entry_id || entry.book_id}`, title: entry.name,
+            subtitle: entry.teacher_full_name || entry.teacher_short || entry.thema || '',
+            category: 'Unterricht', icon: AcademicCapIcon, href: `/courses/${entry.book_id}`,
+          }))),
+        appsAPI.getModules(token, controller.signal).then(res =>
+          !res.success ? [] : res.modules.filter(module => searchText(query, module)).map(module => ({
+            id: `api-mod-${module.url}`, title: module.name, subtitle: module.folders?.join(' · ') || 'Modul',
+            category: 'Module', icon: HomeIcon, href: '/dashboard',
+          }))),
+        timetableAPI.getTimetable(token, controller.signal).then(res => {
+          if (!res.success) return [];
+          const days = res.personal_days || res.days || [];
+          return days.flatMap(day => day.lessons.filter(lesson => searchText(query, lesson)).map((lesson, index) => ({
+            id: `api-lesson-${day.date}-${lesson.id || index}`,
+            title: lesson.course_name || lesson.subject,
+            subtitle: [day.name, lesson.start_time, lesson.room, lesson.teacher].filter(Boolean).join(' · '),
+            category: 'Stundenplan', icon: ClockIcon,
+            href: lesson.course_id ? `/courses/${lesson.course_id}` : '/timetable',
+          })));
+        }),
+        studyGroupsAPI.getStudyGroups(token, controller.signal).then(res => {
+          if (!res.success) return [];
+          const groups = res.groups.filter(group => searchText(query, group)).map(group => ({
+            id: `api-group-${group.id}`, title: group.course_name || 'Lerngruppe',
+            subtitle: group.teachers.map(teacher => [teacher.first_name, teacher.last_name].filter(Boolean).join(' ') || teacher.krz).join(' · '),
+            category: 'Lerngruppen', icon: UserGroupIcon, href: '/study-groups',
+          }));
+          const exams = res.exams.filter(exam => searchText(query, exam)).map(exam => ({
+            id: `api-exam-${exam.id}`, title: exam.course_name || exam.type || 'Klausur',
+            subtitle: [exam.date, exam.type, exam.hours].filter(Boolean).join(' · '),
+            category: 'Lerngruppen', icon: UserGroupIcon, href: '/study-groups',
+          }));
+          return [...groups, ...exams];
+        }),
+        authAPI.getUserProfile(token, controller.signal).then(res => {
+          if (!res.success || !searchText(query, res.data)) return [];
+          return [{ id: 'api-profile', title: 'Dein Profil', subtitle: 'Profildaten', category: 'Profil', icon: UserIcon, href: '/profile' }];
+        }),
+      ];
 
-      // search recipients
-      try {
-        const res = await messagesAPI.searchRecipients(token, query);
-        if (!abortedRef.current && res.success && res.results) {
-          for (const u of res.results) {
-            if (abortedRef.current) return;
-            r.push({ id: `api-usr-${u.id}`, title: u.name || u.username, subtitle: u.type ? `${u.type}  ${u.username}` : u.username, category: 'Nutzer', icon: UserIcon, href: '/messages' });
-          }
-        }
-      } catch {}
+      const settled = await Promise.allSettled(tasks);
+      const r = settled.flatMap(result => result.status === 'fulfilled' ? result.value : []);
 
-      // calendar events
-      try {
-        const res = await calendarAPI.getEvents(token, { search: query });
-        if (!abortedRef.current && res.success && res.events) {
-          for (const e of res.events) {
-            if (abortedRef.current) return;
-            r.push({ id: `api-ev-${e.id}`, title: e.title, subtitle: e.start ? new Date(e.start).toLocaleDateString('de-DE') : e.category_name || '', category: 'Kalender', icon: CalendarDaysIcon, href: `/calendar?event=${encodeURIComponent(e.id)}` });
-          }
-        }
-      } catch {}
-
-      // courses
-      try {
-        const res = await coursesAPI.getCourses(token);
-        if (!abortedRef.current && res.success && res.entries) {
-          for (const e of res.entries) {
-            if (abortedRef.current) return;
-            if (fuzzyMatch(query, e.name) || fuzzyMatch(query, e.thema || '') || fuzzyMatch(query, e.teacher_full_name || '') || fuzzyMatch(query, e.teacher_short || '')) {
-              r.push({ id: `api-crs-${e.entry_id || e.book_id}`, title: e.name, subtitle: e.teacher_full_name || e.teacher_short || e.thema || '', category: 'Unterricht', icon: AcademicCapIcon, href: e.course_link ? `/courses/${e.book_id}` : '/courses' });
-            }
-          }
-        }
-      } catch {}
-
-      // modules
-      try {
-        const res = await appsAPI.getModules(token);
-        if (!abortedRef.current && res.success && res.modules) {
-          for (const m of res.modules) {
-            if (abortedRef.current) return;
-            if (fuzzyMatch(query, m.name) || fuzzyMatch(query, m.url) || (m.folders && m.folders.some((f: string) => fuzzyMatch(query, f)))) {
-              r.push({ id: `api-mod-${m.url}`, title: m.name, subtitle: m.url || 'Modul', category: 'Module', icon: HomeIcon, href: '/dashboard' });
-            }
-          }
-        }
-      } catch {}
-
-      if (!abortedRef.current) {
+      if (!abortedRef.current && !controller.signal.aborted) {
         setApiResults(r);
         setTier(3);
         // at this point totalResults = cacheResults + apiResults
       }
     }, 400);
 
-    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
+    return () => {
+      controller.abort();
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
   }, [query, token]);
 
   // ── Semantic search (parallel to Tier 2) ────────────────────────
@@ -373,6 +407,8 @@ export default function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
             ClipboardDocumentListIcon,
             UserIcon,
             Cog6ToothIcon,
+            ClockIcon,
+            UserGroupIcon,
           };
           const mapped: SearchItem[] = res.results.map((r: SemanticSearchResult) => ({
             id: r.id,

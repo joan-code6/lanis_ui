@@ -20,6 +20,22 @@ import { format, parseISO } from 'date-fns';
 import { de } from 'date-fns/locale';
 import clsx from 'clsx';
 
+const htmlToText = (value: unknown): string => {
+  if (typeof value !== 'string') return '';
+  const document = new DOMParser().parseFromString(value, 'text/html');
+  return (document.body.textContent || '').replace(/\s+/g, ' ').trim();
+};
+
+const displayName = (value: unknown, fallback = ''): string => htmlToText(value) || fallback;
+
+interface ConversationParticipant {
+  id: string;
+  name: string;
+  role: string;
+  type: 'sender' | 'recipient';
+  class: string;
+}
+
 const Messages: React.FC = () => {
   const { token } = useAuth();
   const [searchParams] = useSearchParams();
@@ -37,7 +53,6 @@ const Messages: React.FC = () => {
   const [showParticipants, setShowParticipants] = useState(false);
   const [participantSearch, setParticipantSearch] = useState('');
 
-  const [messageType, setMessageType] = useState<'All' | 'Unread' | 'Sent'>('All');
   const [messageSearch, setMessageSearch] = useState('');
 
   if (!token) {
@@ -89,7 +104,7 @@ const Messages: React.FC = () => {
     if (Object.keys(usernameCache.current).length === 0) return msgs;
     return msgs.map(m => ({
       ...m,
-      Sender: usernameCache.current[m.Sender] || m.Sender,
+      SenderName: m.SenderName || usernameCache.current[m.Sender] || m.Sender,
     }));
   };
 
@@ -98,7 +113,7 @@ const Messages: React.FC = () => {
     const abortController = new AbortController();
     loadMessages(abortController.signal);
     return () => abortController.abort();
-  }, [token, messageType]);
+  }, [token]);
 
   useEffect(() => {
     const conversationId = searchParams.get('conversation');
@@ -131,20 +146,22 @@ const Messages: React.FC = () => {
     setIsUpdating(true);
     try {
       setError('');
-      const response = await messagesAPI.getMessageHeaders(token, messageType, 0, signal);
+      const response = await messagesAPI.getMessageHeaders(token, 'All', 0, signal);
       if (signal?.aborted) return;
       if (response.success) {
         const transformedMessages = response.conversations.map((msg: any) => ({
           Id: msg.Id || msg.id,
           Uniquid: msg.id || msg.Uniquid,
           Sender: msg.sender || msg.Sender,
+          SenderId: msg.sender || msg.Sender,
+          SenderName: displayName(msg.SenderName, msg.sender || msg.Sender),
           Betreff: msg.Betreff,
           WeitereEmpfaenger: msg.WeitereEmpfaenger,
           private: msg.private || 0,
-          empf: msg.empf || [],
+          empf: Array.isArray(msg.empf) ? msg.empf.map((recipient: unknown) => displayName(recipient)) : [],
           Papierkorb: msg.Papierkorb,
           unread: !!(msg.unread === 1),
-          date: msg.date || new Date().toISOString(),
+          date: msg.date || msg.Datum || new Date().toISOString(),
         }));
         const resolved = applyUsernameCache(transformedMessages);
         setMessages(resolved);
@@ -171,11 +188,14 @@ const Messages: React.FC = () => {
       const response = await messagesAPI.getConversation(token, conversationId);
       if (response.success && response.messages) {
         const transformedMessages = response.messages.map((msg: any) => ({
+          ...msg,
           id: msg.Id || msg.id,
-          sender: msg.username || msg.sender || msg.Sender || 'Unbekannter Sender',
+          senderId: msg.username || msg.sender || msg.Sender || '',
+          sender: displayName(msg.SenderName, msg.sender || msg.Sender || msg.username || 'Unbekannter Sender'),
           content: msg.Inhalt || msg.content || '',
           date: msg.Datum || msg.date || new Date().toISOString(),
-          ...msg
+          empf: typeof msg.empf === 'string' ? displayName(msg.empf) : msg.empf,
+          WeitereEmpfaenger: displayName(msg.WeitereEmpfaenger),
         }));
         setConversationMessages(transformedMessages);
         setError('');
@@ -340,23 +360,6 @@ const Messages: React.FC = () => {
             </button>
           </div>
 
-          <div className="flex bg-surface-100 dark:bg-surface-800 rounded-lg p-0.5 mb-3">
-            {(['All', 'Unread', 'Sent'] as const).map((type) => (
-              <button
-                key={type}
-                onClick={() => setMessageType(type)}
-                className={clsx(
-                  'flex-1 py-1.5 px-2 text-xs font-medium rounded-md transition-all duration-200',
-                  messageType === type
-                    ? 'bg-white dark:bg-surface-800 text-primary-600 shadow-soft'
-                    : 'text-surface-500 dark:text-surface-400 hover:text-surface-700 dark:hover:text-surface-200'
-                )}
-              >
-                {type === 'All' ? 'Alle' : type === 'Unread' ? 'Ungelesen' : 'Gesendet'}
-              </button>
-            ))}
-          </div>
-
           <input
             type="text"
             className="input text-sm"
@@ -380,7 +383,7 @@ const Messages: React.FC = () => {
               <InboxArrowDownIcon className="empty-state-icon" />
               <h3 className="empty-state-title">Keine Nachrichten</h3>
               <p className="empty-state-text">
-                {messageType === 'Unread' ? 'Keine ungelesenen Nachrichten vorhanden.' : 'Keine Nachrichten vorhanden.'}
+                Keine Nachrichten vorhanden.
               </p>
             </div>
           ) : (
@@ -390,7 +393,7 @@ const Messages: React.FC = () => {
                   if (!messageSearch.trim()) return true;
                   const search = messageSearch.toLowerCase();
                   const subject = (message.Betreff || '').toLowerCase();
-                  const sender = (message.Sender || '').toLowerCase();
+                  const sender = (message.SenderName || message.Sender || '').toLowerCase();
                   const empf = Array.isArray(message.empf) ? message.empf.join(' ').toLowerCase() : '';
                   return (
                     subject.includes(search) ||
@@ -425,7 +428,7 @@ const Messages: React.FC = () => {
                           </p>
                         </div>
                         <p className="text-xs truncate mt-0.5 text-surface-500 dark:text-surface-400">
-                          {message.Sender}
+                          {message.SenderName || message.Sender}
                         </p>
                       </div>
                       {message.unread && (
@@ -668,8 +671,8 @@ const Messages: React.FC = () => {
       {/* Participants modal */}
       {showParticipants && selectedConversation && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-surface-900/40 backdrop-blur-sm">
-          <div className="bg-white dark:bg-surface-800 rounded-2xl sm:rounded-2xl shadow-soft-lg max-w-md w-full max-h-[70vh] flex flex-col animate-scale-in mx-2 sm:mx-0">
-            <div className="flex items-center justify-between p-5 border-b border-surface-100 dark:border-surface-800">
+          <div className="bg-white dark:bg-surface-900 rounded-2xl sm:rounded-2xl shadow-soft-lg max-w-md w-full max-h-[70vh] flex flex-col animate-scale-in mx-2 sm:mx-0 ring-1 ring-black/5 dark:ring-white/10">
+            <div className="flex items-center justify-between p-5 border-b border-surface-100 dark:border-surface-700">
               <h3 className="text-base font-semibold text-surface-900 dark:text-surface-100">Teilnehmer</h3>
               <button
                 onClick={closeParticipantsModal}
@@ -694,14 +697,17 @@ const Messages: React.FC = () => {
                   );
                 }
 
-                const getAllParticipants = () => {
-                  const participants = new Map();
+                const getAllParticipants = (): ConversationParticipant[] => {
+                  const participants = new Map<string, ConversationParticipant>();
                   if (messageHeader?.Sender) {
                     const senderMessage = conversationMessages.find(msg =>
-                      msg.Sender === messageHeader.Sender || msg.sender === messageHeader.Sender
+                      msg.Sender === messageHeader.Sender || msg.senderId === messageHeader.Sender
                     );
-                    const senderName = senderMessage?.username || senderMessage?.SenderName || `Sender ${messageHeader.Sender}`;
-                    const senderRole = senderMessage?.SenderArt || 'Sender';
+                    const senderName = displayName(
+                      senderMessage?.SenderName || messageHeader.SenderName,
+                      senderMessage?.sender || messageHeader.Sender,
+                    );
+                    const senderRole = senderMessage?.SenderArt || 'Absender';
                     participants.set(messageHeader.Sender, {
                       id: messageHeader.Sender,
                       name: senderName,
@@ -712,12 +718,14 @@ const Messages: React.FC = () => {
                   }
                   if (messageHeader?.empf && Array.isArray(messageHeader.empf)) {
                     messageHeader.empf.forEach((recipient, index) => {
-                      const cleanText = recipient.replace(/<[^>]*>/g, '').trim();
+                      const cleanText = displayName(recipient);
+                      if (!cleanText) return;
                       const match = cleanText.match(/^(.*?)\s*\(([^)]+)\)$/);
                       const name = match ? match[1].trim() : cleanText;
                       const className = match ? match[2].trim() : '';
-                      participants.set(`recipient-${index}`, {
-                        id: `recipient-${index}`,
+                      const participantKey = `recipient-${name.toLocaleLowerCase('de-DE')}`;
+                      participants.set(participantKey, {
+                        id: participantKey,
                         name: name,
                         role: 'Teilnehmer',
                         type: 'recipient',
@@ -734,39 +742,54 @@ const Messages: React.FC = () => {
                   participant.name.toLowerCase().includes(participantSearch.toLowerCase()) ||
                   (participant.class && participant.class.toLowerCase().includes(participantSearch.toLowerCase()))
                 );
+                const participantCounts = allParticipants.length > 0
+                  ? allParticipants.reduce((counts, participant) => {
+                    const role = participant.role.toLocaleLowerCase('de-DE');
+                    if (role.includes('betreuer') || role.includes('lehrkraft')) counts.betreuer += 1;
+                    else if (role.includes('eltern')) counts.eltern += 1;
+                    else counts.teilnehmer += 1;
+                    counts.gesamt += 1;
+                    return counts;
+                  }, { teilnehmer: 0, betreuer: 0, eltern: 0, gesamt: 0 })
+                  : {
+                    teilnehmer: Number(stats?.teilnehmer || 0),
+                    betreuer: Number(stats?.betreuer || 0),
+                    eltern: Number(stats?.eltern || 0),
+                    gesamt: Number(stats?.teilnehmer || 0) + Number(stats?.betreuer || 0) + Number(stats?.eltern || 0),
+                  };
 
                 return (
 <div className="space-y-4">
-                      {stats && (
-                        <div className="bg-surface-50 dark:bg-surface-800 rounded-xl p-4">
-                          <h4 className="text-xs font-semibold text-surface-700 dark:text-surface-300 mb-3 uppercase tracking-wider">Übersicht</h4>
+                      {(stats || allParticipants.length > 0) && (
+                        <div className="bg-surface-50 dark:bg-surface-950/70 rounded-xl p-4 ring-1 ring-surface-100 dark:ring-surface-700/80">
+                          <h4 className="text-xs font-semibold text-surface-700 dark:text-surface-200 mb-3 uppercase tracking-wider">Übersicht</h4>
                           <div className="grid grid-cols-2 gap-3 text-sm">
                             <div className="flex items-center gap-2">
                               <span className="w-2.5 h-2.5 rounded-full bg-blue-500 dark:bg-blue-400" />
-                              <span className="text-surface-500">Teilnehmer:</span>
-                              <span className="font-medium text-surface-900 dark:text-surface-100">{stats.teilnehmer}</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <span className="w-2.5 h-2.5 rounded-full bg-green-500 dark:bg-green-400" />
-                              <span className="text-surface-500">Betreuer:</span>
-                              <span className="font-medium text-surface-900 dark:text-surface-100">{stats.betreuer}</span>
+                              <span className="text-surface-500 dark:text-surface-400">Teilnehmer:</span>
+                              <span className="font-medium text-surface-900 dark:text-white">{participantCounts.teilnehmer}</span>
                             </div>
                             <div className="flex items-center gap-2">
                               <span className="w-2.5 h-2.5 rounded-full bg-purple-500 dark:bg-purple-400" />
-                              <span className="text-surface-500">Eltern:</span>
-                              <span className="font-medium text-surface-900 dark:text-surface-100">{stats.eltern}</span>
+                              <span className="text-surface-500 dark:text-surface-400">Betreuer:</span>
+                              <span className="font-medium text-surface-900 dark:text-white">{participantCounts.betreuer}</span>
                             </div>
                             <div className="flex items-center gap-2">
-                              <span className="w-2.5 h-2.5 rounded-full bg-surface-400 dark:bg-surface-500" />
-                              <span className="text-surface-500">Gesamt:</span>
-                              <span className="font-medium text-surface-900 dark:text-surface-100">{stats.teilnehmer + stats.betreuer + stats.eltern}</span>
+                              <span className="w-2.5 h-2.5 rounded-full bg-amber-500 dark:bg-amber-400" />
+                              <span className="text-surface-500 dark:text-surface-400">Eltern:</span>
+                              <span className="font-medium text-surface-900 dark:text-white">{participantCounts.eltern}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="w-2.5 h-2.5 rounded-full bg-surface-400 dark:bg-surface-500 ring-1 ring-surface-500/20 dark:ring-surface-300/20" />
+                              <span className="text-surface-500 dark:text-surface-400">Gesamt:</span>
+                              <span className="font-medium text-surface-900 dark:text-white">{participantCounts.gesamt}</span>
                             </div>
                           </div>
                         </div>
                       )}
 
                     <div>
-                      <label className="label">Teilnehmer suchen</label>
+                      <label className="label dark:text-surface-200">Teilnehmer suchen</label>
                       <input
                         type="text"
                         placeholder="Name oder Klasse eingeben..."
@@ -778,8 +801,8 @@ const Messages: React.FC = () => {
 
                     <div>
                       <div className="flex items-center justify-between mb-3">
-                        <h4 className="text-xs font-semibold text-surface-700">Alle Teilnehmer</h4>
-                        <span className="text-[11px] text-surface-400">
+                        <h4 className="text-xs font-semibold text-surface-700 dark:text-surface-200">Alle Teilnehmer</h4>
+                        <span className="text-[11px] text-surface-400 dark:text-surface-500">
                           {filteredParticipants.length} von {allParticipants.length}
                         </span>
                       </div>
@@ -794,19 +817,19 @@ const Messages: React.FC = () => {
                             let roleColor = 'bg-surface-100 text-surface-700';
                             let IconComponent = UserIcon;
                             if (participant.type === 'sender') {
-                              roleColor = 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300';
+                              roleColor = 'bg-emerald-100 text-emerald-700 dark:bg-emerald-400/15 dark:text-emerald-300 dark:ring-1 dark:ring-inset dark:ring-emerald-400/20';
                             } else {
-                              roleColor = 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300';
+                              roleColor = 'bg-blue-100 text-blue-700 dark:bg-blue-400/15 dark:text-blue-300 dark:ring-1 dark:ring-inset dark:ring-blue-400/20';
                               IconComponent = UserIcon;
                             }
-                            if (participant.role === 'Betreuer') {
-                              roleColor = 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300';
+                            if (participant.role.toLocaleLowerCase('de-DE').includes('betreuer')) {
+                              roleColor = 'bg-purple-100 text-purple-700 dark:bg-purple-400/15 dark:text-purple-300 dark:ring-1 dark:ring-inset dark:ring-purple-400/20';
                               IconComponent = AcademicCapIcon;
                             }
                             return (
-                              <div key={participant.id} className="flex items-center gap-3 p-3 bg-surface-50 dark:bg-surface-800 rounded-xl">
-                                <div className="w-8 h-8 flex items-center justify-center bg-white dark:bg-surface-700 rounded-full shadow-soft">
-                                  <IconComponent className="w-4 h-4 text-surface-600" />
+                              <div key={participant.id} className="flex items-center gap-3 p-3 bg-surface-50 dark:bg-surface-800/70 rounded-xl ring-1 ring-transparent dark:ring-surface-700/60">
+                                <div className="w-8 h-8 flex items-center justify-center bg-white dark:bg-surface-900 rounded-full shadow-soft dark:ring-1 dark:ring-surface-700">
+                                  <IconComponent className="w-4 h-4 text-surface-600 dark:text-surface-300" />
                                 </div>
                                 <div className="flex-1 min-w-0">
                                   <p className="text-sm font-medium text-surface-900 dark:text-surface-100 truncate">{participant.name}</p>
@@ -815,11 +838,11 @@ const Messages: React.FC = () => {
                                       {participant.role}
                                     </span>
                                     {participant.class && (
-                                      <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-surface-100 dark:bg-surface-700 text-surface-600 dark:text-surface-400">
+                                      <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-surface-100 dark:bg-surface-700 text-surface-600 dark:text-surface-300">
                                         {participant.class}
                                       </span>
                                     )}
-                                    <span className="text-[10px] text-surface-400">
+                                    <span className="text-[10px] text-surface-400 dark:text-surface-500">
                                       {participant.type === 'sender' ? 'Absender' : 'Empfänger'}
                                     </span>
                                   </div>
@@ -833,7 +856,7 @@ const Messages: React.FC = () => {
 
                     {(() => {
                       const firstMessage = conversationMessages[0];
-                      const weitereEmpfaenger = firstMessage?.WeitereEmpfaenger;
+                      const weitereEmpfaenger = displayName(firstMessage?.WeitereEmpfaenger);
                       if (weitereEmpfaenger && weitereEmpfaenger.trim() !== '') {
                         return (
                           <div>
@@ -851,14 +874,6 @@ const Messages: React.FC = () => {
               })()}
             </div>
 
-            <div className="flex justify-end p-5 border-t border-surface-100 dark:border-surface-800">
-              <button
-                onClick={closeParticipantsModal}
-                className="btn btn-secondary h-9 text-xs"
-              >
-                Schließen
-              </button>
-            </div>
           </div>
         </div>
       )}
