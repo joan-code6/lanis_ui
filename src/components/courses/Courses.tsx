@@ -64,6 +64,7 @@ const Courses: React.FC = () => {
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
   const [detailViewMode, setDetailViewMode] = useState<'cards' | 'timeline'>('cards');
   const [dynamicAttendanceOptions, setDynamicAttendanceOptions] = useState<string[]>([]);
+  const [downloadingFile, setDownloadingFile] = useState<string | null>(null);
 
   const selectedCourseOverview = useMemo(
     () => courses.find(course => course.book_id === (selectedCourse?.course_id || courseIdFromUrl)),
@@ -269,6 +270,33 @@ const Courses: React.FC = () => {
       await coursesAPI.toggleHomework(token, courseId, entryId, newDone);
     } catch (error) {
       console.error('Error toggling homework:', error);
+    }
+  };
+
+  const handleFileDownload = async (
+    event: React.MouseEvent<HTMLButtonElement>,
+    file: { name: string; url: string },
+  ) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!token || !file.url || file.url === '#' || downloadingFile === file.url) return;
+
+    setDownloadingFile(file.url);
+    try {
+      const content = await coursesAPI.downloadFile(token, file.url);
+      const objectUrl = URL.createObjectURL(content);
+      const link = document.createElement('a');
+      link.href = objectUrl;
+      link.download = file.name || 'download';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+    } catch (downloadError) {
+      console.error('Error downloading course file:', downloadError);
+      setError('Die Datei konnte nicht geladen werden. Bitte versuchen Sie es erneut.');
+    } finally {
+      setDownloadingFile(null);
     }
   };
 
@@ -732,17 +760,17 @@ const Courses: React.FC = () => {
                           </h5>
                           <div className="inline-grid grid-cols-1 gap-2">
                             {entry.files.map((file, index) => (
-                              <a
+                              <button
+                                type="button"
                                 key={index}
-                                href={file.url !== '#' ? file.url : undefined}
+                                onClick={(event) => handleFileDownload(event, file)}
+                                disabled={file.url === '#' || downloadingFile === file.url}
                                 className={clsx(
                                   "inline-flex items-center p-2.5 sm:p-3 rounded-lg border transition-all min-w-0 sm:min-w-48",
                                   file.url !== '#' 
                                     ? "border-primary-200 hover:border-primary-300 cursor-pointer group" 
                                     : "border-surface-200 dark:border-surface-700 cursor-not-allowed opacity-60"
                                 )}
-                                target="_blank"
-                                rel="noopener noreferrer"
                               >
                                 <div className={clsx(
                                   "h-8 w-8 rounded flex items-center justify-center flex-shrink-0"
@@ -761,7 +789,7 @@ const Courses: React.FC = () => {
                                 {file.url !== '#' && (
                                   <ArrowTopRightOnSquareIcon className="h-4 w-4 ml-auto text-primary-500 opacity-0 group-hover:opacity-100 transition-opacity" />
                                 )}
-                              </a>
+                              </button>
                             ))}
                           </div>
                         </div>
@@ -850,21 +878,21 @@ const Courses: React.FC = () => {
                           {entry.files && entry.files.length > 0 && (
                             <div className="flex flex-wrap gap-2 mt-3">
                               {entry.files.map((file, fileIndex) => (
-                                <a
+                                <button
+                                  type="button"
                                   key={fileIndex}
-                                  href={file.url !== '#' ? file.url : undefined}
+                                  onClick={(event) => handleFileDownload(event, file)}
+                                  disabled={file.url === '#' || downloadingFile === file.url}
                                   className={clsx(
                                     "inline-flex items-center px-3 py-1.5 rounded-lg text-xs border",
                                     file.url !== '#'
                                       ? "border-primary-200 text-primary-700 cursor-pointer"
                                       : "border-surface-200 dark:border-surface-700 text-surface-400 dark:text-surface-500 cursor-not-allowed"
                                   )}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
                                 >
                                   <DocumentTextIcon className="h-3 w-3 mr-1" />
                                   {file.name}
-                                </a>
+                                </button>
                               ))}
                             </div>
                           )}
@@ -903,16 +931,16 @@ const Courses: React.FC = () => {
                 </h3>
                 <div className="space-y-2">
                   {selectedEntry.attachments.map((attachment, index) => (
-                    <a
+                    <button
+                      type="button"
                       key={index}
-                      href={attachment.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                      onClick={(event) => handleFileDownload(event, attachment)}
+                      disabled={!attachment.url || attachment.url === '#' || downloadingFile === attachment.url}
                       className="flex items-center p-3 border border-surface-200 dark:border-surface-700 rounded-lg transition-colors"
                     >
                       <PaperClipIcon className="h-5 w-5 text-surface-400 dark:text-surface-500 mr-3" />
                       <span className="text-surface-900 dark:text-surface-100">{attachment.name}</span>
-                    </a>
+                    </button>
                   ))}
                 </div>
               </div>
