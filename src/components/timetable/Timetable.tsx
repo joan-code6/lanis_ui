@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import axios from 'axios';
 import { addDays, format, isToday, startOfWeek } from 'date-fns';
 import { de } from 'date-fns/locale';
@@ -35,6 +35,7 @@ const Timetable: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [reloadKey, setReloadKey] = useState(0);
+  const dayScrollerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!token) return;
@@ -71,6 +72,13 @@ const Timetable: React.FC = () => {
     }));
   }, [activeWeek, allDays, personalDays, planMode, weekMode]);
   const lessonCount = useMemo(() => visibleDays.reduce((total, day) => total + day.lessons.length, 0), [visibleDays]);
+
+  useLayoutEffect(() => {
+    if (loading || viewMode !== 'cards' || !window.matchMedia('(max-width: 639px)').matches) return;
+    const today = dayScrollerRef.current?.querySelector<HTMLElement>('[data-today="true"]');
+    today?.scrollIntoView({ behavior: 'auto', block: 'nearest', inline: 'start' });
+  }, [loading, planMode, viewMode, visibleDays, weekMode]);
+
   const openCourse = (lesson: TimetableLesson) => {
     if (lesson.course_id) navigate(`${basePath}/courses/${lesson.course_id}`);
   };
@@ -131,12 +139,12 @@ const Timetable: React.FC = () => {
         ) : viewMode === 'timeline' && timeSlots.length ? (
           <TimelineView days={visibleDays} timeSlots={timeSlots} onOpenCourse={openCourse} />
         ) : (
-          <div className="scrollbar-hide -mx-3 flex snap-x snap-mandatory gap-3 overflow-x-auto px-3 pb-3 sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 sm:pb-0 md:gap-4 xl:grid-cols-5">
+          <div ref={dayScrollerRef} className="scrollbar-hide -mx-3 flex snap-x snap-mandatory gap-3 overflow-x-auto px-3 pb-3 sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 sm:pb-0 md:gap-4 xl:grid-cols-5">
             {visibleDays.map(day => {
               const date = new Date(`${day.date}T12:00:00`);
               const today = isToday(date);
               return (
-                <section key={day.date} className={`card min-w-[84vw] snap-start !p-0 overflow-hidden sm:min-w-0 ${today ? '!border-primary-300 dark:!border-primary-700 ring-2 ring-primary-500/10' : ''}`}>
+                <section key={day.date} data-today={today ? 'true' : undefined} className={`card min-w-[84vw] snap-start !p-0 overflow-hidden sm:min-w-0 ${today ? '!border-primary-300 dark:!border-primary-700 ring-2 ring-primary-500/10' : ''}`}>
                   <div className={`border-b px-4 py-3 ${today ? 'bg-primary-50 dark:bg-primary-950/60' : 'bg-surface-50 dark:bg-surface-800/50'}`}>
                     <div className="flex items-center justify-between">
                       <h2 className="font-semibold text-surface-900 dark:text-white">{day.name || format(date, 'EEEE', { locale: de })}</h2>

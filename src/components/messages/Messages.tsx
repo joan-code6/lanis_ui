@@ -20,6 +20,22 @@ import { format, parseISO } from 'date-fns';
 import { de } from 'date-fns/locale';
 import clsx from 'clsx';
 
+const htmlToText = (value: unknown): string => {
+  if (typeof value !== 'string') return '';
+  const document = new DOMParser().parseFromString(value, 'text/html');
+  return (document.body.textContent || '').replace(/\s+/g, ' ').trim();
+};
+
+const displayName = (value: unknown, fallback = ''): string => htmlToText(value) || fallback;
+
+interface ConversationParticipant {
+  id: string;
+  name: string;
+  role: string;
+  type: 'sender' | 'recipient';
+  class: string;
+}
+
 const Messages: React.FC = () => {
   const { token } = useAuth();
   const [searchParams] = useSearchParams();
@@ -37,7 +53,6 @@ const Messages: React.FC = () => {
   const [showParticipants, setShowParticipants] = useState(false);
   const [participantSearch, setParticipantSearch] = useState('');
 
-  const [messageType, setMessageType] = useState<'All' | 'Unread' | 'Sent'>('All');
   const [messageSearch, setMessageSearch] = useState('');
 
   if (!token) {
@@ -89,7 +104,7 @@ const Messages: React.FC = () => {
     if (Object.keys(usernameCache.current).length === 0) return msgs;
     return msgs.map(m => ({
       ...m,
-      Sender: usernameCache.current[m.Sender] || m.Sender,
+      SenderName: m.SenderName || usernameCache.current[m.Sender] || m.Sender,
     }));
   };
 
@@ -98,7 +113,7 @@ const Messages: React.FC = () => {
     const abortController = new AbortController();
     loadMessages(abortController.signal);
     return () => abortController.abort();
-  }, [token, messageType]);
+  }, [token]);
 
   useEffect(() => {
     const conversationId = searchParams.get('conversation');
@@ -131,20 +146,22 @@ const Messages: React.FC = () => {
     setIsUpdating(true);
     try {
       setError('');
-      const response = await messagesAPI.getMessageHeaders(token, messageType, 0, signal);
+      const response = await messagesAPI.getMessageHeaders(token, 'All', 0, signal);
       if (signal?.aborted) return;
       if (response.success) {
         const transformedMessages = response.conversations.map((msg: any) => ({
           Id: msg.Id || msg.id,
           Uniquid: msg.id || msg.Uniquid,
           Sender: msg.sender || msg.Sender,
+          SenderId: msg.sender || msg.Sender,
+          SenderName: displayName(msg.SenderName, msg.sender || msg.Sender),
           Betreff: msg.Betreff,
           WeitereEmpfaenger: msg.WeitereEmpfaenger,
           private: msg.private || 0,
-          empf: msg.empf || [],
+          empf: Array.isArray(msg.empf) ? msg.empf.map((recipient: unknown) => displayName(recipient)) : [],
           Papierkorb: msg.Papierkorb,
           unread: !!(msg.unread === 1),
-          date: msg.date || new Date().toISOString(),
+          date: msg.date || msg.Datum || new Date().toISOString(),
         }));
         const resolved = applyUsernameCache(transformedMessages);
         setMessages(resolved);
@@ -171,11 +188,14 @@ const Messages: React.FC = () => {
       const response = await messagesAPI.getConversation(token, conversationId);
       if (response.success && response.messages) {
         const transformedMessages = response.messages.map((msg: any) => ({
+          ...msg,
           id: msg.Id || msg.id,
-          sender: msg.username || msg.sender || msg.Sender || 'Unbekannter Sender',
+          senderId: msg.username || msg.sender || msg.Sender || '',
+          sender: displayName(msg.SenderName, msg.sender || msg.Sender || msg.username || 'Unbekannter Sender'),
           content: msg.Inhalt || msg.content || '',
           date: msg.Datum || msg.date || new Date().toISOString(),
-          ...msg
+          empf: typeof msg.empf === 'string' ? displayName(msg.empf) : msg.empf,
+          WeitereEmpfaenger: displayName(msg.WeitereEmpfaenger),
         }));
         setConversationMessages(transformedMessages);
         setError('');
@@ -340,23 +360,6 @@ const Messages: React.FC = () => {
             </button>
           </div>
 
-          <div className="flex bg-surface-100 dark:bg-surface-800 rounded-lg p-0.5 mb-3">
-            {(['All', 'Unread', 'Sent'] as const).map((type) => (
-              <button
-                key={type}
-                onClick={() => setMessageType(type)}
-                className={clsx(
-                  'flex-1 py-1.5 px-2 text-xs font-medium rounded-md transition-all duration-200',
-                  messageType === type
-                    ? 'bg-white dark:bg-surface-800 text-primary-600 shadow-soft'
-                    : 'text-surface-500 dark:text-surface-400 hover:text-surface-700 dark:hover:text-surface-200'
-                )}
-              >
-                {type === 'All' ? 'Alle' : type === 'Unread' ? 'Ungelesen' : 'Gesendet'}
-              </button>
-            ))}
-          </div>
-
           <input
             type="text"
             className="input text-sm"
@@ -380,7 +383,7 @@ const Messages: React.FC = () => {
               <InboxArrowDownIcon className="empty-state-icon" />
               <h3 className="empty-state-title">Keine Nachrichten</h3>
               <p className="empty-state-text">
-                {messageType === 'Unread' ? 'Keine ungelesenen Nachrichten vorhanden.' : 'Keine Nachrichten vorhanden.'}
+                Keine Nachrichten vorhanden.
               </p>
             </div>
           ) : (
@@ -390,7 +393,7 @@ const Messages: React.FC = () => {
                   if (!messageSearch.trim()) return true;
                   const search = messageSearch.toLowerCase();
                   const subject = (message.Betreff || '').toLowerCase();
-                  const sender = (message.Sender || '').toLowerCase();
+                  const sender = (message.SenderName || message.Sender || '').toLowerCase();
                   const empf = Array.isArray(message.empf) ? message.empf.join(' ').toLowerCase() : '';
                   return (
                     subject.includes(search) ||
@@ -425,7 +428,7 @@ const Messages: React.FC = () => {
                           </p>
                         </div>
                         <p className="text-xs truncate mt-0.5 text-surface-500 dark:text-surface-400">
-                          {message.Sender}
+                          {message.SenderName || message.Sender}
                         </p>
                       </div>
                       {message.unread && (
@@ -694,14 +697,17 @@ const Messages: React.FC = () => {
                   );
                 }
 
-                const getAllParticipants = () => {
-                  const participants = new Map();
+                const getAllParticipants = (): ConversationParticipant[] => {
+                  const participants = new Map<string, ConversationParticipant>();
                   if (messageHeader?.Sender) {
                     const senderMessage = conversationMessages.find(msg =>
-                      msg.Sender === messageHeader.Sender || msg.sender === messageHeader.Sender
+                      msg.Sender === messageHeader.Sender || msg.senderId === messageHeader.Sender
                     );
-                    const senderName = senderMessage?.username || senderMessage?.SenderName || `Sender ${messageHeader.Sender}`;
-                    const senderRole = senderMessage?.SenderArt || 'Sender';
+                    const senderName = displayName(
+                      senderMessage?.SenderName || messageHeader.SenderName,
+                      senderMessage?.sender || messageHeader.Sender,
+                    );
+                    const senderRole = senderMessage?.SenderArt || 'Absender';
                     participants.set(messageHeader.Sender, {
                       id: messageHeader.Sender,
                       name: senderName,
@@ -712,12 +718,14 @@ const Messages: React.FC = () => {
                   }
                   if (messageHeader?.empf && Array.isArray(messageHeader.empf)) {
                     messageHeader.empf.forEach((recipient, index) => {
-                      const cleanText = recipient.replace(/<[^>]*>/g, '').trim();
+                      const cleanText = displayName(recipient);
+                      if (!cleanText) return;
                       const match = cleanText.match(/^(.*?)\s*\(([^)]+)\)$/);
                       const name = match ? match[1].trim() : cleanText;
                       const className = match ? match[2].trim() : '';
-                      participants.set(`recipient-${index}`, {
-                        id: `recipient-${index}`,
+                      const participantKey = `recipient-${name.toLocaleLowerCase('de-DE')}`;
+                      participants.set(participantKey, {
+                        id: participantKey,
                         name: name,
                         role: 'Teilnehmer',
                         type: 'recipient',
@@ -833,7 +841,7 @@ const Messages: React.FC = () => {
 
                     {(() => {
                       const firstMessage = conversationMessages[0];
-                      const weitereEmpfaenger = firstMessage?.WeitereEmpfaenger;
+                      const weitereEmpfaenger = displayName(firstMessage?.WeitereEmpfaenger);
                       if (weitereEmpfaenger && weitereEmpfaenger.trim() !== '') {
                         return (
                           <div>

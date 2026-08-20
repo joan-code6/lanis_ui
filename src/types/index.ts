@@ -111,6 +111,8 @@ export interface MessageHeader {
   Id: string;
   Uniquid: string;
   Sender: string;
+  SenderName?: string;
+  SenderId?: string;
   Betreff: string;
   Papierkorb: string;
   private: number;
@@ -153,6 +155,7 @@ export interface SearchResult {
 export interface SearchResponse {
   success: boolean;
   results: SearchResult[];
+  users?: SearchResult[];
 }
 
 export interface SendMessageRequest {

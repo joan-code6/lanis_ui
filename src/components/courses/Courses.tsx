@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useBasePath } from '../../contexts/BasePathContext';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -64,6 +64,12 @@ const Courses: React.FC = () => {
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
   const [detailViewMode, setDetailViewMode] = useState<'cards' | 'timeline'>('cards');
   const [dynamicAttendanceOptions, setDynamicAttendanceOptions] = useState<string[]>([]);
+
+  const selectedCourseOverview = useMemo(
+    () => courses.find(course => course.book_id === (selectedCourse?.course_id || courseIdFromUrl)),
+    [courseIdFromUrl, courses, selectedCourse?.course_id],
+  );
+  const selectedCourseName = selectedCourse?.course_name?.trim() || selectedCourseOverview?.name?.trim() || 'Kurs';
 
   // Early return if no token
   if (!token) {
@@ -132,7 +138,20 @@ const Courses: React.FC = () => {
       if (signal?.aborted) return;
       
       if (response.success) {
-        setSelectedCourse(response);
+        let resolvedCourse = response;
+        if (!response.course_name?.trim()) {
+          const overview = await coursesAPI.getCourses(token, signal);
+          if (signal?.aborted) return;
+          if (overview.success) {
+            setCourses(overview.entries);
+            localStorage.setItem('courses_cache', JSON.stringify(overview.entries));
+            const matchingCourse = overview.entries.find(course => course.book_id === courseId);
+            if (matchingCourse?.name?.trim()) {
+              resolvedCourse = { ...response, course_name: matchingCourse.name.trim() };
+            }
+          }
+        }
+        setSelectedCourse(resolvedCourse);
         
         const presetAttendance = ['anwesend', 'entschuldigt', 'unentschuldigt', 'fehlend'];
         const allAttendances = response.entries.map((entry: CourseDetailEntry) => entry.attendance.trim()).filter(Boolean);
@@ -380,7 +399,7 @@ const Courses: React.FC = () => {
             <div>
 <h1 className="text-3xl font-bold text-surface-900 dark:text-surface-100">
                 {viewMode === 'overview' && 'Mein Unterricht'}
-                {viewMode === 'course-detail' && selectedCourse?.course_name}
+                {viewMode === 'course-detail' && selectedCourseName}
                 {viewMode === 'weekly' && 'Wochenansicht'}
                 {viewMode === 'submissions' && 'Abgaben'}
                 {viewMode === 'entry-detail' && selectedEntry?.title}
