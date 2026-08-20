@@ -874,14 +874,6 @@ const Messages: React.FC = () => {
               })()}
             </div>
 
-            <div className="flex justify-end p-5 border-t border-surface-100 dark:border-surface-700">
-              <button
-                onClick={closeParticipantsModal}
-                className="btn btn-secondary h-9 text-xs"
-              >
-                Schließen
-              </button>
-            </div>
           </div>
         </div>
       )}
