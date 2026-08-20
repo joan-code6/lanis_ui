@@ -281,6 +281,12 @@ const Courses: React.FC = () => {
     event.stopPropagation();
     if (!token || !file.url || file.url === '#' || downloadingFile === file.url) return;
 
+    const parsedUrl = new URL(file.url, window.location.origin);
+    if (!parsedUrl.pathname.includes('/meinunterricht/file/')) {
+      window.open(file.url, '_blank', 'noopener,noreferrer');
+      return;
+    }
+
     setDownloadingFile(file.url);
     try {
       const content = await coursesAPI.downloadFile(token, file.url);
