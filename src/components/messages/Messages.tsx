@@ -671,8 +671,8 @@ const Messages: React.FC = () => {
       {/* Participants modal */}
       {showParticipants && selectedConversation && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-surface-900/40 backdrop-blur-sm">
-          <div className="bg-white dark:bg-surface-800 rounded-2xl sm:rounded-2xl shadow-soft-lg max-w-md w-full max-h-[70vh] flex flex-col animate-scale-in mx-2 sm:mx-0">
-            <div className="flex items-center justify-between p-5 border-b border-surface-100 dark:border-surface-800">
+          <div className="bg-white dark:bg-surface-900 rounded-2xl sm:rounded-2xl shadow-soft-lg max-w-md w-full max-h-[70vh] flex flex-col animate-scale-in mx-2 sm:mx-0 ring-1 ring-black/5 dark:ring-white/10">
+            <div className="flex items-center justify-between p-5 border-b border-surface-100 dark:border-surface-700">
               <h3 className="text-base font-semibold text-surface-900 dark:text-surface-100">Teilnehmer</h3>
               <button
                 onClick={closeParticipantsModal}
@@ -742,39 +742,54 @@ const Messages: React.FC = () => {
                   participant.name.toLowerCase().includes(participantSearch.toLowerCase()) ||
                   (participant.class && participant.class.toLowerCase().includes(participantSearch.toLowerCase()))
                 );
+                const participantCounts = allParticipants.length > 0
+                  ? allParticipants.reduce((counts, participant) => {
+                    const role = participant.role.toLocaleLowerCase('de-DE');
+                    if (role.includes('betreuer') || role.includes('lehrkraft')) counts.betreuer += 1;
+                    else if (role.includes('eltern')) counts.eltern += 1;
+                    else counts.teilnehmer += 1;
+                    counts.gesamt += 1;
+                    return counts;
+                  }, { teilnehmer: 0, betreuer: 0, eltern: 0, gesamt: 0 })
+                  : {
+                    teilnehmer: Number(stats?.teilnehmer || 0),
+                    betreuer: Number(stats?.betreuer || 0),
+                    eltern: Number(stats?.eltern || 0),
+                    gesamt: Number(stats?.teilnehmer || 0) + Number(stats?.betreuer || 0) + Number(stats?.eltern || 0),
+                  };
 
                 return (
 <div className="space-y-4">
-                      {stats && (
-                        <div className="bg-surface-50 dark:bg-surface-800 rounded-xl p-4">
-                          <h4 className="text-xs font-semibold text-surface-700 dark:text-surface-300 mb-3 uppercase tracking-wider">Übersicht</h4>
+                      {(stats || allParticipants.length > 0) && (
+                        <div className="bg-surface-50 dark:bg-surface-950/70 rounded-xl p-4 ring-1 ring-surface-100 dark:ring-surface-700/80">
+                          <h4 className="text-xs font-semibold text-surface-700 dark:text-surface-200 mb-3 uppercase tracking-wider">Übersicht</h4>
                           <div className="grid grid-cols-2 gap-3 text-sm">
                             <div className="flex items-center gap-2">
                               <span className="w-2.5 h-2.5 rounded-full bg-blue-500 dark:bg-blue-400" />
-                              <span className="text-surface-500">Teilnehmer:</span>
-                              <span className="font-medium text-surface-900 dark:text-surface-100">{stats.teilnehmer}</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <span className="w-2.5 h-2.5 rounded-full bg-green-500 dark:bg-green-400" />
-                              <span className="text-surface-500">Betreuer:</span>
-                              <span className="font-medium text-surface-900 dark:text-surface-100">{stats.betreuer}</span>
+                              <span className="text-surface-500 dark:text-surface-400">Teilnehmer:</span>
+                              <span className="font-medium text-surface-900 dark:text-white">{participantCounts.teilnehmer}</span>
                             </div>
                             <div className="flex items-center gap-2">
                               <span className="w-2.5 h-2.5 rounded-full bg-purple-500 dark:bg-purple-400" />
-                              <span className="text-surface-500">Eltern:</span>
-                              <span className="font-medium text-surface-900 dark:text-surface-100">{stats.eltern}</span>
+                              <span className="text-surface-500 dark:text-surface-400">Betreuer:</span>
+                              <span className="font-medium text-surface-900 dark:text-white">{participantCounts.betreuer}</span>
                             </div>
                             <div className="flex items-center gap-2">
-                              <span className="w-2.5 h-2.5 rounded-full bg-surface-400 dark:bg-surface-500" />
-                              <span className="text-surface-500">Gesamt:</span>
-                              <span className="font-medium text-surface-900 dark:text-surface-100">{stats.teilnehmer + stats.betreuer + stats.eltern}</span>
+                              <span className="w-2.5 h-2.5 rounded-full bg-amber-500 dark:bg-amber-400" />
+                              <span className="text-surface-500 dark:text-surface-400">Eltern:</span>
+                              <span className="font-medium text-surface-900 dark:text-white">{participantCounts.eltern}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="w-2.5 h-2.5 rounded-full bg-surface-400 dark:bg-surface-500 ring-1 ring-surface-500/20 dark:ring-surface-300/20" />
+                              <span className="text-surface-500 dark:text-surface-400">Gesamt:</span>
+                              <span className="font-medium text-surface-900 dark:text-white">{participantCounts.gesamt}</span>
                             </div>
                           </div>
                         </div>
                       )}
 
                     <div>
-                      <label className="label">Teilnehmer suchen</label>
+                      <label className="label dark:text-surface-200">Teilnehmer suchen</label>
                       <input
                         type="text"
                         placeholder="Name oder Klasse eingeben..."
@@ -786,8 +801,8 @@ const Messages: React.FC = () => {
 
                     <div>
                       <div className="flex items-center justify-between mb-3">
-                        <h4 className="text-xs font-semibold text-surface-700">Alle Teilnehmer</h4>
-                        <span className="text-[11px] text-surface-400">
+                        <h4 className="text-xs font-semibold text-surface-700 dark:text-surface-200">Alle Teilnehmer</h4>
+                        <span className="text-[11px] text-surface-400 dark:text-surface-500">
                           {filteredParticipants.length} von {allParticipants.length}
                         </span>
                       </div>
@@ -802,19 +817,19 @@ const Messages: React.FC = () => {
                             let roleColor = 'bg-surface-100 text-surface-700';
                             let IconComponent = UserIcon;
                             if (participant.type === 'sender') {
-                              roleColor = 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300';
+                              roleColor = 'bg-emerald-100 text-emerald-700 dark:bg-emerald-400/15 dark:text-emerald-300 dark:ring-1 dark:ring-inset dark:ring-emerald-400/20';
                             } else {
-                              roleColor = 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300';
+                              roleColor = 'bg-blue-100 text-blue-700 dark:bg-blue-400/15 dark:text-blue-300 dark:ring-1 dark:ring-inset dark:ring-blue-400/20';
                               IconComponent = UserIcon;
                             }
-                            if (participant.role === 'Betreuer') {
-                              roleColor = 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300';
+                            if (participant.role.toLocaleLowerCase('de-DE').includes('betreuer')) {
+                              roleColor = 'bg-purple-100 text-purple-700 dark:bg-purple-400/15 dark:text-purple-300 dark:ring-1 dark:ring-inset dark:ring-purple-400/20';
                               IconComponent = AcademicCapIcon;
                             }
                             return (
-                              <div key={participant.id} className="flex items-center gap-3 p-3 bg-surface-50 dark:bg-surface-800 rounded-xl">
-                                <div className="w-8 h-8 flex items-center justify-center bg-white dark:bg-surface-700 rounded-full shadow-soft">
-                                  <IconComponent className="w-4 h-4 text-surface-600" />
+                              <div key={participant.id} className="flex items-center gap-3 p-3 bg-surface-50 dark:bg-surface-800/70 rounded-xl ring-1 ring-transparent dark:ring-surface-700/60">
+                                <div className="w-8 h-8 flex items-center justify-center bg-white dark:bg-surface-900 rounded-full shadow-soft dark:ring-1 dark:ring-surface-700">
+                                  <IconComponent className="w-4 h-4 text-surface-600 dark:text-surface-300" />
                                 </div>
                                 <div className="flex-1 min-w-0">
                                   <p className="text-sm font-medium text-surface-900 dark:text-surface-100 truncate">{participant.name}</p>
@@ -823,11 +838,11 @@ const Messages: React.FC = () => {
                                       {participant.role}
                                     </span>
                                     {participant.class && (
-                                      <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-surface-100 dark:bg-surface-700 text-surface-600 dark:text-surface-400">
+                                      <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-surface-100 dark:bg-surface-700 text-surface-600 dark:text-surface-300">
                                         {participant.class}
                                       </span>
                                     )}
-                                    <span className="text-[10px] text-surface-400">
+                                    <span className="text-[10px] text-surface-400 dark:text-surface-500">
                                       {participant.type === 'sender' ? 'Absender' : 'Empfänger'}
                                     </span>
                                   </div>
@@ -859,7 +874,7 @@ const Messages: React.FC = () => {
               })()}
             </div>
 
-            <div className="flex justify-end p-5 border-t border-surface-100 dark:border-surface-800">
+            <div className="flex justify-end p-5 border-t border-surface-100 dark:border-surface-700">
               <button
                 onClick={closeParticipantsModal}
                 className="btn btn-secondary h-9 text-xs"
