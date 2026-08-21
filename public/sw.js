@@ -93,14 +93,19 @@ self.addEventListener('notificationclick', (event) => {
 
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(async (clients) => {
+      const target = new URL(targetUrl)
       for (const client of clients) {
-        if ('focus' in client && 'navigate' in client) {
-          try {
-            const navigatedClient = await client.navigate(targetUrl)
-            if (navigatedClient) return navigatedClient.focus()
-          } catch {
-            // Fall through to opening a new window when navigation fails.
+        try {
+          const clientUrl = new URL(client.url)
+          if (
+            clientUrl.origin === target.origin
+            && clientUrl.pathname === target.pathname
+            && clientUrl.search === target.search
+          ) {
+            return client.focus()
           }
+        } catch {
+          // Ignore an unusable client URL and continue to the next window.
         }
       }
       return self.clients.openWindow(targetUrl)

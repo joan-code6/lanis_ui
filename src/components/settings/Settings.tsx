@@ -313,11 +313,14 @@ const Settings: React.FC = () => {
 
   const sendTestNotification = async () => {
     if (!token) return;
+    if (!notificationPrefs.enabled || !notificationBrowserReady) {
+      setNotificationError('Aktiviere Benachrichtigungen auf diesem Gerät zuerst.');
+      return;
+    }
     setNotificationTestSending(true);
     setNotificationError('');
     setNotificationMessage('');
     try {
-      await registerBrowserSubscription();
       await notificationsAPI.sendTest(token);
       setNotificationMessage('Testbenachrichtigung wurde gesendet.');
     } catch (error) {
@@ -540,7 +543,7 @@ const Settings: React.FC = () => {
                 <button
                   type="button"
                   onClick={sendTestNotification}
-                  disabled={notificationsLoading || notificationsSaving || notificationTestSending || !notificationConfigured || !pushSupported}
+              disabled={notificationsLoading || notificationsSaving || notificationTestSending || !notificationSettingsLoaded || !notificationPrefs.enabled || !notificationBrowserReady || !notificationConfigured || !pushSupported}
                   className="btn btn-secondary h-9 text-xs disabled:opacity-50"
                 >
                   {notificationTestSending ? 'Sende...' : 'Test senden'}
