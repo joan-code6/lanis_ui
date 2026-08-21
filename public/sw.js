@@ -78,10 +78,18 @@ self.addEventListener('push', (event) => {
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close()
-  const targetUrl = new URL(
-    event.notification.data?.url || '/messages',
-    self.location.origin,
-  ).href
+  let targetUrl
+  try {
+    const requestedUrl = new URL(
+      event.notification.data?.url || '/messages',
+      self.location.origin,
+    )
+    targetUrl = requestedUrl.origin === self.location.origin
+      ? requestedUrl.href
+      : new URL('/messages', self.location.origin).href
+  } catch {
+    targetUrl = new URL('/messages', self.location.origin).href
+  }
 
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(async (clients) => {
