@@ -220,8 +220,8 @@ const Messages: React.FC = () => {
         setError('Fehler beim Laden der Unterhaltung. Bitte versuchen Sie es später erneut.');
       }
     } finally {
-      await loadMessages(undefined, false);
       setIsConversationLoading(false);
+      void loadMessages(undefined, false);
     }
   };
 
