@@ -412,6 +412,15 @@ export const notificationsAPI = {
   },
 };
 
+export async function unsubscribeBrowserPushSubscription(
+  subscription?: PushSubscription | null,
+): Promise<void> {
+  if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return;
+  const registration = await navigator.serviceWorker.getRegistration();
+  const currentSubscription = subscription ?? await registration?.pushManager.getSubscription();
+  if (currentSubscription) await currentSubscription.unsubscribe();
+}
+
 // Courses API
 export const coursesAPI = {
   async getCourses(token: string, signal?: AbortSignal): Promise<CoursesResponse> {
@@ -736,6 +745,11 @@ apiClient.interceptors.response.use(
       }
 
       // Clear auth state and redirect to login
+      try {
+        await unsubscribeBrowserPushSubscription();
+      } catch (cleanupError) {
+        console.warn('Failed to remove push subscription after authentication loss:', cleanupError);
+      }
       localStorage.removeItem(ACCESS_TOKEN_KEY);
       localStorage.removeItem(REFRESH_TOKEN_KEY);
       localStorage.removeItem(TOKEN_EXPIRES_KEY);

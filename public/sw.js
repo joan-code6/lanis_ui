@@ -108,6 +108,23 @@ self.addEventListener('notificationclick', (event) => {
           // Ignore an unusable client URL and continue to the next window.
         }
       }
+
+      const activeClient = clients.find((client) => {
+        try {
+          return new URL(client.url).origin === self.location.origin
+            && (client.focused || client.visibilityState === 'visible')
+        } catch {
+          return false
+        }
+      })
+      if (activeClient && typeof activeClient.navigate === 'function') {
+        try {
+          await activeClient.navigate(targetUrl)
+          return activeClient.focus()
+        } catch {
+          // Fall back to opening a new window when navigation is unavailable.
+        }
+      }
       return self.clients.openWindow(targetUrl)
     }),
   )
