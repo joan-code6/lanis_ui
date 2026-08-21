@@ -199,7 +199,7 @@ const Messages: React.FC = () => {
         }));
         setConversationMessages(transformedMessages);
         setError('');
-        loadMessages();
+        await loadMessages();
       } else {
         if (response && typeof response === 'object' && 'error' in response) {
           if (response.error === 'No message data in response: {\'error\': \'-1\'}') {
@@ -276,7 +276,7 @@ const Messages: React.FC = () => {
       if (response.success) {
         setShowCompose(false);
         setComposeData({ recipients: [], subject: '', content: '' });
-        loadMessages();
+        await loadMessages();
       }
     } catch (error) {
       console.error('Error sending message:', error);
@@ -298,8 +298,7 @@ const Messages: React.FC = () => {
       const response = await messagesAPI.replyMessage(token, replyRequest);
       if (response.success) {
         setReplyBody('');
-        loadMessages();
-        loadConversation(selectedConversation);
+        await loadConversation(selectedConversation);
       }
     } catch (error) {
       console.error('Error sending reply:', error);

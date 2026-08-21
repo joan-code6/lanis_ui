@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lanis-ui-shell-v1'
+const CACHE_NAME = 'lanis-ui-shell-v2'
 const OFFLINE_RESPONSE = () =>
   new Response('Offline', {
     status: 503,
@@ -51,6 +51,41 @@ self.addEventListener('activate', (event) => {
     ),
   )
   self.clients.claim()
+})
+
+self.addEventListener('push', (event) => {
+  const data = event.data ? event.data.json() : {}
+  const title = data.title || 'Neue Nachricht in Lanis'
+  const options = {
+    body: data.body || 'Du hast neue Nachrichten.',
+    icon: '/favicon/android-chrome-192x192.png',
+    badge: '/favicon/favicon-32x32.png',
+    tag: data.tag || 'lanis-messages',
+    renotify: true,
+    data: { url: data.url || '/messages' },
+  }
+
+  event.waitUntil(self.registration.showNotification(title, options))
+})
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close()
+  const targetUrl = new URL(
+    event.notification.data?.url || '/messages',
+    self.location.origin,
+  ).href
+
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
+      for (const client of clients) {
+        if ('focus' in client) {
+          client.navigate(targetUrl)
+          return client.focus()
+        }
+      }
+      return self.clients.openWindow(targetUrl)
+    }),
+  )
 })
 
 self.addEventListener('fetch', (event) => {

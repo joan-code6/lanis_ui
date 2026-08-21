@@ -400,6 +400,18 @@ export function getMockResponse(url: string, method: string, config: any): { dat
   if (u === '/nachrichten/reply' && method === 'post') { return { status: 200, data: { success: true, details: { back: true, id: 'reply-' + Date.now() } } }; }
   if (u === '/nachrichten/mark-read' && method === 'post') { return { status: 200, data: { success: true } }; }
 
+  // Message push notifications
+  if (u === '/notifications/config' && method === 'get') {
+    return { status: 200, data: { success: true, configured: false, public_key: '' } };
+  }
+  if (u === '/notifications/preferences' && method === 'get') {
+    return { status: 200, data: { success: true, preferences: { enabled: false, start_time: '07:00', end_time: '21:00', poll_interval_minutes: 15, timezone: 'Europe/Berlin', show_preview: true } } };
+  }
+  if (u === '/notifications/preferences' && method === 'put') {
+    const body = typeof config?.data === 'string' ? JSON.parse(config.data) : config?.data;
+    return { status: 200, data: { success: true, preferences: { enabled: false, start_time: '07:00', end_time: '21:00', poll_interval_minutes: 15, timezone: 'Europe/Berlin', show_preview: true, ...(body || {}) } } };
+  }
+
   // Courses
   if (u === '/meinunterricht' && method === 'get') { return { status: 200, data: { success: true, entries: mockCourses, entry_count: mockCourses.length } }; }
   if (u.startsWith('/meinunterricht/course/') && method === 'get') {

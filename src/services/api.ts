@@ -170,6 +170,10 @@ import {
   TimetableResponse,
   TimetableDay,
   StudyGroupsResponse,
+  NotificationConfigResponse,
+  NotificationPreferences,
+  NotificationPreferencesResponse,
+  PushSubscriptionPayload,
 } from '../types';
 
 // Configuration
@@ -356,6 +360,53 @@ export const messagesAPI = {
     const response = await apiClient.post<MarkReadResponse>('/nachrichten/mark-read', data, {
       headers: { 'X-Session-Token': token },
       signal,
+    });
+    return response.data;
+  },
+};
+
+// Browser push notification API
+export const notificationsAPI = {
+  async getConfig(token: string, signal?: AbortSignal): Promise<NotificationConfigResponse> {
+    const response = await apiClient.get<NotificationConfigResponse>('/notifications/config', {
+      headers: { 'X-Session-Token': token },
+      signal,
+    });
+    return response.data;
+  },
+
+  async getPreferences(token: string, signal?: AbortSignal): Promise<NotificationPreferencesResponse> {
+    const response = await apiClient.get<NotificationPreferencesResponse>('/notifications/preferences', {
+      headers: { 'X-Session-Token': token },
+      signal,
+    });
+    return response.data;
+  },
+
+  async updatePreferences(token: string, preferences: NotificationPreferences): Promise<NotificationPreferencesResponse> {
+    const response = await apiClient.put<NotificationPreferencesResponse>('/notifications/preferences', preferences, {
+      headers: { 'X-Session-Token': token },
+    });
+    return response.data;
+  },
+
+  async registerSubscription(token: string, subscription: PushSubscriptionPayload): Promise<{ success: boolean }> {
+    const response = await apiClient.post<{ success: boolean }>('/notifications/subscription', subscription, {
+      headers: { 'X-Session-Token': token },
+    });
+    return response.data;
+  },
+
+  async unregisterSubscription(token: string, endpoint: string): Promise<{ success: boolean }> {
+    const response = await apiClient.post<{ success: boolean }>('/notifications/unsubscribe', { endpoint }, {
+      headers: { 'X-Session-Token': token },
+    });
+    return response.data;
+  },
+
+  async sendTest(token: string): Promise<{ success: boolean }> {
+    const response = await apiClient.post<{ success: boolean }>('/notifications/test', {}, {
+      headers: { 'X-Session-Token': token },
     });
     return response.data;
   },
