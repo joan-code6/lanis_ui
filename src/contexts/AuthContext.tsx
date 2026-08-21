@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { AuthContextType, LoginRequest, User } from '../types';
-import { authAPI } from '../services/api';
+import { authAPI, notificationsAPI, unsubscribeBrowserPushSubscription } from '../services/api';
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -103,6 +103,30 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const logout = async () => {
     try {
       if (token) {
+        try {
+          const registration = 'serviceWorker' in navigator
+            ? await navigator.serviceWorker.getRegistration()
+            : undefined;
+          const subscription = await registration?.pushManager.getSubscription();
+          if (subscription) {
+            try {
+              const response = await notificationsAPI.unregisterSubscription(token, subscription.endpoint);
+              if (!response.success) {
+                console.warn('Push subscription cleanup during logout was rejected.');
+              }
+            } catch (error) {
+              console.warn('Failed to remove push subscription from the server during logout:', error);
+            } finally {
+              try {
+                await unsubscribeBrowserPushSubscription(subscription);
+              } catch (error) {
+                console.warn('Failed to unsubscribe push notifications during logout:', error);
+              }
+            }
+          }
+        } catch (error) {
+          console.warn('Failed to remove push subscription during logout:', error);
+        }
         await authAPI.logout(token);
       }
     } catch (error) {

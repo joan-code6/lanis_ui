@@ -192,6 +192,34 @@ export interface MarkReadResponse {
   success: boolean;
 }
 
+export interface NotificationPreferences {
+  enabled: boolean;
+  start_time: string;
+  end_time: string;
+  poll_interval_minutes: number;
+  timezone: string;
+  show_preview: boolean;
+}
+
+export interface NotificationConfigResponse {
+  success: boolean;
+  configured: boolean;
+  public_key: string;
+}
+
+export interface NotificationPreferencesResponse {
+  success: boolean;
+  preferences: NotificationPreferences;
+}
+
+export interface PushSubscriptionPayload {
+  endpoint: string;
+  keys: {
+    p256dh: string;
+    auth: string;
+  };
+}
+
 // Course types
 export interface CourseEntry {
   entry_id: string | null;

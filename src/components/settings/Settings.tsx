@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useTheme, ThemeColor } from '../../contexts/ThemeContext';
-import { SunIcon, MoonIcon, CheckIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
+import { useAuth } from '../../contexts/AuthContext';
+import { notificationsAPI } from '../../services/api';
+import { NotificationPreferences, PushSubscriptionPayload } from '../../types';
+import { SunIcon, MoonIcon, CheckIcon, ArrowDownTrayIcon, BellAlertIcon, BellIcon, ClockIcon, ShieldCheckIcon } from '@heroicons/react/24/outline';
 import SEO from '../seo/SEO';
 import { getDeferredPrompt } from '../pwa/InstallPrompt';
 
@@ -17,10 +20,65 @@ const themeColors: { key: ThemeColor; label: string; hex: string }[] = [
   { key: 'cyan', label: 'Cyan', hex: '#06b6d4' },
 ];
 
+const defaultNotificationPreferences: NotificationPreferences = {
+  enabled: false,
+  start_time: '07:00',
+  end_time: '21:00',
+  poll_interval_minutes: 15,
+  timezone: 'Europe/Berlin',
+  show_preview: true,
+};
+
+const getBrowserTimezone = () => {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/Berlin';
+  } catch {
+    return 'Europe/Berlin';
+  }
+};
+
+const base64ToArrayBuffer = (value: string): ArrayBuffer => {
+  const padding = '='.repeat((4 - (value.length % 4)) % 4);
+  const base64 = (value + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = window.atob(base64);
+  const bytes = Uint8Array.from([...rawData].map(char => char.charCodeAt(0)));
+  return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
+};
+
+const pushSubscriptionToPayload = (subscription: PushSubscription): PushSubscriptionPayload => {
+  const json = subscription.toJSON();
+  if (!json.endpoint || !json.keys?.p256dh || !json.keys.auth) {
+    throw new Error('Die Browser-Subscription ist unvollständig.');
+  }
+  return {
+    endpoint: json.endpoint,
+    keys: {
+      p256dh: json.keys.p256dh,
+      auth: json.keys.auth,
+    },
+  };
+};
+
 const Settings: React.FC = () => {
   const { isDark, toggleDark, themeColor, setThemeColor } = useTheme();
+  const { token } = useAuth();
   const [installStatus, setInstallStatus] = useState<'idle' | 'installed' | 'unsupported'>('unsupported');
   const [ghostClicks, setGhostClicks] = useState(0);
+  const [notificationPrefs, setNotificationPrefs] = useState<NotificationPreferences>(defaultNotificationPreferences);
+  const [notificationConfigured, setNotificationConfigured] = useState(false);
+  const [notificationBrowserReady, setNotificationBrowserReady] = useState(false);
+  const [notificationSettingsLoaded, setNotificationSettingsLoaded] = useState(false);
+  const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>('default');
+  const [notificationsLoading, setNotificationsLoading] = useState(true);
+  const [notificationsSaving, setNotificationsSaving] = useState(false);
+  const [notificationTestSending, setNotificationTestSending] = useState(false);
+  const [notificationError, setNotificationError] = useState('');
+  const [notificationMessage, setNotificationMessage] = useState('');
+
+  const pushSupported = typeof window !== 'undefined'
+    && 'Notification' in window
+    && 'serviceWorker' in navigator
+    && 'PushManager' in window;
 
   useEffect(() => {
     const prompt = getDeferredPrompt();
@@ -63,6 +121,283 @@ const Settings: React.FC = () => {
       el?.removeEventListener('pwa-install-success-event', onInstalled);
     };
   }, []);
+
+  useEffect(() => {
+    setNotificationConfigured(false);
+    setNotificationPrefs(defaultNotificationPreferences);
+    setNotificationBrowserReady(false);
+    setNotificationSettingsLoaded(false);
+    setNotificationPermission('default');
+    setNotificationsSaving(false);
+    setNotificationTestSending(false);
+    setNotificationError('');
+    setNotificationMessage('');
+
+    if (!token) {
+      setNotificationsLoading(false);
+      return;
+    }
+
+    setNotificationsLoading(true);
+
+    const controller = new AbortController();
+    const loadNotificationSettings = async () => {
+      try {
+        const [config, preferences] = await Promise.all([
+          notificationsAPI.getConfig(token, controller.signal),
+          notificationsAPI.getPreferences(token, controller.signal),
+        ]);
+        if (controller.signal.aborted) return;
+        if (!config.success || !preferences.success) {
+          throw new Error('Notification settings response was unsuccessful.');
+        }
+
+        const loadedPreferences = {
+          ...defaultNotificationPreferences,
+          ...preferences.preferences,
+        };
+        setNotificationConfigured(config.configured);
+        setNotificationPrefs(loadedPreferences);
+        setNotificationSettingsLoaded(true);
+        if (pushSupported) {
+          setNotificationPermission(Notification.permission);
+          if (config.configured && loadedPreferences.enabled && Notification.permission === 'granted') {
+            try {
+              const subscription = await getBrowserSubscription(config.public_key, false);
+              if (controller.signal.aborted) return;
+              if (subscription) {
+                const response = await notificationsAPI.registerSubscription(token, pushSubscriptionToPayload(subscription));
+                if (!response.success) {
+                  throw new Error('Die Browser-Subscription konnte nicht registriert werden.');
+                }
+                if (controller.signal.aborted) return;
+                setNotificationBrowserReady(true);
+              } else {
+                setNotificationMessage('Benachrichtigungen sind für dein Konto aktiv. Aktiviere sie auf diesem Gerät über den Schalter.');
+              }
+            } catch (error) {
+              if (!controller.signal.aborted) {
+                console.error('Failed to register existing push subscription:', error);
+                setNotificationMessage('Aktiviere Benachrichtigungen auf diesem Gerät über den Schalter.');
+              }
+            }
+          } else if (config.configured && loadedPreferences.enabled && Notification.permission !== 'denied') {
+            setNotificationMessage('Benachrichtigungen sind für dein Konto aktiv. Aktiviere sie auf diesem Gerät über den Schalter.');
+          }
+        }
+      } catch (error) {
+        if (!controller.signal.aborted) {
+          console.error('Failed to load notification settings:', error);
+          setNotificationError('Benachrichtigungseinstellungen konnten nicht geladen werden.');
+        }
+      } finally {
+        if (!controller.signal.aborted) setNotificationsLoading(false);
+      }
+    };
+
+    loadNotificationSettings();
+    return () => controller.abort();
+  }, [token, pushSupported]);
+
+  const getPushRegistration = async () => {
+    if (!pushSupported) throw new Error('Dieser Browser unterstützt keine Push-Benachrichtigungen.');
+    const existing = await navigator.serviceWorker.getRegistration();
+    if (!existing) await navigator.serviceWorker.register('/sw.js');
+    return navigator.serviceWorker.ready;
+  };
+
+  const buffersEqual = (left: ArrayBuffer | null, right: ArrayBuffer) => {
+    if (!left) return false;
+    const leftBytes = new Uint8Array(left);
+    const rightBytes = new Uint8Array(right);
+    return leftBytes.length === rightBytes.length
+      && leftBytes.every((value, index) => value === rightBytes[index]);
+  };
+
+  const getBrowserSubscription = async (publicKey: string, createIfMissing: boolean) => {
+    const registration = await getPushRegistration();
+    const configuredKey = base64ToArrayBuffer(publicKey);
+    let subscription = await registration.pushManager.getSubscription();
+    if (subscription && !buffersEqual(subscription.options.applicationServerKey, configuredKey)) {
+      await subscription.unsubscribe();
+      subscription = null;
+    }
+    if (!subscription && createIfMissing) {
+      subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: configuredKey,
+      });
+    }
+    return subscription;
+  };
+
+  const registerBrowserSubscription = async (
+    onEndpointReady?: (endpoint: string) => void,
+  ): Promise<PushSubscriptionPayload> => {
+    if (!token || !notificationConfigured) {
+      throw new Error('Push-Benachrichtigungen sind auf dem Server nicht eingerichtet.');
+    }
+    if (Notification.permission === 'denied') {
+      throw new Error('Benachrichtigungen sind im Browser blockiert. Bitte erlaube sie in den Website-Einstellungen.');
+    }
+
+    const permission = Notification.permission === 'granted'
+      ? 'granted'
+      : await Notification.requestPermission();
+    setNotificationPermission(permission);
+    if (permission !== 'granted') {
+      throw new Error('Die Browser-Berechtigung für Benachrichtigungen wurde nicht erteilt.');
+    }
+
+    const config = await notificationsAPI.getConfig(token);
+    if (!config.success || !config.configured || !config.public_key) {
+      throw new Error('Push-Benachrichtigungen sind auf dem Server nicht eingerichtet.');
+    }
+    const subscription = await getBrowserSubscription(config.public_key, true);
+    if (!subscription) throw new Error('Die Browser-Subscription konnte nicht erstellt werden.');
+
+    const payload = pushSubscriptionToPayload(subscription);
+    onEndpointReady?.(payload.endpoint);
+    const response = await notificationsAPI.registerSubscription(token, payload);
+    if (!response.success) {
+      throw new Error('Die Browser-Subscription konnte nicht registriert werden.');
+    }
+    setNotificationBrowserReady(true);
+    return payload;
+  };
+
+  const unregisterBrowserSubscription = async () => {
+    if (!token) return;
+    const registration = await getPushRegistration();
+    const subscription = await registration.pushManager.getSubscription();
+    if (!subscription) {
+      setNotificationBrowserReady(false);
+      return;
+    }
+
+    const payload = pushSubscriptionToPayload(subscription);
+    const response = await notificationsAPI.unregisterSubscription(token, payload.endpoint);
+    if (!response.success) {
+      throw new Error('Die Browser-Subscription konnte nicht entfernt werden.');
+    }
+    try {
+      await subscription.unsubscribe();
+    } catch (error) {
+      console.warn('Failed to unsubscribe this browser locally:', error);
+    }
+    setNotificationBrowserReady(false);
+  };
+
+  const saveNotificationSettings = async (nextPrefs: NotificationPreferences) => {
+    if (!token) return;
+    setNotificationsSaving(true);
+    setNotificationError('');
+    setNotificationMessage('');
+    try {
+      const response = await notificationsAPI.updatePreferences(token, {
+        ...nextPrefs,
+        timezone: nextPrefs.timezone || getBrowserTimezone(),
+      });
+      if (!response.success || !response.preferences) {
+        throw new Error('Benachrichtigungseinstellungen konnten nicht gespeichert werden.');
+      }
+      setNotificationPrefs(response.preferences);
+      if (!response.preferences.enabled) setNotificationBrowserReady(false);
+      setNotificationMessage('Benachrichtigungseinstellungen gespeichert.');
+    } catch (error) {
+      console.error('Failed to save notification settings:', error);
+      setNotificationError('Benachrichtigungseinstellungen konnten nicht gespeichert werden.');
+    } finally {
+      setNotificationsSaving(false);
+    }
+  };
+
+  const handleNotificationsToggle = async () => {
+    setNotificationError('');
+    setNotificationMessage('');
+    const notificationsActive = notificationPrefs.enabled && notificationBrowserReady;
+    if (!notificationsActive) {
+      setNotificationsSaving(true);
+      let registeredEndpoint: string | null = null;
+      try {
+        const subscription = await registerBrowserSubscription(endpoint => {
+          registeredEndpoint = endpoint;
+        });
+        const response = await notificationsAPI.updatePreferences(token!, {
+          ...notificationPrefs,
+          enabled: true,
+          timezone: getBrowserTimezone(),
+        });
+        if (!response.success || !response.preferences) {
+          throw new Error('Benachrichtigungseinstellungen konnten nicht aktiviert werden.');
+        }
+        setNotificationPrefs(response.preferences);
+        setNotificationMessage('Benachrichtigungen sind jetzt aktiv.');
+      } catch (error) {
+        let rollbackError: Error | null = null;
+        if (registeredEndpoint && token) {
+          try {
+            const response = await notificationsAPI.unregisterSubscription(token, registeredEndpoint);
+            if (!response.success) {
+              throw new Error('Die fehlgeschlagene Aktivierung konnte serverseitig nicht zurückgerollt werden.');
+            }
+            const registration = await getPushRegistration();
+            const subscription = await registration.pushManager.getSubscription();
+            if (subscription?.endpoint === registeredEndpoint) {
+              try {
+                await subscription.unsubscribe();
+              } catch (unsubscribeError) {
+                console.warn('Failed to unsubscribe rolled-back push subscription locally:', unsubscribeError);
+              }
+            }
+          } catch (cleanupError) {
+            console.warn('Failed to roll back push subscription registration:', cleanupError);
+            rollbackError = cleanupError instanceof Error
+              ? cleanupError
+              : new Error('Push-Subscription konnte nicht zurückgerollt werden.');
+          }
+        }
+        setNotificationBrowserReady(false);
+        setNotificationError(
+          rollbackError?.message
+            || (error instanceof Error ? error.message : 'Benachrichtigungen konnten nicht aktiviert werden.'),
+        );
+      } finally {
+        setNotificationsSaving(false);
+      }
+      return;
+    }
+
+    setNotificationsSaving(true);
+    try {
+      await unregisterBrowserSubscription();
+      await saveNotificationSettings({ ...notificationPrefs, enabled: false });
+    } catch (error) {
+      setNotificationError(error instanceof Error ? error.message : 'Benachrichtigungen konnten nicht deaktiviert werden.');
+    } finally {
+      setNotificationsSaving(false);
+    }
+  };
+
+  const sendTestNotification = async () => {
+    if (!token) return;
+    if (!notificationPrefs.enabled || !notificationBrowserReady) {
+      setNotificationError('Aktiviere Benachrichtigungen auf diesem Gerät zuerst.');
+      return;
+    }
+    setNotificationTestSending(true);
+    setNotificationError('');
+    setNotificationMessage('');
+    try {
+      const response = await notificationsAPI.sendTest(token);
+      if (!response.success) throw new Error('Testbenachrichtigung konnte nicht gesendet werden.');
+      setNotificationMessage('Testbenachrichtigung wurde gesendet.');
+    } catch (error) {
+      setNotificationError(error instanceof Error ? error.message : 'Testbenachrichtigung konnte nicht gesendet werden.');
+    } finally {
+      setNotificationTestSending(false);
+    }
+  };
 
   const handleOpenInstall = () => {
     const el = document.querySelector('pwa-install') as PwaInstallElement | null;
@@ -141,6 +476,164 @@ const Settings: React.FC = () => {
                 <span className="text-xs font-medium text-surface-600">{c.label}</span>
               </button>
             ))}
+          </div>
+        </div>
+
+        {/* Nachrichten-Benachrichtigungen */}
+        <div className="card overflow-hidden border-primary-100 dark:border-primary-900/60">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary-50 text-primary-700 dark:bg-primary-950 dark:text-primary-300">
+                {notificationPrefs.enabled && notificationBrowserReady ? (
+                  <BellAlertIcon className="h-5 w-5" />
+                ) : (
+                  <BellIcon className="h-5 w-5" />
+                )}
+              </div>
+              <div>
+                <h3 className="text-base font-semibold text-surface-900 dark:text-surface-100">Nachrichten-Benachrichtigungen</h3>
+                <p className="text-sm text-surface-500 mt-0.5">
+                  {notificationPrefs.enabled && notificationBrowserReady
+                    ? `Aktiv von ${notificationPrefs.start_time} bis ${notificationPrefs.end_time} · Prüfung alle ${notificationPrefs.poll_interval_minutes} Min.`
+                    : notificationPrefs.enabled
+                      ? 'Für diesen Browser noch nicht aktiviert. Klicke den Schalter, um ihn zu registrieren.'
+                    : 'Lanis prüft auf Wunsch tagsüber auf neue Nachrichten.'}
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={handleNotificationsToggle}
+              disabled={notificationsLoading || notificationsSaving || !notificationSettingsLoaded || !notificationConfigured || !pushSupported}
+              className={`relative h-7 w-14 shrink-0 rounded-full transition-colors duration-300 ease-out-expo disabled:cursor-not-allowed disabled:opacity-50 ${
+                notificationPrefs.enabled && notificationBrowserReady ? 'bg-primary-600' : 'bg-surface-300 dark:bg-surface-700'
+              }`}
+              role="switch"
+              aria-checked={notificationPrefs.enabled && notificationBrowserReady}
+              aria-label="Nachrichten-Benachrichtigungen aktivieren"
+            >
+              <span
+                className={`absolute top-0.5 left-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-white shadow-soft transition-all duration-300 ease-out-expo ${
+                  notificationPrefs.enabled && notificationBrowserReady ? 'translate-x-7' : 'translate-x-0'
+                }`}
+              >
+                <span className={`h-2 w-2 rounded-full ${notificationPrefs.enabled && notificationBrowserReady ? 'bg-primary-600' : 'bg-surface-400'}`} />
+              </span>
+            </button>
+          </div>
+
+          <div className="mt-5 space-y-4 border-t border-surface-100 pt-5 dark:border-surface-800">
+            {!notificationConfigured && (
+              <p className="rounded-xl bg-amber-50 p-3 text-xs text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+                Push-Benachrichtigungen sind auf diesem Server noch nicht eingerichtet.
+              </p>
+            )}
+            {notificationConfigured && !pushSupported && (
+              <p className="rounded-xl bg-surface-50 p-3 text-xs text-surface-600 dark:bg-surface-800 dark:text-surface-300">
+                Dieser Browser unterstützt keine Web-Push-Benachrichtigungen. Installiere Lanis als App oder nutze einen aktuellen Browser.
+              </p>
+            )}
+            {pushSupported && notificationPermission === 'denied' && (
+              <p className="rounded-xl bg-amber-50 p-3 text-xs text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+                Dein Browser blockiert Benachrichtigungen. Erlaube sie in den Website-Einstellungen und aktiviere den Schalter erneut.
+              </p>
+            )}
+            {notificationPrefs.enabled && !notificationBrowserReady && pushSupported && notificationPermission !== 'denied' && (
+              <p className="rounded-xl bg-amber-50 p-3 text-xs text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+                Dein Konto hat Benachrichtigungen aktiviert, aber dieser Browser ist noch nicht registriert. Aktiviere den Schalter, um ihn zu verbinden.
+              </p>
+            )}
+
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div>
+                <label className="label" htmlFor="notification-start">Aktiv ab</label>
+                <div className="relative">
+                  <ClockIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-surface-400" />
+                  <input
+                    id="notification-start"
+                    type="time"
+                    className="input pl-9 text-sm"
+                    value={notificationPrefs.start_time}
+                    onChange={event => setNotificationPrefs(previous => ({ ...previous, start_time: event.target.value }))}
+                    disabled={notificationsLoading || notificationsSaving}
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="label" htmlFor="notification-end">Aktiv bis</label>
+                <div className="relative">
+                  <ClockIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-surface-400" />
+                  <input
+                    id="notification-end"
+                    type="time"
+                    className="input pl-9 text-sm"
+                    value={notificationPrefs.end_time}
+                    onChange={event => setNotificationPrefs(previous => ({ ...previous, end_time: event.target.value }))}
+                    disabled={notificationsLoading || notificationsSaving}
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="label" htmlFor="notification-interval">Prüfintervall</label>
+                <select
+                  id="notification-interval"
+                  className="input text-sm"
+                  value={notificationPrefs.poll_interval_minutes}
+                  onChange={event => setNotificationPrefs(previous => ({ ...previous, poll_interval_minutes: Number(event.target.value) }))}
+                  disabled={notificationsLoading || notificationsSaving}
+                >
+                  {[5, 10, 15, 30, 60].map(minutes => (
+                    <option key={minutes} value={minutes}>{minutes} Minuten</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <label className="flex cursor-pointer items-start gap-3 rounded-xl bg-surface-50 p-3 dark:bg-surface-800/70">
+              <input
+                type="checkbox"
+                className="mt-0.5 h-4 w-4 rounded border-surface-300 text-primary-600 focus:ring-primary-500"
+                checked={notificationPrefs.show_preview}
+                onChange={event => setNotificationPrefs(previous => ({ ...previous, show_preview: event.target.checked }))}
+                disabled={notificationsLoading || notificationsSaving}
+              />
+              <span>
+                <span className="block text-sm font-medium text-surface-800 dark:text-surface-200">Vorschau in der Benachrichtigung</span>
+                <span className="mt-0.5 block text-xs text-surface-500">Zeigt Absender und Betreff auf dem Sperrbildschirm an.</span>
+              </span>
+            </label>
+
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-start gap-2 text-xs text-surface-500">
+                <ShieldCheckIcon className="mt-0.5 h-4 w-4 shrink-0 text-primary-600" />
+                <span>Zeitzone: {notificationPrefs.timezone || getBrowserTimezone()}. Die erste Prüfung legt nur den Startstand fest.</span>
+              </div>
+              <div className="flex shrink-0 gap-2">
+                <button
+                  type="button"
+                  onClick={sendTestNotification}
+              disabled={notificationsLoading || notificationsSaving || notificationTestSending || !notificationSettingsLoaded || !notificationPrefs.enabled || !notificationBrowserReady || !notificationConfigured || !pushSupported}
+                  className="btn btn-secondary h-9 text-xs disabled:opacity-50"
+                >
+                  {notificationTestSending ? 'Sende...' : 'Test senden'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => saveNotificationSettings({ ...notificationPrefs, timezone: notificationPrefs.timezone || getBrowserTimezone() })}
+                  disabled={notificationsLoading || notificationsSaving || !notificationSettingsLoaded || !token}
+                  className="btn btn-primary h-9 text-xs disabled:opacity-50"
+                >
+                  {notificationsSaving ? 'Speichere...' : 'Speichern'}
+                </button>
+              </div>
+            </div>
+
+            {notificationError && (
+              <p className="rounded-xl bg-red-50 p-3 text-xs text-red-700 dark:bg-red-950/40 dark:text-red-300">{notificationError}</p>
+            )}
+            {notificationMessage && (
+              <p className="rounded-xl bg-emerald-50 p-3 text-xs text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">{notificationMessage}</p>
+            )}
           </div>
         </div>
 
@@ -234,7 +727,7 @@ const Settings: React.FC = () => {
 
         {/* Info */}
         <div className="text-center text-xs text-surface-400">
-          Einstellungen werden lokal gespeichert und bleiben beim nächsten Besuch erhalten.
+          Erscheinungsbild wird lokal gespeichert. Benachrichtigungen werden mit deinem Konto synchronisiert.
         </div>
       </div>
     </div>

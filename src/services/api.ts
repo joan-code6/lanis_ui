@@ -170,6 +170,10 @@ import {
   TimetableResponse,
   TimetableDay,
   StudyGroupsResponse,
+  NotificationConfigResponse,
+  NotificationPreferences,
+  NotificationPreferencesResponse,
+  PushSubscriptionPayload,
 } from '../types';
 
 // Configuration
@@ -360,6 +364,62 @@ export const messagesAPI = {
     return response.data;
   },
 };
+
+// Browser push notification API
+export const notificationsAPI = {
+  async getConfig(token: string, signal?: AbortSignal): Promise<NotificationConfigResponse> {
+    const response = await apiClient.get<NotificationConfigResponse>('/notifications/config', {
+      headers: { 'X-Session-Token': token },
+      signal,
+    });
+    return response.data;
+  },
+
+  async getPreferences(token: string, signal?: AbortSignal): Promise<NotificationPreferencesResponse> {
+    const response = await apiClient.get<NotificationPreferencesResponse>('/notifications/preferences', {
+      headers: { 'X-Session-Token': token },
+      signal,
+    });
+    return response.data;
+  },
+
+  async updatePreferences(token: string, preferences: NotificationPreferences): Promise<NotificationPreferencesResponse> {
+    const response = await apiClient.put<NotificationPreferencesResponse>('/notifications/preferences', preferences, {
+      headers: { 'X-Session-Token': token },
+    });
+    return response.data;
+  },
+
+  async registerSubscription(token: string, subscription: PushSubscriptionPayload): Promise<{ success: boolean }> {
+    const response = await apiClient.post<{ success: boolean }>('/notifications/subscription', subscription, {
+      headers: { 'X-Session-Token': token },
+    });
+    return response.data;
+  },
+
+  async unregisterSubscription(token: string, endpoint: string): Promise<{ success: boolean }> {
+    const response = await apiClient.post<{ success: boolean }>('/notifications/unsubscribe', { endpoint }, {
+      headers: { 'X-Session-Token': token },
+    });
+    return response.data;
+  },
+
+  async sendTest(token: string): Promise<{ success: boolean }> {
+    const response = await apiClient.post<{ success: boolean }>('/notifications/test', {}, {
+      headers: { 'X-Session-Token': token },
+    });
+    return response.data;
+  },
+};
+
+export async function unsubscribeBrowserPushSubscription(
+  subscription?: PushSubscription | null,
+): Promise<void> {
+  if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return;
+  const registration = await navigator.serviceWorker.getRegistration();
+  const currentSubscription = subscription ?? await registration?.pushManager.getSubscription();
+  if (currentSubscription) await currentSubscription.unsubscribe();
+}
 
 // Courses API
 export const coursesAPI = {
@@ -685,6 +745,11 @@ apiClient.interceptors.response.use(
       }
 
       // Clear auth state and redirect to login
+      try {
+        await unsubscribeBrowserPushSubscription();
+      } catch (cleanupError) {
+        console.warn('Failed to remove push subscription after authentication loss:', cleanupError);
+      }
       localStorage.removeItem(ACCESS_TOKEN_KEY);
       localStorage.removeItem(REFRESH_TOKEN_KEY);
       localStorage.removeItem(TOKEN_EXPIRES_KEY);

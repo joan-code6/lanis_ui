@@ -141,11 +141,11 @@ const Messages: React.FC = () => {
     setShowCompose(true);
   }, [searchParams]);
 
-  const loadMessages = async (signal?: AbortSignal) => {
+  const loadMessages = async (signal?: AbortSignal, clearError = true) => {
     if (!token) return;
     setIsUpdating(true);
     try {
-      setError('');
+      if (clearError) setError('');
       const response = await messagesAPI.getMessageHeaders(token, 'All', 0, signal);
       if (signal?.aborted) return;
       if (response.success) {
@@ -199,7 +199,6 @@ const Messages: React.FC = () => {
         }));
         setConversationMessages(transformedMessages);
         setError('');
-        loadMessages();
       } else {
         if (response && typeof response === 'object' && 'error' in response) {
           if (response.error === 'No message data in response: {\'error\': \'-1\'}') {
@@ -222,6 +221,7 @@ const Messages: React.FC = () => {
       }
     } finally {
       setIsConversationLoading(false);
+      void loadMessages(undefined, false);
     }
   };
 
@@ -276,7 +276,7 @@ const Messages: React.FC = () => {
       if (response.success) {
         setShowCompose(false);
         setComposeData({ recipients: [], subject: '', content: '' });
-        loadMessages();
+        await loadMessages();
       }
     } catch (error) {
       console.error('Error sending message:', error);
@@ -298,8 +298,7 @@ const Messages: React.FC = () => {
       const response = await messagesAPI.replyMessage(token, replyRequest);
       if (response.success) {
         setReplyBody('');
-        loadMessages();
-        loadConversation(selectedConversation);
+        await loadConversation(selectedConversation);
       }
     } catch (error) {
       console.error('Error sending reply:', error);

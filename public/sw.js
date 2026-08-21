@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lanis-ui-shell-v1'
+const CACHE_NAME = 'lanis-ui-shell-v2'
 const OFFLINE_RESPONSE = () =>
   new Response('Offline', {
     status: 503,
@@ -51,6 +51,82 @@ self.addEventListener('activate', (event) => {
     ),
   )
   self.clients.claim()
+})
+
+self.addEventListener('push', (event) => {
+  let data = {}
+  if (event.data) {
+    try {
+      const parsed = event.data.json()
+      data = parsed && typeof parsed === 'object' ? parsed : {}
+    } catch {
+      // Use the fallback notification content for malformed payloads.
+    }
+  }
+  const title = data.title || 'Neue Nachricht in Lanis'
+  const options = {
+    body: data.body || 'Du hast neue Nachrichten.',
+    icon: '/favicon/android-chrome-192x192.png',
+    badge: '/favicon/favicon-32x32.png',
+    tag: data.tag || 'lanis-messages',
+    renotify: true,
+    data: { url: data.url || '/messages' },
+  }
+
+  event.waitUntil(self.registration.showNotification(title, options))
+})
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close()
+  let targetUrl
+  try {
+    const requestedUrl = new URL(
+      event.notification.data?.url || '/messages',
+      self.location.origin,
+    )
+    targetUrl = requestedUrl.origin === self.location.origin
+      ? requestedUrl.href
+      : new URL('/messages', self.location.origin).href
+  } catch {
+    targetUrl = new URL('/messages', self.location.origin).href
+  }
+
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(async (clients) => {
+      const target = new URL(targetUrl)
+      for (const client of clients) {
+        try {
+          const clientUrl = new URL(client.url)
+          if (
+            clientUrl.origin === target.origin
+            && clientUrl.pathname === target.pathname
+            && clientUrl.search === target.search
+          ) {
+            return client.focus()
+          }
+        } catch {
+          // Ignore an unusable client URL and continue to the next window.
+        }
+      }
+
+      const activeClient = clients.find((client) => {
+        try {
+          return new URL(client.url).origin === self.location.origin
+        } catch {
+          return false
+        }
+      })
+      if (activeClient && typeof activeClient.navigate === 'function') {
+        try {
+          await activeClient.navigate(targetUrl)
+          return activeClient.focus()
+        } catch {
+          // Fall back to opening a new window when navigation is unavailable.
+        }
+      }
+      return self.clients.openWindow(targetUrl)
+    }),
+  )
 })
 
 self.addEventListener('fetch', (event) => {
