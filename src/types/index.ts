@@ -161,7 +161,7 @@ export interface SearchResponse {
 export interface SendMessageRequest {
   recipients: string[];
   subject: string;
-  content: string;
+  body: string;
 }
 
 export interface SendMessageResponse {

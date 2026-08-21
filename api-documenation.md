@@ -384,7 +384,7 @@ Send a new message.
 {
   "recipients": ["{user_id_1}", "{user_id_2}"],
   "subject": "{message_subject}",
-  "content": "{message_content}"
+  "body": "{message_body}"
 }
 ```
 
@@ -656,4 +656,3 @@ curl -X GET {api-endpoint}/meinunterricht/course/12345 \
 - Response data is anonymized in this documentation; placeholders like `{username}`, `{course_name}` represent actual values
 - Multiple concurrent users are supported through session isolation
 - The API automatically cleans up expired sessions
-

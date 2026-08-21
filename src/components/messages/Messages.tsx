@@ -270,7 +270,7 @@ const Messages: React.FC = () => {
       const messageRequest: SendMessageRequest = {
         recipients: composeData.recipients.map(r => r.id),
         subject: composeData.subject,
-        content: composeData.content,
+        body: composeData.content,
       };
       const response = await messagesAPI.sendMessage(token, messageRequest);
       if (response.success) {
