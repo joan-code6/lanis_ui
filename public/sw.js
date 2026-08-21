@@ -112,7 +112,6 @@ self.addEventListener('notificationclick', (event) => {
       const activeClient = clients.find((client) => {
         try {
           return new URL(client.url).origin === self.location.origin
-            && (client.focused || client.visibilityState === 'visible')
         } catch {
           return false
         }
