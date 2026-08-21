@@ -234,6 +234,25 @@ const Settings: React.FC = () => {
     return payload;
   };
 
+  const unregisterBrowserSubscription = async () => {
+    if (!token) return;
+    const registration = await getPushRegistration();
+    const subscription = await registration.pushManager.getSubscription();
+    if (!subscription) {
+      setNotificationBrowserReady(false);
+      return;
+    }
+
+    const payload = pushSubscriptionToPayload(subscription);
+    await notificationsAPI.unregisterSubscription(token, payload.endpoint);
+    try {
+      await subscription.unsubscribe();
+    } catch (error) {
+      console.warn('Failed to unsubscribe this browser locally:', error);
+    }
+    setNotificationBrowserReady(false);
+  };
+
   const saveNotificationSettings = async (nextPrefs: NotificationPreferences) => {
     if (!token) return;
     setNotificationsSaving(true);
@@ -278,7 +297,15 @@ const Settings: React.FC = () => {
       return;
     }
 
-    await saveNotificationSettings({ ...notificationPrefs, enabled: false });
+    setNotificationsSaving(true);
+    try {
+      await unregisterBrowserSubscription();
+      await saveNotificationSettings({ ...notificationPrefs, enabled: false });
+    } catch (error) {
+      setNotificationError(error instanceof Error ? error.message : 'Benachrichtigungen konnten nicht deaktiviert werden.');
+    } finally {
+      setNotificationsSaving(false);
+    }
   };
 
   const sendTestNotification = async () => {
