@@ -54,7 +54,15 @@ self.addEventListener('activate', (event) => {
 })
 
 self.addEventListener('push', (event) => {
-  const data = event.data ? event.data.json() : {}
+  let data = {}
+  if (event.data) {
+    try {
+      const parsed = event.data.json()
+      data = parsed && typeof parsed === 'object' ? parsed : {}
+    } catch {
+      // Use the fallback notification content for malformed payloads.
+    }
+  }
   const title = data.title || 'Neue Nachricht in Lanis'
   const options = {
     body: data.body || 'Du hast neue Nachrichten.',

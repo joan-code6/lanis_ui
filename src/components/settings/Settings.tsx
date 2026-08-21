@@ -45,6 +45,20 @@ const base64ToArrayBuffer = (value: string): ArrayBuffer => {
   return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
 };
 
+const pushSubscriptionToPayload = (subscription: PushSubscription): PushSubscriptionPayload => {
+  const json = subscription.toJSON();
+  if (!json.endpoint || !json.keys?.p256dh || !json.keys.auth) {
+    throw new Error('Die Browser-Subscription ist unvollständig.');
+  }
+  return {
+    endpoint: json.endpoint,
+    keys: {
+      p256dh: json.keys.p256dh,
+      auth: json.keys.auth,
+    },
+  };
+};
+
 const Settings: React.FC = () => {
   const { isDark, toggleDark, themeColor, setThemeColor } = useTheme();
   const { token } = useAuth();
@@ -52,6 +66,7 @@ const Settings: React.FC = () => {
   const [ghostClicks, setGhostClicks] = useState(0);
   const [notificationPrefs, setNotificationPrefs] = useState<NotificationPreferences>(defaultNotificationPreferences);
   const [notificationConfigured, setNotificationConfigured] = useState(false);
+  const [notificationBrowserReady, setNotificationBrowserReady] = useState(false);
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>('default');
   const [notificationsLoading, setNotificationsLoading] = useState(true);
   const [notificationsSaving, setNotificationsSaving] = useState(false);
@@ -109,6 +124,7 @@ const Settings: React.FC = () => {
   useEffect(() => {
     setNotificationConfigured(false);
     setNotificationPrefs(defaultNotificationPreferences);
+    setNotificationBrowserReady(false);
     setNotificationPermission('default');
     setNotificationsSaving(false);
     setNotificationTestSending(false);
@@ -131,13 +147,36 @@ const Settings: React.FC = () => {
         ]);
         if (controller.signal.aborted) return;
 
-        setNotificationConfigured(config.configured);
-        setNotificationPrefs({
+        const loadedPreferences = {
           ...defaultNotificationPreferences,
           ...preferences.preferences,
-        });
+        };
+        setNotificationConfigured(config.configured);
+        setNotificationPrefs(loadedPreferences);
         if (pushSupported) {
           setNotificationPermission(Notification.permission);
+          if (config.configured && loadedPreferences.enabled && Notification.permission === 'granted') {
+            try {
+              const registration = await getPushRegistration();
+              if (controller.signal.aborted) return;
+              const subscription = await registration.pushManager.getSubscription();
+              if (controller.signal.aborted) return;
+              if (subscription) {
+                await notificationsAPI.registerSubscription(token, pushSubscriptionToPayload(subscription));
+                if (controller.signal.aborted) return;
+                setNotificationBrowserReady(true);
+              } else {
+                setNotificationMessage('Benachrichtigungen sind für dein Konto aktiv. Aktiviere sie auf diesem Gerät über den Schalter.');
+              }
+            } catch (error) {
+              if (!controller.signal.aborted) {
+                console.error('Failed to register existing push subscription:', error);
+                setNotificationMessage('Aktiviere Benachrichtigungen auf diesem Gerät über den Schalter.');
+              }
+            }
+          } else if (config.configured && loadedPreferences.enabled && Notification.permission !== 'denied') {
+            setNotificationMessage('Benachrichtigungen sind für dein Konto aktiv. Aktiviere sie auf diesem Gerät über den Schalter.');
+          }
         }
       } catch (error) {
         if (!controller.signal.aborted) {
@@ -156,7 +195,8 @@ const Settings: React.FC = () => {
   const getPushRegistration = async () => {
     if (!pushSupported) throw new Error('Dieser Browser unterstützt keine Push-Benachrichtigungen.');
     const existing = await navigator.serviceWorker.getRegistration();
-    return existing || navigator.serviceWorker.register('/sw.js');
+    if (!existing) await navigator.serviceWorker.register('/sw.js');
+    return navigator.serviceWorker.ready;
   };
 
   const registerBrowserSubscription = async (): Promise<PushSubscriptionPayload> => {
@@ -188,18 +228,9 @@ const Settings: React.FC = () => {
       });
     }
 
-    const json = subscription.toJSON();
-    if (!json.endpoint || !json.keys?.p256dh || !json.keys.auth) {
-      throw new Error('Die Browser-Subscription ist unvollständig.');
-    }
-    const payload: PushSubscriptionPayload = {
-      endpoint: json.endpoint,
-      keys: {
-        p256dh: json.keys.p256dh,
-        auth: json.keys.auth,
-      },
-    };
+    const payload = pushSubscriptionToPayload(subscription);
     await notificationsAPI.registerSubscription(token, payload);
+    setNotificationBrowserReady(true);
     return payload;
   };
 
@@ -214,6 +245,7 @@ const Settings: React.FC = () => {
         timezone: nextPrefs.timezone || getBrowserTimezone(),
       });
       setNotificationPrefs(response.preferences);
+      if (!response.preferences.enabled) setNotificationBrowserReady(false);
       setNotificationMessage('Benachrichtigungseinstellungen gespeichert.');
     } catch (error) {
       console.error('Failed to save notification settings:', error);
@@ -226,7 +258,8 @@ const Settings: React.FC = () => {
   const handleNotificationsToggle = async () => {
     setNotificationError('');
     setNotificationMessage('');
-    if (!notificationPrefs.enabled) {
+    const notificationsActive = notificationPrefs.enabled && notificationBrowserReady;
+    if (!notificationsActive) {
       setNotificationsSaving(true);
       try {
         await registerBrowserSubscription();
@@ -349,7 +382,7 @@ const Settings: React.FC = () => {
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-start gap-3">
               <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary-50 text-primary-700 dark:bg-primary-950 dark:text-primary-300">
-                {notificationPrefs.enabled ? (
+                {notificationPrefs.enabled && notificationBrowserReady ? (
                   <BellAlertIcon className="h-5 w-5" />
                 ) : (
                   <BellIcon className="h-5 w-5" />
@@ -358,8 +391,10 @@ const Settings: React.FC = () => {
               <div>
                 <h3 className="text-base font-semibold text-surface-900 dark:text-surface-100">Nachrichten-Benachrichtigungen</h3>
                 <p className="text-sm text-surface-500 mt-0.5">
-                  {notificationPrefs.enabled
+                  {notificationPrefs.enabled && notificationBrowserReady
                     ? `Aktiv von ${notificationPrefs.start_time} bis ${notificationPrefs.end_time} · Prüfung alle ${notificationPrefs.poll_interval_minutes} Min.`
+                    : notificationPrefs.enabled
+                      ? 'Für diesen Browser noch nicht aktiviert. Klicke den Schalter, um ihn zu registrieren.'
                     : 'Lanis prüft auf Wunsch tagsüber auf neue Nachrichten.'}
                 </p>
               </div>
@@ -369,18 +404,18 @@ const Settings: React.FC = () => {
               onClick={handleNotificationsToggle}
               disabled={notificationsLoading || notificationsSaving || !notificationConfigured || !pushSupported}
               className={`relative h-7 w-14 shrink-0 rounded-full transition-colors duration-300 ease-out-expo disabled:cursor-not-allowed disabled:opacity-50 ${
-                notificationPrefs.enabled ? 'bg-primary-600' : 'bg-surface-300 dark:bg-surface-700'
+                notificationPrefs.enabled && notificationBrowserReady ? 'bg-primary-600' : 'bg-surface-300 dark:bg-surface-700'
               }`}
               role="switch"
-              aria-checked={notificationPrefs.enabled}
+              aria-checked={notificationPrefs.enabled && notificationBrowserReady}
               aria-label="Nachrichten-Benachrichtigungen aktivieren"
             >
               <span
                 className={`absolute top-0.5 left-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-white shadow-soft transition-all duration-300 ease-out-expo ${
-                  notificationPrefs.enabled ? 'translate-x-7' : 'translate-x-0'
+                  notificationPrefs.enabled && notificationBrowserReady ? 'translate-x-7' : 'translate-x-0'
                 }`}
               >
-                <span className={`h-2 w-2 rounded-full ${notificationPrefs.enabled ? 'bg-primary-600' : 'bg-surface-400'}`} />
+                <span className={`h-2 w-2 rounded-full ${notificationPrefs.enabled && notificationBrowserReady ? 'bg-primary-600' : 'bg-surface-400'}`} />
               </span>
             </button>
           </div>
@@ -399,6 +434,11 @@ const Settings: React.FC = () => {
             {pushSupported && notificationPermission === 'denied' && (
               <p className="rounded-xl bg-amber-50 p-3 text-xs text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
                 Dein Browser blockiert Benachrichtigungen. Erlaube sie in den Website-Einstellungen und aktiviere den Schalter erneut.
+              </p>
+            )}
+            {notificationPrefs.enabled && !notificationBrowserReady && pushSupported && notificationPermission !== 'denied' && (
+              <p className="rounded-xl bg-amber-50 p-3 text-xs text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+                Dein Konto hat Benachrichtigungen aktiviert, aber dieser Browser ist noch nicht registriert. Aktiviere den Schalter, um ihn zu verbinden.
               </p>
             )}
 

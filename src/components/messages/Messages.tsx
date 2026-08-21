@@ -141,11 +141,11 @@ const Messages: React.FC = () => {
     setShowCompose(true);
   }, [searchParams]);
 
-  const loadMessages = async (signal?: AbortSignal) => {
+  const loadMessages = async (signal?: AbortSignal, clearError = true) => {
     if (!token) return;
     setIsUpdating(true);
     try {
-      setError('');
+      if (clearError) setError('');
       const response = await messagesAPI.getMessageHeaders(token, 'All', 0, signal);
       if (signal?.aborted) return;
       if (response.success) {
@@ -199,7 +199,6 @@ const Messages: React.FC = () => {
         }));
         setConversationMessages(transformedMessages);
         setError('');
-        await loadMessages();
       } else {
         if (response && typeof response === 'object' && 'error' in response) {
           if (response.error === 'No message data in response: {\'error\': \'-1\'}') {
@@ -221,6 +220,7 @@ const Messages: React.FC = () => {
         setError('Fehler beim Laden der Unterhaltung. Bitte versuchen Sie es später erneut.');
       }
     } finally {
+      await loadMessages(undefined, false);
       setIsConversationLoading(false);
     }
   };
