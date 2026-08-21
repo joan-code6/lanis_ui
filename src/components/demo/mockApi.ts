@@ -23,6 +23,17 @@ const mockUser = {
   ort: 'Frankfurt am Main',
 };
 
+const defaultMockNotificationPreferences = {
+  enabled: false,
+  start_time: '07:00',
+  end_time: '21:00',
+  poll_interval_minutes: 15,
+  timezone: 'Europe/Berlin',
+  show_preview: true,
+};
+
+let mockNotificationPreferences = { ...defaultMockNotificationPreferences };
+
 const mockModules = [
   { name: 'Mein Unterricht', url: 'https://schulportal.hessen.de/meinunterricht.php', direct_url: 'https://schulportal.hessen.de/meinunterricht.php', proxy_app: false, color: '#4f46e5', logo: 'fa fa-files-o', folders: ['Schule'], target: '_self' },
   { name: 'Nachrichten', url: 'https://schulportal.hessen.de/nachrichten.php', direct_url: 'https://schulportal.hessen.de/nachrichten.php', proxy_app: false, color: '#0891b2', logo: 'fa fa-envelope-o', folders: ['Kommunikation'], target: '_self' },
@@ -405,11 +416,12 @@ export function getMockResponse(url: string, method: string, config: any): { dat
     return { status: 200, data: { success: true, configured: false, public_key: '' } };
   }
   if (u === '/notifications/preferences' && method === 'get') {
-    return { status: 200, data: { success: true, preferences: { enabled: false, start_time: '07:00', end_time: '21:00', poll_interval_minutes: 15, timezone: 'Europe/Berlin', show_preview: true } } };
+    return { status: 200, data: { success: true, preferences: { ...mockNotificationPreferences } } };
   }
   if (u === '/notifications/preferences' && method === 'put') {
     const body = typeof config?.data === 'string' ? JSON.parse(config.data) : config?.data;
-    return { status: 200, data: { success: true, preferences: { enabled: false, start_time: '07:00', end_time: '21:00', poll_interval_minutes: 15, timezone: 'Europe/Berlin', show_preview: true, ...(body || {}) } } };
+    mockNotificationPreferences = { ...mockNotificationPreferences, ...(body || {}) };
+    return { status: 200, data: { success: true, preferences: { ...mockNotificationPreferences } } };
   }
 
   // Courses

@@ -107,13 +107,20 @@ const Settings: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    setNotificationConfigured(false);
+    setNotificationPrefs(defaultNotificationPreferences);
+    setNotificationPermission('default');
+    setNotificationsSaving(false);
+    setNotificationTestSending(false);
+    setNotificationError('');
+    setNotificationMessage('');
+
     if (!token) {
       setNotificationsLoading(false);
       return;
     }
 
     setNotificationsLoading(true);
-    setNotificationError('');
 
     const controller = new AbortController();
     const loadNotificationSettings = async () => {
