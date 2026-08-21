@@ -163,9 +163,7 @@ const Settings: React.FC = () => {
           setNotificationPermission(Notification.permission);
           if (config.configured && loadedPreferences.enabled && Notification.permission === 'granted') {
             try {
-              const registration = await getPushRegistration();
-              if (controller.signal.aborted) return;
-              const subscription = await registration.pushManager.getSubscription();
+              const subscription = await getBrowserSubscription(config.public_key, false);
               if (controller.signal.aborted) return;
               if (subscription) {
                 const response = await notificationsAPI.registerSubscription(token, pushSubscriptionToPayload(subscription));
@@ -208,7 +206,34 @@ const Settings: React.FC = () => {
     return navigator.serviceWorker.ready;
   };
 
-  const registerBrowserSubscription = async (): Promise<PushSubscriptionPayload> => {
+  const buffersEqual = (left: ArrayBuffer | null, right: ArrayBuffer) => {
+    if (!left) return false;
+    const leftBytes = new Uint8Array(left);
+    const rightBytes = new Uint8Array(right);
+    return leftBytes.length === rightBytes.length
+      && leftBytes.every((value, index) => value === rightBytes[index]);
+  };
+
+  const getBrowserSubscription = async (publicKey: string, createIfMissing: boolean) => {
+    const registration = await getPushRegistration();
+    const configuredKey = base64ToArrayBuffer(publicKey);
+    let subscription = await registration.pushManager.getSubscription();
+    if (subscription && !buffersEqual(subscription.options.applicationServerKey, configuredKey)) {
+      await subscription.unsubscribe();
+      subscription = null;
+    }
+    if (!subscription && createIfMissing) {
+      subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: configuredKey,
+      });
+    }
+    return subscription;
+  };
+
+  const registerBrowserSubscription = async (
+    onEndpointReady?: (endpoint: string) => void,
+  ): Promise<PushSubscriptionPayload> => {
     if (!token || !notificationConfigured) {
       throw new Error('Push-Benachrichtigungen sind auf dem Server nicht eingerichtet.');
     }
@@ -228,16 +253,11 @@ const Settings: React.FC = () => {
     if (!config.success || !config.configured || !config.public_key) {
       throw new Error('Push-Benachrichtigungen sind auf dem Server nicht eingerichtet.');
     }
-    const registration = await getPushRegistration();
-    let subscription = await registration.pushManager.getSubscription();
-    if (!subscription) {
-      subscription = await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: base64ToArrayBuffer(config.public_key),
-      });
-    }
+    const subscription = await getBrowserSubscription(config.public_key, true);
+    if (!subscription) throw new Error('Die Browser-Subscription konnte nicht erstellt werden.');
 
     const payload = pushSubscriptionToPayload(subscription);
+    onEndpointReady?.(payload.endpoint);
     const response = await notificationsAPI.registerSubscription(token, payload);
     if (!response.success) {
       throw new Error('Die Browser-Subscription konnte nicht registriert werden.');
@@ -300,8 +320,9 @@ const Settings: React.FC = () => {
       setNotificationsSaving(true);
       let registeredEndpoint: string | null = null;
       try {
-        const subscription = await registerBrowserSubscription();
-        registeredEndpoint = subscription.endpoint;
+        const subscription = await registerBrowserSubscription(endpoint => {
+          registeredEndpoint = endpoint;
+        });
         const response = await notificationsAPI.updatePreferences(token!, {
           ...notificationPrefs,
           enabled: true,
