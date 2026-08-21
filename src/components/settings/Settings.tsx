@@ -148,6 +148,9 @@ const Settings: React.FC = () => {
           notificationsAPI.getPreferences(token, controller.signal),
         ]);
         if (controller.signal.aborted) return;
+        if (!config.success || !preferences.success) {
+          throw new Error('Notification settings response was unsuccessful.');
+        }
 
         const loadedPreferences = {
           ...defaultNotificationPreferences,
@@ -165,7 +168,10 @@ const Settings: React.FC = () => {
               const subscription = await registration.pushManager.getSubscription();
               if (controller.signal.aborted) return;
               if (subscription) {
-                await notificationsAPI.registerSubscription(token, pushSubscriptionToPayload(subscription));
+                const response = await notificationsAPI.registerSubscription(token, pushSubscriptionToPayload(subscription));
+                if (!response.success) {
+                  throw new Error('Die Browser-Subscription konnte nicht registriert werden.');
+                }
                 if (controller.signal.aborted) return;
                 setNotificationBrowserReady(true);
               } else {
@@ -219,7 +225,7 @@ const Settings: React.FC = () => {
     }
 
     const config = await notificationsAPI.getConfig(token);
-    if (!config.configured || !config.public_key) {
+    if (!config.success || !config.configured || !config.public_key) {
       throw new Error('Push-Benachrichtigungen sind auf dem Server nicht eingerichtet.');
     }
     const registration = await getPushRegistration();
@@ -232,7 +238,10 @@ const Settings: React.FC = () => {
     }
 
     const payload = pushSubscriptionToPayload(subscription);
-    await notificationsAPI.registerSubscription(token, payload);
+    const response = await notificationsAPI.registerSubscription(token, payload);
+    if (!response.success) {
+      throw new Error('Die Browser-Subscription konnte nicht registriert werden.');
+    }
     setNotificationBrowserReady(true);
     return payload;
   };
@@ -266,6 +275,9 @@ const Settings: React.FC = () => {
         ...nextPrefs,
         timezone: nextPrefs.timezone || getBrowserTimezone(),
       });
+      if (!response.success || !response.preferences) {
+        throw new Error('Benachrichtigungseinstellungen konnten nicht gespeichert werden.');
+      }
       setNotificationPrefs(response.preferences);
       if (!response.preferences.enabled) setNotificationBrowserReady(false);
       setNotificationMessage('Benachrichtigungseinstellungen gespeichert.');
@@ -283,16 +295,29 @@ const Settings: React.FC = () => {
     const notificationsActive = notificationPrefs.enabled && notificationBrowserReady;
     if (!notificationsActive) {
       setNotificationsSaving(true);
+      let registeredEndpoint: string | null = null;
       try {
-        await registerBrowserSubscription();
+        const subscription = await registerBrowserSubscription();
+        registeredEndpoint = subscription.endpoint;
         const response = await notificationsAPI.updatePreferences(token!, {
           ...notificationPrefs,
           enabled: true,
           timezone: getBrowserTimezone(),
         });
+        if (!response.success || !response.preferences) {
+          throw new Error('Benachrichtigungseinstellungen konnten nicht aktiviert werden.');
+        }
         setNotificationPrefs(response.preferences);
         setNotificationMessage('Benachrichtigungen sind jetzt aktiv.');
       } catch (error) {
+        if (registeredEndpoint && token) {
+          try {
+            await notificationsAPI.unregisterSubscription(token, registeredEndpoint);
+          } catch (cleanupError) {
+            console.warn('Failed to roll back push subscription registration:', cleanupError);
+          }
+        }
+        setNotificationBrowserReady(false);
         setNotificationError(error instanceof Error ? error.message : 'Benachrichtigungen konnten nicht aktiviert werden.');
       } finally {
         setNotificationsSaving(false);
@@ -321,7 +346,8 @@ const Settings: React.FC = () => {
     setNotificationError('');
     setNotificationMessage('');
     try {
-      await notificationsAPI.sendTest(token);
+      const response = await notificationsAPI.sendTest(token);
+      if (!response.success) throw new Error('Testbenachrichtigung konnte nicht gesendet werden.');
       setNotificationMessage('Testbenachrichtigung wurde gesendet.');
     } catch (error) {
       setNotificationError(error instanceof Error ? error.message : 'Testbenachrichtigung konnte nicht gesendet werden.');
