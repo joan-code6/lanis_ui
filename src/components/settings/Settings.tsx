@@ -256,7 +256,10 @@ const Settings: React.FC = () => {
     }
 
     const payload = pushSubscriptionToPayload(subscription);
-    await notificationsAPI.unregisterSubscription(token, payload.endpoint);
+    const response = await notificationsAPI.unregisterSubscription(token, payload.endpoint);
+    if (!response.success) {
+      throw new Error('Die Browser-Subscription konnte nicht entfernt werden.');
+    }
     try {
       await subscription.unsubscribe();
     } catch (error) {
@@ -310,15 +313,34 @@ const Settings: React.FC = () => {
         setNotificationPrefs(response.preferences);
         setNotificationMessage('Benachrichtigungen sind jetzt aktiv.');
       } catch (error) {
+        let rollbackError: Error | null = null;
         if (registeredEndpoint && token) {
           try {
-            await notificationsAPI.unregisterSubscription(token, registeredEndpoint);
+            const response = await notificationsAPI.unregisterSubscription(token, registeredEndpoint);
+            if (!response.success) {
+              throw new Error('Die fehlgeschlagene Aktivierung konnte serverseitig nicht zurückgerollt werden.');
+            }
+            const registration = await getPushRegistration();
+            const subscription = await registration.pushManager.getSubscription();
+            if (subscription?.endpoint === registeredEndpoint) {
+              try {
+                await subscription.unsubscribe();
+              } catch (unsubscribeError) {
+                console.warn('Failed to unsubscribe rolled-back push subscription locally:', unsubscribeError);
+              }
+            }
           } catch (cleanupError) {
             console.warn('Failed to roll back push subscription registration:', cleanupError);
+            rollbackError = cleanupError instanceof Error
+              ? cleanupError
+              : new Error('Push-Subscription konnte nicht zurückgerollt werden.');
           }
         }
         setNotificationBrowserReady(false);
-        setNotificationError(error instanceof Error ? error.message : 'Benachrichtigungen konnten nicht aktiviert werden.');
+        setNotificationError(
+          rollbackError?.message
+            || (error instanceof Error ? error.message : 'Benachrichtigungen konnten nicht aktiviert werden.'),
+        );
       } finally {
         setNotificationsSaving(false);
       }
