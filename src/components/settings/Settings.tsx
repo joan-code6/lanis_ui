@@ -67,6 +67,7 @@ const Settings: React.FC = () => {
   const [notificationPrefs, setNotificationPrefs] = useState<NotificationPreferences>(defaultNotificationPreferences);
   const [notificationConfigured, setNotificationConfigured] = useState(false);
   const [notificationBrowserReady, setNotificationBrowserReady] = useState(false);
+  const [notificationSettingsLoaded, setNotificationSettingsLoaded] = useState(false);
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>('default');
   const [notificationsLoading, setNotificationsLoading] = useState(true);
   const [notificationsSaving, setNotificationsSaving] = useState(false);
@@ -125,6 +126,7 @@ const Settings: React.FC = () => {
     setNotificationConfigured(false);
     setNotificationPrefs(defaultNotificationPreferences);
     setNotificationBrowserReady(false);
+    setNotificationSettingsLoaded(false);
     setNotificationPermission('default');
     setNotificationsSaving(false);
     setNotificationTestSending(false);
@@ -153,6 +155,7 @@ const Settings: React.FC = () => {
         };
         setNotificationConfigured(config.configured);
         setNotificationPrefs(loadedPreferences);
+        setNotificationSettingsLoaded(true);
         if (pushSupported) {
           setNotificationPermission(Notification.permission);
           if (config.configured && loadedPreferences.enabled && Notification.permission === 'granted') {
@@ -429,7 +432,7 @@ const Settings: React.FC = () => {
             <button
               type="button"
               onClick={handleNotificationsToggle}
-              disabled={notificationsLoading || notificationsSaving || !notificationConfigured || !pushSupported}
+              disabled={notificationsLoading || notificationsSaving || !notificationSettingsLoaded || !notificationConfigured || !pushSupported}
               className={`relative h-7 w-14 shrink-0 rounded-full transition-colors duration-300 ease-out-expo disabled:cursor-not-allowed disabled:opacity-50 ${
                 notificationPrefs.enabled && notificationBrowserReady ? 'bg-primary-600' : 'bg-surface-300 dark:bg-surface-700'
               }`}
@@ -545,7 +548,7 @@ const Settings: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => saveNotificationSettings({ ...notificationPrefs, timezone: notificationPrefs.timezone || getBrowserTimezone() })}
-                  disabled={notificationsLoading || notificationsSaving || !token}
+                  disabled={notificationsLoading || notificationsSaving || !notificationSettingsLoaded || !token}
                   className="btn btn-primary h-9 text-xs disabled:opacity-50"
                 >
                   {notificationsSaving ? 'Speichere...' : 'Speichern'}
