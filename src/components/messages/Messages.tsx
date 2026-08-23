@@ -601,7 +601,7 @@ const Messages: React.FC = () => {
                     )}
                   </div>
                   {searchResults.length > 0 && (
-                    <div className="border border-surface-200 rounded-xl overflow-hidden">
+                    <div className="border border-surface-200 dark:border-surface-700 rounded-xl overflow-hidden">
                       {searchResults.map((result) => (
                         <button
                           key={result.id}
@@ -813,7 +813,7 @@ const Messages: React.FC = () => {
                           </div>
                         ) : (
                           filteredParticipants.map((participant, index) => {
-                            let roleColor = 'bg-surface-100 text-surface-700';
+                            let roleColor = 'bg-surface-100 dark:bg-surface-700 text-surface-700 dark:text-surface-300';
                             let IconComponent = UserIcon;
                             if (participant.type === 'sender') {
                               roleColor = 'bg-emerald-100 text-emerald-700 dark:bg-emerald-400/15 dark:text-emerald-300 dark:ring-1 dark:ring-inset dark:ring-emerald-400/20';

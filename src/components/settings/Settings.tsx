@@ -60,7 +60,7 @@ const pushSubscriptionToPayload = (subscription: PushSubscription): PushSubscrip
 };
 
 const Settings: React.FC = () => {
-  const { isDark, toggleDark, themeColor, setThemeColor } = useTheme();
+  const { isDark, isOled, toggleDark, toggleOled, themeColor, setThemeColor } = useTheme();
   const { token } = useAuth();
   const [installStatus, setInstallStatus] = useState<'idle' | 'installed' | 'unsupported'>('unsupported');
   const [ghostClicks, setGhostClicks] = useState(0);
@@ -424,16 +424,18 @@ const Settings: React.FC = () => {
             <div>
               <h3 className="text-base font-semibold text-surface-900 dark:text-surface-100">Dark Mode</h3>
               <p className="text-sm text-surface-500 mt-0.5">
-                {isDark ? 'Dunkles Design ist aktiv' : 'Helles Design ist aktiv'}
+                {isOled ? 'OLED-Design ist aktiv' : isDark ? 'Dunkles Design ist aktiv' : 'Helles Design ist aktiv'}
               </p>
             </div>
             <button
+              type="button"
               onClick={toggleDark}
               className={`relative w-14 h-7 rounded-full transition-colors duration-300 ease-out-expo ${
                 isDark ? 'bg-primary-600' : 'bg-surface-300'
               }`}
               role="switch"
               aria-checked={isDark}
+              aria-label="Dunkles Design"
             >
               <span
                 className={`absolute top-0.5 left-0.5 w-6 h-6 rounded-full bg-white dark:bg-surface-200 shadow-soft flex items-center justify-center transition-all duration-300 ease-out-expo ${
@@ -445,6 +447,38 @@ const Settings: React.FC = () => {
                 ) : (
                   <SunIcon className="w-3 h-3 text-amber-500" />
                 )}
+              </span>
+            </button>
+          </div>
+
+          <div className="mt-5 flex items-center justify-between gap-4 border-t border-surface-100 pt-5 dark:border-surface-800">
+            <div>
+              <h3 className="text-base font-semibold text-surface-900 dark:text-surface-100">OLED-Modus</h3>
+              <p className="text-sm text-surface-500 mt-0.5">
+                {isOled
+                  ? 'Reines Schwarz spart Energie auf OLED-Displays'
+                  : isDark
+                    ? 'Schwarzer Hintergrund für OLED-Displays'
+                    : 'Nur im Dark Mode verfügbar'}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={toggleOled}
+              disabled={!isDark}
+              className={`relative w-14 h-7 rounded-full transition-colors duration-300 ease-out-expo disabled:cursor-not-allowed disabled:opacity-50 ${
+                isOled ? 'bg-primary-600' : 'bg-surface-300 dark:bg-surface-700'
+              }`}
+              role="switch"
+              aria-checked={isOled}
+              aria-label="OLED-Modus"
+            >
+              <span
+                className={`absolute top-0.5 left-0.5 w-6 h-6 rounded-full bg-white dark:bg-surface-200 shadow-soft flex items-center justify-center transition-all duration-300 ease-out-expo ${
+                  isOled ? 'translate-x-7' : 'translate-x-0'
+                }`}
+              >
+                <MoonIcon className={`w-3 h-3 ${isOled ? 'text-primary-600' : 'text-surface-400'}`} />
               </span>
             </button>
           </div>

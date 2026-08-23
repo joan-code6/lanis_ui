@@ -86,7 +86,7 @@ const Profile: React.FC = () => {
     if (!value) return null;
     const Icon = icon || IdentificationIcon;
     return (
-      <div className="flex items-center gap-3 p-3.5 border border-surface-200 rounded-xl">
+      <div className="flex items-center gap-3 p-3.5 border border-surface-200 dark:border-surface-700 rounded-xl">
         <Icon className="h-5 w-5 text-surface-400 flex-shrink-0" />
         <div>
           <div className="text-xs font-medium text-surface-500">{label}</div>
@@ -103,7 +103,7 @@ const Profile: React.FC = () => {
       case 'error':
         return 'bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800';
       default:
-        return 'bg-surface-100 text-surface-600 border border-surface-200';
+        return 'bg-surface-100 dark:bg-surface-800 text-surface-600 dark:text-surface-300 border border-surface-200 dark:border-surface-700';
     }
   };
 
@@ -177,7 +177,7 @@ const Profile: React.FC = () => {
                   }
                   const label = key.charAt(0).toUpperCase() + key.slice(1).replace(/_/g, ' ');
                   return (
-                    <div key={key} className="flex items-center gap-3 p-3.5 border border-surface-200 rounded-xl">
+                    <div key={key} className="flex items-center gap-3 p-3.5 border border-surface-200 dark:border-surface-700 rounded-xl">
                       <InformationCircleIcon className="h-5 w-5 text-surface-400 flex-shrink-0" />
                       <div>
                         <div className="text-xs font-medium text-surface-500">{label}</div>

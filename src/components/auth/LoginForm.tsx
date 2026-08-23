@@ -81,7 +81,7 @@ function fuzzyScore(query: string, target: string): number {
 
 const LoginForm: React.FC = () => {
   const { login } = useAuth();
-  const { isDark, toggleDark } = useTheme();
+  const { isDark, isOled, toggleDark } = useTheme();
   const [formData, setFormData] = useState({
     school_id: '',
     username: '',
@@ -210,7 +210,7 @@ const LoginForm: React.FC = () => {
         title={isDark ? 'Helles Design' : 'Dunkles Design'}
       >
         {isDark ? <SunIcon className="h-4 w-4" /> : <MoonIcon className="h-4 w-4" />}
-        {isDark ? 'Hell' : 'Dunkel'}
+        {isOled ? 'OLED' : isDark ? 'Hell' : 'Dunkel'}
       </button>
       <div className="w-full max-w-sm">
         <div className="text-center mb-10">
