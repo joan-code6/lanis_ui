@@ -19,6 +19,11 @@
 
   html {
     scroll-behavior: smooth;
+    color-scheme: light;
+  }
+
+  html.dark {
+    color-scheme: dark;
   }
 
   ::-webkit-scrollbar {
@@ -68,6 +73,11 @@
   --color-surface-800: 38 38 38;
   --color-surface-900: 23 23 23;
   --color-surface-950: 10 10 10;
+}
+
+html.oled,
+html.oled body {
+  background-color: #000;
 }
 
 html[data-theme="emerald"] {
@@ -321,6 +331,10 @@ body::after {
 
 .dark body::after {
   opacity: 0.04;
+}
+
+html.oled body::after {
+  opacity: 0;
 }
 
 /* Reduced motion */

@@ -4,7 +4,9 @@ export type ThemeColor = 'emerald' | 'sapphire' | 'amethyst' | 'ruby' | 'amber' 
 
 interface ThemeContextType {
   isDark: boolean;
+  isOled: boolean;
   toggleDark: () => void;
+  toggleOled: () => void;
   themeColor: ThemeColor;
   setThemeColor: (color: ThemeColor) => void;
 }
@@ -19,6 +21,7 @@ export const useTheme = () => {
 
 const THEME_COLOR_KEY = 'lanis_theme_color';
 const DARK_MODE_KEY = 'lanis_dark_mode';
+const OLED_MODE_KEY = 'lanis_oled_mode';
 
 type ColorScale = Record<string, string>;
 
@@ -84,12 +87,19 @@ const SURFACE_DARK: ColorScale = {
   900: '23 23 23',    950: '10 10 10',
 };
 
+const SURFACE_OLED: ColorScale = {
+  50: '250 250 250', 100: '238 238 238', 200: '210 210 210',
+  300: '170 170 170', 400: '125 125 125', 500: '92 92 92',
+  600: '68 68 68',    700: '44 44 44',    800: '24 24 24',
+  900: '12 12 12',    950: '0 0 0',
+};
+
 function applyPrimaryTheme(color: ThemeColor) {
   document.documentElement.setAttribute('data-theme', color);
 }
 
-function applySurfaceTheme(isDark: boolean) {
-  const colors = isDark ? SURFACE_DARK : SURFACE_LIGHT;
+function applySurfaceTheme(isDark: boolean, isOled: boolean) {
+  const colors = isOled ? SURFACE_OLED : isDark ? SURFACE_DARK : SURFACE_LIGHT;
   const root = document.documentElement;
   for (const [shade, value] of Object.entries(colors)) {
     root.style.setProperty(`--color-surface-${shade}`, value);
@@ -97,7 +107,9 @@ function applySurfaceTheme(isDark: boolean) {
 }
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [isOled, setIsOled] = useState(() => localStorage.getItem(OLED_MODE_KEY) === 'true');
   const [isDark, setIsDark] = useState(() => {
+    if (localStorage.getItem(OLED_MODE_KEY) === 'true') return true;
     const stored = localStorage.getItem(DARK_MODE_KEY);
     if (stored !== null) return stored === 'true';
     return window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -108,12 +120,26 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   });
 
   const toggleDark = useCallback(() => {
-    setIsDark(prev => {
-      const next = !prev;
-      localStorage.setItem(DARK_MODE_KEY, String(next));
-      return next;
-    });
-  }, []);
+    const next = !isDark;
+    setIsDark(next);
+    localStorage.setItem(DARK_MODE_KEY, String(next));
+
+    if (!next && isOled) {
+      setIsOled(false);
+      localStorage.setItem(OLED_MODE_KEY, 'false');
+    }
+  }, [isDark, isOled]);
+
+  const toggleOled = useCallback(() => {
+    const next = !isOled;
+    setIsOled(next);
+    localStorage.setItem(OLED_MODE_KEY, String(next));
+
+    if (next && !isDark) {
+      setIsDark(true);
+      localStorage.setItem(DARK_MODE_KEY, 'true');
+    }
+  }, [isDark, isOled]);
 
   const setThemeColor = useCallback((color: ThemeColor) => {
     setThemeColorState(color);
@@ -128,8 +154,9 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     } else {
       root.classList.remove('dark');
     }
-    applySurfaceTheme(isDark);
-  }, [isDark]);
+    root.classList.toggle('oled', isOled);
+    applySurfaceTheme(isDark, isOled);
+  }, [isDark, isOled]);
 
   useEffect(() => {
     applyPrimaryTheme(themeColor);
@@ -142,11 +169,11 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       meta.setAttribute('name', 'theme-color');
       document.head.appendChild(meta);
     }
-    meta.setAttribute('content', isDark ? '#0a0a0a' : THEME_COLOR_HEX[themeColor]);
-  }, [themeColor, isDark]);
+    meta.setAttribute('content', isOled ? '#000000' : isDark ? '#0a0a0a' : THEME_COLOR_HEX[themeColor]);
+  }, [themeColor, isDark, isOled]);
 
   return (
-    <ThemeContext.Provider value={{ isDark, toggleDark, themeColor, setThemeColor }}>
+    <ThemeContext.Provider value={{ isDark, isOled, toggleDark, toggleOled, themeColor, setThemeColor }}>
       {children}
     </ThemeContext.Provider>
   );
