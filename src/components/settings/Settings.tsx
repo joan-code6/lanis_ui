@@ -495,7 +495,9 @@ const Settings: React.FC = () => {
                 onClick={() => setThemeColor(c.key)}
                 className="flex flex-col items-center gap-2 p-3 rounded-xl border transition-all duration-200 ease-out-expo active:scale-95"
                 style={{
-                  borderColor: themeColor === c.key ? c.hex : 'var(--color-surface-200)',
+                  borderColor: themeColor === c.key
+                    ? c.hex
+                    : `rgb(var(--color-surface-${isDark ? '700' : '200'}))`,
                   backgroundColor: themeColor === c.key ? `${c.hex}0f` : 'transparent',
                 }}
               >
@@ -507,7 +509,7 @@ const Settings: React.FC = () => {
                     <CheckIcon className="w-4 h-4 text-white" />
                   )}
                 </span>
-                <span className="text-xs font-medium text-surface-600">{c.label}</span>
+                <span className="text-xs font-medium text-surface-600 dark:text-surface-300">{c.label}</span>
               </button>
             ))}
           </div>

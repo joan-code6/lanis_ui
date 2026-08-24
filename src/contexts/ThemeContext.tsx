@@ -88,10 +88,12 @@ const SURFACE_DARK: ColorScale = {
 };
 
 const SURFACE_OLED: ColorScale = {
-  50: '238 238 238', 100: '222 222 222', 200: '178 178 178',
-  300: '138 138 138', 400: '104 104 104', 500: '72 72 72',
-  600: '44 44 44',    700: '20 20 20',    800: '8 8 8',
-  900: '2 2 2',        950: '0 0 0',
+  // OLED keeps the canvas fully off while preserving enough separation between
+  // controls, raised surfaces and secondary copy to avoid a flat black UI.
+  50: '250 250 250', 100: '242 242 242', 200: '224 224 224',
+  300: '198 198 198', 400: '156 156 156', 500: '118 118 118',
+  600: '66 66 66',    700: '32 32 32',    800: '15 15 15',
+  900: '7 7 7',       950: '0 0 0',
 };
 
 function applyPrimaryTheme(color: ThemeColor) {

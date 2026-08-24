@@ -80,9 +80,58 @@ html.oled body {
   background-color: #000;
 }
 
+/* OLED mode: true-black canvas, with hierarchy drawn by thin illuminated edges
+   instead of broad grey panels. This keeps most pixels off without flattening UI. */
+html.oled {
+  --oled-hairline: rgb(var(--color-surface-700));
+  --oled-highlight: rgba(255, 255, 255, 0.055);
+}
+
+html.oled .card {
+  border-color: var(--oled-hairline);
+  box-shadow: inset 0 1px 0 var(--oled-highlight);
+}
+
+html.oled .card-hover:hover {
+  border-color: rgb(var(--color-primary-500) / 0.38);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.075),
+              0 0 0 1px rgb(var(--color-primary-500) / 0.08),
+              0 10px 32px rgb(var(--color-primary-950) / 0.22);
+}
+
 html.oled .card-glass {
-  box-shadow: 0 4px 24px -6px rgba(0, 0, 0, 0.55),
-              inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  background-color: rgb(var(--color-surface-900) / 0.94);
+  border-color: var(--oled-hairline);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.075),
+              0 16px 48px rgba(0, 0, 0, 0.72);
+}
+
+html.oled .input,
+html.oled .btn-secondary {
+  box-shadow: inset 0 1px 0 var(--oled-highlight);
+}
+
+/* Some feature views use their light-mode text token without a dark fallback.
+   Keep those labels legible in OLED instead of letting them disappear into black. */
+html.oled .text-surface-900:not([class*="dark:text-"]) { color: rgb(var(--color-surface-50)); }
+html.oled .text-surface-800:not([class*="dark:text-"]) { color: rgb(var(--color-surface-100)); }
+html.oled .text-surface-700:not([class*="dark:text-"]) { color: rgb(var(--color-surface-200)); }
+html.oled .text-surface-600:not([class*="dark:text-"]) { color: rgb(var(--color-surface-300)); }
+html.oled .text-surface-500:not([class*="dark:text-"]) { color: rgb(var(--color-surface-400)); }
+html.oled .text-surface-400:not([class*="dark:text-"]) { color: rgb(var(--color-surface-500)); }
+
+html.oled .nav-link-active {
+  box-shadow: inset 3px 0 0 rgb(var(--color-primary-400) / 0.9),
+              inset 0 1px 0 rgb(var(--color-primary-400) / 0.06);
+}
+
+html.oled :focus-visible {
+  outline: 2px solid rgb(var(--color-primary-400) / 0.9);
+  outline-offset: 2px;
+}
+
+html.oled ::-webkit-scrollbar-thumb {
+  border: 1px solid rgb(var(--color-surface-600));
 }
 
 html[data-theme="emerald"] {
@@ -358,5 +407,11 @@ html.oled body::after {
   .card-hover:hover {
     transform: translateY(-2px);
     box-shadow: 0 8px 30px -8px rgba(0, 0, 0, 0.08), 0 16px 40px -16px rgba(0, 0, 0, 0.04);
+  }
+
+  html.oled .card-hover:hover {
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.075),
+                0 0 0 1px rgb(var(--color-primary-500) / 0.08),
+                0 10px 32px rgb(var(--color-primary-950) / 0.22);
   }
 }
