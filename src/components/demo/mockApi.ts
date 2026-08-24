@@ -103,7 +103,17 @@ const mockCourseDetails: Record<string, any> = {
       { entry_id: 'b1e6', date: daysAgo(14), hours: '3–4', thema: 'Analysis: Wiederholung Differentialrechnung', homework: '', homework_done: true, attendance: 'entschuldigt', files: [], content: '' },
     ],
     entry_count: 6,
-    exams: ['Klausur am ' + fmt(new Date(now.getTime() + 7 * 86400000)).slice(0, 10) + ': Analysis'],
+    marks: [
+      { name: 'Klausur', date: '23.10.2026', mark: '2', comment: 'Sicheres Verständnis der Kurvendiskussion; die Argumentation bei den Wendepunkten könnte noch präziser sein.' },
+      { name: 'Mitarbeit', date: '16.10.2026', mark: '1−', comment: 'Aktive und hilfreiche Beiträge im Unterricht.' },
+      { name: 'Hausaufgaben', date: '09.10.2026', mark: '2+', comment: null },
+    ],
+    exams: [
+      '23.10.2026 Arbeit, 3., 4. Std. (60 Min.)',
+      '22.12.2026 Arbeit, 1., 2. Std. (60 Min.)',
+      '23.10.2026 Arbeit',
+      '22.12.2026 Arbeit',
+    ],
     attendance_summary: { anwesend: '18', entschuldigt: '1', unentschuldigt: '0' },
   },
   'b2': {

@@ -107,12 +107,86 @@ const CoursePerformance: React.FC<{ marks?: CourseMark[] }> = ({ marks = [] }) =
   );
 };
 
-const CourseExams: React.FC<{ exams?: string[] }> = ({ exams = [] }) => {
-  const normalizedExams = exams
-    .map((exam) => exam.replace(/\s+/g, ' ').trim())
-    .filter(Boolean);
+interface ParsedCourseExam {
+  date: string;
+  title: string;
+  hours?: string;
+  duration?: string;
+  raw: string;
+}
 
-  if (normalizedExams.length === 0) {
+const normalizeExamText = (value: string) => value.replace(/\s+/g, ' ').trim();
+
+const parseCourseExam = (raw: string): ParsedCourseExam => {
+  const normalized = normalizeExamText(raw);
+  const dateMatch = normalized.match(/\b(\d{1,2}\.\d{1,2}\.\d{4}|\d{4}-\d{2}-\d{2})\b/);
+  const dateIndex = dateMatch?.index ?? -1;
+  const prefix = dateMatch && dateIndex >= 0
+    ? normalized.slice(0, dateIndex).replace(/,\s*$/, '').trim()
+    : '';
+  let details = dateMatch && dateIndex >= 0
+    ? normalized.slice(dateIndex + dateMatch[0].length).replace(/^[\s,:-]+/, '').trim()
+    : normalized;
+  let date = dateMatch?.[1] ?? '';
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    const parsedDate = parseISO(date);
+    if (!Number.isNaN(parsedDate.getTime())) {
+      date = format(parsedDate, 'dd.MM.yyyy', { locale: de });
+    }
+  }
+
+  const examPrefix = prefix
+    .replace(/^(?:Mo|Di|Mi|Do|Fr|Sa|So),?\s*/i, '')
+    .replace(/\s+am$/i, '')
+    .trim();
+
+  let duration: string | undefined;
+  const durationMatch = details.match(/\(([^()]*)\)\s*$/);
+  if (durationMatch) {
+    const parsedDuration = normalizeExamText(durationMatch[1]);
+    duration = parsedDuration || undefined;
+    details = details.slice(0, durationMatch.index ?? details.length).replace(/[,\s]+$/, '').trim();
+  }
+
+  let hours: string | undefined;
+  const hoursMatch = details.match(
+    /(?:,\s*)?((?:(?:\d+\.\s*,\s*)+\d+\.\s*(?:Std\.|Stunde[n]?)|(?:\d+\.\s*[-–]\s*\d+\.\s*)(?:Std\.|Stunde[n]?)))\s*$/i,
+  );
+  if (hoursMatch) {
+    hours = normalizeExamText(hoursMatch[1]);
+    details = details.slice(0, hoursMatch.index ?? details.length).replace(/[,\s]+$/, '').trim();
+  }
+
+  const title = [examPrefix, details].filter(Boolean).join(': ') || 'Leistungskontrolle';
+
+  return { date, title, hours, duration, raw: normalized };
+};
+
+const parseCourseExams = (exams: string[]) => {
+  const uniqueExams = new Map<string, ParsedCourseExam>();
+
+  for (const rawExam of exams) {
+    const parsedExam = parseCourseExam(rawExam);
+    if (!parsedExam.raw) continue;
+
+    const key = `${parsedExam.date}|${parsedExam.title}`.toLowerCase();
+    const existingExam = uniqueExams.get(key);
+    const detailScore = (exam: ParsedCourseExam) =>
+      Number(Boolean(exam.date)) + Number(Boolean(exam.hours)) * 2 + Number(Boolean(exam.duration)) * 2;
+
+    if (!existingExam || detailScore(parsedExam) > detailScore(existingExam)) {
+      uniqueExams.set(key, parsedExam);
+    }
+  }
+
+  return Array.from(uniqueExams.values());
+};
+
+const CourseExams: React.FC<{ exams?: string[] }> = ({ exams = [] }) => {
+  const parsedExams = parseCourseExams(exams);
+
+  if (parsedExams.length === 0) {
     return (
       <EmptyCourseTab
         icon={<DocumentTextIcon className="mx-auto h-12 w-12 text-surface-400 dark:text-surface-500" />}
@@ -124,11 +198,48 @@ const CourseExams: React.FC<{ exams?: string[] }> = ({ exams = [] }) => {
 
   return (
     <div className="space-y-3">
-      {normalizedExams.map((exam, index) => (
-        <article key={`${exam}-${index}`} className="card">
+      {parsedExams.map((exam, index) => (
+        <article key={`${exam.date}-${exam.title}-${index}`} className="card">
           <div className="flex items-start gap-3">
-            <DocumentTextIcon className="mt-0.5 h-5 w-5 shrink-0 text-primary-600" />
-            <p className="text-base font-medium text-surface-900 dark:text-surface-100">{exam}</p>
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary-50 dark:bg-primary-900/20">
+              <DocumentTextIcon className="h-5 w-5 text-primary-600 dark:text-primary-400" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <h3 className="text-base font-semibold text-surface-900 dark:text-surface-100">{exam.title}</h3>
+              {(exam.date || exam.hours || exam.duration) ? (
+                <div className="mt-4 grid gap-2 text-sm sm:grid-cols-3">
+                  {exam.date && (
+                    <div className="flex items-start gap-2 rounded-lg bg-surface-50 px-3 py-2 dark:bg-surface-800/60">
+                      <CalendarDaysIcon className="mt-0.5 h-4 w-4 shrink-0 text-primary-600 dark:text-primary-400" />
+                      <div className="min-w-0">
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-surface-500 dark:text-surface-400">Termin</p>
+                        <p className="mt-0.5 font-medium text-surface-800 dark:text-surface-200">{exam.date}</p>
+                      </div>
+                    </div>
+                  )}
+                  {exam.hours && (
+                    <div className="flex items-start gap-2 rounded-lg bg-surface-50 px-3 py-2 dark:bg-surface-800/60">
+                      <ListBulletIcon className="mt-0.5 h-4 w-4 shrink-0 text-primary-600 dark:text-primary-400" />
+                      <div className="min-w-0">
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-surface-500 dark:text-surface-400">Stunden</p>
+                        <p className="mt-0.5 font-medium text-surface-800 dark:text-surface-200">{exam.hours}</p>
+                      </div>
+                    </div>
+                  )}
+                  {exam.duration && (
+                    <div className="flex items-start gap-2 rounded-lg bg-surface-50 px-3 py-2 dark:bg-surface-800/60">
+                      <ClockIcon className="mt-0.5 h-4 w-4 shrink-0 text-primary-600 dark:text-primary-400" />
+                      <div className="min-w-0">
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-surface-500 dark:text-surface-400">Dauer</p>
+                        <p className="mt-0.5 font-medium text-surface-800 dark:text-surface-200">{exam.duration}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <p className="mt-2 text-sm text-surface-500 dark:text-surface-400">Weitere Angaben stehen noch nicht zur Verfügung.</p>
+              )}
+            </div>
           </div>
         </article>
       ))}
