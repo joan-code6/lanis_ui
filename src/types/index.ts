@@ -543,6 +543,7 @@ export interface DSBPlanResponse {
   success: boolean;
   plan_url?: string;
   title?: string;
+  last_updated?: string | null;
   tables: DSBPlanTable[];
   raw_html?: string | null;
   error?: string;

@@ -5,6 +5,7 @@ import axios from 'axios';
 import { DSBPlanTable } from '../../types';
 import SEO from '../seo/SEO';
 import {
+  ArrowPathIcon,
   CalendarDaysIcon,
 } from '@heroicons/react/24/outline';
 
@@ -16,6 +17,7 @@ interface CachedDSBData {
   planUrls: string[];
   tables: DSBPlanTable[];
   selectedPlanIndex: number;
+  lastUpdated: string | null;
   timestamp: number;
 }
 
@@ -39,6 +41,18 @@ function setCachedDSBData(data: Omit<CachedDSBData, 'timestamp'>): void {
   localStorage.setItem(DSB_CACHE_KEY, JSON.stringify(cached));
 }
 
+function formatLastUpdated(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+
+  const dateLabel = date.toLocaleDateString('de-DE');
+  const timeLabel = date.toLocaleTimeString('de-DE', {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+  return `${dateLabel}, ${timeLabel} Uhr`;
+}
+
 const Dsbmobile: React.FC = () => {
   const { token, user } = useAuth();
   const [menuItems, setMenuItems] = useState<string[]>(() => {
@@ -56,6 +70,10 @@ const Dsbmobile: React.FC = () => {
   const [tables, setTables] = useState<DSBPlanTable[]>(() => {
     const cached = getCachedDSBData();
     return cached?.tables || [];
+  });
+  const [lastUpdated, setLastUpdated] = useState<string | null>(() => {
+    const cached = getCachedDSBData();
+    return cached?.lastUpdated ?? null;
   });
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingPlan, setIsLoadingPlan] = useState(false);
@@ -140,11 +158,13 @@ const Dsbmobile: React.FC = () => {
       }
 
       setTables(response.tables || []);
+      setLastUpdated(response.last_updated ?? null);
       setCachedDSBData({
         menuItems,
         planUrls,
         tables: response.tables || [],
         selectedPlanIndex: planIndex ?? selectedPlanIndex,
+        lastUpdated: response.last_updated ?? null,
       });
     } catch (err) {
       if (axios.isCancel(err)) return;
@@ -199,11 +219,22 @@ const Dsbmobile: React.FC = () => {
         path="/dsb"
         noindex
       />
-      <div className="page-header">
-        <h1 className="page-title">Vertretungsplan</h1>
-        <p className="page-subtitle">
-          {showAllClasses ? 'Vertretungen für alle Klassen' : userClass ? `Vertretungen für Klasse ${userClass}` : 'Aktuelle Vertretungen und Abwesenheiten'}
-        </p>
+      <div className="page-header flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 className="page-title">Vertretungsplan</h1>
+          <p className="page-subtitle">
+            {showAllClasses ? 'Vertretungen für alle Klassen' : userClass ? `Vertretungen für Klasse ${userClass}` : 'Aktuelle Vertretungen und Abwesenheiten'}
+          </p>
+        </div>
+        {lastUpdated && (
+          <div className="inline-flex w-fit max-w-full flex-wrap items-center gap-x-2 gap-y-1 rounded-xl border border-primary-100 bg-primary-50 px-3 py-2 text-xs text-surface-600 dark:border-primary-900/60 dark:bg-primary-950/30 dark:text-surface-300">
+            <ArrowPathIcon className="h-4 w-4 text-primary-600 dark:text-primary-400" aria-hidden="true" />
+            <span className="font-medium">Zuletzt aktualisiert</span>
+            <time dateTime={lastUpdated} className="font-semibold text-surface-800 dark:text-surface-100">
+              {formatLastUpdated(lastUpdated)}
+            </time>
+          </div>
+        )}
       </div>
 
       <div className="flex items-center justify-between mb-6">
