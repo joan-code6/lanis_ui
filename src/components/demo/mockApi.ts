@@ -33,6 +33,8 @@ const defaultMockNotificationPreferences = {
 };
 
 let mockNotificationPreferences = { ...defaultMockNotificationPreferences };
+let mockCustomLessons: any[] = [];
+const mockClassLinkOverrides: Record<string, string> = {};
 
 const mockModules = [
   { name: 'Mein Unterricht', url: 'https://schulportal.hessen.de/meinunterricht.php', direct_url: 'https://schulportal.hessen.de/meinunterricht.php', proxy_app: false, color: '#4f46e5', logo: 'fa fa-files-o', folders: ['Schule'], target: '_self' },
@@ -363,6 +365,36 @@ const mockTimetable = [
   ] },
 ];
 
+const mockPeriodStart = (value: unknown) => Number(String(value || '').match(/\d+/)?.[0] || 999);
+
+function getMockTimetable() {
+  const days = mockTimetable.map(day => ({ ...day, lessons: day.lessons.map(lesson => ({ ...lesson })) }));
+  for (const override of mockCustomLessons) {
+    const day = days.find(entry => entry.date === override.date);
+    if (!day) continue;
+    const matching = day.lessons
+      .map((lesson, index) => ({ lesson, index }))
+      .filter(({ lesson }) => mockPeriodStart(lesson.period) === mockPeriodStart(override.period));
+    if (override.removed) {
+      day.lessons = day.lessons.filter(lesson => mockPeriodStart(lesson.period) !== mockPeriodStart(override.period));
+      continue;
+    }
+    const nextLesson = {
+      ...(matching[0]?.lesson || {}),
+      ...override,
+      id: `custom-${override.date}-${override.period}`,
+      is_custom: true,
+      subject: override.subject || 'Unterricht',
+    };
+    if (matching.length) {
+      day.lessons = day.lessons.filter(lesson => mockPeriodStart(lesson.period) !== mockPeriodStart(override.period));
+    }
+    day.lessons.push(nextLesson);
+    day.lessons.sort((left, right) => mockPeriodStart(left.period) - mockPeriodStart(right.period));
+  }
+  return days;
+}
+
 const mockStudyGroupExams = [
   { id: 'exam-1', course_id: 'group-1', course_name: 'Mathematik GK', course_sys_id: 'Q2-M-GK1', date: relDate(7), type: 'Klausur', duration_label: '90 Minuten', hours: '1.–2. Stunde' },
   { id: 'exam-2', course_id: 'group-2', course_name: 'Deutsch LK', course_sys_id: 'Q2-D-LK1', date: relDate(12), type: 'Klausur', duration_label: '180 Minuten', hours: '1.–4. Stunde' },
@@ -424,8 +456,37 @@ export function getMockResponse(url: string, method: string, config: any): { dat
     return { status: 200, data: { success: true, preferences: { ...mockNotificationPreferences } } };
   }
 
-  // Courses
-  if (u === '/meinunterricht' && method === 'get') { return { status: 200, data: { success: true, entries: mockCourses, entry_count: mockCourses.length } }; }
+  // Courses and account-specific class links
+  if (u === '/settings/class-links' && method === 'get') {
+    const links = mockCourses.map(course => ({
+      course_id: course.book_id,
+      name: course.name,
+      teacher: course.teacher_full_name,
+      url: Object.prototype.hasOwnProperty.call(mockClassLinkOverrides, course.book_id)
+        ? mockClassLinkOverrides[course.book_id]
+        : course.course_link,
+      overridden: Object.prototype.hasOwnProperty.call(mockClassLinkOverrides, course.book_id),
+    }));
+    return { status: 200, data: { success: true, links } };
+  }
+  if (u === '/settings/class-links' && method === 'put') {
+    const body = typeof config?.data === 'string' ? JSON.parse(config.data) : config?.data;
+    mockClassLinkOverrides[body?.course_id] = body?.url || '';
+    return { status: 200, data: { success: true, link: { course_id: body?.course_id, url: body?.url || '', overridden: true } } };
+  }
+  if (u === '/settings/class-links' && method === 'delete') {
+    delete mockClassLinkOverrides[config?.params?.course_id];
+    return { status: 200, data: { success: true } };
+  }
+  if (u === '/meinunterricht' && method === 'get') {
+    const entries = mockCourses.map(course => ({
+      ...course,
+      ...(Object.prototype.hasOwnProperty.call(mockClassLinkOverrides, course.book_id)
+        ? { course_link: mockClassLinkOverrides[course.book_id], course_link_custom: true }
+        : {}),
+    }));
+    return { status: 200, data: { success: true, entries, entry_count: entries.length } };
+  }
   if (u.startsWith('/meinunterricht/course/') && method === 'get') {
     const courseId = u.split('/')[3]?.split('?')[0];
     const detail = mockCourseDetails[courseId];
@@ -483,9 +544,25 @@ export function getMockResponse(url: string, method: string, config: any): { dat
     return { status: 200, data: { success: true, event: mockCalendarEvents[0], filters: { event_id: eventId || '', view_id: '' } } };
   }
 
+  // Account-specific timetable adjustments
+  if (u === '/settings/timetable/lessons' && method === 'get') {
+    return { status: 200, data: { success: true, lessons: mockCustomLessons } };
+  }
+  if (u === '/settings/timetable/lessons' && method === 'put') {
+    const body = typeof config?.data === 'string' ? JSON.parse(config.data) : config?.data;
+    mockCustomLessons = mockCustomLessons.filter(lesson => !(lesson.date === body?.date && lesson.period === body?.period));
+    mockCustomLessons.push({ ...body, is_custom: true });
+    return { status: 200, data: { success: true, lesson: { ...body, is_custom: true } } };
+  }
+  if (u === '/settings/timetable/lessons' && method === 'delete') {
+    mockCustomLessons = mockCustomLessons.filter(lesson => !(lesson.date === config?.params?.date && lesson.period === config?.params?.period));
+    return { status: 200, data: { success: true } };
+  }
+
   // Timetable
   if (u === '/stundenplan' && method === 'get') {
-    return { status: 200, data: { success: true, week_start: mockTimetable[0].date, week_end: mockTimetable[4].date, active_week: 'A', days: mockTimetable } };
+    const days = getMockTimetable();
+    return { status: 200, data: { success: true, week_start: days[0].date, week_end: days[4].date, active_week: 'A', days, custom_lessons: mockCustomLessons } };
   }
   if (u === '/lerngruppen' && method === 'get') {
     return { status: 200, data: { success: true, groups: mockStudyGroups, group_count: mockStudyGroups.length, exams: mockStudyGroupExams, exam_count: mockStudyGroupExams.length } };

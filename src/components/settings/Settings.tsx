@@ -1,11 +1,31 @@
 import React, { useState, useEffect } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { useTheme, ThemeColor } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
+import { useBasePath } from '../../contexts/BasePathContext';
 import { notificationsAPI } from '../../services/api';
 import { NotificationPreferences, PushSubscriptionPayload } from '../../types';
-import { SunIcon, MoonIcon, CheckIcon, ArrowDownTrayIcon, BellAlertIcon, BellIcon, ClockIcon, ShieldCheckIcon } from '@heroicons/react/24/outline';
+import {
+  AcademicCapIcon,
+  ArrowDownTrayIcon,
+  ArrowLeftIcon,
+  BellAlertIcon,
+  BellIcon,
+  CalendarDaysIcon,
+  CheckIcon,
+  ChevronRightIcon,
+  ClockIcon,
+  DevicePhoneMobileIcon,
+  LinkIcon,
+  MoonIcon,
+  PaintBrushIcon,
+  ShieldCheckIcon,
+  SunIcon,
+} from '@heroicons/react/24/outline';
 import SEO from '../seo/SEO';
 import { getDeferredPrompt } from '../pwa/InstallPrompt';
+import TimetableSettings from './TimetableSettings';
+import ClassLinksSettings from './ClassLinksSettings';
 
 const isStandalone = () =>
   window.matchMedia('(display-mode: standalone)').matches ||
@@ -59,9 +79,95 @@ const pushSubscriptionToPayload = (subscription: PushSubscription): PushSubscrip
   };
 };
 
+type SettingsSection = 'home' | 'appearance' | 'timetable' | 'classes' | 'notifications' | 'app';
+
+const settingsSections: Array<{
+  id: Exclude<SettingsSection, 'home'>;
+  title: string;
+  description: string;
+  icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
+  eyebrow: string;
+}> = [
+  {
+    id: 'appearance',
+    title: 'Erscheinungsbild',
+    description: 'Farben, Dark Mode und die Oberfläche von Lanis.',
+    icon: PaintBrushIcon,
+    eyebrow: 'Look & feel',
+  },
+  {
+    id: 'timetable',
+    title: 'Stundenplan anpassen',
+    description: 'Falsche, fehlende oder ausgefallene Stunden korrigieren.',
+    icon: CalendarDaysIcon,
+    eyebrow: 'Deine Woche',
+  },
+  {
+    id: 'classes',
+    title: 'Unterricht & Links',
+    description: 'Direkte Links zu deinen Klassen prüfen und bearbeiten.',
+    icon: LinkIcon,
+    eyebrow: 'Mein Unterricht',
+  },
+  {
+    id: 'notifications',
+    title: 'Benachrichtigungen',
+    description: 'Push-Mitteilungen für neue Nachrichten verwalten.',
+    icon: BellAlertIcon,
+    eyebrow: 'Auf dem Laufenden',
+  },
+  {
+    id: 'app',
+    title: 'App & Installation',
+    description: 'Lanis installieren und Geräteoptionen ansehen.',
+    icon: DevicePhoneMobileIcon,
+    eyebrow: 'Dein Gerät',
+  },
+];
+
+const sectionMeta: Record<SettingsSection, { title: string; subtitle: string }> = {
+  home: { title: 'Einstellungen', subtitle: 'Alles an einem Ort — klar getrennt nach dem, was du ändern möchtest.' },
+  appearance: { title: 'Erscheinungsbild', subtitle: 'Farben und Oberfläche an deine Gewohnheiten anpassen.' },
+  timetable: { title: 'Stundenplan anpassen', subtitle: 'Korrigiere Portalfehler, ohne den offiziellen Stundenplan zu verändern.' },
+  classes: { title: 'Unterricht & Links', subtitle: 'Klassenlinks prüfen, korrigieren und direkt öffnen.' },
+  notifications: { title: 'Benachrichtigungen', subtitle: 'Neue Nachrichten mit Web-Push zuverlässig mitbekommen.' },
+  app: { title: 'App & Installation', subtitle: 'Lanis auf deinem Gerät griffbereit halten.' },
+};
+
+const SettingsIndex: React.FC<{ basePath: string }> = ({ basePath }) => (
+  <div className="grid gap-3 sm:grid-cols-2">
+    {settingsSections.map(item => (
+      <Link
+        key={item.id}
+        to={`${basePath}/settings/${item.id}`}
+        className="group rounded-2xl border border-surface-200 bg-white p-4 transition-all hover:-translate-y-0.5 hover:border-primary-300 hover:shadow-soft-md dark:border-surface-800 dark:bg-surface-900 dark:hover:border-primary-700 sm:p-5"
+      >
+        <div className="flex items-start gap-4">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary-50 text-primary-700 transition-colors group-hover:bg-primary-100 dark:bg-primary-950 dark:text-primary-300 dark:group-hover:bg-primary-900/60">
+            <item.icon className="h-5 w-5" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-primary-600 dark:text-primary-400">{item.eyebrow}</p>
+            <h2 className="mt-1 font-semibold text-surface-900 dark:text-white">{item.title}</h2>
+            <p className="mt-1 text-sm leading-relaxed text-surface-500">{item.description}</p>
+          </div>
+          <ChevronRightIcon className="mt-1 h-5 w-5 shrink-0 text-surface-300 transition-transform group-hover:translate-x-0.5 group-hover:text-primary-500 dark:text-surface-600" />
+        </div>
+      </Link>
+    ))}
+  </div>
+);
+
 const Settings: React.FC = () => {
   const { isDark, isOled, toggleDark, toggleOled, themeColor, setThemeColor } = useTheme();
   const { token } = useAuth();
+  const location = useLocation();
+  const basePath = useBasePath();
+  const settingsRoot = `${basePath}/settings`;
+  const requestedSection = location.pathname.slice(settingsRoot.length).split('/').filter(Boolean)[0] as SettingsSection | undefined;
+  const section: SettingsSection = requestedSection && settingsSections.some(item => item.id === requestedSection)
+    ? requestedSection
+    : 'home';
   const [installStatus, setInstallStatus] = useState<'idle' | 'installed' | 'unsupported'>('unsupported');
   const [ghostClicks, setGhostClicks] = useState(0);
   const [notificationPrefs, setNotificationPrefs] = useState<NotificationPreferences>(defaultNotificationPreferences);
@@ -133,6 +239,11 @@ const Settings: React.FC = () => {
     setNotificationError('');
     setNotificationMessage('');
 
+    if (section !== 'notifications') {
+      setNotificationsLoading(false);
+      return;
+    }
+
     if (!token) {
       setNotificationsLoading(false);
       return;
@@ -197,7 +308,7 @@ const Settings: React.FC = () => {
 
     loadNotificationSettings();
     return () => controller.abort();
-  }, [token, pushSupported]);
+  }, [token, pushSupported, section]);
 
   const getPushRegistration = async () => {
     if (!pushSupported) throw new Error('Dieser Browser unterstützt keine Push-Benachrichtigungen.');
@@ -405,19 +516,47 @@ const Settings: React.FC = () => {
   };
 
   return (
-    <div className="p-6 max-w-2xl mx-auto">
+    <div className="mx-auto max-w-6xl p-4 sm:p-6 lg:p-8">
       <SEO
-        title="Einstellungen"
-        description="Lanis Einstellungen — Passe das Erscheinungsbild und Design von Lanis an deine Wünsche an."
-        path="/settings"
+        title={sectionMeta[section].title}
+        description={sectionMeta[section].subtitle}
+        path={`/settings${section === 'home' ? '' : `/${section}`}`}
         noindex
       />
       <div className="page-header">
-        <h1 className="page-title">Einstellungen</h1>
-        <p className="page-subtitle">Erscheinungsbild und Design anpassen</p>
+        {section !== 'home' && (
+          <Link to={settingsRoot} className="mb-3 inline-flex items-center text-sm font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300">
+            <ArrowLeftIcon className="mr-1.5 h-4 w-4" />
+            Alle Einstellungen
+          </Link>
+        )}
+        <h1 className="page-title">{sectionMeta[section].title}</h1>
+        <p className="page-subtitle">{sectionMeta[section].subtitle}</p>
       </div>
 
+      {section === 'home' && (
+        <div className="space-y-5">
+          <div className="rounded-2xl border border-primary-100 bg-primary-50/70 p-5 dark:border-primary-900/60 dark:bg-primary-950/30">
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary-600 text-white shadow-sm">
+                <AcademicCapIcon className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-primary-950 dark:text-primary-100">Was möchtest du ändern?</p>
+                <p className="mt-1 max-w-2xl text-sm leading-relaxed text-primary-900/70 dark:text-primary-200/80">Korrekturen am Stundenplan und an Klassenlinks bleiben privat und werden mit deinem Konto synchronisiert.</p>
+              </div>
+            </div>
+          </div>
+          <SettingsIndex basePath={basePath} />
+        </div>
+      )}
+
+      {section === 'timetable' && <TimetableSettings />}
+      {section === 'classes' && <ClassLinksSettings />}
+
       <div className="space-y-6">
+        {section === 'appearance' && (
+          <>
         {/* Dark Mode */}
         <div className="card">
           <div className="flex items-center justify-between">
@@ -513,7 +652,11 @@ const Settings: React.FC = () => {
           </div>
         </div>
 
+          </>
+        )}
+
         {/* Nachrichten-Benachrichtigungen */}
+        {section === 'notifications' && (
         <div className="card overflow-hidden border-primary-100 dark:border-primary-900/60">
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-start gap-3">
@@ -670,8 +813,10 @@ const Settings: React.FC = () => {
             )}
           </div>
         </div>
+        )}
 
         {/* Preview Card */}
+        {section === 'appearance' && (
         <div className="card">
           <h3 className="text-base font-semibold text-surface-900 dark:text-surface-100 mb-4">Vorschau</h3>
           <div className="space-y-3">
@@ -691,9 +836,10 @@ const Settings: React.FC = () => {
             </div>
           </div>
         </div>
+        )}
 
         {/* App installieren */}
-        {installStatus !== 'unsupported' && (
+        {section === 'app' && installStatus !== 'unsupported' && (
           <div className="card">
           <div className="flex items-start gap-4">
             <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary-50 text-primary-700 dark:bg-primary-950 dark:text-primary-300">
@@ -730,7 +876,21 @@ const Settings: React.FC = () => {
           </div>
         )}
 
-        {ghostClicks >= 5 && (
+        {section === 'app' && installStatus === 'unsupported' && (
+          <div className="card">
+            <div className="flex items-start gap-4">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-surface-100 text-surface-500 dark:bg-surface-800 dark:text-surface-300">
+                <DevicePhoneMobileIcon className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-semibold text-surface-900 dark:text-surface-100">Installation nicht verfügbar</h3>
+                <p className="mt-1 text-sm text-surface-500">Dieser Browser bietet aktuell keine direkte App-Installation an. Du kannst Lanis trotzdem wie gewohnt nutzen.</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {section === 'app' && ghostClicks >= 5 && (
           <div className="card border-dashed border-primary-300/50 dark:border-primary-700/50 bg-primary-50/30 dark:bg-primary-950/20">
             <h3 className="text-base font-semibold text-surface-900 dark:text-surface-100 mb-3">PWA Debug</h3>
             <div className="text-xs font-mono text-surface-500 space-y-1">
@@ -760,9 +920,16 @@ const Settings: React.FC = () => {
         )}
 
         {/* Info */}
-        <div className="text-center text-xs text-surface-400">
-          Erscheinungsbild wird lokal gespeichert. Benachrichtigungen werden mit deinem Konto synchronisiert.
-        </div>
+        {section === 'appearance' && (
+          <div className="text-center text-xs text-surface-400">
+            Erscheinungsbild wird lokal gespeichert.
+          </div>
+        )}
+        {section === 'notifications' && (
+          <div className="text-center text-xs text-surface-400">
+            Benachrichtigungen werden mit deinem Konto synchronisiert.
+          </div>
+        )}
       </div>
     </div>
   );

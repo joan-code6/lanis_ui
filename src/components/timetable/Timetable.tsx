@@ -11,6 +11,7 @@ import {
   ChevronRightIcon,
   ClockIcon,
   MapPinIcon,
+  PencilSquareIcon,
   UserIcon,
 } from '@heroicons/react/24/outline';
 import { useAuth } from '../../contexts/AuthContext';
@@ -88,12 +89,19 @@ const Timetable: React.FC = () => {
       <SEO title="Stundenplan" description="Dein persönlicher Stundenplan im Schulportal Hessen." />
       <div className="mx-auto max-w-7xl">
         <header className="mb-4 sm:mb-6">
-          <div>
+          <div className="flex items-start justify-between gap-4">
+            <div>
             <h1 className="text-2xl font-bold tracking-tight text-surface-900 dark:text-white sm:text-3xl">Stundenplan</h1>
             <div className="mt-1.5 flex flex-wrap items-center gap-2 text-sm text-surface-500 dark:text-surface-400">
               <span>{format(weekStart, "d. MMMM", { locale: de })} – {format(addDays(weekStart, 4), "d. MMMM yyyy", { locale: de })}</span>
               {activeWeek && <span className="badge badge-primary">{activeWeek}-Woche</span>}
             </div>
+            </div>
+            <button type="button" className="btn btn-secondary shrink-0 px-3 text-xs sm:text-sm" onClick={() => navigate(`${basePath}/settings/timetable`)}>
+              <PencilSquareIcon className="mr-1.5 h-4 w-4" />
+              <span className="hidden sm:inline">Stunden bearbeiten</span>
+              <span className="sm:hidden">Bearbeiten</span>
+            </button>
           </div>
 
         </header>

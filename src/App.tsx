@@ -60,7 +60,7 @@ const AppRoutes: React.FC = () => {
           <Route path="study-groups" element={<StudyGroups />} />
           <Route path="dsb" element={<Dsbmobile />} />
           <Route path="profile" element={<Profile />} />
-          <Route path="settings" element={<Settings />} />
+          <Route path="settings/*" element={<Settings />} />
         </Route>
         <Route
           path="/login"
@@ -85,7 +85,7 @@ const AppRoutes: React.FC = () => {
                   <Route path="/study-groups" element={<StudyGroups />} />
                   <Route path="/dsb" element={<Dsbmobile />} />
                   <Route path="/profile" element={<Profile />} />
-                  <Route path="/settings" element={<Settings />} />
+                  <Route path="/settings/*" element={<Settings />} />
                   <Route path="*" element={<Navigate to="/dashboard" replace />} />
                 </Routes>
               </Layout>
