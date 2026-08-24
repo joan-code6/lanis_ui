@@ -5,7 +5,6 @@ import axios from 'axios';
 import { DSBPlanTable } from '../../types';
 import SEO from '../seo/SEO';
 import {
-  ArrowPathIcon,
   CalendarDaysIcon,
 } from '@heroicons/react/24/outline';
 
@@ -219,22 +218,19 @@ const Dsbmobile: React.FC = () => {
         path="/dsb"
         noindex
       />
-      <div className="page-header flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h1 className="page-title">Vertretungsplan</h1>
-          <p className="page-subtitle">
+      <div className="page-header">
+        <h1 className="page-title">Vertretungsplan</h1>
+        <p className="page-subtitle flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+          <span>
             {showAllClasses ? 'Vertretungen für alle Klassen' : userClass ? `Vertretungen für Klasse ${userClass}` : 'Aktuelle Vertretungen und Abwesenheiten'}
-          </p>
-        </div>
-        {lastUpdated && (
-          <div className="inline-flex w-fit max-w-full flex-wrap items-center gap-x-2 gap-y-1 rounded-xl border border-primary-100 bg-primary-50 px-3 py-2 text-xs text-surface-600 dark:border-primary-900/60 dark:bg-primary-950/30 dark:text-surface-300">
-            <ArrowPathIcon className="h-4 w-4 text-primary-600 dark:text-primary-400" aria-hidden="true" />
-            <span className="font-medium">Zuletzt aktualisiert</span>
-            <time dateTime={lastUpdated} className="font-semibold text-surface-800 dark:text-surface-100">
-              {formatLastUpdated(lastUpdated)}
-            </time>
-          </div>
-        )}
+          </span>
+          {lastUpdated && (
+            <span className="inline-flex items-baseline gap-2 whitespace-nowrap text-xs text-surface-400 dark:text-surface-500">
+              <span aria-hidden="true">·</span>
+              <time dateTime={lastUpdated}>Stand {formatLastUpdated(lastUpdated)}</time>
+            </span>
+          )}
+        </p>
       </div>
 
       <div className="flex items-center justify-between mb-6">
