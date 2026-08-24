@@ -6,7 +6,6 @@ import { useBasePath } from '../../contexts/BasePathContext';
 import { notificationsAPI } from '../../services/api';
 import { NotificationPreferences, PushSubscriptionPayload } from '../../types';
 import {
-  AcademicCapIcon,
   ArrowDownTrayIcon,
   ArrowLeftIcon,
   BellAlertIcon,
@@ -16,7 +15,6 @@ import {
   ChevronRightIcon,
   ClockIcon,
   DevicePhoneMobileIcon,
-  LinkIcon,
   MoonIcon,
   PaintBrushIcon,
   ShieldCheckIcon,
@@ -25,7 +23,6 @@ import {
 import SEO from '../seo/SEO';
 import { getDeferredPrompt } from '../pwa/InstallPrompt';
 import TimetableSettings from './TimetableSettings';
-import ClassLinksSettings from './ClassLinksSettings';
 
 const isStandalone = () =>
   window.matchMedia('(display-mode: standalone)').matches ||
@@ -79,80 +76,64 @@ const pushSubscriptionToPayload = (subscription: PushSubscription): PushSubscrip
   };
 };
 
-type SettingsSection = 'home' | 'appearance' | 'timetable' | 'classes' | 'notifications' | 'app';
+type SettingsSection = 'home' | 'appearance' | 'timetable' | 'notifications' | 'app';
 
 const settingsSections: Array<{
   id: Exclude<SettingsSection, 'home'>;
   title: string;
   description: string;
   icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
-  eyebrow: string;
 }> = [
   {
     id: 'appearance',
     title: 'Erscheinungsbild',
     description: 'Farben, Dark Mode und die Oberfläche von Lanis.',
     icon: PaintBrushIcon,
-    eyebrow: 'Look & feel',
   },
   {
     id: 'timetable',
-    title: 'Stundenplan anpassen',
-    description: 'Falsche, fehlende oder ausgefallene Stunden korrigieren.',
+    title: 'Stundenplan bearbeiten',
+    description: 'Stunden anlegen, ändern und mit Kursen verknüpfen.',
     icon: CalendarDaysIcon,
-    eyebrow: 'Deine Woche',
-  },
-  {
-    id: 'classes',
-    title: 'Unterricht & Links',
-    description: 'Direkte Links zu deinen Klassen prüfen und bearbeiten.',
-    icon: LinkIcon,
-    eyebrow: 'Mein Unterricht',
   },
   {
     id: 'notifications',
     title: 'Benachrichtigungen',
     description: 'Push-Mitteilungen für neue Nachrichten verwalten.',
     icon: BellAlertIcon,
-    eyebrow: 'Auf dem Laufenden',
   },
   {
     id: 'app',
     title: 'App & Installation',
     description: 'Lanis installieren und Geräteoptionen ansehen.',
     icon: DevicePhoneMobileIcon,
-    eyebrow: 'Dein Gerät',
   },
 ];
 
 const sectionMeta: Record<SettingsSection, { title: string; subtitle: string }> = {
-  home: { title: 'Einstellungen', subtitle: 'Alles an einem Ort — klar getrennt nach dem, was du ändern möchtest.' },
+  home: { title: 'Einstellungen', subtitle: 'Passe dein Schulportal an.' },
   appearance: { title: 'Erscheinungsbild', subtitle: 'Farben und Oberfläche an deine Gewohnheiten anpassen.' },
-  timetable: { title: 'Stundenplan anpassen', subtitle: 'Korrigiere Portalfehler, ohne den offiziellen Stundenplan zu verändern.' },
-  classes: { title: 'Unterricht & Links', subtitle: 'Klassenlinks prüfen, korrigieren und direkt öffnen.' },
+  timetable: { title: 'Stundenplan bearbeiten', subtitle: 'Stunden anlegen, bearbeiten und mit Kursen verknüpfen.' },
   notifications: { title: 'Benachrichtigungen', subtitle: 'Neue Nachrichten mit Web-Push zuverlässig mitbekommen.' },
   app: { title: 'App & Installation', subtitle: 'Lanis auf deinem Gerät griffbereit halten.' },
 };
 
 const SettingsIndex: React.FC<{ basePath: string }> = ({ basePath }) => (
-  <div className="grid gap-3 sm:grid-cols-2">
+  <div className="divide-y divide-surface-100 overflow-hidden rounded-xl border border-surface-200 bg-white dark:divide-surface-800 dark:border-surface-800 dark:bg-surface-900">
     {settingsSections.map(item => (
       <Link
         key={item.id}
         to={`${basePath}/settings/${item.id}`}
-        className="group rounded-2xl border border-surface-200 bg-white p-4 transition-all hover:-translate-y-0.5 hover:border-primary-300 hover:shadow-soft-md dark:border-surface-800 dark:bg-surface-900 dark:hover:border-primary-700 sm:p-5"
+        className="group flex items-center gap-4 px-4 py-4 transition-colors hover:bg-surface-50 dark:hover:bg-surface-800/70 sm:px-5"
       >
-        <div className="flex items-start gap-4">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary-50 text-primary-700 transition-colors group-hover:bg-primary-100 dark:bg-primary-950 dark:text-primary-300 dark:group-hover:bg-primary-900/60">
-            <item.icon className="h-5 w-5" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-primary-600 dark:text-primary-400">{item.eyebrow}</p>
-            <h2 className="mt-1 font-semibold text-surface-900 dark:text-white">{item.title}</h2>
-            <p className="mt-1 text-sm leading-relaxed text-surface-500">{item.description}</p>
-          </div>
-          <ChevronRightIcon className="mt-1 h-5 w-5 shrink-0 text-surface-300 transition-transform group-hover:translate-x-0.5 group-hover:text-primary-500 dark:text-surface-600" />
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-surface-100 text-surface-600 dark:bg-surface-800 dark:text-surface-300">
+          <item.icon className="h-5 w-5" />
         </div>
+        <div className="min-w-0 flex-1">
+          <h2 className="font-medium text-surface-900 dark:text-white">{item.title}</h2>
+          <p className="mt-0.5 text-sm text-surface-500">{item.description}</p>
+        </div>
+        <ChevronRightIcon className="h-5 w-5 shrink-0 text-surface-300 group-hover:text-surface-500 dark:text-surface-600" />
       </Link>
     ))}
   </div>
@@ -534,25 +515,9 @@ const Settings: React.FC = () => {
         <p className="page-subtitle">{sectionMeta[section].subtitle}</p>
       </div>
 
-      {section === 'home' && (
-        <div className="space-y-5">
-          <div className="rounded-2xl border border-primary-100 bg-primary-50/70 p-5 dark:border-primary-900/60 dark:bg-primary-950/30">
-            <div className="flex items-start gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary-600 text-white shadow-sm">
-                <AcademicCapIcon className="h-5 w-5" />
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-primary-950 dark:text-primary-100">Was möchtest du ändern?</p>
-                <p className="mt-1 max-w-2xl text-sm leading-relaxed text-primary-900/70 dark:text-primary-200/80">Korrekturen am Stundenplan und an Klassenlinks bleiben privat und werden mit deinem Konto synchronisiert.</p>
-              </div>
-            </div>
-          </div>
-          <SettingsIndex basePath={basePath} />
-        </div>
-      )}
+      {section === 'home' && <SettingsIndex basePath={basePath} />}
 
       {section === 'timetable' && <TimetableSettings />}
-      {section === 'classes' && <ClassLinksSettings />}
 
       <div className="space-y-6">
         {section === 'appearance' && (

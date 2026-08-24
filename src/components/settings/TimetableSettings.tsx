@@ -4,16 +4,18 @@ import { format, parseISO } from 'date-fns';
 import { de } from 'date-fns/locale';
 import {
   ArrowPathIcon,
+  ArrowTopRightOnSquareIcon,
+  ArrowUturnLeftIcon,
   CalendarDaysIcon,
   CheckIcon,
   EyeSlashIcon,
-  PencilSquareIcon,
+  LinkIcon,
   PlusIcon,
   TrashIcon,
 } from '@heroicons/react/24/outline';
 import { useAuth } from '../../contexts/AuthContext';
 import { settingsAPI, timetableAPI } from '../../services/api';
-import { CustomLesson, TimetableDay, TimetableLesson, TimetableResponse } from '../../types';
+import { ClassLink, CustomLesson, TimetableLesson, TimetableResponse } from '../../types';
 
 interface EditableEntry {
   key: string;
@@ -55,6 +57,13 @@ const formatDay = (value: string) => {
   }
 };
 
+const portalUrl = (url: string) => {
+  const clean = url.trim();
+  if (!clean) return '';
+  if (/^https?:\/\//i.test(clean)) return clean;
+  return `https://start.schulportal.hessen.de/${clean.replace(/^\//, '')}`;
+};
+
 const draftFromEntry = (entry: EditableEntry): CustomLesson => {
   const lesson = entry.lesson;
   const custom = entry.custom;
@@ -78,6 +87,7 @@ const draftFromEntry = (entry: EditableEntry): CustomLesson => {
 interface LoadedTimetable {
   timetable: TimetableResponse;
   customLessons: CustomLesson[];
+  classLinks: ClassLink[];
 }
 
 const buildEntries = (timetable: TimetableResponse | null, customLessons: CustomLesson[]): EditableEntry[] => {
@@ -111,11 +121,14 @@ const TimetableSettings: React.FC = () => {
   const { token } = useAuth();
   const [timetable, setTimetable] = useState<TimetableResponse | null>(null);
   const [customLessons, setCustomLessons] = useState<CustomLesson[]>([]);
+  const [classLinks, setClassLinks] = useState<ClassLink[]>([]);
+  const [linkDrafts, setLinkDrafts] = useState<Record<string, string>>({});
   const [selectedKey, setSelectedKey] = useState('');
   const [draft, setDraft] = useState<CustomLesson>(() => makeDraft(new Date().toISOString().slice(0, 10)));
   const [isNew, setIsNew] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [savingLinkId, setSavingLinkId] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
 
@@ -124,19 +137,24 @@ const TimetableSettings: React.FC = () => {
     setLoading(true);
     setError('');
     try {
-      const [timetableResponse, customResponse] = await Promise.all([
+      const [timetableResponse, customResponse, classLinksResponse] = await Promise.all([
         timetableAPI.getTimetable(token, signal),
         settingsAPI.getCustomLessons(token, signal),
+        settingsAPI.getClassLinks(token, signal),
       ]);
       if (signal?.aborted) return null;
       if (!timetableResponse.success) throw new Error(timetableResponse.message || 'Der Stundenplan konnte nicht geladen werden.');
       if (!customResponse.success) throw new Error('Eigene Stundenplanänderungen konnten nicht geladen werden.');
+      if (!classLinksResponse.success) throw new Error('Kurse konnten nicht geladen werden.');
       const loaded = {
         timetable: timetableResponse,
         customLessons: customResponse.lessons || [],
+        classLinks: classLinksResponse.links || [],
       };
       setTimetable(loaded.timetable);
       setCustomLessons(loaded.customLessons);
+      setClassLinks(loaded.classLinks);
+      setLinkDrafts(Object.fromEntries(loaded.classLinks.map(link => [link.course_id, link.url])));
       return loaded;
     } catch (loadError) {
       if (axios.isCancel(loadError)) return null;
@@ -154,6 +172,10 @@ const TimetableSettings: React.FC = () => {
   }, [token]);
 
   const entries = useMemo(() => buildEntries(timetable, customLessons), [customLessons, timetable]);
+  const selectedClass = useMemo(
+    () => classLinks.find(link => link.course_id === draft.course_id),
+    [classLinks, draft.course_id],
+  );
 
   useEffect(() => {
     if (selectedKey || !entries.length) return;
@@ -183,6 +205,57 @@ const TimetableSettings: React.FC = () => {
   const updateDraft = <K extends keyof CustomLesson>(key: K, value: CustomLesson[K]) => {
     setDraft(previous => ({ ...previous, [key]: value }));
     setMessage('');
+  };
+
+  const selectCourse = (courseId: string) => {
+    const course = classLinks.find(link => link.course_id === courseId);
+    setDraft(previous => ({
+      ...previous,
+      course_id: course?.course_id || null,
+      class_name: course?.name || '',
+    }));
+    setMessage('');
+  };
+
+  const saveClassLink = async (link: ClassLink) => {
+    if (!token) return;
+    const url = linkDrafts[link.course_id] || '';
+    setSavingLinkId(link.course_id);
+    setError('');
+    setMessage('');
+    try {
+      const response = await settingsAPI.saveClassLink(token, link.course_id, url);
+      if (!response.success) throw new Error('Klassenlink konnte nicht gespeichert werden.');
+      setClassLinks(previous => previous.map(item => item.course_id === link.course_id
+        ? { ...item, url, overridden: true }
+        : item));
+      setMessage(`Link für ${link.name || 'den Kurs'} gespeichert.`);
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : 'Klassenlink konnte nicht gespeichert werden.');
+    } finally {
+      setSavingLinkId(null);
+    }
+  };
+
+  const resetClassLink = async (link: ClassLink) => {
+    if (!token || !link.overridden) return;
+    setSavingLinkId(link.course_id);
+    setError('');
+    setMessage('');
+    try {
+      const response = await settingsAPI.deleteClassLink(token, link.course_id);
+      if (!response.success) throw new Error('Eigener Klassenlink konnte nicht entfernt werden.');
+      const refreshed = await settingsAPI.getClassLinks(token);
+      if (!refreshed.success) throw new Error('Portal-Link konnte nicht neu geladen werden.');
+      const links = refreshed.links || [];
+      setClassLinks(links);
+      setLinkDrafts(Object.fromEntries(links.map(item => [item.course_id, item.url])));
+      setMessage(`Portal-Link für ${link.name || 'den Kurs'} wiederhergestellt.`);
+    } catch (resetError) {
+      setError(resetError instanceof Error ? resetError.message : 'Eigener Klassenlink konnte nicht entfernt werden.');
+    } finally {
+      setSavingLinkId(null);
+    }
   };
 
   const save = async (event: React.FormEvent) => {
@@ -269,8 +342,6 @@ const TimetableSettings: React.FC = () => {
     lesson => lesson.date === draft.date && normalisePeriod(lesson.period) === normalisePeriod(draft.period),
   );
 
-  const weekDays: TimetableDay[] = timetable?.days || [];
-
   if (loading) {
     return (
       <div className="card flex min-h-72 items-center justify-center">
@@ -297,30 +368,13 @@ const TimetableSettings: React.FC = () => {
 
   return (
     <div className="space-y-5">
-      <div className="rounded-2xl border border-primary-100 bg-primary-50/70 p-4 dark:border-primary-900/60 dark:bg-primary-950/30 sm:p-5">
-        <div className="flex items-start gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary-600 text-white shadow-sm">
-            <PencilSquareIcon className="h-5 w-5" />
-          </div>
-          <div>
-            <h2 className="font-semibold text-primary-950 dark:text-primary-100">Deine Korrekturen</h2>
-            <p className="mt-1 text-sm leading-relaxed text-primary-900/70 dark:text-primary-200/80">
-              Änderungen gelten nur für dein Lanis-Konto. Der Stundenplan deiner Schule bleibt unverändert.
-            </p>
-          </div>
-        </div>
-      </div>
-
       {error && <p className="rounded-xl bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-300">{error}</p>}
       {message && <p className="rounded-xl bg-emerald-50 p-3 text-sm text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">{message}</p>}
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
         <section className="card !p-0">
           <div className="flex items-center justify-between border-b border-surface-100 px-4 py-4 dark:border-surface-800 sm:px-5">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary-600 dark:text-primary-400">Slots</p>
-              <h3 className="mt-1 font-semibold text-surface-900 dark:text-white">Stunden dieser Woche</h3>
-            </div>
+            <h3 className="font-semibold text-surface-900 dark:text-white">Stundenplan</h3>
             <button type="button" className="btn btn-primary h-9 px-3 text-xs" onClick={selectNewLesson}>
               <PlusIcon className="mr-1.5 h-4 w-4" />
               Neue Stunde
@@ -354,10 +408,10 @@ const TimetableSettings: React.FC = () => {
                         <span className="min-w-0 flex-1">
                           <span className="block text-xs text-surface-500">{formatDay(entry.date)}</span>
                           <span className={`mt-0.5 block truncate text-sm font-semibold ${isRemoved ? 'text-surface-400 line-through' : 'text-surface-900 dark:text-white'}`}>
-                            {isRemoved ? 'Stunde ausgeblendet' : entry.lesson?.subject || entry.custom?.subject || 'Neue Stunde'}
+                            {isRemoved ? 'Stunde ausgeblendet' : entry.custom?.subject || entry.lesson?.subject || 'Neue Stunde'}
                           </span>
-                          {!isRemoved && (entry.lesson?.room || entry.custom?.room) && (
-                            <span className="mt-0.5 block truncate text-xs text-surface-500">{entry.lesson?.room || entry.custom?.room}</span>
+                          {!isRemoved && (entry.custom?.room || entry.lesson?.room) && (
+                            <span className="mt-0.5 block truncate text-xs text-surface-500">{entry.custom?.room || entry.lesson?.room}</span>
                           )}
                         </span>
                         {entry.custom && <span className="shrink-0 rounded-full bg-primary-100 px-2 py-1 text-[10px] font-medium text-primary-700 dark:bg-primary-900/60 dark:text-primary-200">Eigen</span>}
@@ -373,11 +427,9 @@ const TimetableSettings: React.FC = () => {
         <section className="card">
           <div className="mb-5 flex items-start justify-between gap-4">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary-600 dark:text-primary-400">Editor</p>
-              <h3 className="mt-1 text-lg font-semibold text-surface-900 dark:text-white">
+              <h3 className="text-lg font-semibold text-surface-900 dark:text-white">
                 {isNew ? 'Neue Stunde' : draft.subject || 'Stunde bearbeiten'}
               </h3>
-              <p className="mt-1 text-sm text-surface-500">Wähle Datum und Stunde, dann korrigiere die Portalangaben.</p>
             </div>
             {draft.removed && <EyeSlashIcon className="h-6 w-6 shrink-0 text-surface-400" />}
           </div>
@@ -393,16 +445,6 @@ const TimetableSettings: React.FC = () => {
                 <input id="custom-lesson-period" className="input" value={draft.period} onChange={event => updateDraft('period', event.target.value)} placeholder="z. B. 1 oder 1–2" required />
               </div>
             </div>
-
-            {weekDays.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {weekDays.map(day => (
-                  <button type="button" key={day.date} onClick={() => updateDraft('date', day.date)} className={`rounded-full border px-3 py-1.5 text-xs transition-colors ${draft.date === day.date ? 'border-primary-400 bg-primary-50 text-primary-700 dark:border-primary-600 dark:bg-primary-950/40 dark:text-primary-200' : 'border-surface-200 text-surface-500 hover:border-primary-200 dark:border-surface-700'}`}>
-                    {format(parseISO(day.date), 'EEE d.MM.', { locale: de })}
-                  </button>
-                ))}
-              </div>
-            )}
 
             <div>
               <label className="label" htmlFor="custom-lesson-subject">Fach</label>
@@ -445,10 +487,58 @@ const TimetableSettings: React.FC = () => {
                 </select>
               </div>
               <div>
-                <label className="label" htmlFor="custom-lesson-class">Klasse / Kurs</label>
-                <input id="custom-lesson-class" className="input" value={draft.class_name || ''} onChange={event => updateDraft('class_name', event.target.value)} placeholder="Optional" disabled={draft.removed} />
+                <label className="label" htmlFor="custom-lesson-class">Kurs verknüpfen</label>
+                <select id="custom-lesson-class" className="input" value={draft.course_id || ''} onChange={event => selectCourse(event.target.value)} disabled={draft.removed}>
+                  <option value="">Kein Kurs</option>
+                  {draft.course_id && !selectedClass && (
+                    <option value={draft.course_id}>{draft.class_name || draft.course_id}</option>
+                  )}
+                  {classLinks.map(link => (
+                    <option key={link.course_id} value={link.course_id}>{link.name || 'Unbenannter Kurs'}</option>
+                  ))}
+                </select>
               </div>
             </div>
+
+            {selectedClass && !draft.removed && (() => {
+              const currentUrl = linkDrafts[selectedClass.course_id] || '';
+              const previewUrl = portalUrl(currentUrl);
+              const isSavingLink = savingLinkId === selectedClass.course_id;
+              return (
+                <div className="rounded-xl border border-surface-200 p-3 dark:border-surface-700">
+                  <div className="mb-2 flex items-center justify-between gap-3">
+                    <label className="flex items-center gap-2 text-sm font-medium text-surface-800 dark:text-surface-200" htmlFor="custom-lesson-class-link">
+                      <LinkIcon className="h-4 w-4" />
+                      Link zu {selectedClass.name || 'diesem Kurs'}
+                    </label>
+                    {previewUrl && (
+                      <a href={previewUrl} target="_blank" rel="noopener noreferrer" className="btn btn-ghost h-8 px-2" aria-label={`${selectedClass.name || 'Kurs'} öffnen`}>
+                        <ArrowTopRightOnSquareIcon className="h-4 w-4" />
+                      </a>
+                    )}
+                  </div>
+                  <div className="flex flex-col gap-2 sm:flex-row">
+                    <input
+                      id="custom-lesson-class-link"
+                      className="input min-w-0 flex-1 text-sm"
+                      value={currentUrl}
+                      onChange={event => setLinkDrafts(previous => ({ ...previous, [selectedClass.course_id]: event.target.value }))}
+                      placeholder="https://… oder Portal-Adresse"
+                    />
+                    <button type="button" className="btn btn-secondary shrink-0" onClick={() => saveClassLink(selectedClass)} disabled={isSavingLink}>
+                      {isSavingLink ? <ArrowPathIcon className="mr-2 h-4 w-4 animate-spin" /> : <CheckIcon className="mr-2 h-4 w-4" />}
+                      Link speichern
+                    </button>
+                  </div>
+                  {selectedClass.overridden && (
+                    <button type="button" className="btn btn-ghost mt-2 h-8 px-2 text-xs" onClick={() => resetClassLink(selectedClass)} disabled={isSavingLink}>
+                      <ArrowUturnLeftIcon className="mr-1.5 h-3.5 w-3.5" />
+                      Portal-Link nutzen
+                    </button>
+                  )}
+                </div>
+              );
+            })()}
 
             <div>
               <label className="label" htmlFor="custom-lesson-info">Notiz</label>
