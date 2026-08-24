@@ -10,6 +10,7 @@ import {
   CoursesResponse,
   CourseDetailsResponse,
   CourseDetails,
+  CourseMark,
   CourseDetailEntry,
   EntryDetailsResponse,
   EntryDetails,
@@ -40,6 +41,100 @@ import { de } from 'date-fns/locale';
 import clsx from 'clsx';
 
 type ViewMode = 'overview' | 'course-detail' | 'weekly' | 'submissions' | 'entry-detail';
+type CourseDetailTab = 'history' | 'performance' | 'exams';
+
+const courseDetailTabs: Array<{
+  id: CourseDetailTab;
+  label: string;
+  icon: React.ElementType;
+}> = [
+  { id: 'history', label: 'Historie', icon: ListBulletIcon },
+  { id: 'performance', label: 'Leistungen', icon: ChartBarIcon },
+  { id: 'exams', label: 'Klausuren', icon: DocumentTextIcon },
+];
+
+const EmptyCourseTab: React.FC<{
+  icon: React.ReactNode;
+  title: string;
+  description: string;
+}> = ({ icon, title, description }) => (
+  <div className="card py-12 text-center">
+    {icon}
+    <h3 className="mt-3 text-sm font-medium text-surface-900 dark:text-surface-100">{title}</h3>
+    <p className="mt-1 text-sm text-surface-500 dark:text-surface-400">{description}</p>
+  </div>
+);
+
+const CoursePerformance: React.FC<{ marks?: CourseMark[] }> = ({ marks = [] }) => {
+  if (marks.length === 0) {
+    return (
+      <EmptyCourseTab
+        icon={<ChartBarIcon className="mx-auto h-12 w-12 text-surface-400 dark:text-surface-500" />}
+        title="Keine Leistungen"
+        description="Für diesen Kurs sind noch keine Leistungen eingetragen."
+      />
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {marks.map((mark, index) => {
+        const comment = mark.comment?.trim();
+
+        return (
+          <article key={`${mark.name}-${mark.date}-${index}`} className="card">
+            <div className="flex items-center justify-between gap-4">
+              <div className="min-w-0">
+                <h3 className="truncate text-base font-semibold text-surface-900 dark:text-surface-100">
+                  {mark.name}
+                </h3>
+                <p className="mt-1 text-sm text-surface-500 dark:text-surface-400">{mark.date}</p>
+              </div>
+              <span className="shrink-0 text-xl font-bold text-surface-900 dark:text-surface-100">
+                {mark.mark}
+              </span>
+            </div>
+            {comment && (
+              <div className="mt-4 border-t border-surface-200 pt-3 dark:border-surface-700">
+                <p className="text-sm font-semibold text-surface-700 dark:text-surface-300">Kommentar</p>
+                <p className="mt-1 text-sm italic text-surface-600 dark:text-surface-400">{comment}</p>
+              </div>
+            )}
+          </article>
+        );
+      })}
+    </div>
+  );
+};
+
+const CourseExams: React.FC<{ exams?: string[] }> = ({ exams = [] }) => {
+  const normalizedExams = exams
+    .map((exam) => exam.replace(/\s+/g, ' ').trim())
+    .filter(Boolean);
+
+  if (normalizedExams.length === 0) {
+    return (
+      <EmptyCourseTab
+        icon={<DocumentTextIcon className="mx-auto h-12 w-12 text-surface-400 dark:text-surface-500" />}
+        title="Keine Klausuren"
+        description="Für diesen Kurs sind noch keine Leistungskontrollen eingetragen."
+      />
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {normalizedExams.map((exam, index) => (
+        <article key={`${exam}-${index}`} className="card">
+          <div className="flex items-start gap-3">
+            <DocumentTextIcon className="mt-0.5 h-5 w-5 shrink-0 text-primary-600" />
+            <p className="text-base font-medium text-surface-900 dark:text-surface-100">{exam}</p>
+          </div>
+        </article>
+      ))}
+    </div>
+  );
+};
 
 const Courses: React.FC = () => {
   const { token } = useAuth();
@@ -64,6 +159,7 @@ const Courses: React.FC = () => {
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
   const [detailViewMode, setDetailViewMode] = useState<'cards' | 'timeline'>('cards');
   const [dynamicAttendanceOptions, setDynamicAttendanceOptions] = useState<string[]>([]);
+  const [courseDetailTab, setCourseDetailTab] = useState<CourseDetailTab>('history');
 
   const selectedCourseOverview = useMemo(
     () => courses.find(course => course.book_id === (selectedCourse?.course_id || courseIdFromUrl)),
@@ -104,6 +200,10 @@ const Courses: React.FC = () => {
     loadCourseDetails(courseIdFromUrl, abortController.signal);
     return () => abortController.abort();
   }, [token, courseIdFromUrl]);
+
+  useEffect(() => {
+    setCourseDetailTab('history');
+  }, [courseIdFromUrl]);
 
   const loadCourses = async (signal?: AbortSignal) => {
     if (!token) return;
@@ -490,9 +590,40 @@ const Courses: React.FC = () => {
 
       {viewMode === 'course-detail' && selectedCourse && (
         <div className="space-y-6">
-          {/* Filters and Controls */}
-          <div className="card">
-            <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center justify-between gap-3">
+          <div className="card p-1">
+            <div className="flex flex-wrap gap-1" role="tablist" aria-label="Kursansicht">
+              {courseDetailTabs.map((tab) => {
+                const Icon = tab.icon;
+                const isActive = courseDetailTab === tab.id;
+
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={isActive}
+                    aria-controls={`course-tabpanel-${tab.id}`}
+                    onClick={() => setCourseDetailTab(tab.id)}
+                    className={clsx(
+                      'flex min-w-[7rem] flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
+                      isActive
+                        ? 'bg-primary-600 text-white'
+                        : 'text-surface-600 hover:bg-surface-100 dark:text-surface-400 dark:hover:bg-surface-700',
+                    )}
+                  >
+                    <Icon className="h-4 w-4" />
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {courseDetailTab === 'history' && (
+            <div id="course-tabpanel-history" role="tabpanel" aria-label="Historie" className="space-y-6">
+              {/* Filters and Controls */}
+              <div className="card">
+                <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center justify-between gap-3">
               <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                 <div className="flex items-center gap-1.5">
                   <FunnelIcon className="h-3.5 w-3.5 text-surface-500 dark:text-surface-400" />
@@ -563,7 +694,7 @@ const Courses: React.FC = () => {
                 </div>
               </div>
             </div>
-          </div>
+            </div>
 
           {!selectedCourse.entries || selectedCourse.entries.length === 0 ? (
             <div className="text-center py-12">
@@ -875,6 +1006,20 @@ const Courses: React.FC = () => {
                 </div>
               );
             })()
+          )}
+            </div>
+          )}
+
+          {courseDetailTab === 'performance' && (
+            <div id="course-tabpanel-performance" role="tabpanel" aria-label="Leistungen">
+              <CoursePerformance marks={selectedCourse.marks} />
+            </div>
+          )}
+
+          {courseDetailTab === 'exams' && (
+            <div id="course-tabpanel-exams" role="tabpanel" aria-label="Klausuren">
+              <CourseExams exams={selectedCourse.exams} />
+            </div>
           )}
         </div>
       )}

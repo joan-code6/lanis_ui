@@ -254,6 +254,13 @@ export interface CourseDetailEntry {
   content?: string;
 }
 
+export interface CourseMark {
+  name: string;
+  date: string;
+  mark: string;
+  comment?: string | null;
+}
+
 // Course details from API
 export interface CourseDetails {
   course_id: string;
@@ -263,6 +270,7 @@ export interface CourseDetails {
   teacher_full: string;
   entries: CourseDetailEntry[];
   entry_count: number;
+  marks?: CourseMark[];
   exams?: string[];
   attendance_summary?: { [key: string]: string };
 }
@@ -276,6 +284,7 @@ export interface CourseDetailsResponse {
   teacher_full: string;
   entries: CourseDetailEntry[];
   entry_count: number;
+  marks?: CourseMark[];
   exams?: string[];
   attendance_summary?: { [key: string]: string };
 }
