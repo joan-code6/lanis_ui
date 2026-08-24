@@ -454,6 +454,7 @@ export interface TimetableLesson {
   duration?: number;
   course_id?: string;
   course_name?: string;
+  is_custom?: boolean;
   homework?: TimetableHomework[];
   [key: string]: unknown;
 }
@@ -478,6 +479,42 @@ export interface TimetableResponse {
     start_time: string;
     end_time: string;
   }>;
+  custom_lessons?: CustomLesson[];
+}
+
+export interface CustomLesson {
+  date: string;
+  period: string;
+  subject: string;
+  teacher?: string;
+  room?: string;
+  class_name?: string;
+  info?: string;
+  start_time?: string;
+  end_time?: string;
+  duration?: number;
+  week_type?: 'A' | 'B';
+  course_id?: string | null;
+  removed?: boolean;
+  is_custom?: boolean;
+}
+
+export interface CustomLessonsResponse {
+  success: boolean;
+  lessons: CustomLesson[];
+}
+
+export interface ClassLink {
+  course_id: string;
+  name: string;
+  teacher?: string;
+  url: string;
+  overridden: boolean;
+}
+
+export interface ClassLinksResponse {
+  success: boolean;
+  links: ClassLink[];
 }
 
 // Study-group types

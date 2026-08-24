@@ -169,6 +169,9 @@ import {
   DSBPlanResponse,
   TimetableResponse,
   TimetableDay,
+  CustomLesson,
+  CustomLessonsResponse,
+  ClassLinksResponse,
   StudyGroupsResponse,
   NotificationConfigResponse,
   NotificationPreferences,
@@ -564,8 +567,9 @@ export const timetableAPI = {
           subject: lesson.name || 'Unterricht',
           teacher: lesson.teacher,
           room: lesson.room,
+          class_name: lesson.class_name,
+          info: lesson.info || (lesson.badge && !['A', 'B'].includes(lesson.badge) ? lesson.badge : undefined),
           week_type: ['A', 'B'].includes(lesson.badge) ? lesson.badge : undefined,
-          info: lesson.badge && !['A', 'B'].includes(lesson.badge) ? lesson.badge : undefined,
           duration: lesson.duration || 1,
           course_id: lesson.course_id,
           course_name: lesson.course_name,
@@ -594,7 +598,63 @@ export const timetableAPI = {
       personal_days: personalDays,
       all_days: allDays,
       time_slots: timeSlots,
+      custom_lessons: Array.isArray(data.custom_lessons) ? data.custom_lessons : undefined,
     };
+  },
+};
+
+// Account-specific timetable and class-link overrides
+export const settingsAPI = {
+  async getCustomLessons(token: string, signal?: AbortSignal): Promise<CustomLessonsResponse> {
+    const response = await apiClient.get<CustomLessonsResponse>('/settings/timetable/lessons', {
+      headers: { 'X-Session-Token': token },
+      signal,
+    });
+    return response.data;
+  },
+
+  async saveCustomLesson(token: string, lesson: CustomLesson, signal?: AbortSignal): Promise<{ success: boolean; lesson: CustomLesson }> {
+    const response = await apiClient.put<{ success: boolean; lesson: CustomLesson }>(
+      '/settings/timetable/lessons',
+      lesson,
+      { headers: { 'X-Session-Token': token }, signal },
+    );
+    return response.data;
+  },
+
+  async deleteCustomLesson(token: string, date: string, period: string, signal?: AbortSignal): Promise<{ success: boolean }> {
+    const response = await apiClient.delete<{ success: boolean }>('/settings/timetable/lessons', {
+      headers: { 'X-Session-Token': token },
+      params: { date, period },
+      signal,
+    });
+    return response.data;
+  },
+
+  async getClassLinks(token: string, signal?: AbortSignal): Promise<ClassLinksResponse> {
+    const response = await apiClient.get<ClassLinksResponse>('/settings/class-links', {
+      headers: { 'X-Session-Token': token },
+      signal,
+    });
+    return response.data;
+  },
+
+  async saveClassLink(token: string, courseId: string, url: string, signal?: AbortSignal): Promise<{ success: boolean; link: { course_id: string; url: string; overridden: boolean } }> {
+    const response = await apiClient.put<{ success: boolean; link: { course_id: string; url: string; overridden: boolean } }>(
+      '/settings/class-links',
+      { course_id: courseId, url },
+      { headers: { 'X-Session-Token': token }, signal },
+    );
+    return response.data;
+  },
+
+  async deleteClassLink(token: string, courseId: string, signal?: AbortSignal): Promise<{ success: boolean }> {
+    const response = await apiClient.delete<{ success: boolean }>('/settings/class-links', {
+      headers: { 'X-Session-Token': token },
+      params: { course_id: courseId },
+      signal,
+    });
+    return response.data;
   },
 };
 

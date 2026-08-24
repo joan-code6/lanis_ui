@@ -247,6 +247,13 @@ const CourseExams: React.FC<{ exams?: string[] }> = ({ exams = [] }) => {
   );
 };
 
+const portalClassUrl = (url: string) => {
+  const clean = url.trim();
+  if (!clean) return '';
+  if (/^https?:\/\//i.test(clean)) return clean;
+  return `https://start.schulportal.hessen.de/${clean.replace(/^\//, '')}`;
+};
+
 const Courses: React.FC = () => {
   const { token } = useAuth();
   const navigate = useNavigate();
@@ -690,6 +697,19 @@ const Courses: React.FC = () => {
                       <div className="text-xs font-medium text-yellow-700 dark:text-yellow-300 mb-1">Hausaufgaben:</div>
                       <div className="text-sm text-yellow-800 dark:text-yellow-200">{course.homework?.trim()}</div>
                     </div>
+                  )}
+
+                  {course.course_link && course.course_link !== '#' && (
+                    <a
+                      href={portalClassUrl(course.course_link)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={event => event.stopPropagation()}
+                      className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300"
+                    >
+                      Klassenlink öffnen
+                      <ArrowTopRightOnSquareIcon className="h-3.5 w-3.5" />
+                    </a>
                   )}
                   
                   </div>
