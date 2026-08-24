@@ -7,6 +7,25 @@ const hoursFromNow = (n: number) => fmt(new Date(now.getTime() + n * 3600000));
 const relDate = (daysOffset: number) => fmt(new Date(now.getTime() + daysOffset * 86400000)).slice(0, 10);
 const relDateTime = (daysOffset: number, time: string) => relDate(daysOffset) + 'T' + time;
 
+const readMockStorage = (key: string): unknown => {
+  if (typeof window === 'undefined') return undefined;
+  try {
+    const value = window.localStorage.getItem(key);
+    return value ? JSON.parse(value) : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
+const writeMockStorage = (key: string, value: unknown) => {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // Demo mode still works when storage is blocked or unavailable.
+  }
+};
+
 const mockUser = {
   username: 'max.mustermann',
   vorname: 'Max',
@@ -33,8 +52,19 @@ const defaultMockNotificationPreferences = {
 };
 
 let mockNotificationPreferences = { ...defaultMockNotificationPreferences };
-let mockCustomLessons: any[] = [];
-const mockClassLinkOverrides: Record<string, string> = {};
+const storedMockLessons = readMockStorage('lanis_demo_custom_lessons');
+const storedMockClassLinks = readMockStorage('lanis_demo_class_link_overrides');
+let mockCustomLessons: any[] = Array.isArray(storedMockLessons) ? storedMockLessons : [];
+const mockClassLinkOverrides: Record<string, string> = storedMockClassLinks
+  && typeof storedMockClassLinks === 'object'
+  && !Array.isArray(storedMockClassLinks)
+  ? storedMockClassLinks as Record<string, string>
+  : {};
+
+const persistMockOverrides = () => {
+  writeMockStorage('lanis_demo_custom_lessons', mockCustomLessons);
+  writeMockStorage('lanis_demo_class_link_overrides', mockClassLinkOverrides);
+};
 
 const mockModules = [
   { name: 'Mein Unterricht', url: 'https://schulportal.hessen.de/meinunterricht.php', direct_url: 'https://schulportal.hessen.de/meinunterricht.php', proxy_app: false, color: '#4f46e5', logo: 'fa fa-files-o', folders: ['Schule'], target: '_self' },
@@ -472,10 +502,12 @@ export function getMockResponse(url: string, method: string, config: any): { dat
   if (u === '/settings/class-links' && method === 'put') {
     const body = typeof config?.data === 'string' ? JSON.parse(config.data) : config?.data;
     mockClassLinkOverrides[body?.course_id] = body?.url || '';
+    persistMockOverrides();
     return { status: 200, data: { success: true, link: { course_id: body?.course_id, url: body?.url || '', overridden: true } } };
   }
   if (u === '/settings/class-links' && method === 'delete') {
     delete mockClassLinkOverrides[config?.params?.course_id];
+    persistMockOverrides();
     return { status: 200, data: { success: true } };
   }
   if (u === '/meinunterricht' && method === 'get') {
@@ -552,10 +584,12 @@ export function getMockResponse(url: string, method: string, config: any): { dat
     const body = typeof config?.data === 'string' ? JSON.parse(config.data) : config?.data;
     mockCustomLessons = mockCustomLessons.filter(lesson => !(lesson.date === body?.date && lesson.period === body?.period));
     mockCustomLessons.push({ ...body, is_custom: true });
+    persistMockOverrides();
     return { status: 200, data: { success: true, lesson: { ...body, is_custom: true } } };
   }
   if (u === '/settings/timetable/lessons' && method === 'delete') {
     mockCustomLessons = mockCustomLessons.filter(lesson => !(lesson.date === config?.params?.date && lesson.period === config?.params?.period));
+    persistMockOverrides();
     return { status: 200, data: { success: true } };
   }
 

@@ -75,6 +75,38 @@ const draftFromEntry = (entry: EditableEntry): CustomLesson => {
   };
 };
 
+interface LoadedTimetable {
+  timetable: TimetableResponse;
+  customLessons: CustomLesson[];
+}
+
+const buildEntries = (timetable: TimetableResponse | null, customLessons: CustomLesson[]): EditableEntry[] => {
+  const byKey = new Map<string, EditableEntry>();
+  const days = timetable?.days || [];
+  days.forEach(day => {
+    day.lessons.forEach(lesson => {
+      const period = normalisePeriod(String(lesson.period ?? ''));
+      const key = `${day.date}:${period}`;
+      byKey.set(key, { key, date: day.date, period, lesson });
+    });
+  });
+  customLessons.forEach(custom => {
+    const period = normalisePeriod(String(custom.period || ''));
+    const key = `${custom.date}:${period}`;
+    const existing = byKey.get(key);
+    byKey.set(key, {
+      key,
+      date: custom.date,
+      period,
+      lesson: existing?.lesson,
+      custom,
+    });
+  });
+  return [...byKey.values()].sort((left, right) => (
+    left.date.localeCompare(right.date) || periodStart(left.period) - periodStart(right.period)
+  ));
+};
+
 const TimetableSettings: React.FC = () => {
   const { token } = useAuth();
   const [timetable, setTimetable] = useState<TimetableResponse | null>(null);
@@ -87,8 +119,8 @@ const TimetableSettings: React.FC = () => {
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
 
-  const load = async (signal?: AbortSignal) => {
-    if (!token) return;
+  const load = async (signal?: AbortSignal): Promise<LoadedTimetable | null> => {
+    if (!token) return null;
     setLoading(true);
     setError('');
     try {
@@ -96,14 +128,20 @@ const TimetableSettings: React.FC = () => {
         timetableAPI.getTimetable(token, signal),
         settingsAPI.getCustomLessons(token, signal),
       ]);
-      if (signal?.aborted) return;
+      if (signal?.aborted) return null;
       if (!timetableResponse.success) throw new Error(timetableResponse.message || 'Der Stundenplan konnte nicht geladen werden.');
       if (!customResponse.success) throw new Error('Eigene Stundenplanänderungen konnten nicht geladen werden.');
-      setTimetable(timetableResponse);
-      setCustomLessons(customResponse.lessons || []);
+      const loaded = {
+        timetable: timetableResponse,
+        customLessons: customResponse.lessons || [],
+      };
+      setTimetable(loaded.timetable);
+      setCustomLessons(loaded.customLessons);
+      return loaded;
     } catch (loadError) {
-      if (axios.isCancel(loadError)) return;
+      if (axios.isCancel(loadError)) return null;
       setError(loadError instanceof Error ? loadError.message : 'Stundenplanänderungen konnten nicht geladen werden.');
+      return null;
     } finally {
       if (!signal?.aborted) setLoading(false);
     }
@@ -115,32 +153,7 @@ const TimetableSettings: React.FC = () => {
     return () => controller.abort();
   }, [token]);
 
-  const entries = useMemo<EditableEntry[]>(() => {
-    const byKey = new Map<string, EditableEntry>();
-    const days = timetable?.days || [];
-    days.forEach(day => {
-      day.lessons.forEach(lesson => {
-        const period = normalisePeriod(String(lesson.period ?? ''));
-        const key = `${day.date}:${period}`;
-        byKey.set(key, { key, date: day.date, period, lesson });
-      });
-    });
-    customLessons.forEach(custom => {
-      const period = normalisePeriod(String(custom.period || ''));
-      const key = `${custom.date}:${period}`;
-      const existing = byKey.get(key);
-      byKey.set(key, {
-        key,
-        date: custom.date,
-        period,
-        lesson: existing?.lesson,
-        custom,
-      });
-    });
-    return [...byKey.values()].sort((left, right) => (
-      left.date.localeCompare(right.date) || periodStart(left.period) - periodStart(right.period)
-    ));
-  }, [customLessons, timetable]);
+  const entries = useMemo(() => buildEntries(timetable, customLessons), [customLessons, timetable]);
 
   useEffect(() => {
     if (selectedKey || !entries.length) return;
@@ -187,6 +200,14 @@ const TimetableSettings: React.FC = () => {
     const previousOverride = !isNew
       ? customLessons.find(lesson => `${lesson.date}:${normalisePeriod(lesson.period)}` === selectedKey)
       : undefined;
+    const destinationOverride = customLessons.find(lesson => (
+      `${lesson.date}:${normalisePeriod(lesson.period)}` === `${draft.date}:${period}`
+      && `${lesson.date}:${normalisePeriod(lesson.period)}` !== selectedKey
+    ));
+    if (destinationOverride) {
+      setError('Für diesen Slot gibt es bereits eine eigene Korrektur. Setze sie zuerst zurück oder wähle einen anderen Slot.');
+      return;
+    }
     setSaving(true);
     setError('');
     setMessage('');
@@ -225,8 +246,9 @@ const TimetableSettings: React.FC = () => {
       const response = await settingsAPI.deleteCustomLesson(token, resetDate, resetPeriod);
       if (!response.success) throw new Error('Eigene Änderung konnte nicht zurückgesetzt werden.');
       setMessage('Portalversion wiederhergestellt.');
-      await load();
-      const entry = entries.find(item => item.date === resetDate && normalisePeriod(item.period) === resetPeriod);
+      const refreshed = await load();
+      if (!refreshed) return;
+      const entry = buildEntries(refreshed.timetable, refreshed.customLessons).find(item => item.date === resetDate && normalisePeriod(item.period) === resetPeriod);
       if (entry?.lesson) {
         setSelectedKey(entry.key);
         setIsNew(false);
