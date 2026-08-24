@@ -73,39 +73,8 @@ const THEME_COLOR_HEX: Record<ThemeColor, string> = {
   amber: '#f59e0b',
 };
 
-const SURFACE_LIGHT: ColorScale = {
-  50: '250 250 250', 100: '245 245 245', 200: '229 229 229',
-  300: '212 212 212', 400: '163 163 163', 500: '115 115 115',
-  600: '82 82 82',    700: '64 64 64',    800: '38 38 38',
-  900: '23 23 23',    950: '10 10 10',
-};
-
-const SURFACE_DARK: ColorScale = {
-  50: '250 250 250',  100: '245 245 245',  200: '229 229 229',
-  300: '212 212 212', 400: '163 163 163', 500: '115 115 115',
-  600: '82 82 82',    700: '64 64 64',     800: '38 38 38',
-  900: '23 23 23',    950: '10 10 10',
-};
-
-const SURFACE_OLED: ColorScale = {
-  // OLED keeps the canvas fully off while preserving enough separation between
-  // controls, raised surfaces and secondary copy to avoid a flat black UI.
-  50: '250 250 250', 100: '242 242 242', 200: '224 224 224',
-  300: '198 198 198', 400: '156 156 156', 500: '118 118 118',
-  600: '66 66 66',    700: '32 32 32',    800: '15 15 15',
-  900: '7 7 7',       950: '0 0 0',
-};
-
 function applyPrimaryTheme(color: ThemeColor) {
   document.documentElement.setAttribute('data-theme', color);
-}
-
-function applySurfaceTheme(isDark: boolean, isOled: boolean) {
-  const colors = isOled ? SURFACE_OLED : isDark ? SURFACE_DARK : SURFACE_LIGHT;
-  const root = document.documentElement;
-  for (const [shade, value] of Object.entries(colors)) {
-    root.style.setProperty(`--color-surface-${shade}`, value);
-  }
 }
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -157,7 +126,6 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       root.classList.remove('dark');
     }
     root.classList.toggle('oled', isOled);
-    applySurfaceTheme(isDark, isOled);
   }, [isDark, isOled]);
 
   useEffect(() => {
