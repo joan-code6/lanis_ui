@@ -466,7 +466,7 @@ export default function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
   return (
     <div className="fixed inset-0 z-[100] flex items-start justify-center pt-[15vh] sm:pt-[20vh] px-4">
       <div className="fixed inset-0 bg-surface-950/50 backdrop-blur-md" onClick={onClose} />
-      <div className="relative w-full max-w-xl backdrop-blur-xl bg-white/80 dark:bg-surface-900/80 rounded-2xl shadow-soft-lg border border-white/30 dark:border-surface-700/40 overflow-hidden animate-scale-in" style={{ boxShadow: '0 4px 40px -8px rgba(0, 0, 0, 0.12), 0 12px 50px -12px rgba(0, 0, 0, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.5)' }}>
+      <div className="search-panel relative w-full max-w-xl backdrop-blur-xl bg-white/80 dark:bg-surface-900/80 rounded-2xl shadow-soft-lg border border-white/30 dark:border-surface-700/40 overflow-hidden animate-scale-in" style={{ boxShadow: '0 4px 40px -8px rgba(0, 0, 0, 0.12), 0 12px 50px -12px rgba(0, 0, 0, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.5)' }}>
         <div className="flex items-center gap-3 px-4 py-3 border-b border-surface-100/80 dark:border-surface-800/60">
           <MagnifyingGlassIcon className="h-5 w-5 text-primary-500 dark:text-primary-400 flex-shrink-0" />
           <input

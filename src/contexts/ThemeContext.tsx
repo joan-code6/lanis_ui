@@ -87,11 +87,14 @@ const SURFACE_DARK: ColorScale = {
   900: '23 23 23',    950: '10 10 10',
 };
 
+// OLED elevation ramp: 950 = panel background (true black),
+// 900 = sidebar/cards, 800 = modals/inputs, 700 = hover states.
+// Each step must stay distinguishable on an OLED display.
 const SURFACE_OLED: ColorScale = {
-  50: '238 238 238', 100: '222 222 222', 200: '178 178 178',
-  300: '138 138 138', 400: '104 104 104', 500: '72 72 72',
-  600: '44 44 44',    700: '20 20 20',    800: '8 8 8',
-  900: '2 2 2',        950: '0 0 0',
+  50: '236 236 236', 100: '220 220 220', 200: '184 184 184',
+  300: '148 148 148', 400: '112 112 112', 500: '82 82 82',
+  600: '54 54 54',   700: '36 36 36',    800: '22 22 22',
+  900: '12 12 12',   950: '0 0 0',
 };
 
 function applyPrimaryTheme(color: ThemeColor) {
