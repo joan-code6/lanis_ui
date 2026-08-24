@@ -1,9 +1,10 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import axios from 'axios';
 import { format, parseISO } from 'date-fns';
 import { de } from 'date-fns/locale';
 import {
   ArrowPathIcon,
+  ArrowLeftIcon,
   CalendarDaysIcon,
   CheckIcon,
   EyeSlashIcon,
@@ -115,10 +116,18 @@ const TimetableSettings: React.FC = () => {
   const [selectedKey, setSelectedKey] = useState('');
   const [draft, setDraft] = useState<CustomLesson>(() => makeDraft(new Date().toISOString().slice(0, 10)));
   const [isNew, setIsNew] = useState(false);
+  const [mobileEditorOpen, setMobileEditorOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+  const lessonListRef = useRef<HTMLElement>(null);
+  const editorRef = useRef<HTMLElement>(null);
+
+  const scrollToMobilePanel = (panel: HTMLElement | null) => {
+    if (!window.matchMedia('(max-width: 1023px)').matches) return;
+    window.requestAnimationFrame(() => panel?.scrollIntoView({ block: 'start' }));
+  };
 
   const load = async (signal?: AbortSignal): Promise<LoadedTimetable | null> => {
     if (!token) return null;
@@ -177,6 +186,8 @@ const TimetableSettings: React.FC = () => {
     setIsNew(false);
     setMessage('');
     setError('');
+    setMobileEditorOpen(true);
+    scrollToMobilePanel(editorRef.current);
   };
 
   const selectNewLesson = () => {
@@ -187,6 +198,13 @@ const TimetableSettings: React.FC = () => {
     setIsNew(true);
     setMessage('');
     setError('');
+    setMobileEditorOpen(true);
+    scrollToMobilePanel(editorRef.current);
+  };
+
+  const closeMobileEditor = () => {
+    setMobileEditorOpen(false);
+    scrollToMobilePanel(lessonListRef.current);
   };
 
   const updateDraft = <K extends keyof CustomLesson>(key: K, value: CustomLesson[K]) => {
@@ -318,7 +336,7 @@ const TimetableSettings: React.FC = () => {
       {message && <p className="rounded-xl bg-emerald-50 p-3 text-sm text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">{message}</p>}
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
-        <section className="card !p-0">
+        <section ref={lessonListRef} className={`card !p-0 ${mobileEditorOpen ? 'hidden lg:block' : ''}`}>
           <div className="flex items-center justify-between border-b border-surface-100 px-4 py-4 dark:border-surface-800 sm:px-5">
             <h3 className="font-semibold text-surface-900 dark:text-white">Stundenplan</h3>
             <button type="button" className="btn btn-primary h-9 px-3 text-xs" onClick={selectNewLesson}>
@@ -370,7 +388,11 @@ const TimetableSettings: React.FC = () => {
           </div>
         </section>
 
-        <section className="card">
+        <section ref={editorRef} className={`card ${mobileEditorOpen ? '' : 'hidden lg:block'}`}>
+          <button type="button" className="mb-4 inline-flex items-center text-sm font-medium text-primary-600 dark:text-primary-400 lg:hidden" onClick={closeMobileEditor}>
+            <ArrowLeftIcon className="mr-1.5 h-4 w-4" />
+            Stundenplan
+          </button>
           <div className="mb-5 flex items-start justify-between gap-4">
             <div>
               <h3 className="text-lg font-semibold text-surface-900 dark:text-white">
