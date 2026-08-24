@@ -4,12 +4,9 @@ import { format, parseISO } from 'date-fns';
 import { de } from 'date-fns/locale';
 import {
   ArrowPathIcon,
-  ArrowTopRightOnSquareIcon,
-  ArrowUturnLeftIcon,
   CalendarDaysIcon,
   CheckIcon,
   EyeSlashIcon,
-  LinkIcon,
   PlusIcon,
   TrashIcon,
 } from '@heroicons/react/24/outline';
@@ -55,13 +52,6 @@ const formatDay = (value: string) => {
   } catch {
     return value;
   }
-};
-
-const portalUrl = (url: string) => {
-  const clean = url.trim();
-  if (!clean) return '';
-  if (/^https?:\/\//i.test(clean)) return clean;
-  return `https://start.schulportal.hessen.de/${clean.replace(/^\//, '')}`;
 };
 
 const draftFromEntry = (entry: EditableEntry): CustomLesson => {
@@ -122,13 +112,11 @@ const TimetableSettings: React.FC = () => {
   const [timetable, setTimetable] = useState<TimetableResponse | null>(null);
   const [customLessons, setCustomLessons] = useState<CustomLesson[]>([]);
   const [classLinks, setClassLinks] = useState<ClassLink[]>([]);
-  const [linkDrafts, setLinkDrafts] = useState<Record<string, string>>({});
   const [selectedKey, setSelectedKey] = useState('');
   const [draft, setDraft] = useState<CustomLesson>(() => makeDraft(new Date().toISOString().slice(0, 10)));
   const [isNew, setIsNew] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [savingLinkId, setSavingLinkId] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
 
@@ -154,7 +142,6 @@ const TimetableSettings: React.FC = () => {
       setTimetable(loaded.timetable);
       setCustomLessons(loaded.customLessons);
       setClassLinks(loaded.classLinks);
-      setLinkDrafts(Object.fromEntries(loaded.classLinks.map(link => [link.course_id, link.url])));
       return loaded;
     } catch (loadError) {
       if (axios.isCancel(loadError)) return null;
@@ -215,47 +202,6 @@ const TimetableSettings: React.FC = () => {
       class_name: course?.name || '',
     }));
     setMessage('');
-  };
-
-  const saveClassLink = async (link: ClassLink) => {
-    if (!token) return;
-    const url = linkDrafts[link.course_id] || '';
-    setSavingLinkId(link.course_id);
-    setError('');
-    setMessage('');
-    try {
-      const response = await settingsAPI.saveClassLink(token, link.course_id, url);
-      if (!response.success) throw new Error('Klassenlink konnte nicht gespeichert werden.');
-      setClassLinks(previous => previous.map(item => item.course_id === link.course_id
-        ? { ...item, url, overridden: true }
-        : item));
-      setMessage(`Link für ${link.name || 'den Kurs'} gespeichert.`);
-    } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : 'Klassenlink konnte nicht gespeichert werden.');
-    } finally {
-      setSavingLinkId(null);
-    }
-  };
-
-  const resetClassLink = async (link: ClassLink) => {
-    if (!token || !link.overridden) return;
-    setSavingLinkId(link.course_id);
-    setError('');
-    setMessage('');
-    try {
-      const response = await settingsAPI.deleteClassLink(token, link.course_id);
-      if (!response.success) throw new Error('Eigener Klassenlink konnte nicht entfernt werden.');
-      const refreshed = await settingsAPI.getClassLinks(token);
-      if (!refreshed.success) throw new Error('Portal-Link konnte nicht neu geladen werden.');
-      const links = refreshed.links || [];
-      setClassLinks(links);
-      setLinkDrafts(Object.fromEntries(links.map(item => [item.course_id, item.url])));
-      setMessage(`Portal-Link für ${link.name || 'den Kurs'} wiederhergestellt.`);
-    } catch (resetError) {
-      setError(resetError instanceof Error ? resetError.message : 'Eigener Klassenlink konnte nicht entfernt werden.');
-    } finally {
-      setSavingLinkId(null);
-    }
   };
 
   const save = async (event: React.FormEvent) => {
@@ -499,46 +445,6 @@ const TimetableSettings: React.FC = () => {
                 </select>
               </div>
             </div>
-
-            {selectedClass && !draft.removed && (() => {
-              const currentUrl = linkDrafts[selectedClass.course_id] || '';
-              const previewUrl = portalUrl(currentUrl);
-              const isSavingLink = savingLinkId === selectedClass.course_id;
-              return (
-                <div className="rounded-xl border border-surface-200 p-3 dark:border-surface-700">
-                  <div className="mb-2 flex items-center justify-between gap-3">
-                    <label className="flex items-center gap-2 text-sm font-medium text-surface-800 dark:text-surface-200" htmlFor="custom-lesson-class-link">
-                      <LinkIcon className="h-4 w-4" />
-                      Link zu {selectedClass.name || 'diesem Kurs'}
-                    </label>
-                    {previewUrl && (
-                      <a href={previewUrl} target="_blank" rel="noopener noreferrer" className="btn btn-ghost h-8 px-2" aria-label={`${selectedClass.name || 'Kurs'} öffnen`}>
-                        <ArrowTopRightOnSquareIcon className="h-4 w-4" />
-                      </a>
-                    )}
-                  </div>
-                  <div className="flex flex-col gap-2 sm:flex-row">
-                    <input
-                      id="custom-lesson-class-link"
-                      className="input min-w-0 flex-1 text-sm"
-                      value={currentUrl}
-                      onChange={event => setLinkDrafts(previous => ({ ...previous, [selectedClass.course_id]: event.target.value }))}
-                      placeholder="https://… oder Portal-Adresse"
-                    />
-                    <button type="button" className="btn btn-secondary shrink-0" onClick={() => saveClassLink(selectedClass)} disabled={isSavingLink}>
-                      {isSavingLink ? <ArrowPathIcon className="mr-2 h-4 w-4 animate-spin" /> : <CheckIcon className="mr-2 h-4 w-4" />}
-                      Link speichern
-                    </button>
-                  </div>
-                  {selectedClass.overridden && (
-                    <button type="button" className="btn btn-ghost mt-2 h-8 px-2 text-xs" onClick={() => resetClassLink(selectedClass)} disabled={isSavingLink}>
-                      <ArrowUturnLeftIcon className="mr-1.5 h-3.5 w-3.5" />
-                      Portal-Link nutzen
-                    </button>
-                  )}
-                </div>
-              );
-            })()}
 
             <div>
               <label className="label" htmlFor="custom-lesson-info">Notiz</label>
