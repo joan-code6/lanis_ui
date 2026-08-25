@@ -561,16 +561,13 @@ const Settings: React.FC = () => {
               <p className="text-sm text-surface-500 mt-0.5">
                 {isOled
                   ? 'Reines Schwarz spart Energie auf OLED-Displays'
-                  : isDark
-                    ? 'Schwarzer Hintergrund für OLED-Displays'
-                    : 'Nur im Dark Mode verfügbar'}
+                  : 'Schwarzer Hintergrund für OLED-Displays'}
               </p>
             </div>
             <button
               type="button"
               onClick={toggleOled}
-              disabled={!isDark}
-              className={`relative w-14 h-7 rounded-full transition-colors duration-300 ease-out-expo disabled:cursor-not-allowed disabled:opacity-50 ${
+              className={`relative w-14 h-7 rounded-full transition-colors duration-300 ease-out-expo ${
                 isOled ? 'bg-primary-600' : 'bg-surface-300 dark:bg-surface-700'
               }`}
               role="switch"
