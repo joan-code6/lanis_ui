@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { EyeIcon, EyeSlashIcon, SunIcon, MoonIcon } from '@heroicons/react/24/outline';
@@ -339,8 +340,14 @@ const LoginForm: React.FC = () => {
             </button>
           </div>
 
-          <p className="text-center text-xs text-surface-400 leading-relaxed">
-            Dies ist eine inoffizielle Benutzeroberfläche für das Schulportal Hessen.
+          <p className="text-center whitespace-nowrap text-[9px] sm:text-[10px] tracking-tight text-surface-400 dark:text-surface-500 leading-none">
+            Mit der Anmeldung akzeptierst du unsere{' '}
+            <Link
+              to="/privacy-policy"
+              className="underline underline-offset-2 hover:text-surface-600 dark:hover:text-surface-300 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 rounded-sm"
+            >
+              Datenschutzerklärung
+            </Link>.
           </p>
         </form>
       </div>

@@ -251,9 +251,12 @@ const Landingpage: React.FC = () => {
         </section>
 
         {/* ═══ Footer ═══ */}
-        <footer className="max-w-6xl mx-auto px-6 pb-12 text-center">
+        <footer className="max-w-6xl mx-auto px-6 pb-12 text-center flex items-center justify-center gap-4">
           <Link to="/impressum" className="text-[11px] text-[#bbb] hover:text-[#888] transition-colors">
             Impressum
+          </Link>
+          <Link to="/privacy-policy" className="text-[11px] text-[#bbb] hover:text-[#888] transition-colors">
+            Datenschutz
           </Link>
         </footer>
       </div>

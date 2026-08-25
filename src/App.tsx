@@ -15,6 +15,7 @@ import Dsbmobile from './components/dsb/Dsbmobile';
 import DemoRoute from './components/demo/DemoRoute';
 import Landingpage from './components/landing/Landingpage';
 import Impressum from './components/legal/Impressum';
+import PrivacyPolicy from './components/legal/PrivacyPolicy';
 import Timetable from './components/timetable/Timetable';
 import StudyGroups from './components/study-groups/StudyGroups';
 
@@ -49,6 +50,7 @@ const AppRoutes: React.FC = () => {
         <Route path="/" element={<LandingRoot />} />
         <Route path="/landing" element={<Navigate to="/" replace />} />
         <Route path="/impressum" element={<Impressum />} />
+        <Route path="/privacy-policy" element={<PrivacyPolicy />} />
         <Route path="/demo" element={<DemoRoute />}>
           <Route index element={<Navigate to="/demo/dashboard" replace />} />
           <Route path="dashboard" element={<Dashboard />} />
