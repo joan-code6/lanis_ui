@@ -199,6 +199,16 @@ const Dsbmobile: React.FC = () => {
     return classValue.trim().toLowerCase().includes(userClass.toLowerCase());
   };
 
+  const visibleTables = tables
+    .map((table, tableIdx) => ({
+      table,
+      tableIdx,
+      filteredRows: showAllClasses
+        ? (table.rows || [])
+        : (table.rows ? table.rows.filter(row => findClassColumnAndMatch(row, table.headers)) : []),
+    }))
+    .filter(({ table, filteredRows }) => table.headers.length > 0 && filteredRows.length > 0);
+
   if (!token) {
     return (
       <div className="p-6">
@@ -278,21 +288,26 @@ const Dsbmobile: React.FC = () => {
         </div>
       )}
 
-      {!isLoading && !isLoadingPlan && tables.length > 0 && (
+      {!isLoading && !isLoadingPlan && tables.length > 0 && visibleTables.length === 0 && !error && (
+        <div className="card text-center py-12">
+          <CalendarDaysIcon className="mx-auto h-12 w-12 text-surface-400 dark:text-surface-500" />
+          <h3 className="mt-2 text-sm font-medium text-surface-900 dark:text-surface-100">
+            {showAllClasses ? 'Keine Vertretungen vorhanden' : 'Keine Vertretungen für deine Klasse'}
+          </h3>
+          <p className="mt-1 text-sm text-surface-500 dark:text-surface-400">
+            {showAllClasses
+              ? 'Im aktuellen Plan sind keine Vertretungen eingetragen.'
+              : userClass
+                ? `Für Klasse ${userClass} sind aktuell keine Vertretungen eingetragen.`
+                : 'Für deine Klasse sind aktuell keine Vertretungen eingetragen.'}
+          </p>
+        </div>
+      )}
+
+      {!isLoading && !isLoadingPlan && visibleTables.length > 0 && (
         <div className="space-y-6">
-          {tables
-            .filter(table => {
-              if (table.headers.length === 0) return false;
-              const filteredRows = showAllClasses
-                ? (table.rows || [])
-                : (table.rows ? table.rows.filter(row => findClassColumnAndMatch(row, table.headers)) : []);
-              if (filteredRows.length === 0) return false;
-              return true;
-            })
-            .map((table, tableIdx) => {
-              const filteredRows = showAllClasses
-                ? (table.rows || [])
-                : (table.rows ? table.rows.filter(row => findClassColumnAndMatch(row, table.headers)) : []);
+          {visibleTables
+            .map(({ table, tableIdx, filteredRows }) => {
               const dateLabel = table.date
                 ? new Date(table.date).toLocaleDateString('de-DE', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
                 : (menuItems[selectedPlanIndex] || 'Vertretungen');
