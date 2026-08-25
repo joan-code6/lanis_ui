@@ -30,13 +30,12 @@ const Timetable: React.FC = () => {
   const basePath = useBasePath();
   const [personalDays, setPersonalDays] = useState<TimetableDay[]>([]);
   const [allDays, setAllDays] = useState<TimetableDay[]>([]);
-  const [timeSlots, setTimeSlots] = useState<NonNullable<TimetableResponse['time_slots']>>([]);
   const [activeWeek, setActiveWeek] = useState<'A' | 'B' | undefined>();
   const [referenceWeekStart, setReferenceWeekStart] = useState<string>();
   const [customLessons, setCustomLessons] = useState<NonNullable<TimetableResponse['custom_lessons']>>([]);
   const [timetableViewMode] = useState(getStoredTimetableViewMode);
   const [planMode, setPlanMode] = useState<'personal' | 'all'>('personal');
-  const [viewMode, setViewMode] = useState<'cards' | 'timeline'>('cards');
+  const [selectedWeek, setSelectedWeek] = useState<'A' | 'B' | undefined>();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [reloadKey, setReloadKey] = useState(0);
@@ -53,7 +52,6 @@ const Timetable: React.FC = () => {
         if (!response.success) throw new Error(response.message || 'Der Stundenplan konnte nicht geladen werden.');
         setPersonalDays(response.personal_days || response.days || []);
         setAllDays(response.all_days || response.days || []);
-        setTimeSlots(response.time_slots || []);
         setActiveWeek(response.active_week);
         setReferenceWeekStart(response.week_start);
         setCustomLessons(response.custom_lessons || []);
@@ -69,33 +67,46 @@ const Timetable: React.FC = () => {
     return () => controller.abort();
   }, [token, reloadKey]);
 
+  const selectedDays = planMode === 'all' ? allDays : personalDays;
+  const hasAlternatingWeeks = useMemo(() => {
+    const weekTypes = new Set([
+      ...selectedDays.flatMap(day => day.lessons.map(lesson => lesson.week_type)),
+      ...customLessons.map(lesson => lesson.week_type),
+    ]);
+    return weekTypes.has('A') && weekTypes.has('B');
+  }, [customLessons, selectedDays]);
+  const weekOverride = timetableViewMode === 'week' && hasAlternatingWeeks
+    ? selectedWeek || (activeWeek ? undefined : 'A')
+    : undefined;
   const visibleDays = useMemo(() => {
-    const selected = planMode === 'all' ? allDays : personalDays;
     return projectTimetableDays(
-      selected,
+      selectedDays,
       activeWeek,
       referenceWeekStart,
       timetableViewMode,
       customLessons,
+      new Date(),
+      weekOverride,
     );
-  }, [activeWeek, allDays, customLessons, personalDays, planMode, referenceWeekStart, timetableViewMode]);
+  }, [activeWeek, customLessons, referenceWeekStart, selectedDays, timetableViewMode, weekOverride]);
   const lessonCount = useMemo(() => visibleDays.reduce((total, day) => total + day.lessons.length, 0), [visibleDays]);
   const firstVisibleDate = visibleDays[0]?.date ? new Date(`${visibleDays[0].date}T12:00:00`) : undefined;
   const lastVisibleDay = visibleDays[visibleDays.length - 1];
   const lastVisibleDate = lastVisibleDay?.date ? new Date(`${lastVisibleDay.date}T12:00:00`) : undefined;
   const displayedWeekTypes = useMemo(() => {
+    if (weekOverride) return [weekOverride];
     if (!activeWeek || !referenceWeekStart) return [];
     const referenceMonday = new Date(`${referenceWeekStart}T12:00:00`);
     return [...new Set(visibleDays.map(day => (
       weekTypeForDate(new Date(`${day.date}T12:00:00`), referenceMonday, activeWeek)
     )).filter((week): week is 'A' | 'B' => Boolean(week)))];
-  }, [activeWeek, referenceWeekStart, visibleDays]);
+  }, [activeWeek, referenceWeekStart, visibleDays, weekOverride]);
 
   useLayoutEffect(() => {
-    if (loading || viewMode !== 'cards' || !window.matchMedia('(max-width: 639px)').matches) return;
+    if (loading || !window.matchMedia('(max-width: 639px)').matches) return;
     const today = dayScrollerRef.current?.querySelector<HTMLElement>('[data-today="true"]');
     today?.scrollIntoView({ behavior: 'auto', block: 'nearest', inline: 'start' });
-  }, [loading, planMode, viewMode, visibleDays]);
+  }, [loading, planMode, visibleDays]);
 
   const openCourse = (lesson: TimetableLesson) => {
     if (lesson.course_id) navigate(`${basePath}/courses/${lesson.course_id}`);
@@ -123,12 +134,14 @@ const Timetable: React.FC = () => {
             value={planMode}
             onChange={value => setPlanMode(value as 'personal' | 'all')}
           />
-          <SegmentedControl
-            label="Darstellung"
-            options={[['cards', 'Karten'], ['timeline', 'Zeitachse']]}
-            value={viewMode}
-            onChange={value => setViewMode(value as 'cards' | 'timeline')}
-          />
+          {timetableViewMode === 'week' && hasAlternatingWeeks && (
+            <SegmentedControl
+              label="Schulwoche"
+              options={[['A', 'A-Woche'], ['B', 'B-Woche']]}
+              value={selectedWeek || displayedWeekTypes[0] || activeWeek || 'A'}
+              onChange={value => setSelectedWeek(value as 'A' | 'B')}
+            />
+          )}
         </div>
 
         {loading ? (
@@ -148,8 +161,6 @@ const Timetable: React.FC = () => {
             <h2 className="font-semibold text-surface-900 dark:text-white">Keine Stunden eingetragen</h2>
             <p className="mt-1 text-sm text-surface-500">Für diese Woche wurden keine Unterrichtsstunden gefunden.</p>
           </div>
-        ) : viewMode === 'timeline' && timeSlots.length ? (
-          <TimelineView days={visibleDays} timeSlots={timeSlots} onOpenCourse={openCourse} />
         ) : (
           <div ref={dayScrollerRef} className="scrollbar-hide -mx-3 flex snap-x snap-mandatory gap-3 overflow-x-auto px-3 pb-3 sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 sm:pb-0 md:gap-4 xl:grid-cols-5">
             {visibleDays.map(day => {
