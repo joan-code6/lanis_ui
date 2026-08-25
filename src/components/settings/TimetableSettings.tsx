@@ -366,7 +366,7 @@ const TimetableSettings: React.FC = () => {
       {message && <p className="rounded-xl bg-emerald-50 p-3 text-sm text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">{message}</p>}
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
-        <section ref={lessonListRef} className={`card !p-0 ${mobileEditorOpen ? 'hidden lg:block' : ''}`}>
+        <section ref={lessonListRef} className={`card !p-0 lg:flex lg:min-h-0 lg:flex-col ${mobileEditorOpen ? 'hidden lg:flex' : ''}`}>
           <div className="flex items-center justify-between border-b border-surface-100 px-4 py-4 dark:border-surface-800 sm:px-5">
             <h3 className="font-semibold text-surface-900 dark:text-white">Stundenplan</h3>
             <button type="button" className="btn btn-primary h-9 px-3 text-xs" onClick={selectNewLesson}>
@@ -374,7 +374,7 @@ const TimetableSettings: React.FC = () => {
               Neue Stunde
             </button>
           </div>
-          <div className="max-h-[31rem] overflow-y-auto p-3 sm:p-4">
+          <div className="max-h-[31rem] overflow-y-auto p-3 sm:p-4 lg:min-h-0 lg:flex-1 lg:max-h-none">
             {entries.length === 0 ? (
               <div className="rounded-xl border border-dashed border-surface-300 p-6 text-center dark:border-surface-700">
                 <CalendarDaysIcon className="mx-auto mb-2 h-7 w-7 text-surface-400" />
