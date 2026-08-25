@@ -225,8 +225,7 @@ const Dsbmobile: React.FC = () => {
             {showAllClasses ? 'Vertretungen für alle Klassen' : userClass ? `Vertretungen für Klasse ${userClass}` : 'Aktuelle Vertretungen und Abwesenheiten'}
           </span>
           {lastUpdated && (
-            <span className="inline-flex items-baseline gap-2 whitespace-nowrap text-xs text-surface-400 dark:text-surface-500">
-              <span aria-hidden="true">·</span>
+            <span className="whitespace-nowrap text-xs text-surface-400 dark:text-surface-500">
               <time dateTime={lastUpdated}>Stand {formatLastUpdated(lastUpdated)}</time>
             </span>
           )}
