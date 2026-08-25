@@ -534,7 +534,7 @@ const Settings: React.FC = () => {
             <button
               type="button"
               onClick={toggleDark}
-              className={`relative w-14 h-7 rounded-full transition-colors duration-300 ease-out-expo ${
+              className={`relative h-7 w-14 shrink-0 rounded-full transition-colors duration-300 ease-out-expo ${
                 isDark ? 'bg-primary-600' : 'bg-surface-300'
               }`}
               role="switch"
@@ -555,34 +555,36 @@ const Settings: React.FC = () => {
             </button>
           </div>
 
-          <div className="mt-5 flex items-center justify-between gap-4 border-t border-surface-100 pt-5 dark:border-surface-800">
-            <div>
-              <h3 className="text-base font-semibold text-surface-900 dark:text-surface-100">OLED-Modus</h3>
-              <p className="text-sm text-surface-500 mt-0.5">
-                {isOled
-                  ? 'Reines Schwarz spart Energie auf OLED-Displays'
-                  : 'Schwarzer Hintergrund für OLED-Displays'}
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={toggleOled}
-              className={`relative w-14 h-7 rounded-full transition-colors duration-300 ease-out-expo ${
-                isOled ? 'bg-primary-600' : 'bg-surface-300 dark:bg-surface-700'
-              }`}
-              role="switch"
-              aria-checked={isOled}
-              aria-label="OLED-Modus"
-            >
-              <span
-                className={`absolute top-0.5 left-0.5 w-6 h-6 rounded-full bg-white dark:bg-surface-200 shadow-soft flex items-center justify-center transition-all duration-300 ease-out-expo ${
-                  isOled ? 'translate-x-7' : 'translate-x-0'
+          {isDark && (
+            <div className="mt-5 flex items-center justify-between gap-4 border-t border-surface-100 pt-5 dark:border-surface-800">
+              <div>
+                <h3 className="text-base font-semibold text-surface-900 dark:text-surface-100">OLED-Modus</h3>
+                <p className="text-sm text-surface-500 mt-0.5">
+                  {isOled
+                    ? 'Reines Schwarz spart Energie auf OLED-Displays'
+                    : 'Schwarzer Hintergrund für OLED-Displays'}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={toggleOled}
+                className={`relative h-7 w-14 shrink-0 rounded-full transition-colors duration-300 ease-out-expo ${
+                  isOled ? 'bg-primary-600' : 'bg-surface-300 dark:bg-surface-700'
                 }`}
+                role="switch"
+                aria-checked={isOled}
+                aria-label="OLED-Modus"
               >
-                <MoonIcon className={`w-3 h-3 ${isOled ? 'text-primary-600' : 'text-surface-400'}`} />
-              </span>
-            </button>
-          </div>
+                <span
+                  className={`absolute top-0.5 left-0.5 w-6 h-6 rounded-full bg-white dark:bg-surface-200 shadow-soft flex items-center justify-center transition-all duration-300 ease-out-expo ${
+                    isOled ? 'translate-x-7' : 'translate-x-0'
+                  }`}
+                >
+                  <MoonIcon className={`w-3 h-3 ${isOled ? 'text-primary-600' : 'text-surface-400'}`} />
+                </span>
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Primary Color */}
