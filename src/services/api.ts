@@ -545,9 +545,13 @@ export const timetableAPI = {
       return data as TimetableResponse;
     }
 
-    const monday = new Date();
-    const day = monday.getDay();
-    monday.setDate(monday.getDate() - (day === 0 ? 6 : day - 1));
+    const monday = data.week_start
+      ? new Date(`${data.week_start}T12:00:00`)
+      : new Date();
+    if (!data.week_start) {
+      const day = monday.getDay();
+      monday.setDate(monday.getDate() - (day === 0 ? 6 : day - 1));
+    }
     const weekMatch = String(data.week_badge || '').toUpperCase().match(/\b([AB])\b/);
     const activeWeek = weekMatch?.[1] as 'A' | 'B' | undefined;
     const mapPlan = (plan: any[]) => (Array.isArray(data.days) ? data.days : []).map((name: string, index: number) => {
@@ -577,8 +581,8 @@ export const timetableAPI = {
         })),
       };
     });
-    const allDays = mapPlan(data.plan_for_all || []);
-    const mappedPersonalDays = mapPlan(data.plan_for_own || []);
+    const allDays = mapPlan(data.template_plan_for_all || data.plan_for_all || []);
+    const mappedPersonalDays = mapPlan(data.template_plan_for_own || data.plan_for_own || []);
     const personalDays = mappedPersonalDays.some((dayEntry: TimetableDay) => dayEntry.lessons.length) ? mappedPersonalDays : allDays;
     const timeSlots = (Array.isArray(data.hours) ? data.hours : []).map((slot: any, index: number) => {
       const labelPeriod = Number.parseInt(String(slot.label || '').match(/\d+/)?.[0] || '', 10);
@@ -591,7 +595,7 @@ export const timetableAPI = {
 
     return {
       success: true,
-      week_start: personalDays[0]?.date,
+      week_start: data.week_start || personalDays[0]?.date,
       week_end: personalDays[personalDays.length - 1]?.date,
       days: personalDays,
       active_week: activeWeek,

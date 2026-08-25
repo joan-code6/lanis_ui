@@ -14,6 +14,11 @@ import {
 import { useAuth } from '../../contexts/AuthContext';
 import { settingsAPI, timetableAPI } from '../../services/api';
 import { ClassLink, CustomLesson, TimetableLesson, TimetableResponse } from '../../types';
+import {
+  getStoredTimetableViewMode,
+  storeTimetableViewMode,
+  TimetableViewMode,
+} from '../../utils/timetableView';
 
 interface EditableEntry {
   key: string;
@@ -117,6 +122,7 @@ const TimetableSettings: React.FC = () => {
   const [draft, setDraft] = useState<CustomLesson>(() => makeDraft(new Date().toISOString().slice(0, 10)));
   const [isNew, setIsNew] = useState(false);
   const [mobileEditorOpen, setMobileEditorOpen] = useState(false);
+  const [timetableViewMode, setTimetableViewMode] = useState(getStoredTimetableViewMode);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -210,6 +216,11 @@ const TimetableSettings: React.FC = () => {
   const updateDraft = <K extends keyof CustomLesson>(key: K, value: CustomLesson[K]) => {
     setDraft(previous => ({ ...previous, [key]: value }));
     setMessage('');
+  };
+
+  const updateTimetableViewMode = (mode: TimetableViewMode) => {
+    setTimetableViewMode(mode);
+    storeTimetableViewMode(mode);
   };
 
   const selectCourse = (courseId: string) => {
@@ -332,6 +343,25 @@ const TimetableSettings: React.FC = () => {
 
   return (
     <div className="space-y-5">
+      <section className="card flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 items-start gap-3">
+          <CalendarDaysIcon className="mt-0.5 h-5 w-5 shrink-0 text-primary-500" aria-hidden="true" />
+          <div>
+            <label className="font-medium text-surface-900 dark:text-white" htmlFor="timetable-view-mode">Standardansicht</label>
+            <p className="mt-0.5 text-xs text-surface-500">Wird auf diesem Gerät gespeichert.</p>
+          </div>
+        </div>
+        <select
+          id="timetable-view-mode"
+          className="input w-full sm:w-52"
+          value={timetableViewMode}
+          onChange={event => updateTimetableViewMode(event.target.value as TimetableViewMode)}
+        >
+          <option value="rolling">Kommende 7 Tage</option>
+          <option value="week">Schulwoche</option>
+        </select>
+      </section>
+
       {error && <p className="rounded-xl bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-300">{error}</p>}
       {message && <p className="rounded-xl bg-emerald-50 p-3 text-sm text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">{message}</p>}
 

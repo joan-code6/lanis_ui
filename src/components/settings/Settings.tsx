@@ -92,8 +92,8 @@ const settingsSections: Array<{
   },
   {
     id: 'timetable',
-    title: 'Stundenplan bearbeiten',
-    description: 'Stunden anlegen, ändern und mit Kursen verknüpfen.',
+    title: 'Stundenplan',
+    description: 'Anzeige wählen, Stunden ändern und Kurse verknüpfen.',
     icon: CalendarDaysIcon,
   },
   {
@@ -113,7 +113,7 @@ const settingsSections: Array<{
 const sectionMeta: Record<SettingsSection, { title: string; subtitle: string }> = {
   home: { title: 'Einstellungen', subtitle: 'Passe dein Schulportal an.' },
   appearance: { title: 'Erscheinungsbild', subtitle: 'Farben und Oberfläche an deine Gewohnheiten anpassen.' },
-  timetable: { title: 'Stundenplan bearbeiten', subtitle: 'Stunden anlegen, bearbeiten und mit Kursen verknüpfen.' },
+  timetable: { title: 'Stundenplan', subtitle: 'Anzeige und eigene Stundenplanänderungen verwalten.' },
   notifications: { title: 'Benachrichtigungen', subtitle: 'Neue Nachrichten mit Web-Push zuverlässig mitbekommen.' },
   app: { title: 'App & Installation', subtitle: 'Lanis auf deinem Gerät griffbereit halten.' },
 };

@@ -1,6 +1,6 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import axios from 'axios';
-import { addDays, format, isToday, startOfWeek } from 'date-fns';
+import { format, isToday } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -17,20 +17,25 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useBasePath } from '../../contexts/BasePathContext';
 import { timetableAPI } from '../../services/api';
 import { TimetableDay, TimetableLesson, TimetableResponse } from '../../types';
+import {
+  getStoredTimetableViewMode,
+  projectTimetableDays,
+  weekTypeForDate,
+} from '../../utils/timetableView';
 import SEO from '../seo/SEO';
 
 const Timetable: React.FC = () => {
   const { token } = useAuth();
   const navigate = useNavigate();
   const basePath = useBasePath();
-  const [weekStart] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
-  const [days, setDays] = useState<TimetableDay[]>([]);
   const [personalDays, setPersonalDays] = useState<TimetableDay[]>([]);
   const [allDays, setAllDays] = useState<TimetableDay[]>([]);
   const [timeSlots, setTimeSlots] = useState<NonNullable<TimetableResponse['time_slots']>>([]);
   const [activeWeek, setActiveWeek] = useState<'A' | 'B' | undefined>();
+  const [referenceWeekStart, setReferenceWeekStart] = useState<string>();
+  const [customLessons, setCustomLessons] = useState<NonNullable<TimetableResponse['custom_lessons']>>([]);
+  const [timetableViewMode] = useState(getStoredTimetableViewMode);
   const [planMode, setPlanMode] = useState<'personal' | 'all'>('personal');
-  const [weekMode, setWeekMode] = useState<'current' | 'all'>('current');
   const [viewMode, setViewMode] = useState<'cards' | 'timeline'>('cards');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -46,11 +51,12 @@ const Timetable: React.FC = () => {
     timetableAPI.getTimetable(token, controller.signal)
       .then(response => {
         if (!response.success) throw new Error(response.message || 'Der Stundenplan konnte nicht geladen werden.');
-        setDays(response.days || []);
         setPersonalDays(response.personal_days || response.days || []);
         setAllDays(response.all_days || response.days || []);
         setTimeSlots(response.time_slots || []);
         setActiveWeek(response.active_week);
+        setReferenceWeekStart(response.week_start);
+        setCustomLessons(response.custom_lessons || []);
       })
       .catch(err => {
         if (axios.isCancel(err)) return;
@@ -65,19 +71,31 @@ const Timetable: React.FC = () => {
 
   const visibleDays = useMemo(() => {
     const selected = planMode === 'all' ? allDays : personalDays;
-    if (weekMode === 'all' || !activeWeek) return selected;
-    return selected.map(day => ({
-      ...day,
-      lessons: day.lessons.filter(lesson => !lesson.week_type || lesson.week_type === activeWeek),
-    }));
-  }, [activeWeek, allDays, personalDays, planMode, weekMode]);
+    return projectTimetableDays(
+      selected,
+      activeWeek,
+      referenceWeekStart,
+      timetableViewMode,
+      customLessons,
+    );
+  }, [activeWeek, allDays, customLessons, personalDays, planMode, referenceWeekStart, timetableViewMode]);
   const lessonCount = useMemo(() => visibleDays.reduce((total, day) => total + day.lessons.length, 0), [visibleDays]);
+  const firstVisibleDate = visibleDays[0]?.date ? new Date(`${visibleDays[0].date}T12:00:00`) : undefined;
+  const lastVisibleDay = visibleDays[visibleDays.length - 1];
+  const lastVisibleDate = lastVisibleDay?.date ? new Date(`${lastVisibleDay.date}T12:00:00`) : undefined;
+  const displayedWeekTypes = useMemo(() => {
+    if (!activeWeek || !referenceWeekStart) return [];
+    const referenceMonday = new Date(`${referenceWeekStart}T12:00:00`);
+    return [...new Set(visibleDays.map(day => (
+      weekTypeForDate(new Date(`${day.date}T12:00:00`), referenceMonday, activeWeek)
+    )).filter((week): week is 'A' | 'B' => Boolean(week)))];
+  }, [activeWeek, referenceWeekStart, visibleDays]);
 
   useLayoutEffect(() => {
     if (loading || viewMode !== 'cards' || !window.matchMedia('(max-width: 639px)').matches) return;
     const today = dayScrollerRef.current?.querySelector<HTMLElement>('[data-today="true"]');
     today?.scrollIntoView({ behavior: 'auto', block: 'nearest', inline: 'start' });
-  }, [loading, planMode, viewMode, visibleDays, weekMode]);
+  }, [loading, planMode, viewMode, visibleDays]);
 
   const openCourse = (lesson: TimetableLesson) => {
     if (lesson.course_id) navigate(`${basePath}/courses/${lesson.course_id}`);
@@ -90,8 +108,10 @@ const Timetable: React.FC = () => {
         <header className="mb-4 sm:mb-6">
           <h1 className="text-2xl font-bold tracking-tight text-surface-900 dark:text-white sm:text-3xl">Stundenplan</h1>
           <div className="mt-1.5 flex flex-wrap items-center gap-2 text-sm text-surface-500 dark:text-surface-400">
-            <span>{format(weekStart, "d. MMMM", { locale: de })} – {format(addDays(weekStart, 4), "d. MMMM yyyy", { locale: de })}</span>
-            {activeWeek && <span className="badge badge-primary">{activeWeek}-Woche</span>}
+            {firstVisibleDate && lastVisibleDate && (
+              <span>{format(firstVisibleDate, "d. MMMM", { locale: de })} – {format(lastVisibleDate, "d. MMMM yyyy", { locale: de })}</span>
+            )}
+            {displayedWeekTypes.map(week => <span key={week} className="badge badge-primary">{week}-Woche</span>)}
           </div>
 
         </header>
@@ -102,12 +122,6 @@ const Timetable: React.FC = () => {
             options={[['personal', 'Persönlich'], ['all', 'Gesamtplan']]}
             value={planMode}
             onChange={value => setPlanMode(value as 'personal' | 'all')}
-          />
-          <SegmentedControl
-            label="Wochen"
-            options={[['current', activeWeek ? `${activeWeek}-Woche` : 'Aktuell'], ['all', 'Alle Wochen']]}
-            value={weekMode}
-            onChange={value => setWeekMode(value as 'current' | 'all')}
           />
           <SegmentedControl
             label="Darstellung"
