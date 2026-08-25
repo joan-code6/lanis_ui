@@ -239,9 +239,6 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
                     className={`nav-link-icon ${isActive ? 'text-primary-600 dark:text-primary-400' : 'text-surface-400 dark:text-surface-500'}`}
                   />
                   {item.name}
-                  {isActive && (
-                    <span className="ml-auto w-1.5 h-1.5 rounded-full bg-primary-600 dark:bg-primary-400" />
-                  )}
                 </Link>
               );
             })}

@@ -132,11 +132,6 @@ html.oled .text-surface-600:not([class*="dark:text-"]) { color: rgb(var(--color-
 html.oled .text-surface-500:not([class*="dark:text-"]) { color: rgb(var(--color-surface-400)); }
 html.oled .text-surface-400:not([class*="dark:text-"]) { color: rgb(var(--color-surface-500)); }
 
-html.oled .nav-link-active {
-  box-shadow: inset 3px 0 0 rgb(var(--color-primary-400) / 0.9),
-              inset 0 1px 0 rgb(var(--color-primary-400) / 0.06);
-}
-
 html.oled :focus-visible {
   outline: 2px solid rgb(var(--color-primary-400) / 0.9);
   outline-offset: 2px;
