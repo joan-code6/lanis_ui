@@ -82,7 +82,7 @@ const seedLocalStorage = () => {
     selectedPlanIndex: 0,
     timestamp: Date.now(),
   };
-  localStorage.setItem('dsb_plan_cache', JSON.stringify(dsbPlan));
+  localStorage.setItem('dsb_plan_cache_v2', JSON.stringify(dsbPlan));
 };
 
 const DemoRoute: React.FC = () => {

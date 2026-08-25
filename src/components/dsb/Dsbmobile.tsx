@@ -8,7 +8,7 @@ import {
   CalendarDaysIcon,
 } from '@heroicons/react/24/outline';
 
-const DSB_CACHE_KEY = 'dsb_plan_cache';
+const DSB_CACHE_KEY = 'dsb_plan_cache_v2';
 const DSB_CACHE_TTL = 6 * 60 * 60 * 1000;
 
 interface CachedDSBData {

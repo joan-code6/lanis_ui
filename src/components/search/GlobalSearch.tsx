@@ -150,7 +150,7 @@ function searchCacheData(query: string): SearchItem[] {
   } catch {}
 
   try {
-    const raw = localStorage.getItem('dsb_plan_cache');
+    const raw = localStorage.getItem('dsb_plan_cache_v2');
     if (raw) {
       const data = JSON.parse(raw);
       for (const t of data?.tables || []) {
