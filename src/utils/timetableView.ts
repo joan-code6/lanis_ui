@@ -110,6 +110,7 @@ export const projectTimetableDays = (
   mode: TimetableViewMode,
   overrides: CustomLesson[] = [],
   today: Date = new Date(),
+  forcedWeek?: 'A' | 'B',
 ): TimetableDay[] => {
   if (!templateDays.length) return [];
   const templatesByWeekday = new Map(
@@ -122,7 +123,7 @@ export const projectTimetableDays = (
   return datesForMode(mode, today).flatMap(value => {
     const template = templatesByWeekday.get(getDay(value));
     if (!template) return [];
-    const activeWeek = weekTypeForDate(value, referenceMonday, referenceWeek);
+    const activeWeek = forcedWeek || weekTypeForDate(value, referenceMonday, referenceWeek);
     const lessons = template.lessons
       .filter(lesson => !lesson.week_type || !activeWeek || lesson.week_type === activeWeek)
       .map(lesson => ({ ...lesson }));
