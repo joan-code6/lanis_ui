@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { API_BASE_URL } from '../../services/api';
+import { DEFAULT_API_BASE_URL } from '../../utils/backendConfig';
 import SEO from '../seo/SEO';
 
 const Impressum: React.FC = () => {
@@ -44,10 +44,14 @@ const Impressum: React.FC = () => {
           <div>
             <h2 className="text-base font-semibold text-[#111] mb-3">Geltungsbereich</h2>
             <p>
-              Dieses Impressum gilt für Lanis UI sowie für das dazugehörige, aktuell unter{' '}
-              <span className="text-[#333] break-all">{API_BASE_URL}</span> konfigurierte Backend.
+              Dieses Impressum gilt für Lanis UI sowie für das bereitgestellte Standard-Backend unter{' '}
+              <span className="text-[#333] break-all">{DEFAULT_API_BASE_URL}</span>.
               Benutzeroberfläche und Backend sind eigenständige Softwareprojekte, werden auf getrennter
               Infrastruktur betrieben und haben denselben oben genannten Diensteanbieter.
+            </p>
+            <p className="mt-2">
+              Wird auf einem Gerät ein eigenes Backend eingestellt, ist dessen jeweiliger Betreiber für
+              diesen Dienst verantwortlich. Dieses Impressum erstreckt sich nicht auf fremde Backends.
             </p>
           </div>
 

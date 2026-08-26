@@ -15,6 +15,7 @@ import {
   PencilIcon,
   StarIcon,
 } from '@heroicons/react/24/outline';
+import { API_BASE_URL } from '../../services/api';
 import clsx from 'clsx';
 
 interface CombinedModule {
@@ -132,8 +133,7 @@ const Dashboard: React.FC = () => {
       return;
     }
     if (module.proxy_app) {
-      const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-      const proxyUrl = `${apiBase}/app/${encodeURIComponent(module.name)}?token=${encodeURIComponent(token)}`;
+      const proxyUrl = `${API_BASE_URL}/app/${encodeURIComponent(module.name)}?token=${encodeURIComponent(token)}`;
       window.open(proxyUrl, '_blank', 'noopener,noreferrer');
       return;
     }

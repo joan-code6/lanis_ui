@@ -18,6 +18,7 @@ import Impressum from './components/legal/Impressum';
 import PrivacyPolicy from './components/legal/PrivacyPolicy';
 import Timetable from './components/timetable/Timetable';
 import StudyGroups from './components/study-groups/StudyGroups';
+import CustomBackend from './components/settings/CustomBackend';
 
 const LandingRoot: React.FC = () => {
   const { isAuthenticated } = useAuth();
@@ -51,6 +52,7 @@ const AppRoutes: React.FC = () => {
         <Route path="/landing" element={<Navigate to="/" replace />} />
         <Route path="/impressum" element={<Impressum />} />
         <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+        <Route path="/set-custom-backend" element={<CustomBackend />} />
         <Route path="/demo" element={<DemoRoute />}>
           <Route index element={<Navigate to="/demo/dashboard" replace />} />
           <Route path="dashboard" element={<Dashboard />} />
