@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import {
   ArrowPathIcon,
+  ArrowTopRightOnSquareIcon,
   CheckCircleIcon,
   CircleStackIcon,
   ComputerDesktopIcon,
@@ -95,6 +96,18 @@ const CustomBackend: React.FC = () => {
           <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">Eigenes Backend verwenden</h1>
           <p className="mt-3 max-w-xl text-base leading-relaxed text-surface-500 dark:text-surface-400">
             Lege fest, mit welchem LANIS-Backend dieser Browser kommuniziert. Die Einstellung gilt nur auf diesem Gerät.
+          </p>
+          <p className="mt-3 text-sm text-surface-500 dark:text-surface-400">
+            Du möchtest ein eigenes Backend betreiben?{' '}
+            <a
+              href="https://github.com/joan-code6/lanis_api"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 font-medium text-primary-700 underline decoration-primary-300 underline-offset-4 transition-colors hover:text-primary-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:text-primary-300 dark:decoration-primary-700 dark:hover:text-primary-200"
+            >
+              LANIS API auf GitHub
+              <ArrowTopRightOnSquareIcon className="h-3.5 w-3.5" aria-hidden="true" />
+            </a>
           </p>
         </div>
 
