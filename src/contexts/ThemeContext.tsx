@@ -129,6 +129,15 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, [isDark, isOled]);
 
   useEffect(() => {
+    if (localStorage.getItem(DARK_MODE_KEY) !== null || isOled) return;
+
+    const colorScheme = window.matchMedia('(prefers-color-scheme: dark)');
+    const syncWithSystem = (event: MediaQueryListEvent) => setIsDark(event.matches);
+    colorScheme.addEventListener('change', syncWithSystem);
+    return () => colorScheme.removeEventListener('change', syncWithSystem);
+  }, [isOled]);
+
+  useEffect(() => {
     applyPrimaryTheme(themeColor);
   }, [themeColor]);
 
