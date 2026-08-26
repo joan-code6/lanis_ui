@@ -24,6 +24,7 @@ import { unsubscribeBrowserPushSubscription } from '../../services/api';
 import SEO from '../seo/SEO';
 
 type RequestState = 'idle' | 'checking' | 'success' | 'error';
+const BACKEND_LOGOUT_TIMEOUT_MS = 5000;
 
 const CustomBackend: React.FC = () => {
   const { isAuthenticated, logout } = useAuth();
@@ -50,13 +51,23 @@ const CustomBackend: React.FC = () => {
 
   const prepareBackendSwitch = async () => {
     if (isAuthenticated) {
-      await logout();
-    } else {
-      try {
-        await unsubscribeBrowserPushSubscription();
-      } catch (error) {
-        console.warn('Failed to remove push subscription before switching backend:', error);
+      let timeoutId: number | undefined;
+      const logoutCompleted = await Promise.race([
+        logout().then(() => true),
+        new Promise<boolean>((resolve) => {
+          timeoutId = window.setTimeout(() => resolve(false), BACKEND_LOGOUT_TIMEOUT_MS);
+        }),
+      ]);
+      if (timeoutId !== undefined) window.clearTimeout(timeoutId);
+      if (!logoutCompleted) {
+        console.warn('Remote logout timed out; continuing with local backend cleanup.');
       }
+    }
+
+    try {
+      await unsubscribeBrowserPushSubscription();
+    } catch (error) {
+      console.warn('Failed to remove push subscription before switching backend:', error);
     }
     clearBackendScopedStorage();
   };
