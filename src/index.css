@@ -14,7 +14,8 @@
   }
 
   ::selection {
-    @apply bg-primary-500/20 text-primary-900 dark:text-primary-100;
+    background-color: rgb(var(--color-primary-400) / 0.35);
+    color: rgb(var(--color-surface-950));
   }
 
   html {
