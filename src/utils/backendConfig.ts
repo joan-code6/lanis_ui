@@ -18,6 +18,12 @@ const BACKEND_SCOPED_STORAGE_KEYS = [
   'dsb_plan_cache_v2',
 ];
 
+const BACKEND_SCOPED_COOKIE_KEYS = [
+  'lastSchoolId',
+  'lastSchoolName',
+  'lastSchoolLocation',
+];
+
 export function normalizeBackendUrl(value: string): string {
   const input = value.trim();
   if (!input) {
@@ -73,6 +79,9 @@ export function resetCustomBackendUrl(): void {
 export function clearBackendScopedStorage(): void {
   for (const key of BACKEND_SCOPED_STORAGE_KEYS) {
     window.localStorage.removeItem(key);
+  }
+  for (const key of BACKEND_SCOPED_COOKIE_KEYS) {
+    document.cookie = `${key}=;max-age=0;path=/;SameSite=Lax`;
   }
 }
 

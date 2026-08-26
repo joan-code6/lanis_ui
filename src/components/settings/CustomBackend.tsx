@@ -19,12 +19,14 @@ import {
   resetCustomBackendUrl,
   setCustomBackendUrl,
 } from '../../utils/backendConfig';
+import { useAuth } from '../../contexts/AuthContext';
 import { unsubscribeBrowserPushSubscription } from '../../services/api';
 import SEO from '../seo/SEO';
 
 type RequestState = 'idle' | 'checking' | 'success' | 'error';
 
 const CustomBackend: React.FC = () => {
+  const { isAuthenticated, logout } = useAuth();
   const initialCustomUrl = useMemo(() => getCustomBackendUrl(), []);
   const [backendUrl, setBackendUrl] = useState(initialCustomUrl || getApiBaseUrl());
   const [requestState, setRequestState] = useState<RequestState>('idle');
@@ -47,10 +49,14 @@ const CustomBackend: React.FC = () => {
   }, [backendUrl]);
 
   const prepareBackendSwitch = async () => {
-    try {
-      await unsubscribeBrowserPushSubscription();
-    } catch (error) {
-      console.warn('Failed to remove push subscription before switching backend:', error);
+    if (isAuthenticated) {
+      await logout();
+    } else {
+      try {
+        await unsubscribeBrowserPushSubscription();
+      } catch (error) {
+        console.warn('Failed to remove push subscription before switching backend:', error);
+      }
     }
     clearBackendScopedStorage();
   };

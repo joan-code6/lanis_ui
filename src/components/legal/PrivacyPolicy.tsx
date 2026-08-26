@@ -46,9 +46,10 @@ const PrivacyPolicy: React.FC = () => {
               Lanis UI ist eine inoffizielle Benutzeroberfläche für das Schulportal Hessen. Sie stellt
               Inhalte und Funktionen bereit, die über ein gesondertes Backend vom Schulportal abgerufen
               werden. Benutzeroberfläche und Backend sind zwei eigenständige Softwareprojekte und werden
-              auf voneinander getrennter Infrastruktur betrieben. Für beide Projekte ist die unter
-              Abschnitt 1 genannte Person verantwortlich. Lanis UI ist weder ein Angebot des Landes Hessen
-              noch des Schulportals Hessen.
+              auf voneinander getrennter Infrastruktur betrieben. Für die Benutzeroberfläche und das
+              bereitgestellte Standard-Backend ist die unter Abschnitt 1 genannte Person verantwortlich.
+              Bei einem selbst eingestellten Backend ist dessen jeweiliger Betreiber verantwortlich. Lanis
+              UI ist weder ein Angebot des Landes Hessen noch des Schulportals Hessen.
             </p>
           </div>
 
@@ -130,7 +131,9 @@ const PrivacyPolicy: React.FC = () => {
           <div>
             <h2 className="text-base font-semibold text-[#111] mb-3">7. Empfänger und Speicherdauer</h2>
             <p>
-              Das oben angezeigte Backend ist ein getrennt betriebenes System desselben Verantwortlichen.
+              {usesCustomBackend
+                ? 'Das oben angezeigte Backend ist ein getrennt betriebenes System des von dir ausgewählten Betreibers.'
+                : 'Das oben angezeigte Backend ist ein getrennt betriebenes System desselben Verantwortlichen.'}{' '}
               Zur Bereitstellung der angeforderten schulischen Funktionen kommuniziert es mit dem
               Schulportal Hessen. Bei Nutzung von Push-Benachrichtigungen wird außerdem der Push-Dienst des
               Browsers oder Betriebssystems einbezogen. Lokal gespeicherte Daten bleiben grundsätzlich

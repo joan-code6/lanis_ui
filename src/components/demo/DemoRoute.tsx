@@ -19,7 +19,7 @@ const mockAuth = {
   token: 'demo-mock-token-000000000000000000000000',
   user: mockUser,
   login: async () => true,
-  logout: () => {},
+  logout: async () => {},
   refreshToken: async () => true,
 };
 
