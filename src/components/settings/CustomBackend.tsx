@@ -1,7 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
 import {
-  ArrowLeftIcon,
   ArrowPathIcon,
   CheckCircleIcon,
   CircleStackIcon,
@@ -10,7 +8,6 @@ import {
   ServerStackIcon,
   ShieldExclamationIcon,
 } from '@heroicons/react/24/outline';
-import { useAuth } from '../../contexts/AuthContext';
 import {
   DEFAULT_API_BASE_URL,
   checkBackendHealth,
@@ -27,13 +24,11 @@ import SEO from '../seo/SEO';
 type RequestState = 'idle' | 'checking' | 'success' | 'error';
 
 const CustomBackend: React.FC = () => {
-  const { isAuthenticated } = useAuth();
   const initialCustomUrl = useMemo(() => getCustomBackendUrl(), []);
   const [backendUrl, setBackendUrl] = useState(initialCustomUrl || getApiBaseUrl());
   const [requestState, setRequestState] = useState<RequestState>('idle');
   const [message, setMessage] = useState('');
 
-  const backTarget = isAuthenticated ? '/dashboard' : '/login';
   const currentUrl = getApiBaseUrl();
   const hasCustomBackend = initialCustomUrl !== null;
 
@@ -96,19 +91,7 @@ const CustomBackend: React.FC = () => {
       />
 
       <main className="mx-auto max-w-2xl">
-        <Link
-          to={backTarget}
-          className="mb-8 inline-flex items-center gap-2 rounded-lg text-sm font-medium text-surface-500 transition-colors hover:text-surface-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:hover:text-surface-100"
-        >
-          <ArrowLeftIcon className="h-4 w-4" />
-          Zurück zu Lanis
-        </Link>
-
         <div className="mb-8">
-          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-primary-200 bg-primary-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-primary-700 dark:border-primary-900 dark:bg-primary-950 dark:text-primary-300">
-            <CircleStackIcon className="h-3.5 w-3.5" />
-            Gerätekonfiguration
-          </div>
           <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">Eigenes Backend verwenden</h1>
           <p className="mt-3 max-w-xl text-base leading-relaxed text-surface-500 dark:text-surface-400">
             Lege fest, mit welchem LANIS-Backend dieser Browser kommuniziert. Die Einstellung gilt nur auf diesem Gerät.
