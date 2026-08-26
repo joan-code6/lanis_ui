@@ -349,7 +349,7 @@ export interface AuthContextType {
   token: string | null;
   user: User | null;
   login: (credentials: LoginRequest) => Promise<boolean>;
-  logout: () => void;
+  logout: () => Promise<void>;
   refreshToken: () => Promise<boolean>;
 }
 

@@ -1,9 +1,12 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { API_BASE_URL } from '../../services/api';
+import { DEFAULT_API_BASE_URL, getCustomBackendUrl } from '../../utils/backendConfig';
 import SEO from '../seo/SEO';
 
 const PrivacyPolicy: React.FC = () => {
+  const usesCustomBackend = getCustomBackendUrl() !== null;
+
   return (
     <div className="min-h-screen bg-[#fcfcf9] text-[#1a1a1a] font-['Outfit',sans-serif]">
       <SEO
@@ -43,9 +46,10 @@ const PrivacyPolicy: React.FC = () => {
               Lanis UI ist eine inoffizielle Benutzeroberfläche für das Schulportal Hessen. Sie stellt
               Inhalte und Funktionen bereit, die über ein gesondertes Backend vom Schulportal abgerufen
               werden. Benutzeroberfläche und Backend sind zwei eigenständige Softwareprojekte und werden
-              auf voneinander getrennter Infrastruktur betrieben. Für beide Projekte ist die unter
-              Abschnitt 1 genannte Person verantwortlich. Lanis UI ist weder ein Angebot des Landes Hessen
-              noch des Schulportals Hessen.
+              auf voneinander getrennter Infrastruktur betrieben. Für die Benutzeroberfläche und das
+              bereitgestellte Standard-Backend ist die unter Abschnitt 1 genannte Person verantwortlich.
+              Bei einem selbst eingestellten Backend ist dessen jeweiliger Betreiber verantwortlich. Lanis
+              UI ist weder ein Angebot des Landes Hessen noch des Schulportals Hessen.
             </p>
           </div>
 
@@ -63,8 +67,10 @@ const PrivacyPolicy: React.FC = () => {
               keinen Zugriff auf serverseitige Protokolle, Datenbanken oder Speicherfristen des Backends
               und kann dessen Verarbeitung weder einsehen noch steuern. Die konkrete serverseitige
               Verarbeitung wird ausschließlich durch die Implementierung und Konfiguration des separaten
-              Backend-Projekts bestimmt. Die technische Trennung ändert nichts daran, dass der in
-              Abschnitt 1 genannte Verantwortliche für beide Projekte verantwortlich bleibt.
+              Backend-Projekts bestimmt. Für das bereitgestellte Standard-Backend unter{' '}
+              <span className="text-[#333] break-all">{DEFAULT_API_BASE_URL}</span> ist ebenfalls die in
+              Abschnitt 1 genannte Person verantwortlich. Bei einem selbst eingestellten Backend ist
+              dessen jeweiliger Betreiber für die dortige Verarbeitung verantwortlich.
             </p>
             <p className="mt-2">
               Mit dem Start der Anmeldung veranlasst du die Übermittlung deiner Eingaben an diese Adresse.
@@ -72,6 +78,12 @@ const PrivacyPolicy: React.FC = () => {
               gegenüber dem Schulportal Hessen auszuführen. Diese Beschreibung ist keine Aussage darüber,
               dass UI und Backend auf demselben Server laufen oder Daten gemeinsam speichern.
             </p>
+            {usesCustomBackend && (
+              <p className="mt-2">
+                Auf diesem Gerät ist ein eigenes Backend eingestellt. Informiere dich vor der Anmeldung
+                beim Betreiber dieser Adresse über dessen Datenschutz und Datenverarbeitung.
+              </p>
+            )}
           </div>
 
           <div>
@@ -119,7 +131,9 @@ const PrivacyPolicy: React.FC = () => {
           <div>
             <h2 className="text-base font-semibold text-[#111] mb-3">7. Empfänger und Speicherdauer</h2>
             <p>
-              Das oben angezeigte Backend ist ein getrennt betriebenes System desselben Verantwortlichen.
+              {usesCustomBackend
+                ? 'Das oben angezeigte Backend ist ein getrennt betriebenes System des von dir ausgewählten Betreibers.'
+                : 'Das oben angezeigte Backend ist ein getrennt betriebenes System desselben Verantwortlichen.'}{' '}
               Zur Bereitstellung der angeforderten schulischen Funktionen kommuniziert es mit dem
               Schulportal Hessen. Bei Nutzung von Push-Benachrichtigungen wird außerdem der Push-Dienst des
               Browsers oder Betriebssystems einbezogen. Lokal gespeicherte Daten bleiben grundsätzlich

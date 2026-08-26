@@ -258,6 +258,9 @@ const Landingpage: React.FC = () => {
           <Link to="/privacy-policy" className="text-[11px] text-[#bbb] hover:text-[#888] transition-colors">
             Datenschutz
           </Link>
+          <Link to="/set-custom-backend" className="text-[11px] text-[#bbb] hover:text-[#888] transition-colors">
+            Eigenes Backend
+          </Link>
         </footer>
       </div>
     </div>

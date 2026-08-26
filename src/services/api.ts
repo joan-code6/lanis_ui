@@ -5,6 +5,7 @@ import {
   SchoolSearchResult,
 } from '../types';
 import { getMockResponse } from '../components/demo/mockApi';
+import { getApiBaseUrl } from '../utils/backendConfig';
 // School List API
 const SCHOOL_CACHE_KEY = 'school_cache';
 const SCHOOL_CACHE_TTL = 24 * 60 * 60 * 1000;
@@ -180,7 +181,7 @@ import {
 } from '../types';
 
 // Configuration
-export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+export const API_BASE_URL = getApiBaseUrl();
 
 // Create axios instance
 const apiClient: AxiosInstance = axios.create({
