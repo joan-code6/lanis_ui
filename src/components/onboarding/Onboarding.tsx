@@ -21,6 +21,7 @@ import { usePreferences, CURRENT_ONBOARDING_VERSION } from '../../contexts/Prefe
 import { useTheme } from '../../contexts/ThemeContext';
 import { Module, OnboardingStep, ThemeColor, ThemeMode, TimetableViewMode, UserPreferencesPatch } from '../../types';
 import SEO from '../seo/SEO';
+import ModuleIcon from '../dashboard/ModuleIcon';
 
 const steps: Array<{ id: Exclude<OnboardingStep, 'complete'>; label: string }> = [
   { id: 'welcome', label: 'Start' },
@@ -181,9 +182,9 @@ const Onboarding: React.FC = () => {
   }
 
   return (
-    <div className="relative min-h-[100dvh] overflow-hidden bg-surface-50 text-surface-900 dark:bg-surface-950 dark:text-surface-100">
+    <div className="relative min-h-[100dvh] overflow-x-hidden bg-primary-50/40 text-surface-900 dark:bg-primary-950/10 dark:text-surface-100">
       <SEO title="Lanis einrichten" description="Passe Lanis an deinen Schulalltag an." path="/onboarding" noindex />
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-72 bg-gradient-to-b from-primary-100/70 to-transparent dark:from-primary-950/30" />
+      <div className="pointer-events-none fixed inset-0 bg-gradient-to-b from-primary-100/70 via-primary-50/30 to-surface-50/80 dark:from-primary-950/35 dark:via-surface-950/70 dark:to-surface-950" />
       <main className="relative mx-auto flex min-h-[100dvh] max-w-7xl flex-col px-4 py-5 sm:px-6 lg:px-8 lg:py-8">
         <header className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
@@ -269,7 +270,7 @@ const Onboarding: React.FC = () => {
                     const selected = pinnedModules.includes(module.name);
                     return (
                       <button key={module.name} type="button" onClick={() => toggleModule(module.name)} className={`flex items-center gap-3 rounded-2xl border p-3 text-left transition-all ${selected ? 'border-primary-500 bg-primary-50 dark:bg-primary-950/40' : 'border-surface-200 bg-white hover:border-primary-300 dark:border-surface-800 dark:bg-surface-900'}`} aria-pressed={selected}>
-                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm font-bold text-white" style={{ backgroundColor: module.color || '#64748b' }}>{module.name.slice(0, 1).toUpperCase()}</span>
+                        <ModuleIcon name={module.name} logo={module.logo} color={module.color} size="small" />
                         <span className="min-w-0 flex-1 truncate text-sm font-medium">{module.name}</span>
                         <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${selected ? 'bg-primary-600 text-white' : 'bg-surface-100 text-surface-400 dark:bg-surface-800'}`}>{selected ? <CheckIcon className="h-4 w-4" /> : <StarIcon className="h-4 w-4" />}</span>
                       </button>

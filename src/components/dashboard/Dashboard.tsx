@@ -18,6 +18,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { API_BASE_URL } from '../../services/api';
 import clsx from 'clsx';
+import ModuleIcon from './ModuleIcon';
 
 interface CombinedModule {
   name: string;
@@ -161,63 +162,6 @@ const Dashboard: React.FC = () => {
     return 0;
   });
 
-  const getModuleIcon = (logo: string, color: string, size: 'grid' | 'list' = 'list') => {
-    let trimmed = logo ? logo.replace(/\r?\n/g, '').replace(/\s+/g, ' ').trim() : '';
-    let bgColor = color ? color.trim() : '#888888';
-    const iconSize = size === 'grid' ? 'w-16 h-16' : 'w-12 h-12';
-    const iconTextSize = size === 'grid' ? 'text-2xl' : 'text-xl';
-    if (bgColor && !bgColor.startsWith('#') && /^[0-9a-fA-F]{6}$/.test(bgColor)) {
-      bgColor = '#' + bgColor;
-    }
-
-    const iconMap: Record<string, string> = {
-      'fa fa-files-o': 'fa-regular fa-copy',
-      'fa fa-check-square-o': 'fa-regular fa-square-check',
-      'glyphicon glyphicon-comment': 'fa-regular fa-comment',
-      'glyphicon glyphicon-user': 'fa-regular fa-user',
-      'glyphicon glyphicon-home': 'fa-solid fa-house',
-      'glyphicon glyphicon-cog': 'fa-solid fa-gear',
-      'glyphicon glyphicon-envelope': 'fa-regular fa-envelope',
-      'glyphicon glyphicon-file': 'fa-regular fa-file',
-      'glyphicon glyphicon-folder-open': 'fa-regular fa-folder-open',
-      'glyphicon glyphicon-search': 'fa-solid fa-magnifying-glass',
-      'glyphicon glyphicon-star': 'fa-regular fa-star',
-      'glyphicon glyphicon-heart': 'fa-regular fa-heart',
-      'glyphicon glyphicon-ok': 'fa-solid fa-check',
-      'glyphicon glyphicon-remove': 'fa-solid fa-xmark',
-      'glyphicon glyphicon-plus': 'fa-solid fa-plus',
-      'glyphicon glyphicon-minus': 'fa-solid fa-minus',
-      'glyphicon glyphicon-calendar': 'fa-regular fa-calendar',
-      'glyphicon glyphicon-time': 'fa-regular fa-clock',
-      'glyphicon glyphicon-pencil': 'fa-solid fa-pencil',
-      'glyphicon glyphicon-trash': 'fa-regular fa-trash-can',
-    };
-
-    if (iconMap[trimmed]) {
-      trimmed = iconMap[trimmed];
-    }
-
-    if (trimmed.length > 0) {
-      return (
-        <div
-          className={`${iconSize} rounded-2xl flex items-center justify-center text-white ${iconTextSize}`}
-          style={{ backgroundColor: bgColor }}
-        >
-          <i className={trimmed} aria-hidden="true" />
-        </div>
-      );
-    }
-
-    return (
-      <div
-        className={`${iconSize} rounded-2xl flex items-center justify-center text-white ${iconTextSize} font-bold`}
-        style={{ backgroundColor: bgColor }}
-      >
-        ?
-      </div>
-    );
-  };
-
   if (isLoading && (!modules || modules.length === 0)) {
     return (
       <div className="p-6">
@@ -352,7 +296,7 @@ const Dashboard: React.FC = () => {
               {viewMode === 'grid' ? (
                 <div className="flex flex-col items-center text-center">
                   <div className="relative">
-                    {getModuleIcon(module.logo, module.color, 'grid')}
+                    <ModuleIcon name={module.name} logo={module.logo} color={module.color} size="grid" />
                     <div className="absolute -top-1 -right-1 w-4 h-4 bg-white dark:bg-surface-800 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-soft">
                       <ArrowTopRightOnSquareIcon className="w-2.5 h-2.5 text-surface-400" />
                     </div>
@@ -389,7 +333,7 @@ const Dashboard: React.FC = () => {
                 </div>
                   ) : (
                 <>
-                  {getModuleIcon(module.logo, module.color, 'list')}
+                  <ModuleIcon name={module.name} logo={module.logo} color={module.color} size="list" />
                   <div className="flex-1 min-w-0">
                     <h3 className="font-medium text-surface-900 dark:text-surface-100 group-hover:text-primary-600 transition-colors text-sm">
                       {module.name}
