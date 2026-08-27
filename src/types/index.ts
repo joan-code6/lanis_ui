@@ -483,6 +483,7 @@ export interface TimetableResponse {
 }
 
 export interface CustomLesson {
+  /** Backwards-compatible ISO date whose weekday identifies the recurring day. */
   date: string;
   period: string;
   subject: string;

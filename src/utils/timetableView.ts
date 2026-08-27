@@ -28,6 +28,8 @@ const parseDate = (value: string): Date => new Date(`${value}T12:00:00`);
 const dateKey = (value: Date): string => format(value, 'yyyy-MM-dd');
 const periodStart = (value: unknown): number => Number(String(value ?? '').match(/\d+/)?.[0] || 999);
 
+export const weekdayForDate = (value: string): number => getDay(parseDate(value));
+
 export const weekTypeForDate = (
   value: Date,
   referenceMonday: Date,
@@ -133,7 +135,7 @@ export const projectTimetableDays = (
       date: key,
       lessons: applyOverrides(
         lessons,
-        overrides.filter(override => override.date === key),
+        overrides.filter(override => weekdayForDate(override.date) === getDay(value)),
         activeWeek,
       ),
     }];

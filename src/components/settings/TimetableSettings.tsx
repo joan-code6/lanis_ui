@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import axios from 'axios';
-import { format, parseISO } from 'date-fns';
+import { addDays, format, parseISO, startOfWeek } from 'date-fns';
 import { de } from 'date-fns/locale';
 import {
   ArrowPathIcon,
@@ -18,6 +18,7 @@ import {
   getStoredTimetableViewMode,
   storeTimetableViewMode,
   TimetableViewMode,
+  weekdayForDate,
 } from '../../utils/timetableView';
 
 interface EditableEntry {
@@ -54,17 +55,19 @@ const makeDraft = (date: string): CustomLesson => ({
 
 const formatDay = (value: string) => {
   try {
-    return format(parseISO(value), 'EEEE, d. MMMM', { locale: de });
+    return format(parseISO(value), 'EEEE', { locale: de });
   } catch {
     return value;
   }
 };
 
+const entryKey = (date: string, period: string) => `${weekdayForDate(date)}:${normalisePeriod(period)}`;
+
 const draftFromEntry = (entry: EditableEntry): CustomLesson => {
   const lesson = entry.lesson;
   const custom = entry.custom;
   return {
-    date: entry.date,
+    date: custom?.date ?? entry.date,
     period: entry.period,
     subject: custom?.subject ?? lesson?.subject ?? '',
     teacher: custom?.teacher ?? lesson?.teacher ?? '',
@@ -92,17 +95,17 @@ const buildEntries = (timetable: TimetableResponse | null, customLessons: Custom
   days.forEach(day => {
     day.lessons.forEach(lesson => {
       const period = normalisePeriod(String(lesson.period ?? ''));
-      const key = `${day.date}:${period}`;
+      const key = entryKey(day.date, period);
       byKey.set(key, { key, date: day.date, period, lesson });
     });
   });
   customLessons.forEach(custom => {
     const period = normalisePeriod(String(custom.period || ''));
-    const key = `${custom.date}:${period}`;
+    const key = entryKey(custom.date, period);
     const existing = byKey.get(key);
     byKey.set(key, {
       key,
-      date: custom.date,
+      date: existing?.date ?? custom.date,
       period,
       lesson: existing?.lesson,
       custom,
@@ -174,6 +177,17 @@ const TimetableSettings: React.FC = () => {
   }, [token]);
 
   const entries = useMemo(() => buildEntries(timetable, customLessons), [customLessons, timetable]);
+  const weekdayOptions = useMemo(() => {
+    const datesByWeekday = new Map(
+      (timetable?.days || []).map(day => [weekdayForDate(day.date), day.date]),
+    );
+    const fallbackMonday = startOfWeek(new Date(), { weekStartsOn: 1 });
+    return Array.from({ length: 5 }, (_, index) => {
+      const weekday = index + 1;
+      const date = datesByWeekday.get(weekday) || format(addDays(fallbackMonday, index), 'yyyy-MM-dd');
+      return { weekday, date, label: formatDay(date) };
+    });
+  }, [timetable]);
   const selectedClass = useMemo(
     () => classLinks.find(link => link.course_id === draft.course_id),
     [classLinks, draft.course_id],
@@ -237,7 +251,7 @@ const TimetableSettings: React.FC = () => {
     event.preventDefault();
     if (!token) return;
     if (!draft.date || !draft.period.trim()) {
-      setError('Datum und Stunde werden benötigt.');
+      setError('Wochentag und Stunde werden benötigt.');
       return;
     }
     if (!draft.removed && !draft.subject?.trim()) {
@@ -246,11 +260,11 @@ const TimetableSettings: React.FC = () => {
     }
     const period = normalisePeriod(draft.period);
     const previousOverride = !isNew
-      ? customLessons.find(lesson => `${lesson.date}:${normalisePeriod(lesson.period)}` === selectedKey)
+      ? customLessons.find(lesson => entryKey(lesson.date, lesson.period) === selectedKey)
       : undefined;
     const destinationOverride = customLessons.find(lesson => (
-      `${lesson.date}:${normalisePeriod(lesson.period)}` === `${draft.date}:${period}`
-      && `${lesson.date}:${normalisePeriod(lesson.period)}` !== selectedKey
+      entryKey(lesson.date, lesson.period) === entryKey(draft.date, period)
+      && entryKey(lesson.date, lesson.period) !== selectedKey
     ));
     if (destinationOverride) {
       setError('Für diesen Slot gibt es bereits eine eigene Korrektur. Setze sie zuerst zurück oder wähle einen anderen Slot.');
@@ -267,12 +281,12 @@ const TimetableSettings: React.FC = () => {
         duration: Math.max(1, Number(draft.duration) || 1),
       });
       if (!response.success) throw new Error('Änderung konnte nicht gespeichert werden.');
-      if (previousOverride && (previousOverride.date !== draft.date || normalisePeriod(previousOverride.period) !== period)) {
+      if (previousOverride && (weekdayForDate(previousOverride.date) !== weekdayForDate(draft.date) || normalisePeriod(previousOverride.period) !== period)) {
         await settingsAPI.deleteCustomLesson(token, previousOverride.date, previousOverride.period);
       }
       const savedLesson = response.lesson;
       setIsNew(false);
-      setSelectedKey(`${savedLesson.date}:${savedLesson.period}`);
+      setSelectedKey(entryKey(savedLesson.date, savedLesson.period));
       setDraft(previous => ({ ...previous, ...savedLesson }));
       setMessage('Stundenplanänderung gespeichert.');
       await load();
@@ -296,7 +310,9 @@ const TimetableSettings: React.FC = () => {
       setMessage('Portalversion wiederhergestellt.');
       const refreshed = await load();
       if (!refreshed) return;
-      const entry = buildEntries(refreshed.timetable, refreshed.customLessons).find(item => item.date === resetDate && normalisePeriod(item.period) === resetPeriod);
+      const entry = buildEntries(refreshed.timetable, refreshed.customLessons).find(item => (
+        weekdayForDate(item.date) === weekdayForDate(resetDate) && normalisePeriod(item.period) === resetPeriod
+      ));
       if (entry?.lesson) {
         setSelectedKey(entry.key);
         setIsNew(false);
@@ -314,7 +330,8 @@ const TimetableSettings: React.FC = () => {
   };
 
   const hasOverride = !isNew && customLessons.some(
-    lesson => lesson.date === draft.date && normalisePeriod(lesson.period) === normalisePeriod(draft.period),
+    lesson => weekdayForDate(lesson.date) === weekdayForDate(draft.date)
+      && normalisePeriod(lesson.period) === normalisePeriod(draft.period),
   );
 
   if (loading) {
@@ -435,8 +452,21 @@ const TimetableSettings: React.FC = () => {
           <form className="space-y-4" onSubmit={save}>
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <label className="label" htmlFor="custom-lesson-date">Datum</label>
-                <input id="custom-lesson-date" type="date" className="input" value={draft.date} onChange={event => updateDraft('date', event.target.value)} required />
+                <label className="label" htmlFor="custom-lesson-weekday">Wochentag</label>
+                <select
+                  id="custom-lesson-weekday"
+                  className="input"
+                  value={weekdayForDate(draft.date)}
+                  onChange={event => {
+                    const option = weekdayOptions.find(item => item.weekday === Number(event.target.value));
+                    if (option) updateDraft('date', option.date);
+                  }}
+                  required
+                >
+                  {weekdayOptions.map(option => (
+                    <option key={option.weekday} value={option.weekday}>{option.label}</option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label className="label" htmlFor="custom-lesson-period">Stunde / Bereich</label>
