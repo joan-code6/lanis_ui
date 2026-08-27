@@ -161,10 +161,14 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
         >
           <Bars3Icon className="h-5 w-5" />
         </button>
-        <div className="flex items-center gap-2">
+        <Link
+          to={`${basePath}/dashboard`}
+          className="flex items-center gap-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500/50"
+          aria-label="Zum Dashboard"
+        >
           <img src="/favicon/android-chrome-192x192.png" alt="Schulportal" className="h-7 w-7 rounded-lg" />
           <span className="text-sm font-semibold text-surface-900 dark:text-surface-100">Schulportal</span>
-        </div>
+        </Link>
         <button
           onClick={() => setIsSearchOpen(true)}
           className="flex items-center justify-center h-9 w-9 rounded-lg text-surface-500 dark:text-surface-400 hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors"
