@@ -138,6 +138,19 @@ const SettingsIndex: React.FC<{ basePath: string }> = ({ basePath }) => (
         <ChevronRightIcon className="h-5 w-5 shrink-0 text-surface-300 group-hover:text-surface-500 dark:text-surface-600" />
       </Link>
     ))}
+    <Link
+      to="/onboarding"
+      className="group flex items-center gap-4 px-4 py-4 transition-colors hover:bg-surface-50 dark:hover:bg-surface-800/70 sm:px-5"
+    >
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-surface-100 text-surface-600 dark:bg-surface-800 dark:text-surface-300">
+        <SparklesIcon className="h-5 w-5" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <h2 className="font-medium text-surface-900 dark:text-white">Einrichtung erneut starten</h2>
+        <p className="mt-0.5 text-sm text-surface-500">Aussehen, Favoriten und Stundenplan gemeinsam anpassen.</p>
+      </div>
+      <ChevronRightIcon className="h-5 w-5 shrink-0 text-surface-300 group-hover:text-surface-500 dark:text-surface-600" />
+    </Link>
   </div>
 );
 
@@ -528,23 +541,9 @@ const Settings: React.FC = () => {
         <p className="page-subtitle">{sectionMeta[section].subtitle}</p>
       </div>
 
-      {section === 'home' && (
-        <div className="space-y-4">
-          <SettingsIndex basePath={basePath} />
-          <Link to="/onboarding" className="group flex items-center gap-4 rounded-xl border border-primary-200 bg-primary-50/70 px-4 py-4 transition-colors hover:bg-primary-50 dark:border-primary-900/70 dark:bg-primary-950/20 dark:hover:bg-primary-950/35 sm:px-5">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary-100 text-primary-700 dark:bg-primary-900/60 dark:text-primary-200">
-              <SparklesIcon className="h-5 w-5" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <h2 className="font-medium text-surface-900 dark:text-white">Einrichtung erneut starten</h2>
-              <p className="mt-0.5 text-sm text-surface-500">Aussehen, Favoriten und Stundenplan gemeinsam anpassen.</p>
-            </div>
-            <ChevronRightIcon className="h-5 w-5 shrink-0 text-primary-400" />
-          </Link>
-        </div>
-      )}
+      {section === 'home' && <SettingsIndex basePath={basePath} />}
 
-      {syncError && section !== 'notifications' && (
+      {syncError && section !== 'notifications' && section !== 'home' && (
         <p className="mb-5 rounded-xl bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">{syncError}</p>
       )}
 

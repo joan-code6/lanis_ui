@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   AcademicCapIcon,
@@ -109,9 +109,7 @@ const Onboarding: React.FC = () => {
     return () => controller.abort();
   }, [preferences.dashboard.pinned_modules.length, token]);
 
-  const selectedColor = themeColors.find(color => color.id === themeColor) || themeColors[0];
   const displayName = user?.vorname || user?.firstname || user?.username || 'du';
-  const selectedModuleNames = useMemo(() => pinnedModules.slice(0, 3), [pinnedModules]);
 
   const saveCurrentStep = async (nextIndex: number) => {
     setLocalError('');
@@ -207,8 +205,8 @@ const Onboarding: React.FC = () => {
           ))}
         </div>
 
-        <div className="grid flex-1 items-center gap-8 py-8 lg:grid-cols-[minmax(0,1fr)_minmax(360px,0.82fr)] lg:gap-14 lg:py-10">
-          <section key={activeStep.id} className="order-2 animate-fade-in lg:order-1">
+        <div className="flex flex-1 items-center py-8 lg:py-10">
+          <section key={activeStep.id} className="mx-auto w-full max-w-3xl animate-fade-in">
             {activeStep.id === 'welcome' && (
               <div className="max-w-2xl">
                 <div className="mb-6 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-primary-100 text-primary-700 dark:bg-primary-950 dark:text-primary-300">
@@ -319,12 +317,6 @@ const Onboarding: React.FC = () => {
             </div>
           </section>
 
-          <LivePreview
-            color={selectedColor.hex}
-            pinnedModules={selectedModuleNames}
-            timetableMode={timetableMode}
-            showOnMobile={activeStep.id === 'appearance' || activeStep.id === 'dashboard' || activeStep.id === 'timetable'}
-          />
         </div>
       </main>
     </div>
@@ -354,25 +346,6 @@ const GuideCard: React.FC<{ icon: React.ComponentType<React.SVGProps<SVGSVGEleme
     <p className="mt-3 font-semibold">{title}</p>
     <p className="mt-1 text-sm leading-5 text-surface-500">{text}</p>
   </div>
-);
-
-const LivePreview: React.FC<{ color: string; pinnedModules: string[]; timetableMode: TimetableViewMode; showOnMobile: boolean }> = ({ color, pinnedModules, timetableMode, showOnMobile }) => (
-  <aside className={`relative order-1 mx-auto w-full max-w-md lg:order-2 lg:block ${showOnMobile ? 'block' : 'hidden'}`} aria-label="Live-Vorschau">
-    <div className="absolute -inset-8 rounded-[3rem] opacity-20 blur-3xl" style={{ backgroundColor: color }} />
-    <div className="relative max-h-64 overflow-hidden rounded-[2rem] border border-white/70 bg-white/90 p-4 shadow-soft-lg backdrop-blur-xl dark:border-surface-700/70 dark:bg-surface-900/90 lg:max-h-none">
-      <div className="flex items-center justify-between border-b border-surface-100 pb-4 dark:border-surface-800">
-        <div className="flex items-center gap-2"><span className="h-8 w-8 rounded-xl" style={{ backgroundColor: color }} /><div><p className="text-sm font-semibold">Guten Morgen</p><p className="text-[11px] text-surface-500">Dein Schultag auf einen Blick</p></div></div>
-        <MagnifyingGlassIcon className="h-5 w-5 text-surface-400" />
-      </div>
-      <div className="mt-4 flex items-center justify-between"><p className="text-xs font-semibold uppercase tracking-wider text-surface-400">{timetableMode === 'rolling' ? 'Als Nächstes' : 'Montag'}</p><p className="text-xs font-medium" style={{ color }}>A-Woche</p></div>
-      <div className="mt-2 space-y-2">
-        <div className="flex items-center gap-3 rounded-2xl border border-surface-100 bg-surface-50 p-3 dark:border-surface-800 dark:bg-surface-950"><span className="text-xs font-semibold text-surface-400">08:00</span><span className="h-9 w-1 rounded-full" style={{ backgroundColor: color }} /><div><p className="text-sm font-semibold">Mathematik</p><p className="text-xs text-surface-500">Raum 204 · Herr Weber</p></div></div>
-        <div className="flex items-center gap-3 rounded-2xl border border-surface-100 bg-surface-50 p-3 dark:border-surface-800 dark:bg-surface-950"><span className="text-xs font-semibold text-surface-400">09:45</span><span className="h-9 w-1 rounded-full bg-amber-400" /><div><p className="text-sm font-semibold">Deutsch</p><p className="text-xs text-surface-500">Raum 112 · Frau Schmidt</p></div></div>
-      </div>
-      <p className="mt-5 text-xs font-semibold uppercase tracking-wider text-surface-400">Favoriten</p>
-      <div className="mt-2 grid grid-cols-3 gap-2">{(pinnedModules.length ? pinnedModules : ['Nachrichten', 'Stundenplan', 'Kalender']).map((name, index) => <div key={name} className="rounded-xl bg-surface-50 p-2 text-center dark:bg-surface-800"><span className="mx-auto flex h-7 w-7 items-center justify-center rounded-lg text-xs font-bold text-white" style={{ backgroundColor: index === 0 ? color : index === 1 ? '#f59e0b' : '#a855f7' }}>{name.slice(0, 1)}</span><p className="mt-1 truncate text-[10px] font-medium">{name}</p></div>)}</div>
-    </div>
-  </aside>
 );
 
 export default Onboarding;

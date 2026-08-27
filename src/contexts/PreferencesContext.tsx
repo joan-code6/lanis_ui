@@ -165,7 +165,6 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode; sync?: b
         console.error('Failed to load account preferences:', error);
         applyPreferences(localFallback);
         writeCache(localFallback, cached?.dirty ?? true);
-        setSyncError('Einstellungen konnten gerade nicht synchronisiert werden. Änderungen bleiben auf diesem Gerät erhalten.');
       } finally {
         if (!controller.signal.aborted) {
           setIsLoading(false);
