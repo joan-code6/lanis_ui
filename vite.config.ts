@@ -1,17 +1,22 @@
+import uiConfig from './config.json'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
   server: {
-    port: 3000,
-    host: true,
+    port: uiConfig.port,
+    host: uiConfig.host,
     proxy: {
       '/api': {
-        target: 'http://localhost:8000',
+        target: uiConfig.apiUrl,
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ''),
       },
     },
+  },
+  preview: {
+    port: uiConfig.port,
+    host: uiConfig.host,
   },
 })
