@@ -178,6 +178,8 @@ import {
   NotificationPreferences,
   NotificationPreferencesResponse,
   PushSubscriptionPayload,
+  UserPreferencesPatch,
+  UserPreferencesResponse,
 } from '../types';
 
 // Configuration
@@ -610,6 +612,23 @@ export const timetableAPI = {
 
 // Account-specific timetable and class-link overrides
 export const settingsAPI = {
+  async getPreferences(token: string, signal?: AbortSignal): Promise<UserPreferencesResponse> {
+    const response = await apiClient.get<UserPreferencesResponse>('/settings/preferences', {
+      headers: { 'X-Session-Token': token },
+      signal,
+    });
+    return response.data;
+  },
+
+  async updatePreferences(token: string, preferences: UserPreferencesPatch, signal?: AbortSignal): Promise<UserPreferencesResponse> {
+    const response = await apiClient.patch<UserPreferencesResponse>(
+      '/settings/preferences',
+      preferences,
+      { headers: { 'X-Session-Token': token }, signal },
+    );
+    return response.data;
+  },
+
   async getCustomLessons(token: string, signal?: AbortSignal): Promise<CustomLessonsResponse> {
     const response = await apiClient.get<CustomLessonsResponse>('/settings/timetable/lessons', {
       headers: { 'X-Session-Token': token },

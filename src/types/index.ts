@@ -64,6 +64,42 @@ export interface User {
   [key: string]: string;
 }
 
+export type ThemeMode = 'system' | 'light' | 'dark' | 'oled';
+export type ThemeColor = 'emerald' | 'sapphire' | 'amethyst' | 'ruby' | 'amber' | 'cyan';
+export type DashboardViewMode = 'grid' | 'list';
+export type TimetableViewMode = 'rolling' | 'week';
+export type OnboardingStatus = 'not_started' | 'in_progress' | 'completed' | 'skipped';
+export type OnboardingStep = 'welcome' | 'appearance' | 'dashboard' | 'timetable' | 'guide' | 'complete';
+
+export interface UserPreferences {
+  appearance: {
+    theme_mode: ThemeMode;
+    theme_color: ThemeColor;
+  };
+  dashboard: {
+    pinned_modules: string[];
+    view_mode: DashboardViewMode;
+  };
+  timetable: {
+    view_mode: TimetableViewMode;
+  };
+  onboarding: {
+    version: number;
+    status: OnboardingStatus;
+    last_step: OnboardingStep;
+  };
+}
+
+export interface UserPreferencesResponse {
+  success: boolean;
+  stored: boolean;
+  preferences: UserPreferences;
+}
+
+export type UserPreferencesPatch = {
+  [Group in keyof UserPreferences]?: Partial<UserPreferences[Group]>;
+};
+
 // Module and App types
 export interface Module {
   name: string;

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useBasePath } from '../../contexts/BasePathContext';
+import { usePreferences } from '../../contexts/PreferencesContext';
 import { appsAPI } from '../../services/api';
 import axios from 'axios';
 import { Module } from '../../types';
@@ -31,6 +32,7 @@ interface CombinedModule {
 
 const Dashboard: React.FC = () => {
   const { token } = useAuth();
+  const { preferences, updatePreferences } = usePreferences();
   const navigate = useNavigate();
   const basePath = useBasePath();
   const [modules, setModules] = useState<CombinedModule[]>(() => {
@@ -43,12 +45,9 @@ const Dashboard: React.FC = () => {
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFolder, setSelectedFolder] = useState<string>('all');
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const viewMode = preferences.dashboard.view_mode;
   const [isEditMode, setIsEditMode] = useState(false);
-  const [pinnedModules, setPinnedModules] = useState<string[]>(() => {
-    const cached = localStorage.getItem('pinned_modules');
-    return cached ? JSON.parse(cached) : [];
-  });
+  const pinnedModules = preferences.dashboard.pinned_modules;
 
   if (!token) {
     return (
@@ -141,13 +140,10 @@ const Dashboard: React.FC = () => {
   };
 
   const togglePin = (moduleName: string) => {
-    setPinnedModules(prev => {
-      const newPinned = prev.includes(moduleName)
-        ? prev.filter(n => n !== moduleName)
-        : [...prev, moduleName];
-      localStorage.setItem('pinned_modules', JSON.stringify(newPinned));
-      return newPinned;
-    });
+    const newPinned = pinnedModules.includes(moduleName)
+      ? pinnedModules.filter(name => name !== moduleName)
+      : [...pinnedModules, moduleName];
+    void updatePreferences({ dashboard: { pinned_modules: newPinned } });
   };
 
   const filteredModules = modules.filter((module) => {
@@ -285,7 +281,7 @@ const Dashboard: React.FC = () => {
 
           <div className="flex bg-surface-100 dark:bg-surface-800 rounded-lg p-0.5 flex-shrink-0">
             <button
-              onClick={() => setViewMode('grid')}
+              onClick={() => void updatePreferences({ dashboard: { view_mode: 'grid' } })}
               className={clsx(
                 'p-2 rounded-md transition-all duration-200',
                 viewMode === 'grid'
@@ -296,7 +292,7 @@ const Dashboard: React.FC = () => {
               <Squares2X2Icon className="h-4 w-4" />
             </button>
             <button
-              onClick={() => setViewMode('list')}
+              onClick={() => void updatePreferences({ dashboard: { view_mode: 'list' } })}
               className={clsx(
                 'p-2 rounded-md transition-all duration-200',
                 viewMode === 'list'

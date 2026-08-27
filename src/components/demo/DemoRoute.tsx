@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
 import { AuthContext } from '../../contexts/AuthContext';
+import { PreferencesProvider } from '../../contexts/PreferencesContext';
 import Layout from '../layout/Layout';
 
 const mockUser = {
@@ -95,9 +96,11 @@ const DemoRoute: React.FC = () => {
 
   return (
     <AuthContext.Provider value={mockAuth}>
-      <Layout basePath="/demo">
-        <Outlet />
-      </Layout>
+      <PreferencesProvider sync={false}>
+        <Layout basePath="/demo">
+          <Outlet />
+        </Layout>
+      </PreferencesProvider>
     </AuthContext.Provider>
   );
 };

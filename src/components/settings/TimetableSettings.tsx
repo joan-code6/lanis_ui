@@ -12,14 +12,10 @@ import {
   TrashIcon,
 } from '@heroicons/react/24/outline';
 import { useAuth } from '../../contexts/AuthContext';
+import { usePreferences } from '../../contexts/PreferencesContext';
 import { settingsAPI, timetableAPI } from '../../services/api';
 import { ClassLink, CustomLesson, TimetableLesson, TimetableResponse } from '../../types';
-import {
-  getStoredTimetableViewMode,
-  storeTimetableViewMode,
-  TimetableViewMode,
-  weekdayForDate,
-} from '../../utils/timetableView';
+import { TimetableViewMode, weekdayForDate } from '../../utils/timetableView';
 
 interface EditableEntry {
   key: string;
@@ -118,6 +114,7 @@ const buildEntries = (timetable: TimetableResponse | null, customLessons: Custom
 
 const TimetableSettings: React.FC = () => {
   const { token } = useAuth();
+  const { preferences, updatePreferences } = usePreferences();
   const [timetable, setTimetable] = useState<TimetableResponse | null>(null);
   const [customLessons, setCustomLessons] = useState<CustomLesson[]>([]);
   const [classLinks, setClassLinks] = useState<ClassLink[]>([]);
@@ -125,7 +122,7 @@ const TimetableSettings: React.FC = () => {
   const [draft, setDraft] = useState<CustomLesson>(() => makeDraft(new Date().toISOString().slice(0, 10)));
   const [isNew, setIsNew] = useState(false);
   const [mobileEditorOpen, setMobileEditorOpen] = useState(false);
-  const [timetableViewMode, setTimetableViewMode] = useState(getStoredTimetableViewMode);
+  const timetableViewMode = preferences.timetable.view_mode;
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -233,8 +230,7 @@ const TimetableSettings: React.FC = () => {
   };
 
   const updateTimetableViewMode = (mode: TimetableViewMode) => {
-    setTimetableViewMode(mode);
-    storeTimetableViewMode(mode);
+    void updatePreferences({ timetable: { view_mode: mode } });
   };
 
   const selectCourse = (courseId: string) => {
@@ -365,7 +361,7 @@ const TimetableSettings: React.FC = () => {
           <CalendarDaysIcon className="mt-0.5 h-5 w-5 shrink-0 text-primary-500" aria-hidden="true" />
           <div>
             <label className="font-medium text-surface-900 dark:text-white" htmlFor="timetable-view-mode">Standardansicht</label>
-            <p className="mt-0.5 text-xs text-surface-500">Wird auf diesem Gerät gespeichert.</p>
+            <p className="mt-0.5 text-xs text-surface-500">Wird mit deinem Lanis-Konto synchronisiert.</p>
           </div>
         </div>
         <select
