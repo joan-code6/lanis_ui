@@ -148,27 +148,33 @@ const Vertretungsplan: React.FC = () => {
     setOptions({ success: false, own_class: '', available_classes: [] });
 
     const load = async () => {
+      const optionsPromise = vertretungsplanAPI.getOptions(token, controller.signal)
+        .then(optionsResponse => {
+          if (!optionsResponse.success) {
+            throw new Error(optionsResponse.error || 'Die Klassen konnten nicht geladen werden.');
+          }
+          return optionsResponse;
+        })
+        .catch(optionsError => {
+          if (!axios.isCancel(optionsError)) {
+            console.warn('Failed to load Vertretungsplan class options:', optionsError);
+          }
+          return null;
+        });
       const response = await vertretungsplanAPI.getPlan(token, controller.signal);
-      if (controller.signal.aborted) return;
-      let optionsResponse: VertretungsplanOptionsResponse | null = null;
-      try {
-        optionsResponse = await vertretungsplanAPI.getOptions(token, controller.signal);
-        if (!optionsResponse.success) {
-          throw new Error(optionsResponse.error || 'Die Klassen konnten nicht geladen werden.');
-        }
-      } catch (optionsError) {
-        if (axios.isCancel(optionsError)) throw optionsError;
-        console.warn('Failed to load Vertretungsplan class options:', optionsError);
-      }
-
       if (controller.signal.aborted) return;
       if (!response.success) {
         throw new Error(response.error || 'Der Vertretungsplan konnte nicht geladen werden.');
       }
       const days = Array.isArray(response.days) ? response.days : [];
       setPlan({ ...response, days, count: response.count || 0 });
-      if (optionsResponse) setOptions(optionsResponse);
       setActiveDay(current => days.some(day => day.date === current) ? current : (days[0]?.date || ''));
+      // Class metadata is optional; show the plan as soon as its required request is ready.
+      setLoading(false);
+
+      const optionsResponse = await optionsPromise;
+      if (controller.signal.aborted) return;
+      if (optionsResponse) setOptions(optionsResponse);
     };
 
     load()
@@ -210,6 +216,16 @@ const Vertretungsplan: React.FC = () => {
     if (preferredClass) values.add(matchingClassOption(preferredClass, classOptions));
     return [...values].filter(Boolean).sort((left, right) => left.localeCompare(right, 'de'));
   }, [classOptions, preferredClass]);
+
+  useEffect(() => {
+    if (
+      selectedClass
+      && selectedClass !== 'all'
+      && !classOptions.some(option => fuzzyClassMatches(option, selectedClass))
+    ) {
+      setSelectedClass('all');
+    }
+  }, [classOptions, selectedClass]);
 
   const visibleEntries = (activeDayData?.substitutions || []).filter(entry => {
     if (activeClass === 'all') return true;

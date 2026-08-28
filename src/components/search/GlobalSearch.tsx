@@ -30,6 +30,16 @@ interface SearchItem {
 interface GlobalSearchProps {
   isOpen: boolean;
   onClose: () => void;
+  basePath?: string;
+  hasNativeSubstitutionPlan?: boolean;
+  hasDsbModule?: boolean;
+}
+
+interface NavigationItem {
+  name: string;
+  href: string;
+  icon: React.ComponentType<{ className?: string }>;
+  cat: string;
 }
 
 const CATEGORY_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -76,7 +86,7 @@ function htmlToText(value: unknown): string {
 
 // ── Tier 1: cache search ──────────────────────────────────────────
 
-function searchCacheData(query: string): SearchItem[] {
+function searchCacheData(query: string, planNavigation: NavigationItem[]): SearchItem[] {
   if (!query || query.length < 1) return [];
   const results: SearchItem[] = [];
 
@@ -214,7 +224,7 @@ function searchCacheData(query: string): SearchItem[] {
     { name: 'Kalender', href: '/calendar', icon: CalendarDaysIcon, cat: 'Kalender' },
     { name: 'Stundenplan', href: '/timetable', icon: ClockIcon, cat: 'Stundenplan' },
     { name: 'Lerngruppen', href: '/study-groups', icon: UserGroupIcon, cat: 'Lerngruppen' },
-    { name: 'Vertretungsplan', href: '/dsb', icon: ClipboardDocumentListIcon, cat: 'Vertretungsplan' },
+    ...planNavigation,
     { name: 'Profil', href: '/profile', icon: UserIcon, cat: 'Profil' },
     { name: 'Einstellungen', href: '/settings', icon: Cog6ToothIcon, cat: 'Einstellungen' },
   ];
@@ -228,7 +238,13 @@ function searchCacheData(query: string): SearchItem[] {
   return results.slice(0, 30);
 }
 
-export default function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
+export default function GlobalSearch({
+  isOpen,
+  onClose,
+  basePath = '',
+  hasNativeSubstitutionPlan = false,
+  hasDsbModule = false,
+}: GlobalSearchProps) {
   const { token } = useAuth();
   const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -242,7 +258,19 @@ export default function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
   const [apiResults, setApiResults] = useState<SearchItem[]>([]);
   const [semanticResults, setSemanticResults] = useState<SearchItem[]>([]);
 
-  const cacheResults = useMemo(() => searchCacheData(query), [query]);
+  const planNavigation = useMemo<NavigationItem[]>(() => {
+    if (hasNativeSubstitutionPlan) {
+      return [
+        { name: 'Vertretungsplan', href: `${basePath}/vertretungsplan`, icon: ClipboardDocumentListIcon, cat: 'Vertretungsplan' },
+        ...(hasDsbModule ? [{ name: 'DSBmobile', href: `${basePath}/dsb`, icon: ClipboardDocumentListIcon, cat: 'Vertretungsplan' }] : []),
+      ];
+    }
+    return hasDsbModule
+      ? [{ name: 'Vertretungsplan', href: `${basePath}/dsb`, icon: ClipboardDocumentListIcon, cat: 'Vertretungsplan' }]
+      : [];
+  }, [basePath, hasDsbModule, hasNativeSubstitutionPlan]);
+
+  const cacheResults = useMemo(() => searchCacheData(query, planNavigation), [planNavigation, query]);
 
   const combinedResults = useMemo(() => {
     const seen = new Set<string>();

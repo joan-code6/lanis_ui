@@ -199,7 +199,13 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
           </div>
         </BasePathProvider>
       </main>
-      <GlobalSearch isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
+      <GlobalSearch
+        isOpen={isSearchOpen}
+        onClose={() => setIsSearchOpen(false)}
+        basePath={basePath}
+        hasNativeSubstitutionPlan={hasNativeSubstitutionPlan}
+        hasDsbModule={hasDsbModule}
+      />
       <pwa-install
         ref={pwaRef}
         manifest-url="/favicon/site.webmanifest"
