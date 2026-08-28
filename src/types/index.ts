@@ -529,6 +529,52 @@ export interface TimetableResponse {
   custom_lessons?: CustomLesson[];
 }
 
+// Native Schulportal substitution-plan types
+export interface VertretungsplanEntry {
+  tag?: string | null;
+  tag_en?: string | null;
+  stunde?: string | number | null;
+  fach?: string | null;
+  fach_alt?: string | null;
+  art?: string | null;
+  raum?: string | null;
+  raum_alt?: string | null;
+  hinweis?: string | null;
+  hinweis2?: string | null;
+  lehrer?: string | null;
+  vertreter?: string | null;
+  klasse?: string | null;
+  klasse_alt?: string | null;
+  lehrerkuerzel?: string | null;
+  vertreterkuerzel?: string | null;
+  lerngruppe?: string | null;
+  hervorgehoben?: boolean | null;
+  [key: string]: unknown;
+}
+
+export interface VertretungsplanInfo {
+  header: string;
+  values: string[];
+}
+
+export interface VertretungsplanDay {
+  date: string;
+  substitutions: VertretungsplanEntry[];
+  infos?: VertretungsplanInfo[] | null;
+}
+
+export interface VertretungsplanResponse {
+  success: boolean;
+  source?: string;
+  available?: boolean;
+  mode?: 'ajax' | 'non_ajax' | string;
+  last_updated?: string | null;
+  days: VertretungsplanDay[];
+  count: number;
+  raw_html?: string | null;
+  error?: string;
+}
+
 export interface CustomLesson {
   /** Backwards-compatible ISO date whose weekday identifies the recurring day. */
   date: string;

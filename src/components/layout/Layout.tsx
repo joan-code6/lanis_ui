@@ -35,6 +35,7 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
   const location = useLocation();
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
   const [isSearchOpen, setIsSearchOpen] = React.useState(false);
+  const [hasNativeSubstitutionPlan, setHasNativeSubstitutionPlan] = React.useState(false);
   const [hasDsbModule, setHasDsbModule] = React.useState(false);
   const mainRef = React.useRef<HTMLElement>(null);
   const pwaRef = React.useRef<any>(null);
@@ -76,12 +77,21 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
         const response = await appsAPI.getModules(token, abortController.signal);
         if (abortController.signal.aborted) return;
         if (response.success) {
-          const dsbExists = response.modules.some(
-            m => m.name.toLowerCase().includes('dsb') ||
-                 m.name.toLowerCase().includes('vertretungsplan') ||
-                 m.url.toLowerCase().includes('dsb') ||
-                 m.url.toLowerCase().includes('vertretung')
-          );
+          const nativePlanExists = response.modules.some(m => {
+            const links = `${m.url} ${m.direct_url || ''}`.toLowerCase();
+            return links.includes('/vertretungsplan.php') ||
+              (m.name.toLowerCase().includes('vertretungsplan') && !links.includes('dsb'));
+          });
+          const dsbExists = response.modules.some(m => {
+            const links = `${m.url} ${m.direct_url || ''}`.toLowerCase();
+            const isNativePlan = links.includes('/vertretungsplan.php') ||
+              (m.name.toLowerCase().includes('vertretungsplan') && !links.includes('dsb'));
+            return !isNativePlan && (
+              m.name.toLowerCase().includes('dsb') ||
+              links.includes('dsb')
+            );
+          });
+          setHasNativeSubstitutionPlan(nativePlanExists);
           setHasDsbModule(dsbExists);
         }
       } catch (error) {
@@ -116,9 +126,14 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
     { name: 'Einstellungen', href: `${basePath}/settings`, icon: Cog6ToothIcon },
   ];
 
-  const dsbNavItem = hasDsbModule ? { name: 'Vertretungsplan', href: `${basePath}/dsb`, icon: ClipboardDocumentListIcon } : null;
+  const planNavItems = [
+    ...(hasNativeSubstitutionPlan ? [{ name: 'Vertretungsplan', href: `${basePath}/vertretungsplan`, icon: ClipboardDocumentListIcon }] : []),
+    ...(hasDsbModule ? [{ name: 'DSBmobile', href: `${basePath}/dsb`, icon: ClipboardDocumentListIcon }] : []),
+  ];
 
-  const navigation = dsbNavItem ? [...baseNavigation.slice(0, 2), dsbNavItem, ...baseNavigation.slice(2)] : baseNavigation;
+  const navigation = planNavItems.length > 0
+    ? [...baseNavigation.slice(0, 2), ...planNavItems, ...baseNavigation.slice(2)]
+    : baseNavigation;
 
   const handleLogout = () => {
     logout();

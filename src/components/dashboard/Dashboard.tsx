@@ -123,12 +123,14 @@ const Dashboard: React.FC = () => {
       navigate(`${basePath}/study-groups`);
       return;
     }
-    if (module.url.toLowerCase().includes('dsb') ||
-        (module.direct_url && module.direct_url.toLowerCase().includes('dsb')) ||
-        module.name.toLowerCase().includes('dsb') ||
-        module.name.toLowerCase().includes('vertretungsplan') ||
-        module.url.toLowerCase().includes('vertretung') ||
-        (module.direct_url && module.direct_url.toLowerCase().includes('vertretung'))) {
+    const moduleLinks = `${module.url} ${module.direct_url || ''}`.toLowerCase();
+    const isNativeSubstitutionPlan = moduleLinks.includes('/vertretungsplan.php') ||
+      (module.name.toLowerCase().includes('vertretungsplan') && !moduleLinks.includes('dsb'));
+    if (isNativeSubstitutionPlan) {
+      navigate(`${basePath}/vertretungsplan`);
+      return;
+    }
+    if (moduleLinks.includes('dsb') || module.name.toLowerCase().includes('dsb')) {
       navigate(`${basePath}/dsb`);
       return;
     }

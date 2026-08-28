@@ -172,6 +172,7 @@ import {
   TimetableDay,
   CustomLesson,
   CustomLessonsResponse,
+  VertretungsplanResponse,
   ClassLinksResponse,
   StudyGroupsResponse,
   NotificationConfigResponse,
@@ -619,6 +620,17 @@ export const timetableAPI = {
       time_slots: timeSlots,
       custom_lessons: Array.isArray(data.custom_lessons) ? data.custom_lessons : undefined,
     };
+  },
+};
+
+// Native Schulportal substitution plan API
+export const vertretungsplanAPI = {
+  async getPlan(token: string, signal?: AbortSignal): Promise<VertretungsplanResponse> {
+    const response = await apiClient.get<VertretungsplanResponse>('/vertretungsplan', {
+      headers: { 'X-Session-Token': token },
+      signal,
+    });
+    return response.data;
   },
 };
 
