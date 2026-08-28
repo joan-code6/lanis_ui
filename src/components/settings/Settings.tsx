@@ -16,9 +16,9 @@ import {
   ClockIcon,
   ClipboardDocumentListIcon,
   DevicePhoneMobileIcon,
+  InboxIcon,
   MoonIcon,
   PaintBrushIcon,
-  ShieldCheckIcon,
   SunIcon,
 } from '@heroicons/react/24/outline';
 import SEO from '../seo/SEO';
@@ -700,7 +700,8 @@ const Settings: React.FC = () => {
 
         {/* Push-Benachrichtigungen */}
         {section === 'notifications' && (
-        <div className="card overflow-hidden border-primary-100 dark:border-primary-900/60">
+        <>
+        <div className="card">
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-start gap-3">
               <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary-50 text-primary-700 dark:bg-primary-950 dark:text-primary-300">
@@ -764,39 +765,164 @@ const Settings: React.FC = () => {
               </p>
             )}
 
-            <div className="grid gap-3 sm:grid-cols-2">
-              <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-surface-200 p-3 dark:border-surface-700">
-                <input
-                  type="checkbox"
-                  className="mt-0.5 h-4 w-4 rounded border-surface-300 text-primary-600 focus:ring-primary-500"
-                  checked={notificationPrefs.messages_enabled}
-                  onChange={event => setNotificationPrefs(previous => ({ ...previous, messages_enabled: event.target.checked }))}
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div>
+                <label className="label" htmlFor="notification-start">Aktiv ab</label>
+                <div className="relative">
+                  <ClockIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-surface-400" />
+                  <input
+                    id="notification-start"
+                    type="time"
+                    className="input pl-9 text-sm"
+                    value={notificationPrefs.start_time}
+                    onChange={event => setNotificationPrefs(previous => ({ ...previous, start_time: event.target.value }))}
+                    disabled={notificationsLoading || notificationsSaving}
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="label" htmlFor="notification-end">Aktiv bis</label>
+                <div className="relative">
+                  <ClockIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-surface-400" />
+                  <input
+                    id="notification-end"
+                    type="time"
+                    className="input pl-9 text-sm"
+                    value={notificationPrefs.end_time}
+                    onChange={event => setNotificationPrefs(previous => ({ ...previous, end_time: event.target.value }))}
+                    disabled={notificationsLoading || notificationsSaving}
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="label" htmlFor="notification-interval">Prüfintervall</label>
+                <select
+                  id="notification-interval"
+                  className="input text-sm"
+                  value={notificationPrefs.poll_interval_minutes}
+                  onChange={event => setNotificationPrefs(previous => ({ ...previous, poll_interval_minutes: Number(event.target.value) }))}
                   disabled={notificationsLoading || notificationsSaving}
-                />
-                <span>
-                  <span className="block text-sm font-medium text-surface-800 dark:text-surface-200">Neue Nachrichten</span>
-                  <span className="mt-0.5 block text-xs text-surface-500">Benachrichtigt bei neuen oder aktualisierten ungelesenen Unterhaltungen.</span>
-                </span>
-              </label>
-              <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-surface-200 p-3 dark:border-surface-700">
-                <input
-                  type="checkbox"
-                  className="mt-0.5 h-4 w-4 rounded border-surface-300 text-primary-600 focus:ring-primary-500"
-                  checked={notificationPrefs.vertretungsplan_enabled}
-                  onChange={event => setNotificationPrefs(previous => ({ ...previous, vertretungsplan_enabled: event.target.checked }))}
-                  disabled={notificationsLoading || notificationsSaving}
-                />
-                <span className="flex gap-2">
-                  <ClipboardDocumentListIcon className="mt-0.5 h-4 w-4 shrink-0 text-primary-600" />
-                  <span>
-                    <span className="block text-sm font-medium text-surface-800 dark:text-surface-200">Neue Vertretungsplan-Einträge</span>
-                    <span className="mt-0.5 block text-xs text-surface-500">Die erste Prüfung legt nur den Startstand fest.</span>
-                  </span>
-                </span>
-              </label>
+                >
+                  {[5, 10, 15, 30, 60].map(minutes => (
+                    <option key={minutes} value={minutes}>{minutes} Minuten</option>
+                  ))}
+                </select>
+              </div>
             </div>
 
-            {notificationPrefs.vertretungsplan_enabled && (
+            <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={sendTestNotification}
+              disabled={notificationsLoading || notificationsSaving || notificationTestSending || !notificationSettingsLoaded || !notificationPrefs.enabled || !notificationBrowserReady || !notificationConfigured || !pushSupported}
+                  className="btn btn-secondary h-9 text-xs disabled:opacity-50"
+                >
+                  {notificationTestSending ? 'Sende...' : 'Test senden'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => saveNotificationSettings({ ...notificationPrefs, timezone: notificationPrefs.timezone || getBrowserTimezone() })}
+                  disabled={notificationsLoading || notificationsSaving || !notificationSettingsLoaded || !token || !notificationSelectionValid || (notificationPrefs.enabled && !notificationTypesSelected)}
+                  className="btn btn-primary h-9 text-xs disabled:opacity-50"
+                >
+                  {notificationsSaving ? 'Speichere...' : 'Speichern'}
+                </button>
+            </div>
+
+            {notificationError && (
+              <p className="rounded-xl bg-red-50 p-3 text-xs text-red-700 dark:bg-red-950/40 dark:text-red-300">{notificationError}</p>
+            )}
+            {notificationMessage && (
+              <p className="rounded-xl bg-emerald-50 p-3 text-xs text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">{notificationMessage}</p>
+            )}
+          </div>
+        </div>
+
+        {/* Nachrichten-Benachrichtigungen */}
+        <div className="card">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary-50 text-primary-700 dark:bg-primary-950 dark:text-primary-300">
+                <InboxIcon className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-semibold text-surface-900 dark:text-surface-100">Nachrichten</h3>
+                <p className="text-sm text-surface-500 mt-0.5">Benachrichtigt bei neuen oder aktualisierten ungelesenen Unterhaltungen.</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setNotificationPrefs(previous => ({ ...previous, messages_enabled: !previous.messages_enabled }))}
+              disabled={notificationsLoading || notificationsSaving}
+              className={`relative h-7 w-14 shrink-0 rounded-full transition-colors duration-300 ease-out-expo disabled:cursor-not-allowed disabled:opacity-50 ${
+                notificationPrefs.messages_enabled ? 'bg-primary-600' : 'bg-surface-300 dark:bg-surface-700'
+              }`}
+              role="switch"
+              aria-checked={notificationPrefs.messages_enabled}
+              aria-label="Nachrichten-Benachrichtigungen aktivieren"
+            >
+              <span
+                className={`absolute top-0.5 left-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-white shadow-soft transition-all duration-300 ease-out-expo ${
+                  notificationPrefs.messages_enabled ? 'translate-x-7' : 'translate-x-0'
+                }`}
+              >
+                <span className={`h-2 w-2 rounded-full ${notificationPrefs.messages_enabled ? 'bg-primary-600' : 'bg-surface-400'}`} />
+              </span>
+            </button>
+          </div>
+
+          {notificationPrefs.messages_enabled && (
+            <label className="mt-5 flex cursor-pointer items-start gap-3 border-t border-surface-100 pt-5 dark:border-surface-800">
+              <input
+                type="checkbox"
+                className="mt-0.5 h-4 w-4 rounded border-surface-300 text-primary-600 focus:ring-primary-500"
+                checked={notificationPrefs.show_preview}
+                onChange={event => setNotificationPrefs(previous => ({ ...previous, show_preview: event.target.checked }))}
+                disabled={notificationsLoading || notificationsSaving}
+              />
+              <span>
+                <span className="block text-sm font-medium text-surface-800 dark:text-surface-200">Vorschau in der Benachrichtigung</span>
+                <span className="mt-0.5 block text-xs text-surface-500">Zeigt Absender und Betreff auf dem Sperrbildschirm an.</span>
+              </span>
+            </label>
+          )}
+        </div>
+
+        {/* Vertretungsplan-Benachrichtigungen */}
+        <div className="card">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary-50 text-primary-700 dark:bg-primary-950 dark:text-primary-300">
+                <ClipboardDocumentListIcon className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-semibold text-surface-900 dark:text-surface-100">Vertretungsplan</h3>
+                <p className="text-sm text-surface-500 mt-0.5">Benachrichtigt über neue Einträge im Vertretungsplan.</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setNotificationPrefs(previous => ({ ...previous, vertretungsplan_enabled: !previous.vertretungsplan_enabled }))}
+              disabled={notificationsLoading || notificationsSaving}
+              className={`relative h-7 w-14 shrink-0 rounded-full transition-colors duration-300 ease-out-expo disabled:cursor-not-allowed disabled:opacity-50 ${
+                notificationPrefs.vertretungsplan_enabled ? 'bg-primary-600' : 'bg-surface-300 dark:bg-surface-700'
+              }`}
+              role="switch"
+              aria-checked={notificationPrefs.vertretungsplan_enabled}
+              aria-label="Vertretungsplan-Benachrichtigungen aktivieren"
+            >
+              <span
+                className={`absolute top-0.5 left-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-white shadow-soft transition-all duration-300 ease-out-expo ${
+                  notificationPrefs.vertretungsplan_enabled ? 'translate-x-7' : 'translate-x-0'
+                }`}
+              >
+                <span className={`h-2 w-2 rounded-full ${notificationPrefs.vertretungsplan_enabled ? 'bg-primary-600' : 'bg-surface-400'}`} />
+              </span>
+            </button>
+          </div>
+
+          {notificationPrefs.vertretungsplan_enabled && (
+            <div className="mt-5 border-t border-surface-100 pt-5 dark:border-surface-800">
               <div className="space-y-3 rounded-xl bg-surface-50 p-4 dark:bg-surface-800/70">
                 <div>
                   <p className="text-sm font-medium text-surface-800 dark:text-surface-200">Welche Klassen?</p>
@@ -890,102 +1016,10 @@ const Settings: React.FC = () => {
                   <p className="rounded-lg bg-amber-50 p-3 text-xs text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">{vertretungsplanOptionsError}</p>
                 )}
               </div>
-            )}
-
-            <div className="grid gap-4 sm:grid-cols-3">
-              <div>
-                <label className="label" htmlFor="notification-start">Aktiv ab</label>
-                <div className="relative">
-                  <ClockIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-surface-400" />
-                  <input
-                    id="notification-start"
-                    type="time"
-                    className="input pl-9 text-sm"
-                    value={notificationPrefs.start_time}
-                    onChange={event => setNotificationPrefs(previous => ({ ...previous, start_time: event.target.value }))}
-                    disabled={notificationsLoading || notificationsSaving}
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="label" htmlFor="notification-end">Aktiv bis</label>
-                <div className="relative">
-                  <ClockIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-surface-400" />
-                  <input
-                    id="notification-end"
-                    type="time"
-                    className="input pl-9 text-sm"
-                    value={notificationPrefs.end_time}
-                    onChange={event => setNotificationPrefs(previous => ({ ...previous, end_time: event.target.value }))}
-                    disabled={notificationsLoading || notificationsSaving}
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="label" htmlFor="notification-interval">Prüfintervall</label>
-                <select
-                  id="notification-interval"
-                  className="input text-sm"
-                  value={notificationPrefs.poll_interval_minutes}
-                  onChange={event => setNotificationPrefs(previous => ({ ...previous, poll_interval_minutes: Number(event.target.value) }))}
-                  disabled={notificationsLoading || notificationsSaving}
-                >
-                  {[5, 10, 15, 30, 60].map(minutes => (
-                    <option key={minutes} value={minutes}>{minutes} Minuten</option>
-                  ))}
-                </select>
-              </div>
             </div>
-
-            {notificationPrefs.messages_enabled && (
-            <label className="flex cursor-pointer items-start gap-3 rounded-xl bg-surface-50 p-3 dark:bg-surface-800/70">
-              <input
-                type="checkbox"
-                className="mt-0.5 h-4 w-4 rounded border-surface-300 text-primary-600 focus:ring-primary-500"
-                checked={notificationPrefs.show_preview}
-                onChange={event => setNotificationPrefs(previous => ({ ...previous, show_preview: event.target.checked }))}
-                disabled={notificationsLoading || notificationsSaving}
-              />
-              <span>
-                <span className="block text-sm font-medium text-surface-800 dark:text-surface-200">Vorschau in der Benachrichtigung</span>
-                <span className="mt-0.5 block text-xs text-surface-500">Zeigt Absender und Betreff auf dem Sperrbildschirm an.</span>
-              </span>
-            </label>
-            )}
-
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-start gap-2 text-xs text-surface-500">
-                <ShieldCheckIcon className="mt-0.5 h-4 w-4 shrink-0 text-primary-600" />
-                <span>Zeitzone: {notificationPrefs.timezone || getBrowserTimezone()}. Die erste Prüfung legt nur den Startstand fest.</span>
-              </div>
-              <div className="flex shrink-0 gap-2">
-                <button
-                  type="button"
-                  onClick={sendTestNotification}
-              disabled={notificationsLoading || notificationsSaving || notificationTestSending || !notificationSettingsLoaded || !notificationPrefs.enabled || !notificationBrowserReady || !notificationConfigured || !pushSupported}
-                  className="btn btn-secondary h-9 text-xs disabled:opacity-50"
-                >
-                  {notificationTestSending ? 'Sende...' : 'Test senden'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => saveNotificationSettings({ ...notificationPrefs, timezone: notificationPrefs.timezone || getBrowserTimezone() })}
-                  disabled={notificationsLoading || notificationsSaving || !notificationSettingsLoaded || !token || !notificationSelectionValid || (notificationPrefs.enabled && !notificationTypesSelected)}
-                  className="btn btn-primary h-9 text-xs disabled:opacity-50"
-                >
-                  {notificationsSaving ? 'Speichere...' : 'Speichern'}
-                </button>
-              </div>
-            </div>
-
-            {notificationError && (
-              <p className="rounded-xl bg-red-50 p-3 text-xs text-red-700 dark:bg-red-950/40 dark:text-red-300">{notificationError}</p>
-            )}
-            {notificationMessage && (
-              <p className="rounded-xl bg-emerald-50 p-3 text-xs text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">{notificationMessage}</p>
-            )}
-          </div>
+          )}
         </div>
+        </>
         )}
 
         {/* Preview Card */}
