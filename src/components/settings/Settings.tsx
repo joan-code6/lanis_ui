@@ -15,10 +15,11 @@ import {
   CheckIcon,
   ChevronRightIcon,
   ClockIcon,
+  ClipboardDocumentListIcon,
   DevicePhoneMobileIcon,
+  InboxIcon,
   MoonIcon,
   PaintBrushIcon,
-  ShieldCheckIcon,
   SunIcon,
   SparklesIcon,
 } from '@heroicons/react/24/outline';
@@ -41,6 +42,10 @@ const themeColors: { key: ThemeColor; label: string; hex: string }[] = [
 
 const defaultNotificationPreferences: NotificationPreferences = {
   enabled: false,
+  messages_enabled: true,
+  vertretungsplan_enabled: false,
+  vertretungsplan_class_mode: 'own',
+  vertretungsplan_classes: [],
   start_time: '07:00',
   end_time: '21:00',
   poll_interval_minutes: 15,
@@ -101,7 +106,7 @@ const settingsSections: Array<{
   {
     id: 'notifications',
     title: 'Benachrichtigungen',
-    description: 'Push-Mitteilungen für neue Nachrichten verwalten.',
+    description: 'Push-Mitteilungen für Nachrichten und den Vertretungsplan verwalten.',
     icon: BellAlertIcon,
   },
   {
@@ -116,7 +121,7 @@ const sectionMeta: Record<SettingsSection, { title: string; subtitle: string }> 
   home: { title: 'Einstellungen', subtitle: 'Passe dein Schulportal an.' },
   appearance: { title: 'Erscheinungsbild', subtitle: 'Farben und Oberfläche an deine Gewohnheiten anpassen.' },
   timetable: { title: 'Stundenplan', subtitle: 'Anzeige und eigene Stundenplanänderungen verwalten.' },
-  notifications: { title: 'Benachrichtigungen', subtitle: 'Neue Nachrichten mit Web-Push zuverlässig mitbekommen.' },
+  notifications: { title: 'Benachrichtigungen', subtitle: 'Nachrichten und neue Vertretungsplan-Einträge per Web-Push mitbekommen.' },
   app: { title: 'App & Installation', subtitle: 'Lanis auf deinem Gerät griffbereit halten.' },
 };
 
@@ -179,11 +184,32 @@ const Settings: React.FC = () => {
   const [notificationTestSending, setNotificationTestSending] = useState(false);
   const [notificationError, setNotificationError] = useState('');
   const [notificationMessage, setNotificationMessage] = useState('');
+  const [ownClass, setOwnClass] = useState('');
+  const [availableClasses, setAvailableClasses] = useState<string[]>([]);
+  const [vertretungsplanClassesInput, setVertretungsplanClassesInput] = useState('');
+  const [hasSavedOwnClassScope, setHasSavedOwnClassScope] = useState(false);
+  const [vertretungsplanOptionsStatus, setVertretungsplanOptionsStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [vertretungsplanOptionsError, setVertretungsplanOptionsError] = useState('');
 
   const pushSupported = typeof window !== 'undefined'
     && 'Notification' in window
     && 'serviceWorker' in navigator
     && 'PushManager' in window;
+  const notificationTypesSelected = notificationPrefs.messages_enabled
+    || notificationPrefs.vertretungsplan_enabled;
+  const notificationSelectionValid = !notificationPrefs.vertretungsplan_enabled
+    || notificationPrefs.vertretungsplan_class_mode === 'all'
+    || (
+      notificationPrefs.vertretungsplan_class_mode === 'own'
+      && (
+        Boolean(ownClass)
+        || (hasSavedOwnClassScope && vertretungsplanOptionsStatus !== 'success')
+      )
+    )
+    || (
+      notificationPrefs.vertretungsplan_class_mode === 'selected'
+      && notificationPrefs.vertretungsplan_classes.some(value => value.trim().length > 0)
+    );
 
   useEffect(() => {
     const prompt = getDeferredPrompt();
@@ -237,6 +263,12 @@ const Settings: React.FC = () => {
     setNotificationTestSending(false);
     setNotificationError('');
     setNotificationMessage('');
+    setOwnClass('');
+    setAvailableClasses([]);
+    setVertretungsplanClassesInput('');
+    setHasSavedOwnClassScope(false);
+    setVertretungsplanOptionsStatus('idle');
+    setVertretungsplanOptionsError('');
 
     if (section !== 'notifications') {
       setNotificationsLoading(false);
@@ -249,8 +281,27 @@ const Settings: React.FC = () => {
     }
 
     setNotificationsLoading(true);
+    setVertretungsplanOptionsStatus('loading');
 
     const controller = new AbortController();
+    const loadVertretungsplanOptions = async () => {
+      try {
+        const options = await notificationsAPI.getVertretungsplanOptions(token, controller.signal);
+        if (controller.signal.aborted) return;
+        if (!options.success) {
+          throw new Error('Vertretungsplan options response was unsuccessful.');
+        }
+        setOwnClass(options.own_class || '');
+        setAvailableClasses(options.available_classes || []);
+        setVertretungsplanOptionsStatus('success');
+      } catch (error) {
+        if (!controller.signal.aborted) {
+          console.error('Failed to load Vertretungsplan notification options:', error);
+          setVertretungsplanOptionsStatus('error');
+          setVertretungsplanOptionsError('Klassen konnten gerade nicht aus dem Vertretungsplan geladen werden. Du kannst sie trotzdem manuell eingeben.');
+        }
+      }
+    };
     const loadNotificationSettings = async () => {
       try {
         const [config, preferences] = await Promise.all([
@@ -268,6 +319,11 @@ const Settings: React.FC = () => {
         };
         setNotificationConfigured(config.configured);
         setNotificationPrefs(loadedPreferences);
+        setVertretungsplanClassesInput(loadedPreferences.vertretungsplan_classes.join(', '));
+        setHasSavedOwnClassScope(
+          loadedPreferences.vertretungsplan_enabled
+          && loadedPreferences.vertretungsplan_class_mode === 'own',
+        );
         setNotificationSettingsLoaded(true);
         if (pushSupported) {
           setNotificationPermission(Notification.permission);
@@ -305,7 +361,8 @@ const Settings: React.FC = () => {
       }
     };
 
-    loadNotificationSettings();
+    void loadVertretungsplanOptions();
+    void loadNotificationSettings();
     return () => controller.abort();
   }, [token, pushSupported, section]);
 
@@ -400,6 +457,10 @@ const Settings: React.FC = () => {
 
   const saveNotificationSettings = async (nextPrefs: NotificationPreferences) => {
     if (!token) return;
+    if (nextPrefs.enabled && !nextPrefs.messages_enabled && !nextPrefs.vertretungsplan_enabled) {
+      setNotificationError('Wähle mindestens eine Benachrichtigungsart aus.');
+      return;
+    }
     setNotificationsSaving(true);
     setNotificationError('');
     setNotificationMessage('');
@@ -411,7 +472,13 @@ const Settings: React.FC = () => {
       if (!response.success || !response.preferences) {
         throw new Error('Benachrichtigungseinstellungen konnten nicht gespeichert werden.');
       }
-      setNotificationPrefs(response.preferences);
+      const savedPreferences = { ...defaultNotificationPreferences, ...response.preferences };
+      setNotificationPrefs(savedPreferences);
+      setVertretungsplanClassesInput(savedPreferences.vertretungsplan_classes.join(', '));
+      setHasSavedOwnClassScope(
+        savedPreferences.vertretungsplan_enabled
+        && savedPreferences.vertretungsplan_class_mode === 'own',
+      );
       if (!response.preferences.enabled) setNotificationBrowserReady(false);
       setNotificationMessage('Benachrichtigungseinstellungen gespeichert.');
     } catch (error) {
@@ -427,6 +494,10 @@ const Settings: React.FC = () => {
     setNotificationMessage('');
     const notificationsActive = notificationPrefs.enabled && notificationBrowserReady;
     if (!notificationsActive) {
+      if (!notificationTypesSelected || !notificationSelectionValid) {
+        setNotificationError('Wähle mindestens eine gültige Benachrichtigungsart aus.');
+        return;
+      }
       setNotificationsSaving(true);
       let registeredEndpoint: string | null = null;
       try {
@@ -441,7 +512,13 @@ const Settings: React.FC = () => {
         if (!response.success || !response.preferences) {
           throw new Error('Benachrichtigungseinstellungen konnten nicht aktiviert werden.');
         }
-        setNotificationPrefs(response.preferences);
+        const savedPreferences = { ...defaultNotificationPreferences, ...response.preferences };
+        setNotificationPrefs(savedPreferences);
+        setVertretungsplanClassesInput(savedPreferences.vertretungsplan_classes.join(', '));
+        setHasSavedOwnClassScope(
+          savedPreferences.vertretungsplan_enabled
+          && savedPreferences.vertretungsplan_class_mode === 'own',
+        );
         setNotificationMessage('Benachrichtigungen sind jetzt aktiv.');
       } catch (error) {
         let rollbackError: Error | null = null;
@@ -614,9 +691,10 @@ const Settings: React.FC = () => {
           </>
         )}
 
-        {/* Nachrichten-Benachrichtigungen */}
+        {/* Push-Benachrichtigungen */}
         {section === 'notifications' && (
-        <div className="card overflow-hidden border-primary-100 dark:border-primary-900/60">
+        <>
+        <div className="card">
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-start gap-3">
               <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary-50 text-primary-700 dark:bg-primary-950 dark:text-primary-300">
@@ -627,26 +705,26 @@ const Settings: React.FC = () => {
                 )}
               </div>
               <div>
-                <h3 className="text-base font-semibold text-surface-900 dark:text-surface-100">Nachrichten-Benachrichtigungen</h3>
+                <h3 className="text-base font-semibold text-surface-900 dark:text-surface-100">Push-Benachrichtigungen</h3>
                 <p className="text-sm text-surface-500 mt-0.5">
                   {notificationPrefs.enabled && notificationBrowserReady
                     ? `Aktiv von ${notificationPrefs.start_time} bis ${notificationPrefs.end_time} · Prüfung alle ${notificationPrefs.poll_interval_minutes} Min.`
                     : notificationPrefs.enabled
                       ? 'Für diesen Browser noch nicht aktiviert. Klicke den Schalter, um ihn zu registrieren.'
-                    : 'Lanis prüft auf Wunsch tagsüber auf neue Nachrichten.'}
+                    : 'Lanis kann dich über Nachrichten und neue Vertretungsplan-Einträge informieren.'}
                 </p>
               </div>
             </div>
             <button
               type="button"
               onClick={handleNotificationsToggle}
-              disabled={notificationsLoading || notificationsSaving || !notificationSettingsLoaded || !notificationConfigured || !pushSupported}
+              disabled={notificationsLoading || notificationsSaving || !notificationSettingsLoaded || !notificationConfigured || !pushSupported || (!(notificationPrefs.enabled && notificationBrowserReady) && (!notificationTypesSelected || !notificationSelectionValid))}
               className={`relative h-7 w-14 shrink-0 rounded-full transition-colors duration-300 ease-out-expo disabled:cursor-not-allowed disabled:opacity-50 ${
                 notificationPrefs.enabled && notificationBrowserReady ? 'bg-primary-600' : 'bg-surface-300 dark:bg-surface-700'
               }`}
               role="switch"
               aria-checked={notificationPrefs.enabled && notificationBrowserReady}
-              aria-label="Nachrichten-Benachrichtigungen aktivieren"
+              aria-label="Push-Benachrichtigungen aktivieren"
             >
               <span
                 className={`absolute top-0.5 left-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-white shadow-soft transition-all duration-300 ease-out-expo ${
@@ -725,7 +803,69 @@ const Settings: React.FC = () => {
               </div>
             </div>
 
-            <label className="flex cursor-pointer items-start gap-3 rounded-xl bg-surface-50 p-3 dark:bg-surface-800/70">
+            <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={sendTestNotification}
+              disabled={notificationsLoading || notificationsSaving || notificationTestSending || !notificationSettingsLoaded || !notificationPrefs.enabled || !notificationBrowserReady || !notificationConfigured || !pushSupported}
+                  className="btn btn-secondary h-9 text-xs disabled:opacity-50"
+                >
+                  {notificationTestSending ? 'Sende...' : 'Test senden'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => saveNotificationSettings({ ...notificationPrefs, timezone: notificationPrefs.timezone || getBrowserTimezone() })}
+                  disabled={notificationsLoading || notificationsSaving || !notificationSettingsLoaded || !token || !notificationSelectionValid || (notificationPrefs.enabled && !notificationTypesSelected)}
+                  className="btn btn-primary h-9 text-xs disabled:opacity-50"
+                >
+                  {notificationsSaving ? 'Speichere...' : 'Speichern'}
+                </button>
+            </div>
+
+            {notificationError && (
+              <p className="rounded-xl bg-red-50 p-3 text-xs text-red-700 dark:bg-red-950/40 dark:text-red-300">{notificationError}</p>
+            )}
+            {notificationMessage && (
+              <p className="rounded-xl bg-emerald-50 p-3 text-xs text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">{notificationMessage}</p>
+            )}
+          </div>
+        </div>
+
+        {/* Nachrichten-Benachrichtigungen */}
+        <div className="card">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary-50 text-primary-700 dark:bg-primary-950 dark:text-primary-300">
+                <InboxIcon className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-semibold text-surface-900 dark:text-surface-100">Nachrichten</h3>
+                <p className="text-sm text-surface-500 mt-0.5">Benachrichtigt bei neuen oder aktualisierten ungelesenen Unterhaltungen.</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setNotificationPrefs(previous => ({ ...previous, messages_enabled: !previous.messages_enabled }))}
+              disabled={notificationsLoading || notificationsSaving}
+              className={`relative h-7 w-14 shrink-0 rounded-full transition-colors duration-300 ease-out-expo disabled:cursor-not-allowed disabled:opacity-50 ${
+                notificationPrefs.messages_enabled ? 'bg-primary-600' : 'bg-surface-300 dark:bg-surface-700'
+              }`}
+              role="switch"
+              aria-checked={notificationPrefs.messages_enabled}
+              aria-label="Nachrichten-Benachrichtigungen aktivieren"
+            >
+              <span
+                className={`absolute top-0.5 left-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-white shadow-soft transition-all duration-300 ease-out-expo ${
+                  notificationPrefs.messages_enabled ? 'translate-x-7' : 'translate-x-0'
+                }`}
+              >
+                <span className={`h-2 w-2 rounded-full ${notificationPrefs.messages_enabled ? 'bg-primary-600' : 'bg-surface-400'}`} />
+              </span>
+            </button>
+          </div>
+
+          {notificationPrefs.messages_enabled && (
+            <label className="mt-5 flex cursor-pointer items-start gap-3 border-t border-surface-100 pt-5 dark:border-surface-800">
               <input
                 type="checkbox"
                 className="mt-0.5 h-4 w-4 rounded border-surface-300 text-primary-600 focus:ring-primary-500"
@@ -738,40 +878,141 @@ const Settings: React.FC = () => {
                 <span className="mt-0.5 block text-xs text-surface-500">Zeigt Absender und Betreff auf dem Sperrbildschirm an.</span>
               </span>
             </label>
+          )}
+        </div>
 
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-start gap-2 text-xs text-surface-500">
-                <ShieldCheckIcon className="mt-0.5 h-4 w-4 shrink-0 text-primary-600" />
-                <span>Zeitzone: {notificationPrefs.timezone || getBrowserTimezone()}. Die erste Prüfung legt nur den Startstand fest.</span>
+        {/* Vertretungsplan-Benachrichtigungen */}
+        <div className="card">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary-50 text-primary-700 dark:bg-primary-950 dark:text-primary-300">
+                <ClipboardDocumentListIcon className="h-5 w-5" />
               </div>
-              <div className="flex shrink-0 gap-2">
-                <button
-                  type="button"
-                  onClick={sendTestNotification}
-              disabled={notificationsLoading || notificationsSaving || notificationTestSending || !notificationSettingsLoaded || !notificationPrefs.enabled || !notificationBrowserReady || !notificationConfigured || !pushSupported}
-                  className="btn btn-secondary h-9 text-xs disabled:opacity-50"
-                >
-                  {notificationTestSending ? 'Sende...' : 'Test senden'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => saveNotificationSettings({ ...notificationPrefs, timezone: notificationPrefs.timezone || getBrowserTimezone() })}
-                  disabled={notificationsLoading || notificationsSaving || !notificationSettingsLoaded || !token}
-                  className="btn btn-primary h-9 text-xs disabled:opacity-50"
-                >
-                  {notificationsSaving ? 'Speichere...' : 'Speichern'}
-                </button>
+              <div>
+                <h3 className="text-base font-semibold text-surface-900 dark:text-surface-100">Vertretungsplan</h3>
+                <p className="text-sm text-surface-500 mt-0.5">Benachrichtigt über neue Einträge im Vertretungsplan.</p>
               </div>
             </div>
-
-            {notificationError && (
-              <p className="rounded-xl bg-red-50 p-3 text-xs text-red-700 dark:bg-red-950/40 dark:text-red-300">{notificationError}</p>
-            )}
-            {notificationMessage && (
-              <p className="rounded-xl bg-emerald-50 p-3 text-xs text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">{notificationMessage}</p>
-            )}
+            <button
+              type="button"
+              onClick={() => setNotificationPrefs(previous => ({ ...previous, vertretungsplan_enabled: !previous.vertretungsplan_enabled }))}
+              disabled={notificationsLoading || notificationsSaving}
+              className={`relative h-7 w-14 shrink-0 rounded-full transition-colors duration-300 ease-out-expo disabled:cursor-not-allowed disabled:opacity-50 ${
+                notificationPrefs.vertretungsplan_enabled ? 'bg-primary-600' : 'bg-surface-300 dark:bg-surface-700'
+              }`}
+              role="switch"
+              aria-checked={notificationPrefs.vertretungsplan_enabled}
+              aria-label="Vertretungsplan-Benachrichtigungen aktivieren"
+            >
+              <span
+                className={`absolute top-0.5 left-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-white shadow-soft transition-all duration-300 ease-out-expo ${
+                  notificationPrefs.vertretungsplan_enabled ? 'translate-x-7' : 'translate-x-0'
+                }`}
+              >
+                <span className={`h-2 w-2 rounded-full ${notificationPrefs.vertretungsplan_enabled ? 'bg-primary-600' : 'bg-surface-400'}`} />
+              </span>
+            </button>
           </div>
+
+          {notificationPrefs.vertretungsplan_enabled && (
+            <div className="mt-5 border-t border-surface-100 pt-5 dark:border-surface-800">
+              <div className="space-y-3 rounded-xl bg-surface-50 p-4 dark:bg-surface-800/70">
+                <div>
+                  <p className="text-sm font-medium text-surface-800 dark:text-surface-200">Welche Klassen?</p>
+                  <p className="mt-0.5 text-xs text-surface-500">Standardmäßig erhältst du nur Einträge für deine eigene Klasse.</p>
+                </div>
+                <div className="grid gap-2 sm:grid-cols-3">
+                  {([
+                    ['own', ownClass ? `Meine Klasse (${ownClass})` : 'Meine Klasse'],
+                    ['selected', 'Ausgewählte Klassen'],
+                    ['all', 'Alle Klassen'],
+                  ] as const).map(([mode, label]) => (
+                    <label key={mode} className={`flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border px-3 py-3 text-sm ${
+                      notificationPrefs.vertretungsplan_class_mode === mode
+                        ? 'border-primary-500 bg-primary-50 text-primary-800 dark:bg-primary-950/40 dark:text-primary-200'
+                        : 'border-surface-200 bg-white text-surface-700 dark:border-surface-700 dark:bg-surface-900 dark:text-surface-300'
+                    } ${mode === 'own' && !ownClass ? 'opacity-60' : ''}`}>
+                      <input
+                        type="radio"
+                        name="vertretungsplan-class-mode"
+                        value={mode}
+                        checked={notificationPrefs.vertretungsplan_class_mode === mode}
+                        onChange={() => setNotificationPrefs(previous => ({ ...previous, vertretungsplan_class_mode: mode }))}
+                        disabled={notificationsLoading || notificationsSaving || (mode === 'own' && !ownClass)}
+                      />
+                      {label}
+                    </label>
+                  ))}
+                </div>
+
+                {notificationPrefs.vertretungsplan_class_mode === 'selected' && (
+                  <div>
+                    <label className="label" htmlFor="notification-classes">Klassen (mit Komma trennen)</label>
+                    <input
+                      id="notification-classes"
+                      type="text"
+                      className="input text-sm"
+                      value={vertretungsplanClassesInput}
+                      onChange={event => {
+                        const input = event.target.value;
+                        setVertretungsplanClassesInput(input);
+                        setNotificationPrefs(previous => ({
+                          ...previous,
+                          vertretungsplan_classes: input.split(',').map(value => value.trim()),
+                        }));
+                      }}
+                      onBlur={() => {
+                        const classes = notificationPrefs.vertretungsplan_classes.filter(value => value.length > 0);
+                        setNotificationPrefs(previous => ({ ...previous, vertretungsplan_classes: classes }));
+                        setVertretungsplanClassesInput(classes.join(', '));
+                      }}
+                      placeholder="z. B. 10a, 10b, Q2"
+                      disabled={notificationsLoading || notificationsSaving}
+                    />
+                    {availableClasses.length > 0 && (
+                      <div className="mt-2 flex max-h-36 flex-wrap gap-1.5 overflow-y-auto p-1">
+                        {availableClasses.map(className => {
+                          const selected = notificationPrefs.vertretungsplan_classes.includes(className);
+                          return (
+                            <button
+                              key={className}
+                              type="button"
+                              aria-pressed={selected}
+                              onClick={() => {
+                                const classes = selected
+                                  ? notificationPrefs.vertretungsplan_classes.filter(value => value !== className)
+                                  : [...notificationPrefs.vertretungsplan_classes.filter(value => value.length > 0), className];
+                                setNotificationPrefs(previous => ({ ...previous, vertretungsplan_classes: classes }));
+                                setVertretungsplanClassesInput(classes.join(', '));
+                              }}
+                              className={`min-h-9 rounded-full px-3 py-1.5 text-xs transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500/50 ${
+                                selected
+                                  ? 'bg-primary-600 text-white'
+                                  : 'bg-white text-surface-600 ring-1 ring-surface-200 dark:bg-surface-900 dark:text-surface-300 dark:ring-surface-700'
+                              }`}
+                            >
+                              {className}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {!ownClass && notificationPrefs.vertretungsplan_class_mode === 'own' && (
+                  <p className="rounded-lg bg-amber-50 p-3 text-xs text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+                    Deine Klasse konnte nicht aus dem Profil gelesen werden. Wähle Klassen selbst aus oder abonniere alle Klassen.
+                  </p>
+                )}
+                {vertretungsplanOptionsError && (
+                  <p className="rounded-lg bg-amber-50 p-3 text-xs text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">{vertretungsplanOptionsError}</p>
+                )}
+              </div>
+            </div>
+          )}
         </div>
+        </>
         )}
 
         {/* Preview Card */}
