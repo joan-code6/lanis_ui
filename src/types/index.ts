@@ -83,6 +83,9 @@ export interface UserPreferences {
   timetable: {
     view_mode: TimetableViewMode;
   };
+  vertretungsplan: {
+    class_override: string;
+  };
   onboarding: {
     version: number;
     status: OnboardingStatus;
@@ -572,6 +575,13 @@ export interface VertretungsplanResponse {
   days: VertretungsplanDay[];
   count: number;
   raw_html?: string | null;
+  error?: string;
+}
+
+export interface VertretungsplanOptionsResponse {
+  success: boolean;
+  own_class: string;
+  available_classes: string[];
   error?: string;
 }
 

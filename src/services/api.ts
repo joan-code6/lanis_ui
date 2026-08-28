@@ -173,6 +173,7 @@ import {
   CustomLesson,
   CustomLessonsResponse,
   VertretungsplanResponse,
+  VertretungsplanOptionsResponse,
   ClassLinksResponse,
   StudyGroupsResponse,
   NotificationConfigResponse,
@@ -627,6 +628,14 @@ export const timetableAPI = {
 export const vertretungsplanAPI = {
   async getPlan(token: string, signal?: AbortSignal): Promise<VertretungsplanResponse> {
     const response = await apiClient.get<VertretungsplanResponse>('/vertretungsplan', {
+      headers: { 'X-Session-Token': token },
+      signal,
+    });
+    return response.data;
+  },
+
+  async getOptions(token: string, signal?: AbortSignal): Promise<VertretungsplanOptionsResponse> {
+    const response = await apiClient.get<VertretungsplanOptionsResponse>('/vertretungsplan/options', {
       headers: { 'X-Session-Token': token },
       signal,
     });

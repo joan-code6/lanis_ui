@@ -26,6 +26,7 @@ import {
 import SEO from '../seo/SEO';
 import { getDeferredPrompt } from '../pwa/InstallPrompt';
 import TimetableSettings from './TimetableSettings';
+import VertretungsplanSettings from './VertretungsplanSettings';
 
 const isStandalone = () =>
   window.matchMedia('(display-mode: standalone)').matches ||
@@ -83,7 +84,7 @@ const pushSubscriptionToPayload = (subscription: PushSubscription): PushSubscrip
   };
 };
 
-type SettingsSection = 'home' | 'appearance' | 'timetable' | 'notifications' | 'app';
+type SettingsSection = 'home' | 'appearance' | 'timetable' | 'vertretungsplan' | 'notifications' | 'app';
 
 const settingsSections: Array<{
   id: Exclude<SettingsSection, 'home'>;
@@ -104,6 +105,12 @@ const settingsSections: Array<{
     icon: CalendarDaysIcon,
   },
   {
+    id: 'vertretungsplan',
+    title: 'Vertretungsplan',
+    description: 'Automatische Klassenerkennung und Standardfilter anpassen.',
+    icon: ClipboardDocumentListIcon,
+  },
+  {
     id: 'notifications',
     title: 'Benachrichtigungen',
     description: 'Push-Mitteilungen für Nachrichten und den Vertretungsplan verwalten.',
@@ -121,6 +128,7 @@ const sectionMeta: Record<SettingsSection, { title: string; subtitle: string }> 
   home: { title: 'Einstellungen', subtitle: 'Passe dein Schulportal an.' },
   appearance: { title: 'Erscheinungsbild', subtitle: 'Farben und Oberfläche an deine Gewohnheiten anpassen.' },
   timetable: { title: 'Stundenplan', subtitle: 'Anzeige und eigene Stundenplanänderungen verwalten.' },
+  vertretungsplan: { title: 'Vertretungsplan', subtitle: 'Die passende Klasse automatisch auswählen oder selbst festlegen.' },
   notifications: { title: 'Benachrichtigungen', subtitle: 'Nachrichten und neue Vertretungsplan-Einträge per Web-Push mitbekommen.' },
   app: { title: 'App & Installation', subtitle: 'Lanis auf deinem Gerät griffbereit halten.' },
 };
@@ -627,6 +635,7 @@ const Settings: React.FC = () => {
       )}
 
       {section === 'timetable' && <TimetableSettings />}
+      {section === 'vertretungsplan' && <VertretungsplanSettings />}
 
       <div className="space-y-6">
         {section === 'appearance' && (

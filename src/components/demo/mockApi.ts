@@ -536,6 +536,16 @@ export function getMockResponse(url: string, method: string, config: any): { dat
       },
     };
   }
+  if (u === '/vertretungsplan/options' && method === 'get') {
+    return {
+      status: 200,
+      data: {
+        success: true,
+        own_class: mockUser.klasse,
+        available_classes: ['Q1', 'Q2'],
+      },
+    };
+  }
 
   // Courses and account-specific class links
   if (u === '/settings/class-links' && method === 'get') {

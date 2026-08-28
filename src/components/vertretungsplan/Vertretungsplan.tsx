@@ -1,13 +1,16 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
+import { Link } from 'react-router-dom';
 import {
   ArrowPathIcon,
   CalendarDaysIcon,
   InformationCircleIcon,
 } from '@heroicons/react/24/outline';
 import { useAuth } from '../../contexts/AuthContext';
+import { useBasePath } from '../../contexts/BasePathContext';
+import { usePreferences } from '../../contexts/PreferencesContext';
 import { vertretungsplanAPI } from '../../services/api';
-import { VertretungsplanDay, VertretungsplanEntry } from '../../types';
+import { VertretungsplanDay, VertretungsplanEntry, VertretungsplanOptionsResponse, VertretungsplanResponse } from '../../types';
 import SEO from '../seo/SEO';
 
 function parsePortalDate(value: string): Date | null {
@@ -74,6 +77,39 @@ function classValue(entry: VertretungsplanEntry): string | null {
   return changedValue(entry.klasse, entry.klasse_alt);
 }
 
+function normaliseClass(value: unknown): string {
+  return cleanText(value)
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLocaleLowerCase('de-DE')
+    .replace(/[^a-z0-9]+/g, '');
+}
+
+function classVariants(value: unknown): string[] {
+  const text = cleanText(value);
+  return [...new Set([text, ...text.split(/[,\s;/|]+/)])]
+    .map(normaliseClass)
+    .filter(Boolean);
+}
+
+function fuzzyClassMatches(value: unknown, target: unknown): boolean {
+  const targetClass = normaliseClass(target);
+  if (!targetClass) return false;
+  return classVariants(value).some(candidate => (
+    candidate === targetClass
+    || (candidate.length >= 3
+      && targetClass.length >= 3
+      && (candidate.startsWith(targetClass) || targetClass.startsWith(candidate)))
+  ));
+}
+
+function matchingClassOption(target: string, options: string[]): string {
+  if (!target) return '';
+  return options.find(option => normaliseClass(option) === normaliseClass(target))
+    || options.find(option => fuzzyClassMatches(option, target))
+    || target;
+}
+
 const PlanField: React.FC<{ label: string; value: string | null }> = ({ label, value }) => {
   if (!value) return null;
   return (
@@ -86,9 +122,16 @@ const PlanField: React.FC<{ label: string; value: string | null }> = ({ label, v
 
 const Vertretungsplan: React.FC = () => {
   const { token } = useAuth();
-  const [plan, setPlan] = useState<{ success: boolean; available?: boolean; last_updated?: string | null; days: VertretungsplanDay[]; count: number } | null>(null);
+  const { preferences } = usePreferences();
+  const basePath = useBasePath();
+  const [plan, setPlan] = useState<VertretungsplanResponse | null>(null);
+  const [options, setOptions] = useState<VertretungsplanOptionsResponse>({
+    success: false,
+    own_class: '',
+    available_classes: [],
+  });
   const [activeDay, setActiveDay] = useState('');
-  const [selectedClass, setSelectedClass] = useState('all');
+  const [selectedClass, setSelectedClass] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [reloadKey, setReloadKey] = useState(0);
@@ -102,22 +145,33 @@ const Vertretungsplan: React.FC = () => {
     const controller = new AbortController();
     setLoading(true);
     setError('');
+    setOptions({ success: false, own_class: '', available_classes: [] });
 
-    vertretungsplanAPI.getPlan(token, controller.signal)
-      .then(response => {
-        if (!response.success) {
-          throw new Error(response.error || 'Der Vertretungsplan konnte nicht geladen werden.');
+    const load = async () => {
+      const response = await vertretungsplanAPI.getPlan(token, controller.signal);
+      if (controller.signal.aborted) return;
+      let optionsResponse: VertretungsplanOptionsResponse | null = null;
+      try {
+        optionsResponse = await vertretungsplanAPI.getOptions(token, controller.signal);
+        if (!optionsResponse.success) {
+          throw new Error(optionsResponse.error || 'Die Klassen konnten nicht geladen werden.');
         }
-        const days = Array.isArray(response.days) ? response.days : [];
-        setPlan({
-          success: response.success,
-          available: response.available,
-          last_updated: response.last_updated,
-          days,
-          count: response.count || 0,
-        });
-        setActiveDay(current => days.some(day => day.date === current) ? current : (days[0]?.date || ''));
-      })
+      } catch (optionsError) {
+        if (axios.isCancel(optionsError)) throw optionsError;
+        console.warn('Failed to load Vertretungsplan class options:', optionsError);
+      }
+
+      if (controller.signal.aborted) return;
+      if (!response.success) {
+        throw new Error(response.error || 'Der Vertretungsplan konnte nicht geladen werden.');
+      }
+      const days = Array.isArray(response.days) ? response.days : [];
+      setPlan({ ...response, days, count: response.count || 0 });
+      if (optionsResponse) setOptions(optionsResponse);
+      setActiveDay(current => days.some(day => day.date === current) ? current : (days[0]?.date || ''));
+    };
+
+    load()
       .catch(err => {
         if (axios.isCancel(err)) return;
         setPlan(null);
@@ -143,9 +197,23 @@ const Vertretungsplan: React.FC = () => {
     return [...values].sort((left, right) => left.localeCompare(right, 'de'));
   }, [days]);
 
+  const configuredClass = preferences.vertretungsplan.class_override.trim();
+  const profileClass = options.own_class.trim();
+  const preferredClass = configuredClass || profileClass;
+  const defaultClass = useMemo(
+    () => matchingClassOption(preferredClass, classOptions),
+    [classOptions, preferredClass],
+  ) || 'all';
+  const activeClass = selectedClass ?? defaultClass;
+  const selectionOptions = useMemo(() => {
+    const values = new Set(classOptions);
+    if (preferredClass) values.add(matchingClassOption(preferredClass, classOptions));
+    return [...values].filter(Boolean).sort((left, right) => left.localeCompare(right, 'de'));
+  }, [classOptions, preferredClass]);
+
   const visibleEntries = (activeDayData?.substitutions || []).filter(entry => {
-    if (selectedClass === 'all') return true;
-    return classValue(entry)?.toLocaleLowerCase().includes(selectedClass.toLocaleLowerCase());
+    if (activeClass === 'all') return true;
+    return [entry.klasse, entry.klasse_alt].some(value => fuzzyClassMatches(value, activeClass));
   });
 
   if (!token) {
@@ -239,7 +307,28 @@ const Vertretungsplan: React.FC = () => {
               </div>
             )}
 
-            {classOptions.length > 1 && (
+            {preferredClass ? (
+              <div className="mb-5 rounded-xl border border-primary-100 bg-primary-50/60 px-4 py-3 text-sm text-primary-900 dark:border-primary-900 dark:bg-primary-950/30 dark:text-primary-100">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p>
+                    {configuredClass ? 'Dein gespeicherter Klassenfilter:' : 'Automatisch erkannte Klasse:'}{' '}
+                    <strong>{defaultClass}</strong>
+                  </p>
+                  <Link className="font-medium text-primary-700 underline underline-offset-2 hover:text-primary-900 dark:text-primary-300 dark:hover:text-primary-100" to={`${basePath}/settings/vertretungsplan`}>
+                    In Einstellungen ändern
+                  </Link>
+                </div>
+              </div>
+            ) : (
+              <div className="mb-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-100">
+                Keine Klasse im Schulportal-Profil gefunden. Es werden alle Klassen angezeigt; du kannst den Filter in den Einstellungen festlegen.
+                <Link className="ml-1 font-medium underline underline-offset-2" to={`${basePath}/settings/vertretungsplan`}>
+                  Einstellungen öffnen
+                </Link>
+              </div>
+            )}
+
+            {selectionOptions.length > 1 && (
               <div className="mb-5 flex flex-wrap items-center gap-2">
                 <label htmlFor="vertretungsplan-class" className="text-sm font-medium text-surface-600 dark:text-surface-300">
                   Klasse
@@ -247,11 +336,11 @@ const Vertretungsplan: React.FC = () => {
                 <select
                   id="vertretungsplan-class"
                   className="input w-auto min-w-36 text-sm"
-                  value={selectedClass}
+                  value={activeClass}
                   onChange={event => setSelectedClass(event.target.value)}
                 >
                   <option value="all">Alle Klassen</option>
-                  {classOptions.map(value => <option key={value} value={value}>{value}</option>)}
+                  {selectionOptions.map(value => <option key={value} value={value}>{value}</option>)}
                 </select>
               </div>
             )}
@@ -274,7 +363,7 @@ const Vertretungsplan: React.FC = () => {
               <div className="card flex min-h-64 flex-col items-center justify-center text-center">
                 <CalendarDaysIcon className="mb-3 h-10 w-10 text-surface-300" />
                 <h2 className="font-semibold text-surface-900 dark:text-white">
-                  {selectedClass === 'all' ? 'Keine Vertretungen' : 'Keine Vertretungen für diese Klasse'}
+                  {activeClass === 'all' ? 'Keine Vertretungen' : 'Keine Vertretungen für diese Klasse'}
                 </h2>
                 <p className="mt-1 max-w-md text-sm text-surface-500 dark:text-surface-400">
                   Für den ausgewählten Tag sind keine Änderungen am Unterricht eingetragen.
