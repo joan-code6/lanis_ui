@@ -144,7 +144,6 @@ const NotificationsMock: React.FC = () => (
         <div className="text-[11px] text-[#888] dark:text-surface-500 truncate">5. Stunde: Mathe entfällt · Hr. Müller</div>
       </div>
     </div>
-    <div className="text-[10px] text-[#aaa] dark:text-surface-500 mt-1">Web-Push · auch ohne offenen Tab</div>
   </div>
 );
 
