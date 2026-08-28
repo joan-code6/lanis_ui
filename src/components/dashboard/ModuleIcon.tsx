@@ -1,35 +1,5 @@
 import React from 'react';
-import {
-  AcademicCapIcon,
-  CalendarDaysIcon,
-  ChatBubbleLeftRightIcon,
-  CheckCircleIcon,
-  ClipboardDocumentListIcon,
-  CloudIcon,
-  Cog6ToothIcon,
-  FolderIcon,
-  HomeIcon,
-  Squares2X2Icon,
-  UserGroupIcon,
-  VideoCameraIcon,
-} from '@heroicons/react/24/outline';
 import clsx from 'clsx';
-
-type IconComponent = React.ComponentType<React.SVGProps<SVGSVGElement>>;
-
-const iconRules: Array<[RegExp, IconComponent]> = [
-  [/nachricht|message|comment|envelope/, ChatBubbleLeftRightIcon],
-  [/stundenplan|kalender|calendar|calendar-days/, CalendarDaysIcon],
-  [/video|konferenz|conference|camera/, VideoCameraIcon],
-  [/wahl|abstimm|vote|check-square|square-check/, CheckCircleIcon],
-  [/vertretung|dsb|clipboard|list-alt/, ClipboardDocumentListIcon],
-  [/unterricht|kurs|lernen|lern|anleitung|school|graduation|book/, AcademicCapIcon],
-  [/datei|speicher|folder|file/, FolderIcon],
-  [/benutzer|gruppe|user|users/, UserGroupIcon],
-  [/einstellung|settings|cog|gear/, Cog6ToothIcon],
-  [/home|house|start/, HomeIcon],
-  [/cloud/, CloudIcon],
-];
 
 const normalizeColor = (color?: string) => {
   const value = color?.trim() || '';
@@ -58,9 +28,9 @@ const sizeClasses = {
 };
 
 const glyphClasses = {
-  small: 'h-5 w-5',
-  list: 'h-6 w-6',
-  grid: 'h-8 w-8',
+  small: 'text-lg',
+  list: 'text-xl',
+  grid: 'text-2xl',
 };
 
 interface ModuleIconProps {
@@ -78,8 +48,7 @@ const ModuleIcon: React.FC<ModuleIconProps> = ({
   size = 'list',
   className,
 }) => {
-  const searchable = `${name} ${logo || ''}`.toLowerCase();
-  const Icon = iconRules.find(([pattern]) => pattern.test(searchable))?.[1];
+  const logoClasses = logo?.replace(/\r?\n/g, '').replace(/\s+/g, ' ').trim() || '';
   const backgroundColor = normalizeColor(color);
   const foregroundColor = foregroundFor(backgroundColor);
 
@@ -93,11 +62,11 @@ const ModuleIcon: React.FC<ModuleIconProps> = ({
       )}
       style={{ backgroundColor, color: foregroundColor }}
     >
-      {Icon ? (
-        <Icon className={glyphClasses[size]} strokeWidth={1.8} />
+      {logoClasses ? (
+        <i className={clsx(logoClasses, glyphClasses[size])} />
       ) : (
         <span className={clsx(size === 'grid' ? 'text-xl' : 'text-sm')}>
-          {name.trim().slice(0, 1).toUpperCase() || <Squares2X2Icon className={glyphClasses[size]} />}
+          {name.trim().slice(0, 1).toUpperCase() || '?'}
         </span>
       )}
     </span>
