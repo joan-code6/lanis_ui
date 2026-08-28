@@ -2,11 +2,12 @@ import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import SEO from '../seo/SEO';
 import {
-  CalendarDaysIcon,
   BookOpenIcon,
-  CheckIcon,
   ChatBubbleLeftRightIcon,
   ArrowPathIcon,
+  ClockIcon,
+  UserIcon,
+  MapPinIcon,
 } from '@heroicons/react/24/outline';
 
 /* ─── Scroll-Reveal Helper ─── */
@@ -70,49 +71,46 @@ const Stat: React.FC<{ value: string; label: string; delay?: number }> = ({ valu
   </Reveal>
 );
 
-/* ─── Mockup: Stundenplan mit Hausaufgaben ─── */
+/* ─── Mockup: Stundenplan mit Hausaufgaben (Design aus Timetable.tsx) ─── */
 
 const TimetableMock: React.FC = () => (
   <div className="w-full h-full p-4 sm:p-8 flex items-center justify-center">
-    <div className="w-full max-w-sm rounded-2xl bg-white dark:bg-surface-900 border border-black/[0.05] dark:border-white/[0.08] shadow-soft overflow-hidden">
-      <div className="px-4 py-3 border-b border-black/[0.05] dark:border-white/[0.07] flex items-center gap-2">
-        <CalendarDaysIcon className="w-4 h-4 text-primary-500 shrink-0" />
-        <span className="text-xs font-semibold text-[#111] dark:text-surface-100">Stundenplan</span>
-        <span className="ml-auto text-[10px] px-2 py-0.5 rounded-full bg-primary-50 dark:bg-primary-950 text-primary-700 dark:text-primary-400 font-medium">Diese Woche</span>
+    <section className="card !p-0 overflow-hidden w-full max-w-sm ring-2 ring-primary-500/10 !border-primary-300 dark:!border-primary-700">
+      <div className="border-b px-4 py-3 bg-primary-50 dark:bg-primary-950/60">
+        <div className="flex items-center justify-between">
+          <h2 className="font-semibold text-surface-900 dark:text-white">Montag</h2>
+          <span className="badge badge-primary">Heute</span>
+        </div>
+        <p className="mt-0.5 text-xs text-surface-500">24. August</p>
       </div>
-      <div className="p-3 space-y-2">
-        <div className="rounded-xl border border-black/[0.05] dark:border-white/[0.08] p-3">
-          <div className="flex items-center gap-2 text-[11px]">
-            <span className="font-semibold text-[#111] dark:text-surface-100">Mathe</span>
-            <span className="text-[#999] dark:text-surface-500">· E24</span>
-            <span className="ml-auto text-[#999] dark:text-surface-500">3.–4. Std.</span>
+      <div className="space-y-2 p-3">
+        <article className="rounded-xl border p-3 bg-white dark:bg-surface-900">
+          <div className="mb-2 flex items-start justify-between gap-2">
+            <div>
+              <p className="font-semibold text-surface-900 dark:text-white">Mathematik</p>
+              <p className="text-xs text-surface-500">GK</p>
+            </div>
+            <div className="flex shrink-0 items-center gap-1.5">
+              <span className="badge badge-surface">1–2 Std.</span>
+            </div>
           </div>
-          <div className="mt-2 flex items-center gap-1.5 rounded-lg bg-primary-50 dark:bg-primary-950/60 px-2 py-1.5 text-[11px]">
-            <BookOpenIcon className="w-3 h-3 text-primary-600 dark:text-primary-400 shrink-0" />
-            <span className="text-primary-700 dark:text-primary-300 font-medium">Hausaufgabe: S. 34, Nr. 3–5</span>
+          <div className="space-y-1 text-xs text-surface-500 dark:text-surface-400">
+            <p className="flex items-center gap-1.5"><ClockIcon className="h-3.5 w-3.5" />08:00 – 09:30</p>
+            <p className="flex items-center gap-1.5"><UserIcon className="h-3.5 w-3.5" />Wb</p>
+            <p className="flex items-center gap-1.5"><MapPinIcon className="h-3.5 w-3.5" />A12</p>
           </div>
-        </div>
-        <div className="rounded-xl border border-black/[0.05] dark:border-white/[0.08] p-3">
-          <div className="flex items-center gap-2 text-[11px]">
-            <span className="font-semibold text-[#111] dark:text-surface-100">Englisch</span>
-            <span className="text-[#999] dark:text-surface-500">· D11</span>
-            <span className="ml-auto text-[#999] dark:text-surface-500">5.–6. Std.</span>
+          <div className="mt-3 p-2.5 rounded-lg border-l-4 border-amber-400 bg-amber-50 dark:border-amber-500 dark:bg-amber-950/35">
+            <div className="flex items-center justify-between gap-1 font-semibold uppercase tracking-wide text-[10px] text-amber-800 dark:text-amber-200">
+              <span className="flex items-center gap-1"><BookOpenIcon className="h-3.5 w-3.5" />Hausaufgabe · nächste Stunde</span>
+              <span className="flex items-center gap-0.5 text-amber-700 dark:text-amber-300">Offen</span>
+            </div>
+            <div className="mt-1.5 space-y-1">
+              <p className="whitespace-pre-wrap break-words text-xs leading-relaxed text-amber-950 dark:text-amber-100">S. 34, Nr. 3–5</p>
+            </div>
           </div>
-          <div className="mt-2 flex items-center gap-1.5 text-[11px]">
-            <span className="w-3.5 h-3.5 rounded-full bg-primary-500 text-white flex items-center justify-center shrink-0">
-              <CheckIcon className="w-2 h-2" strokeWidth={3.5} />
-            </span>
-            <span className="text-[#999] dark:text-surface-500 line-through">Vokabeln Lektion 4</span>
-            <span className="ml-auto text-[10px] text-primary-600 dark:text-primary-400 font-medium">erledigt</span>
-          </div>
-        </div>
-        <div className="rounded-xl border border-black/[0.05] dark:border-white/[0.08] px-3 py-2.5 flex items-center gap-2 text-[11px]">
-          <span className="font-semibold text-[#111] dark:text-surface-100">Kunst</span>
-          <span className="text-[#999] dark:text-surface-500">· F104</span>
-          <span className="ml-auto text-[#999] dark:text-surface-500">7. Std.</span>
-        </div>
+        </article>
       </div>
-    </div>
+    </section>
   </div>
 );
 
@@ -188,7 +186,7 @@ const Landingpage: React.FC = () => {
   return (
     <div className="min-h-screen bg-[#fcfcf9] dark:bg-surface-950 text-[#1a1a1a] dark:text-surface-100 overflow-x-hidden transition-colors duration-300">
       <SEO
-        title="Lanis — Das Schulportal Hessen, neu gedacht"
+        title="Lanis | Das Schulportal Hessen, neu gedacht"
         description="Lanis ist die modernere, inoffizielle Oberfläche für das Schulportal Hessen: Hausaufgaben direkt im Stundenplan, Push-Benachrichtigungen und Ladezeiten unter 50 Millisekunden."
         path="/"
       />
@@ -211,18 +209,18 @@ const Landingpage: React.FC = () => {
         {/* ═══ Hero ═══ */}
         <section className="max-w-6xl mx-auto px-6 pt-16 md:pt-28 pb-16">
           <h1 className={`text-[clamp(2.5rem,6vw,5rem)] font-bold tracking-tighter leading-[0.95] max-w-4xl transition-all duration-1000 delay-100 ease-[cubic-bezier(0.16,1,0.3,1)] ${heroVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
-            Das Schulportal Hessen,
-            <span className="text-primary-500 block">endlich neu gedacht</span>
+            Schulportal 2.0
+            <span className="text-primary-500 block">modern und verlässlich</span>
           </h1>
           <p className={`mt-6 text-[#666] dark:text-surface-400 text-lg max-w-xl leading-relaxed transition-all duration-1000 delay-200 ease-[cubic-bezier(0.16,1,0.3,1)] ${heroVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
-            Gleiche Daten wie im offiziellen Portal — nur schneller, aufgeräumter und mit Hausaufgaben direkt im Stundenplan.
+            Die gleichen Daten, die gleichen Funktionen - nur schneller, klarer und angenehmer zu bedienen.
           </p>
           <div className={`flex gap-3 mt-8 transition-all duration-1000 delay-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${heroVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
             <button
               onClick={() => navigate('/login')}
               className="px-7 py-3.5 rounded-xl bg-primary-500 hover:bg-primary-400 text-white font-semibold text-sm transition-all duration-300 active:scale-[0.97] shadow-[0_4px_16px_rgb(var(--color-primary-500)/0.25)]"
             >
-              Jetzt ausprobieren
+              Jetzt nutzen
             </button>
             <button
               onClick={() => navigate('/demo')}
@@ -292,7 +290,7 @@ const Landingpage: React.FC = () => {
           <FeatureRow
             label="Hausaufgaben"
             title="Steht direkt im Stundenplan"
-            desc="An jeder Stunde siehst du auf einen Blick, welche Aufgaben anstehen — Erledigtes häkst du direkt ab. Kein umständlicher Blick in „Mein Unterricht“ mehr nötig."
+            desc="An jeder Stunde siehst du auf einen Blick, welche Aufgaben anstehen. Erledigtes häkst du direkt ab, ein umständlicher Blick in „Mein Unterricht“ ist nicht mehr nötig."
             delay={200}
           >
             <TimetableMock />
@@ -300,7 +298,7 @@ const Landingpage: React.FC = () => {
           <FeatureRow
             label="Benachrichtigungen"
             title="Nichts mehr verpassen"
-            desc="Neue Nachricht oder geänderter Vertretungsplan? Lanis schickt dir eine Web-Push-Benachrichtigung, sobald etwas Wichtiges passiert — auch, wenn du die Seite gerade nicht offen hast. Einmal in den Einstellungen aktivieren, fertig."
+            desc="Neue Nachricht oder geänderter Vertretungsplan? Lanis schickt dir eine Web-Push-Benachrichtigung, sobald etwas Wichtiges passiert, auch wenn du die Seite gerade nicht offen hast. Einmal in den Einstellungen aktivieren, fertig."
             reversed
             delay={300}
           >
@@ -310,14 +308,14 @@ const Landingpage: React.FC = () => {
             imagePath="/landing/loading-screen.png"
             label="Tempo"
             title="Sofort da"
-            desc="Besuchte Seiten sind dank intelligentem Caching in unter 50 Millisekunden wieder da. Kein Warten, keine Ladeanzeigen — einfach weitermachen."
+            desc="Besuchte Seiten sind dank intelligentem Caching in unter 50 Millisekunden wieder da. Kein Warten, keine Ladeanzeigen. Einfach weitermachen."
             delay={400}
           />
           <FeatureRow
             imagePath="/landing/themes.png"
             label="Design"
             title="Modern statt Behörde"
-            desc="Dark Mode, sechs sorgfältig abgestimmte Farbthemen und klare Typografie: Lanis fühlt sich an wie moderne Software — und nicht wie ein Formular der Verwaltung."
+            desc="Dark Mode, sechs sorgfältig abgestimmte Farbthemen und klare Typografie: Lanis fühlt sich an wie moderne Software und nicht wie ein Formular der Verwaltung."
             reversed
             delay={500}
           />
@@ -325,7 +323,7 @@ const Landingpage: React.FC = () => {
             imagePath="/landing/navigation.png"
             label="Navigation"
             title="Alles griffbereit"
-            desc="Direkte Sidebar statt verschachtelter Menüs, globale Suche und anpinnbare Module: Du kommst in höchstens drei Klicks zu jedem Modul — ganz ohne Suchen."
+            desc="Direkte Sidebar statt verschachtelter Menüs, globale Suche und anpinnbare Module: Du kommst in höchstens drei Klicks zu jedem Modul, ganz ohne Suchen."
             delay={600}
           />
         </section>
