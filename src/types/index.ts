@@ -288,6 +288,26 @@ export interface CoursesResponse {
   entry_count: number;
 }
 
+export interface AttendanceCourse {
+  course_id: string;
+  course_name: string;
+  teacher_short: string;
+  teacher_full: string;
+  attendance_summary: Record<string, number>;
+}
+
+export interface AttendanceOverviewResponse {
+  success: boolean;
+  source?: string;
+  available?: boolean;
+  totals: Record<string, number>;
+  courses: AttendanceCourse[];
+  course_count: number;
+  attendance_course_count: number;
+  failed_course_count: number;
+  error?: string;
+}
+
 // Course entry in a course detail view
 export interface CourseDetailEntry {
   entry_id: string;

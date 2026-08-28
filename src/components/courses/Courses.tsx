@@ -630,6 +630,13 @@ const Courses: React.FC = () => {
                 <ClockIcon className="h-4 w-4 mr-2" />
                 Abgaben
               </button>
+              <button
+                onClick={() => navigate(`${basePath}/courses/attendance`)}
+                className="btn btn-secondary"
+              >
+                <ChartBarIcon className="h-4 w-4 mr-2" />
+                Anwesenheit
+              </button>
             </div>
           )}
         </div>

@@ -156,6 +156,7 @@ import {
   MarkReadRequest,
   MarkReadResponse,
   CoursesResponse,
+  AttendanceOverviewResponse,
   CourseDetailsResponse,
   EntryDetailsResponse,
   WeeklyViewResponse,
@@ -443,6 +444,14 @@ export async function unsubscribeBrowserPushSubscription(
 export const coursesAPI = {
   async getCourses(token: string, signal?: AbortSignal): Promise<CoursesResponse> {
     const response = await apiClient.get<CoursesResponse>('/meinunterricht', {
+      headers: { 'X-Session-Token': token },
+      signal,
+    });
+    return response.data;
+  },
+
+  async getAttendanceOverview(token: string, signal?: AbortSignal): Promise<AttendanceOverviewResponse> {
+    const response = await apiClient.get<AttendanceOverviewResponse>('/meinunterricht/attendance', {
       headers: { 'X-Session-Token': token },
       signal,
     });
