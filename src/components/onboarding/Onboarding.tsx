@@ -91,6 +91,11 @@ const Onboarding: React.FC = () => {
   }, [setThemeColor, setThemeMode, themeColor, themeMode]);
 
   useEffect(() => {
+    document.documentElement.classList.add('onboarding-active');
+    return () => document.documentElement.classList.remove('onboarding-active');
+  }, []);
+
+  useEffect(() => {
     if (!token) return;
     const controller = new AbortController();
     appsAPI.getModules(token, controller.signal)
@@ -182,10 +187,10 @@ const Onboarding: React.FC = () => {
   }
 
   return (
-    <div className="relative min-h-[100dvh] overflow-x-hidden bg-surface-50 text-surface-900 dark:bg-surface-950 dark:text-surface-100">
+    <div className="relative min-h-[100dvh] w-full max-w-full overflow-x-clip bg-surface-50 text-surface-900 dark:bg-surface-950 dark:text-surface-100">
       <SEO title="Lanis einrichten" description="Passe Lanis an deinen Schulalltag an." path="/onboarding" noindex />
       <div className="onboarding-ambient pointer-events-none fixed inset-0" />
-      <main className="relative mx-auto flex min-h-[100dvh] max-w-7xl flex-col px-4 py-5 sm:px-6 lg:px-8 lg:py-8">
+      <main className="relative mx-auto flex min-h-[100dvh] w-full min-w-0 max-w-7xl flex-col px-4 py-5 sm:px-6 lg:px-8 lg:py-8">
         <header className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <img src="/favicon/android-chrome-192x192.png" alt="" className="h-10 w-10 rounded-xl shadow-soft" />
@@ -207,7 +212,7 @@ const Onboarding: React.FC = () => {
         </div>
 
         <div className="flex flex-1 items-center py-8 lg:py-10">
-          <section key={activeStep.id} className="mx-auto w-full max-w-3xl animate-fade-in">
+          <section key={activeStep.id} className="mx-auto w-full min-w-0 max-w-3xl animate-fade-in">
             {activeStep.id === 'welcome' && (
               <div className="max-w-2xl">
                 <div className="mb-6 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-primary-100 text-primary-700 dark:bg-primary-950 dark:text-primary-300">
@@ -264,7 +269,7 @@ const Onboarding: React.FC = () => {
             {activeStep.id === 'dashboard' && (
               <div className="max-w-2xl">
                 <StepHeading icon={StarIcon} eyebrow="Schnell erreichbar" title="Was brauchst du jeden Tag?" description="Favoriten stehen oben auf deinem Dashboard. Wähle bis zu sechs – den Rest findest du weiterhin darunter oder über die Suche." />
-                <div className="mt-7 grid max-h-[25rem] gap-3 overflow-y-auto pr-1 sm:grid-cols-2">
+                <div className="onboarding-scroll-region mt-7 grid max-h-[25rem] gap-3 overflow-y-auto pr-1 sm:grid-cols-2">
                   {modulesLoading && Array.from({ length: 6 }).map((_, index) => <div key={index} className="skeleton h-16 rounded-2xl" />)}
                   {!modulesLoading && modules.map(module => {
                     const selected = pinnedModules.includes(module.name);
