@@ -169,6 +169,7 @@ const Settings: React.FC = () => {
   const [ownClass, setOwnClass] = useState('');
   const [availableClasses, setAvailableClasses] = useState<string[]>([]);
   const [vertretungsplanClassesInput, setVertretungsplanClassesInput] = useState('');
+  const [hasSavedOwnClassScope, setHasSavedOwnClassScope] = useState(false);
   const [vertretungsplanOptionsStatus, setVertretungsplanOptionsStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [vertretungsplanOptionsError, setVertretungsplanOptionsError] = useState('');
 
@@ -182,7 +183,10 @@ const Settings: React.FC = () => {
     || notificationPrefs.vertretungsplan_class_mode === 'all'
     || (
       notificationPrefs.vertretungsplan_class_mode === 'own'
-      && (Boolean(ownClass) || vertretungsplanOptionsStatus !== 'success')
+      && (
+        Boolean(ownClass)
+        || (hasSavedOwnClassScope && vertretungsplanOptionsStatus !== 'success')
+      )
     )
     || (
       notificationPrefs.vertretungsplan_class_mode === 'selected'
@@ -244,6 +248,7 @@ const Settings: React.FC = () => {
     setOwnClass('');
     setAvailableClasses([]);
     setVertretungsplanClassesInput('');
+    setHasSavedOwnClassScope(false);
     setVertretungsplanOptionsStatus('idle');
     setVertretungsplanOptionsError('');
 
@@ -297,6 +302,10 @@ const Settings: React.FC = () => {
         setNotificationConfigured(config.configured);
         setNotificationPrefs(loadedPreferences);
         setVertretungsplanClassesInput(loadedPreferences.vertretungsplan_classes.join(', '));
+        setHasSavedOwnClassScope(
+          loadedPreferences.vertretungsplan_enabled
+          && loadedPreferences.vertretungsplan_class_mode === 'own',
+        );
         setNotificationSettingsLoaded(true);
         if (pushSupported) {
           setNotificationPermission(Notification.permission);
@@ -448,6 +457,10 @@ const Settings: React.FC = () => {
       const savedPreferences = { ...defaultNotificationPreferences, ...response.preferences };
       setNotificationPrefs(savedPreferences);
       setVertretungsplanClassesInput(savedPreferences.vertretungsplan_classes.join(', '));
+      setHasSavedOwnClassScope(
+        savedPreferences.vertretungsplan_enabled
+        && savedPreferences.vertretungsplan_class_mode === 'own',
+      );
       if (!response.preferences.enabled) setNotificationBrowserReady(false);
       setNotificationMessage('Benachrichtigungseinstellungen gespeichert.');
     } catch (error) {
@@ -484,6 +497,10 @@ const Settings: React.FC = () => {
         const savedPreferences = { ...defaultNotificationPreferences, ...response.preferences };
         setNotificationPrefs(savedPreferences);
         setVertretungsplanClassesInput(savedPreferences.vertretungsplan_classes.join(', '));
+        setHasSavedOwnClassScope(
+          savedPreferences.vertretungsplan_enabled
+          && savedPreferences.vertretungsplan_class_mode === 'own',
+        );
         setNotificationMessage('Benachrichtigungen sind jetzt aktiv.');
       } catch (error) {
         let rollbackError: Error | null = null;
