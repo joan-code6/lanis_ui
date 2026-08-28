@@ -194,6 +194,10 @@ export interface MarkReadResponse {
 
 export interface NotificationPreferences {
   enabled: boolean;
+  messages_enabled: boolean;
+  vertretungsplan_enabled: boolean;
+  vertretungsplan_class_mode: 'own' | 'selected' | 'all';
+  vertretungsplan_classes: string[];
   start_time: string;
   end_time: string;
   poll_interval_minutes: number;
@@ -210,6 +214,13 @@ export interface NotificationConfigResponse {
 export interface NotificationPreferencesResponse {
   success: boolean;
   preferences: NotificationPreferences;
+}
+
+export interface VertretungsplanNotificationOptionsResponse {
+  success: boolean;
+  own_class: string;
+  available_classes: string[];
+  error?: string;
 }
 
 export interface PushSubscriptionPayload {

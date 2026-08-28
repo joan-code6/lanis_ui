@@ -177,6 +177,7 @@ import {
   NotificationConfigResponse,
   NotificationPreferences,
   NotificationPreferencesResponse,
+  VertretungsplanNotificationOptionsResponse,
   PushSubscriptionPayload,
 } from '../types';
 
@@ -391,6 +392,17 @@ export const notificationsAPI = {
     const response = await apiClient.put<NotificationPreferencesResponse>('/notifications/preferences', preferences, {
       headers: { 'X-Session-Token': token },
     });
+    return response.data;
+  },
+
+  async getVertretungsplanOptions(
+    token: string,
+    signal?: AbortSignal,
+  ): Promise<VertretungsplanNotificationOptionsResponse> {
+    const response = await apiClient.get<VertretungsplanNotificationOptionsResponse>(
+      '/notifications/vertretungsplan/options',
+      { headers: { 'X-Session-Token': token }, signal },
+    );
     return response.data;
   },
 
