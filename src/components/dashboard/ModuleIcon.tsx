@@ -49,6 +49,17 @@ const ModuleIcon: React.FC<ModuleIconProps> = ({
   className,
 }) => {
   const logoClasses = logo?.replace(/\r?\n/g, '').replace(/\s+/g, ' ').trim() || '';
+  const logoClassList = logoClasses.split(' ').filter(Boolean);
+  const hasFontAwesomeFamily = logoClassList.some(value => (
+    value === 'fa'
+    || /^(fas|far|fab|fal|fat|fad)$/.test(value)
+    || /^fa-(solid|regular|brands|light|thin|duotone)$/.test(value)
+  ));
+  const hasFontAwesomeGlyph = logoClassList.some(value => (
+    /^fa-[a-z0-9-]+$/.test(value)
+    && !/^fa-(solid|regular|brands|light|thin|duotone)$/.test(value)
+  ));
+  const canRenderDynamicIcon = hasFontAwesomeFamily && hasFontAwesomeGlyph;
   const backgroundColor = normalizeColor(color);
   const foregroundColor = foregroundFor(backgroundColor);
 
@@ -62,7 +73,7 @@ const ModuleIcon: React.FC<ModuleIconProps> = ({
       )}
       style={{ backgroundColor, color: foregroundColor }}
     >
-      {logoClasses ? (
+      {canRenderDynamicIcon ? (
         <i className={clsx(logoClasses, glyphClasses[size])} />
       ) : (
         <span className={clsx(size === 'grid' ? 'text-xl' : 'text-sm')}>

@@ -138,19 +138,21 @@ const SettingsIndex: React.FC<{ basePath: string }> = ({ basePath }) => (
         <ChevronRightIcon className="h-5 w-5 shrink-0 text-surface-300 group-hover:text-surface-500 dark:text-surface-600" />
       </Link>
     ))}
-    <Link
-      to="/onboarding"
-      className="group flex items-center gap-4 px-4 py-4 transition-colors hover:bg-surface-50 dark:hover:bg-surface-800/70 sm:px-5"
-    >
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-surface-100 text-surface-600 dark:bg-surface-800 dark:text-surface-300">
-        <SparklesIcon className="h-5 w-5" />
-      </div>
-      <div className="min-w-0 flex-1">
-        <h2 className="font-medium text-surface-900 dark:text-white">Einrichtung erneut starten</h2>
-        <p className="mt-0.5 text-sm text-surface-500">Aussehen, Favoriten und Stundenplan gemeinsam anpassen.</p>
-      </div>
-      <ChevronRightIcon className="h-5 w-5 shrink-0 text-surface-300 group-hover:text-surface-500 dark:text-surface-600" />
-    </Link>
+    {!basePath && (
+      <Link
+        to="/onboarding"
+        className="group flex items-center gap-4 px-4 py-4 transition-colors hover:bg-surface-50 dark:hover:bg-surface-800/70 sm:px-5"
+      >
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-surface-100 text-surface-600 dark:bg-surface-800 dark:text-surface-300">
+          <SparklesIcon className="h-5 w-5" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <h2 className="font-medium text-surface-900 dark:text-white">Einrichtung erneut starten</h2>
+          <p className="mt-0.5 text-sm text-surface-500">Aussehen, Favoriten und Stundenplan gemeinsam anpassen.</p>
+        </div>
+        <ChevronRightIcon className="h-5 w-5 shrink-0 text-surface-300 group-hover:text-surface-500 dark:text-surface-600" />
+      </Link>
+    )}
   </div>
 );
 

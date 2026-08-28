@@ -19,7 +19,7 @@ import { appsAPI } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { usePreferences, CURRENT_ONBOARDING_VERSION } from '../../contexts/PreferencesContext';
 import { useTheme } from '../../contexts/ThemeContext';
-import { Module, OnboardingStep, ThemeColor, ThemeMode, TimetableViewMode, UserPreferencesPatch } from '../../types';
+import { Module, OnboardingStep, ThemeColor, ThemeMode, TimetableViewMode, UserPreferences, UserPreferencesPatch } from '../../types';
 import SEO from '../seo/SEO';
 import ModuleIcon from '../dashboard/ModuleIcon';
 
@@ -56,7 +56,7 @@ const recommendedModule = (name: string) => {
 const Onboarding: React.FC = () => {
   const navigate = useNavigate();
   const { token, user } = useAuth();
-  const { preferences, updatePreferences, isLoading, isSaving, syncError } = usePreferences();
+  const { preferences, updatePreferences, isLoading, syncError } = usePreferences();
   const { setThemeColor, setThemeMode } = useTheme();
   const resumedStep = preferences.onboarding.status === 'in_progress'
     ? steps.findIndex(step => step.id === preferences.onboarding.last_step)
@@ -70,11 +70,15 @@ const Onboarding: React.FC = () => {
   const [modulesLoading, setModulesLoading] = useState(true);
   const [localError, setLocalError] = useState('');
   const hydratedRef = useRef(false);
+  const originalPreferencesRef = useRef<UserPreferences | null>(null);
+  const appearanceToRestoreRef = useRef(preferences.appearance);
   const activeStep = steps[stepIndex];
 
   useEffect(() => {
     if (isLoading || hydratedRef.current) return;
     hydratedRef.current = true;
+    originalPreferencesRef.current = preferences;
+    appearanceToRestoreRef.current = preferences.appearance;
     const savedStep = preferences.onboarding.status === 'in_progress'
       ? steps.findIndex(step => step.id === preferences.onboarding.last_step)
       : 0;
@@ -86,9 +90,16 @@ const Onboarding: React.FC = () => {
   }, [isLoading, preferences]);
 
   useEffect(() => {
+    if (isLoading) return;
     setThemeMode(themeMode);
     setThemeColor(themeColor);
-  }, [setThemeColor, setThemeMode, themeColor, themeMode]);
+  }, [isLoading, setThemeColor, setThemeMode, themeColor, themeMode]);
+
+  useEffect(() => () => {
+    if (!hydratedRef.current) return;
+    setThemeMode(appearanceToRestoreRef.current.theme_mode);
+    setThemeColor(appearanceToRestoreRef.current.theme_color);
+  }, [setThemeColor, setThemeMode]);
 
   useEffect(() => {
     document.documentElement.classList.add('onboarding-active');
@@ -117,7 +128,7 @@ const Onboarding: React.FC = () => {
 
   const displayName = user?.vorname || user?.firstname || user?.username || 'du';
 
-  const saveCurrentStep = async (nextIndex: number) => {
+  const saveCurrentStep = (nextIndex: number) => {
     setLocalError('');
     const nextStep = steps[nextIndex]?.id || 'complete';
     const patch: UserPreferencesPatch = activeStep.id === 'appearance'
@@ -127,7 +138,10 @@ const Onboarding: React.FC = () => {
         : activeStep.id === 'timetable'
           ? { timetable: { view_mode: timetableMode } }
           : {};
-    const saved = await updatePreferences({
+    if (activeStep.id === 'appearance') {
+      appearanceToRestoreRef.current = { theme_mode: themeMode, theme_color: themeColor };
+    }
+    void updatePreferences({
       ...patch,
       onboarding: {
         version: CURRENT_ONBOARDING_VERSION,
@@ -135,29 +149,33 @@ const Onboarding: React.FC = () => {
         last_step: nextStep,
       },
     });
-    if (!saved && !syncError) setLocalError('Deine Auswahl ist auf diesem Gerät gespeichert. Die Kontosynchronisierung wird später erneut versucht.');
     setStepIndex(nextIndex);
   };
 
-  const goBack = async () => {
+  const goBack = () => {
     if (stepIndex === 0) return;
     const previous = stepIndex - 1;
-    await updatePreferences({ onboarding: { last_step: steps[previous].id, status: 'in_progress' } });
+    void updatePreferences({ onboarding: { last_step: steps[previous].id, status: 'in_progress' } });
     setStepIndex(previous);
   };
 
-  const skip = async () => {
-    await updatePreferences({
-      appearance: { theme_mode: themeMode, theme_color: themeColor },
-      dashboard: { pinned_modules: pinnedModules },
-      timetable: { view_mode: timetableMode },
+  const skip = () => {
+    const original = originalPreferencesRef.current || preferences;
+    appearanceToRestoreRef.current = original.appearance;
+    setThemeMode(original.appearance.theme_mode);
+    setThemeColor(original.appearance.theme_color);
+    void updatePreferences({
+      appearance: original.appearance,
+      dashboard: original.dashboard,
+      timetable: original.timetable,
       onboarding: { version: CURRENT_ONBOARDING_VERSION, status: 'skipped', last_step: 'complete' },
     });
     navigate('/dashboard', { replace: true });
   };
 
-  const complete = async () => {
-    await updatePreferences({
+  const complete = () => {
+    appearanceToRestoreRef.current = { theme_mode: themeMode, theme_color: themeColor };
+    void updatePreferences({
       appearance: { theme_mode: themeMode, theme_color: themeColor },
       dashboard: { pinned_modules: pinnedModules },
       timetable: { view_mode: timetableMode },
@@ -199,7 +217,7 @@ const Onboarding: React.FC = () => {
               <p className="text-xs text-surface-500">Dein Schulportal</p>
             </div>
           </div>
-          <button type="button" onClick={skip} className="btn btn-ghost px-3" disabled={isSaving}>Später einrichten</button>
+          <button type="button" onClick={skip} className="btn btn-ghost px-3">Später einrichten</button>
         </header>
 
         <div className="mt-6 flex items-center gap-2 sm:mt-8" aria-label={`Schritt ${stepIndex + 1} von ${steps.length}`}>
@@ -314,11 +332,11 @@ const Onboarding: React.FC = () => {
             {(localError || syncError) && <p className="mt-5 rounded-xl bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">{localError || syncError}</p>}
 
             <div className="mt-8 flex items-center justify-between gap-3">
-              <button type="button" onClick={goBack} className={`btn btn-ghost ${stepIndex === 0 ? 'invisible' : ''}`} disabled={isSaving || stepIndex === 0}><ArrowLeftIcon className="mr-2 h-4 w-4" />Zurück</button>
+              <button type="button" onClick={goBack} className={`btn btn-ghost ${stepIndex === 0 ? 'invisible' : ''}`} disabled={stepIndex === 0}><ArrowLeftIcon className="mr-2 h-4 w-4" />Zurück</button>
               {activeStep.id === 'guide' ? (
-                <button type="button" onClick={complete} className="btn btn-primary px-6" disabled={isSaving}>Zum Dashboard<ArrowRightIcon className="ml-2 h-4 w-4" /></button>
+                <button type="button" onClick={complete} className="btn btn-primary px-6">Zum Dashboard<ArrowRightIcon className="ml-2 h-4 w-4" /></button>
               ) : (
-                <button type="button" onClick={() => saveCurrentStep(stepIndex + 1)} className="btn btn-primary px-6" disabled={isSaving}>{activeStep.id === 'welcome' ? 'Lanis einrichten' : 'Weiter'}<ArrowRightIcon className="ml-2 h-4 w-4" /></button>
+                <button type="button" onClick={() => saveCurrentStep(stepIndex + 1)} className="btn btn-primary px-6">{activeStep.id === 'welcome' ? 'Lanis einrichten' : 'Weiter'}<ArrowRightIcon className="ml-2 h-4 w-4" /></button>
               )}
             </div>
           </section>

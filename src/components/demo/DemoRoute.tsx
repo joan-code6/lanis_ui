@@ -1,7 +1,8 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Outlet } from 'react-router-dom';
 import { AuthContext } from '../../contexts/AuthContext';
 import { PreferencesProvider } from '../../contexts/PreferencesContext';
+import { useTheme } from '../../contexts/ThemeContext';
 import Layout from '../layout/Layout';
 
 const mockUser = {
@@ -87,12 +88,17 @@ const seedLocalStorage = () => {
 };
 
 const DemoRoute: React.FC = () => {
+  const { themeMode, themeColor, setThemeMode, setThemeColor } = useTheme();
+  const accountAppearanceRef = useRef({ themeMode, themeColor });
+
   useEffect(() => {
     seedLocalStorage();
     return () => {
       localStorage.removeItem('__demo_mode');
+      setThemeMode(accountAppearanceRef.current.themeMode);
+      setThemeColor(accountAppearanceRef.current.themeColor);
     };
-  }, []);
+  }, [setThemeColor, setThemeMode]);
 
   return (
     <AuthContext.Provider value={mockAuth}>

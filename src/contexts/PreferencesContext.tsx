@@ -5,6 +5,7 @@ import { settingsAPI } from '../services/api';
 import { UserPreferences, UserPreferencesPatch } from '../types';
 
 export const CURRENT_ONBOARDING_VERSION = 1;
+const LEGACY_PREFERENCES_OWNER_KEY = 'lanis_preferences_legacy_owner';
 
 export const DEFAULT_USER_PREFERENCES: UserPreferences = {
   appearance: { theme_mode: 'system', theme_color: 'cyan' },
@@ -128,12 +129,19 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode; sync?: b
   useEffect(() => {
     const controller = new AbortController();
     const cached = readCache(cacheKey);
-    const localFallback = cached?.preferences || legacyPreferences();
+    const legacyOwner = localStorage.getItem(LEGACY_PREFERENCES_OWNER_KEY);
+    const canClaimLegacyPreferences = Boolean(sync && token && cacheKey && !legacyOwner);
+    const localFallback = cached?.preferences
+      || (!sync || canClaimLegacyPreferences ? legacyPreferences() : DEFAULT_USER_PREFERENCES);
 
     if (!token || !cacheKey) {
       setIsLoading(false);
       setLoadedCacheKey(null);
       return () => controller.abort();
+    }
+
+    if (canClaimLegacyPreferences) {
+      localStorage.setItem(LEGACY_PREFERENCES_OWNER_KEY, cacheKey);
     }
 
     applyPreferences(localFallback);
