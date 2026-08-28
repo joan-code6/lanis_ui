@@ -182,9 +182,9 @@ const Onboarding: React.FC = () => {
   }
 
   return (
-    <div className="relative min-h-[100dvh] overflow-x-hidden bg-primary-50/40 text-surface-900 dark:bg-primary-950/10 dark:text-surface-100">
+    <div className="relative min-h-[100dvh] overflow-x-hidden bg-surface-50 text-surface-900 dark:bg-surface-950 dark:text-surface-100">
       <SEO title="Lanis einrichten" description="Passe Lanis an deinen Schulalltag an." path="/onboarding" noindex />
-      <div className="pointer-events-none fixed inset-0 bg-gradient-to-b from-primary-100/70 via-primary-50/30 to-surface-50/80 dark:from-primary-950/35 dark:via-surface-950/70 dark:to-surface-950" />
+      <div className="onboarding-ambient pointer-events-none fixed inset-0" />
       <main className="relative mx-auto flex min-h-[100dvh] max-w-7xl flex-col px-4 py-5 sm:px-6 lg:px-8 lg:py-8">
         <header className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
