@@ -44,6 +44,10 @@ const mockUser = {
 
 const defaultMockNotificationPreferences = {
   enabled: false,
+  messages_enabled: true,
+  vertretungsplan_enabled: false,
+  vertretungsplan_class_mode: 'own',
+  vertretungsplan_classes: [],
   start_time: '07:00',
   end_time: '21:00',
   poll_interval_minutes: 15,
@@ -494,6 +498,16 @@ export function getMockResponse(url: string, method: string, config: any): { dat
     const body = typeof config?.data === 'string' ? JSON.parse(config.data) : config?.data;
     mockNotificationPreferences = { ...mockNotificationPreferences, ...(body || {}) };
     return { status: 200, data: { success: true, preferences: { ...mockNotificationPreferences } } };
+  }
+  if (u === '/notifications/vertretungsplan/options' && method === 'get') {
+    return {
+      status: 200,
+      data: {
+        success: true,
+        own_class: mockUser.klasse,
+        available_classes: ['Q1', 'Q2'],
+      },
+    };
   }
 
   // Courses and account-specific class links
