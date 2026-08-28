@@ -175,9 +175,11 @@ const Settings: React.FC = () => {
     && 'Notification' in window
     && 'serviceWorker' in navigator
     && 'PushManager' in window;
+  const notificationTypesSelected = notificationPrefs.messages_enabled
+    || notificationPrefs.vertretungsplan_enabled;
   const notificationSelectionValid = !notificationPrefs.vertretungsplan_enabled
     || notificationPrefs.vertretungsplan_class_mode === 'all'
-    || (notificationPrefs.vertretungsplan_class_mode === 'own' && Boolean(ownClass))
+    || notificationPrefs.vertretungsplan_class_mode === 'own'
     || (
       notificationPrefs.vertretungsplan_class_mode === 'selected'
       && notificationPrefs.vertretungsplan_classes.some(value => value.trim().length > 0)
@@ -420,6 +422,10 @@ const Settings: React.FC = () => {
 
   const saveNotificationSettings = async (nextPrefs: NotificationPreferences) => {
     if (!token) return;
+    if (nextPrefs.enabled && !nextPrefs.messages_enabled && !nextPrefs.vertretungsplan_enabled) {
+      setNotificationError('Wähle mindestens eine Benachrichtigungsart aus.');
+      return;
+    }
     setNotificationsSaving(true);
     setNotificationError('');
     setNotificationMessage('');
@@ -449,6 +455,10 @@ const Settings: React.FC = () => {
     setNotificationMessage('');
     const notificationsActive = notificationPrefs.enabled && notificationBrowserReady;
     if (!notificationsActive) {
+      if (!notificationTypesSelected || !notificationSelectionValid) {
+        setNotificationError('Wähle mindestens eine gültige Benachrichtigungsart aus.');
+        return;
+      }
       setNotificationsSaving(true);
       let registeredEndpoint: string | null = null;
       try {
@@ -689,7 +699,7 @@ const Settings: React.FC = () => {
             <button
               type="button"
               onClick={handleNotificationsToggle}
-              disabled={notificationsLoading || notificationsSaving || !notificationSettingsLoaded || !notificationConfigured || !pushSupported || (!(notificationPrefs.enabled && notificationBrowserReady) && !notificationSelectionValid)}
+              disabled={notificationsLoading || notificationsSaving || !notificationSettingsLoaded || !notificationConfigured || !pushSupported || (!(notificationPrefs.enabled && notificationBrowserReady) && (!notificationTypesSelected || !notificationSelectionValid))}
               className={`relative h-7 w-14 shrink-0 rounded-full transition-colors duration-300 ease-out-expo disabled:cursor-not-allowed disabled:opacity-50 ${
                 notificationPrefs.enabled && notificationBrowserReady ? 'bg-primary-600' : 'bg-surface-300 dark:bg-surface-700'
               }`}
@@ -935,7 +945,7 @@ const Settings: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => saveNotificationSettings({ ...notificationPrefs, timezone: notificationPrefs.timezone || getBrowserTimezone() })}
-                  disabled={notificationsLoading || notificationsSaving || !notificationSettingsLoaded || !token || !notificationSelectionValid}
+                  disabled={notificationsLoading || notificationsSaving || !notificationSettingsLoaded || !token || !notificationSelectionValid || (notificationPrefs.enabled && !notificationTypesSelected)}
                   className="btn btn-primary h-9 text-xs disabled:opacity-50"
                 >
                   {notificationsSaving ? 'Speichere...' : 'Speichern'}
