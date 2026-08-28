@@ -251,16 +251,27 @@ const Settings: React.FC = () => {
     setNotificationsLoading(true);
 
     const controller = new AbortController();
+    const loadVertretungsplanOptions = async () => {
+      try {
+        const options = await notificationsAPI.getVertretungsplanOptions(token, controller.signal);
+        if (controller.signal.aborted) return;
+        if (!options.success) {
+          throw new Error('Vertretungsplan options response was unsuccessful.');
+        }
+        setOwnClass(options.own_class || '');
+        setAvailableClasses(options.available_classes || []);
+      } catch (error) {
+        if (!controller.signal.aborted) {
+          console.error('Failed to load Vertretungsplan notification options:', error);
+          setVertretungsplanOptionsError('Klassen konnten gerade nicht aus dem Vertretungsplan geladen werden. Du kannst sie trotzdem manuell eingeben.');
+        }
+      }
+    };
     const loadNotificationSettings = async () => {
       try {
-        const [config, preferences, vertretungsplanOptions] = await Promise.all([
+        const [config, preferences] = await Promise.all([
           notificationsAPI.getConfig(token, controller.signal),
           notificationsAPI.getPreferences(token, controller.signal),
-          notificationsAPI.getVertretungsplanOptions(token, controller.signal).catch(() => ({
-            success: false,
-            own_class: '',
-            available_classes: [],
-          })),
         ]);
         if (controller.signal.aborted) return;
         if (!config.success || !preferences.success) {
@@ -273,12 +284,6 @@ const Settings: React.FC = () => {
         };
         setNotificationConfigured(config.configured);
         setNotificationPrefs(loadedPreferences);
-        if (vertretungsplanOptions.success) {
-          setOwnClass(vertretungsplanOptions.own_class || '');
-          setAvailableClasses(vertretungsplanOptions.available_classes || []);
-        } else {
-          setVertretungsplanOptionsError('Klassen konnten gerade nicht aus dem Vertretungsplan geladen werden. Du kannst sie trotzdem manuell eingeben.');
-        }
         setNotificationSettingsLoaded(true);
         if (pushSupported) {
           setNotificationPermission(Notification.permission);
@@ -316,7 +321,8 @@ const Settings: React.FC = () => {
       }
     };
 
-    loadNotificationSettings();
+    void loadVertretungsplanOptions();
+    void loadNotificationSettings();
     return () => controller.abort();
   }, [token, pushSupported, section]);
 
