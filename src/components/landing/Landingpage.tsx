@@ -1,6 +1,13 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import SEO from '../seo/SEO';
+import {
+  CalendarDaysIcon,
+  BookOpenIcon,
+  CheckIcon,
+  ChatBubbleLeftRightIcon,
+  ArrowPathIcon,
+} from '@heroicons/react/24/outline';
 
 /* ─── Scroll-Reveal Helper ─── */
 
@@ -32,18 +39,20 @@ const Reveal: React.FC<{ delay?: number; children: React.ReactNode; className?: 
 /* ─── Feature Row ─── */
 
 const FeatureRow: React.FC<{
-  label: string; title: string; desc: string; reversed?: boolean; delay?: number; imagePath: string;
-}> = ({ label, title, desc, reversed, delay = 0, imagePath }) => (
+  label: string; title: string; desc: string; reversed?: boolean; delay?: number; imagePath?: string; children?: React.ReactNode;
+}> = ({ label, title, desc, reversed, delay = 0, imagePath, children }) => (
   <Reveal delay={delay}>
     <div className={`flex flex-col ${reversed ? 'md:flex-row-reverse' : 'md:flex-row'} items-center gap-12 md:gap-20`}>
       <div className="flex-1">
-        <div className="text-[10px] text-[#00a0c0]/60 dark:text-[#43d9f2]/70 tracking-[0.2em] uppercase mb-3 font-medium">{label}</div>
-        <h3 className="text-2xl md:text-3xl font-bold text-[#111] dark:text-[#f3f7f8] tracking-tight mb-3">{title}</h3>
-        <p className="text-[15px] text-[#666] dark:text-[#9aa6a9] leading-relaxed max-w-md">{desc}</p>
+        <div className="text-[10px] text-primary-600 dark:text-primary-400 tracking-[0.2em] uppercase mb-3 font-medium">{label}</div>
+        <h3 className="text-2xl md:text-3xl font-bold text-[#111] dark:text-surface-100 tracking-tight mb-3">{title}</h3>
+        <p className="text-[15px] text-[#666] dark:text-surface-400 leading-relaxed max-w-md">{desc}</p>
       </div>
       <div className="flex-1 w-full">
-        <div className="w-full aspect-[4/3] rounded-3xl bg-[#f5f5f2] dark:bg-[#111719] border border-black/[0.03] dark:border-white/[0.07] flex items-center justify-center overflow-hidden">
-          <div className="w-full h-full select-none"><img src={imagePath} alt={title} className="w-full h-full object-cover" /></div>
+        <div className="w-full aspect-[4/3] rounded-3xl bg-[#f5f5f2] dark:bg-surface-900 border border-black/[0.03] dark:border-white/[0.07] flex items-center justify-center overflow-hidden">
+          {imagePath ? (
+            <div className="w-full h-full select-none"><img src={imagePath} alt={title} className="w-full h-full object-cover" /></div>
+          ) : children}
         </div>
       </div>
     </div>
@@ -54,11 +63,91 @@ const FeatureRow: React.FC<{
 
 const Stat: React.FC<{ value: string; label: string; delay?: number }> = ({ value, label, delay = 0 }) => (
   <Reveal delay={delay}>
-    <div className="p-6 rounded-2xl bg-white dark:bg-[#111719] border border-black/[0.04] dark:border-white/[0.07] text-center shadow-sm dark:shadow-none">
-      <div className="text-3xl font-bold text-[#111] dark:text-[#f3f7f8] tracking-tight mb-1">{value}</div>
-      <div className="text-[12px] text-[#999] dark:text-[#7f8c90]">{label}</div>
+    <div className="p-6 rounded-2xl bg-white dark:bg-surface-900 border border-black/[0.04] dark:border-white/[0.07] text-center shadow-sm dark:shadow-none">
+      <div className="text-3xl font-bold text-[#111] dark:text-surface-100 tracking-tight mb-1">{value}</div>
+      <div className="text-[12px] text-[#999] dark:text-surface-500">{label}</div>
     </div>
   </Reveal>
+);
+
+/* ─── Mockup: Stundenplan mit Hausaufgaben ─── */
+
+const TimetableMock: React.FC = () => (
+  <div className="w-full h-full p-4 sm:p-8 flex items-center justify-center">
+    <div className="w-full max-w-sm rounded-2xl bg-white dark:bg-surface-900 border border-black/[0.05] dark:border-white/[0.08] shadow-soft overflow-hidden">
+      <div className="px-4 py-3 border-b border-black/[0.05] dark:border-white/[0.07] flex items-center gap-2">
+        <CalendarDaysIcon className="w-4 h-4 text-primary-500 shrink-0" />
+        <span className="text-xs font-semibold text-[#111] dark:text-surface-100">Stundenplan</span>
+        <span className="ml-auto text-[10px] px-2 py-0.5 rounded-full bg-primary-50 dark:bg-primary-950 text-primary-700 dark:text-primary-400 font-medium">Diese Woche</span>
+      </div>
+      <div className="p-3 space-y-2">
+        <div className="rounded-xl border border-black/[0.05] dark:border-white/[0.08] p-3">
+          <div className="flex items-center gap-2 text-[11px]">
+            <span className="font-semibold text-[#111] dark:text-surface-100">Mathe</span>
+            <span className="text-[#999] dark:text-surface-500">· E24</span>
+            <span className="ml-auto text-[#999] dark:text-surface-500">3.–4. Std.</span>
+          </div>
+          <div className="mt-2 flex items-center gap-1.5 rounded-lg bg-primary-50 dark:bg-primary-950/60 px-2 py-1.5 text-[11px]">
+            <BookOpenIcon className="w-3 h-3 text-primary-600 dark:text-primary-400 shrink-0" />
+            <span className="text-primary-700 dark:text-primary-300 font-medium">Hausaufgabe: S. 34, Nr. 3–5</span>
+          </div>
+        </div>
+        <div className="rounded-xl border border-black/[0.05] dark:border-white/[0.08] p-3">
+          <div className="flex items-center gap-2 text-[11px]">
+            <span className="font-semibold text-[#111] dark:text-surface-100">Englisch</span>
+            <span className="text-[#999] dark:text-surface-500">· D11</span>
+            <span className="ml-auto text-[#999] dark:text-surface-500">5.–6. Std.</span>
+          </div>
+          <div className="mt-2 flex items-center gap-1.5 text-[11px]">
+            <span className="w-3.5 h-3.5 rounded-full bg-primary-500 text-white flex items-center justify-center shrink-0">
+              <CheckIcon className="w-2 h-2" strokeWidth={3.5} />
+            </span>
+            <span className="text-[#999] dark:text-surface-500 line-through">Vokabeln Lektion 4</span>
+            <span className="ml-auto text-[10px] text-primary-600 dark:text-primary-400 font-medium">erledigt</span>
+          </div>
+        </div>
+        <div className="rounded-xl border border-black/[0.05] dark:border-white/[0.08] px-3 py-2.5 flex items-center gap-2 text-[11px]">
+          <span className="font-semibold text-[#111] dark:text-surface-100">Kunst</span>
+          <span className="text-[#999] dark:text-surface-500">· F104</span>
+          <span className="ml-auto text-[#999] dark:text-surface-500">7. Std.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+);
+
+/* ─── Mockup: Push-Benachrichtigungen ─── */
+
+const NotificationsMock: React.FC = () => (
+  <div className="w-full h-full p-4 sm:p-8 flex flex-col items-center justify-center gap-2.5">
+    <div className="w-full max-w-sm rounded-2xl bg-white dark:bg-surface-900 border border-black/[0.05] dark:border-white/[0.08] shadow-soft-md p-3.5 flex gap-3">
+      <div className="w-9 h-9 rounded-xl bg-primary-500/10 text-primary-600 dark:text-primary-400 flex items-center justify-center shrink-0">
+        <ChatBubbleLeftRightIcon className="w-5 h-5" />
+      </div>
+      <div className="min-w-0">
+        <div className="flex items-baseline gap-2">
+          <span className="text-xs font-semibold text-[#111] dark:text-surface-100">Lanis</span>
+          <span className="text-[10px] text-[#999] dark:text-surface-500">jetzt</span>
+        </div>
+        <div className="text-xs font-medium text-[#333] dark:text-surface-200 mt-0.5">Neue Nachricht von Frau Weber</div>
+        <div className="text-[11px] text-[#888] dark:text-surface-500 truncate">Elternabend morgen, 19 Uhr, Aula …</div>
+      </div>
+    </div>
+    <div className="w-full max-w-sm rounded-2xl bg-white dark:bg-surface-900 border border-black/[0.05] dark:border-white/[0.08] shadow-soft-md p-3.5 flex gap-3">
+      <div className="w-9 h-9 rounded-xl bg-primary-500/10 text-primary-600 dark:text-primary-400 flex items-center justify-center shrink-0">
+        <ArrowPathIcon className="w-5 h-5" />
+      </div>
+      <div className="min-w-0">
+        <div className="flex items-baseline gap-2">
+          <span className="text-xs font-semibold text-[#111] dark:text-surface-100">Lanis</span>
+          <span className="text-[10px] text-[#999] dark:text-surface-500">vor 12 Min.</span>
+        </div>
+        <div className="text-xs font-medium text-[#333] dark:text-surface-200 mt-0.5">Vertretungsplan geändert</div>
+        <div className="text-[11px] text-[#888] dark:text-surface-500 truncate">5. Stunde: Mathe entfällt · Hr. Müller</div>
+      </div>
+    </div>
+    <div className="text-[10px] text-[#aaa] dark:text-surface-500 mt-1">Web-Push · auch ohne offenen Tab</div>
+  </div>
 );
 
 /* ─── Landingpage ─── */
@@ -97,29 +186,23 @@ const Landingpage: React.FC = () => {
   }, [isDragging, handleMove]);
 
   return (
-    <div className="min-h-screen bg-[#fcfcf9] dark:bg-[#090c0d] text-[#1a1a1a] dark:text-[#eef3f4] font-['Outfit',sans-serif] overflow-x-hidden transition-colors duration-300">
+    <div className="min-h-screen bg-[#fcfcf9] dark:bg-surface-950 text-[#1a1a1a] dark:text-surface-100 overflow-x-hidden transition-colors duration-300">
       <SEO
-        title="Lanis | Moderne Benutzeroberfläche für das Schulportal Hessen"
-        description="Lanis ist eine moderne, inoffizielle Benutzeroberfläche für das Schulportal Hessen. Übersichtlich, schnell und zuverlässig — für den hessischen Schulalltag."
+        title="Lanis — Das Schulportal Hessen, neu gedacht"
+        description="Lanis ist die modernere, inoffizielle Oberfläche für das Schulportal Hessen: Hausaufgaben direkt im Stundenplan, Push-Benachrichtigungen und Ladezeiten unter 50 Millisekunden."
         path="/"
       />
-      {/* Background atmosphere */}
-      <div className="fixed inset-0 pointer-events-none z-0">
-        <div className="absolute top-0 right-0 w-[60vw] h-[60vh] bg-gradient-to-bl from-[#00c0e0]/[0.03] to-transparent" />
-        <div className="absolute bottom-0 left-0 w-[45vw] h-[45vh] bg-gradient-to-tr from-[#00c0e0]/[0.02] to-transparent" />
-        <div className="absolute top-1/2 left-1/2 w-[30vw] h-[30vw] bg-gradient-to-tl from-blue-500/[0.015] to-transparent -translate-x-1/2 -translate-y-1/2" />
-      </div>
 
       <div className="relative z-10">
         {/* ═══ Navigation ═══ */}
         <nav className="flex items-center justify-between px-6 py-6 max-w-6xl mx-auto">
           <div className="flex items-center gap-2.5">
             <img src="/favicon/android-chrome-192x192.png" alt="Lanis" className="w-7 h-7 rounded-lg" />
-            <span className="text-sm font-semibold text-[#555] dark:text-[#b7c1c3] tracking-tight">Lanis</span>
+            <span className="text-sm font-semibold text-[#555] dark:text-surface-300 tracking-tight">Lanis</span>
           </div>
           <button
             onClick={() => navigate('/login')}
-            className="px-5 py-2.5 rounded-xl bg-[#1a1a1a] dark:bg-[#eef3f4] hover:bg-[#333] dark:hover:bg-white text-white dark:text-[#101415] text-xs font-semibold transition-all duration-300 active:scale-[0.97]"
+            className="px-5 py-2.5 rounded-xl bg-[#1a1a1a] dark:bg-surface-100 hover:bg-[#333] dark:hover:bg-white text-white dark:text-surface-900 text-xs font-semibold transition-all duration-300 active:scale-[0.97]"
           >
             Login
           </button>
@@ -128,23 +211,23 @@ const Landingpage: React.FC = () => {
         {/* ═══ Hero ═══ */}
         <section className="max-w-6xl mx-auto px-6 pt-16 md:pt-28 pb-16">
           <h1 className={`text-[clamp(2.5rem,6vw,5rem)] font-bold tracking-tighter leading-[0.95] max-w-4xl transition-all duration-1000 delay-100 ease-[cubic-bezier(0.16,1,0.3,1)] ${heroVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
-            Schulportal 2.0
-            <span className="text-[#00c0e0] block">modern und verlässlich</span>
+            Das Schulportal Hessen,
+            <span className="text-primary-500 block">endlich neu gedacht</span>
           </h1>
-          <p className={`mt-6 text-[#666] dark:text-[#9aa6a9] text-lg max-w-xl leading-relaxed transition-all duration-1000 delay-200 ease-[cubic-bezier(0.16,1,0.3,1)] ${heroVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
-            Die gleichen Daten, die gleichen Funktionen - nur schneller, klarer und angenehmer zu bedienen.
+          <p className={`mt-6 text-[#666] dark:text-surface-400 text-lg max-w-xl leading-relaxed transition-all duration-1000 delay-200 ease-[cubic-bezier(0.16,1,0.3,1)] ${heroVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
+            Gleiche Daten wie im offiziellen Portal — nur schneller, aufgeräumter und mit Hausaufgaben direkt im Stundenplan.
           </p>
           <div className={`flex gap-3 mt-8 transition-all duration-1000 delay-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${heroVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
             <button
               onClick={() => navigate('/login')}
-              className="px-7 py-3.5 rounded-xl bg-[#00c0e0] hover:bg-[#00d8f8] text-white font-semibold text-sm transition-all duration-300 active:scale-[0.97] shadow-[0_4px_16px_rgba(0,192,224,0.2)]"
+              className="px-7 py-3.5 rounded-xl bg-primary-500 hover:bg-primary-400 text-white font-semibold text-sm transition-all duration-300 active:scale-[0.97] shadow-[0_4px_16px_rgb(var(--color-primary-500)/0.25)]"
             >
-              Jetzt nutzen
+              Jetzt ausprobieren
             </button>
             <button
-              onClick={() => navigate('/demo')} 
-              className="px-7 py-3.5 rounded-xl bg-white dark:bg-[#151b1d] hover:bg-[#f5f5f5] dark:hover:bg-[#1c2426] text-[#555] dark:text-[#c0c9cb] font-medium text-sm transition-all duration-300 border border-black/[0.06] dark:border-white/[0.08] shadow-sm dark:shadow-none"
-            > 
+              onClick={() => navigate('/demo')}
+              className="px-7 py-3.5 rounded-xl bg-white dark:bg-surface-900 hover:bg-[#f5f5f5] dark:hover:bg-surface-800 text-[#555] dark:text-surface-300 font-medium text-sm transition-all duration-300 border border-black/[0.06] dark:border-white/[0.08] shadow-sm dark:shadow-none"
+            >
               Demo ansehen
             </button>
           </div>
@@ -155,7 +238,7 @@ const Landingpage: React.FC = () => {
           <Reveal delay={150}>
             <div
               ref={containerRef}
-              className="relative w-full aspect-[16/10] rounded-2xl overflow-hidden border border-black/[0.06] dark:border-white/[0.08] bg-[#f5f5f2] dark:bg-[#111719] shadow-[0_8px_40px_-12px_rgba(0,0,0,0.08)] dark:shadow-[0_12px_50px_-16px_rgba(0,0,0,0.65)]"
+              className="relative w-full aspect-[16/10] rounded-2xl overflow-hidden border border-black/[0.06] dark:border-white/[0.08] bg-[#f5f5f2] dark:bg-surface-900 shadow-[0_8px_40px_-12px_rgba(0,0,0,0.08)] dark:shadow-[0_12px_50px_-16px_rgba(0,0,0,0.65)]"
             >
               <div className="absolute inset-0" style={{ clipPath: `inset(0 ${100 - sliderPos}% 0 0)` }}>
                 <img
@@ -198,51 +281,68 @@ const Landingpage: React.FC = () => {
         {/* ═══ Stats bar ═══ */}
         <section className="max-w-6xl mx-auto px-6 pb-24">
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-            <Stat value="47ms" label="Ladezeit (Cache)" delay={100} />
+            <Stat value="47 ms" label="Ladezeit aus dem Cache" delay={100} />
             <Stat value="6" label="Farbthemen" delay={200} />
-            <Stat value="3 Klick" label="zu jedem Modul" delay={300} />
+            <Stat value="3" label="Klicks bis zu jedem Modul" delay={300} />
           </div>
         </section>
 
         {/* ═══ Feature Rows ═══ */}
         <section className="max-w-6xl mx-auto px-6 pb-32 space-y-32">
           <FeatureRow
-            imagePath="/landing/loading-screen.png"
-            label="Performance"
-            title="Sofort da"
-            desc="Dank intelligentem Caching laden bereits besuchte Seiten in unter 50 Millisekunden. Kein Warten, kein Spinner - einfach weitermachen."
+            label="Hausaufgaben"
+            title="Steht direkt im Stundenplan"
+            desc="An jeder Stunde siehst du auf einen Blick, welche Aufgaben anstehen — Erledigtes häkst du direkt ab. Kein umständlicher Blick in „Mein Unterricht“ mehr nötig."
             delay={200}
+          >
+            <TimetableMock />
+          </FeatureRow>
+          <FeatureRow
+            label="Benachrichtigungen"
+            title="Nichts mehr verpassen"
+            desc="Neue Nachricht oder geänderter Vertretungsplan? Lanis schickt dir eine Web-Push-Benachrichtigung, sobald etwas Wichtiges passiert — auch, wenn du die Seite gerade nicht offen hast. Einmal in den Einstellungen aktivieren, fertig."
+            reversed
+            delay={300}
+          >
+            <NotificationsMock />
+          </FeatureRow>
+          <FeatureRow
+            imagePath="/landing/loading-screen.png"
+            label="Tempo"
+            title="Sofort da"
+            desc="Besuchte Seiten sind dank intelligentem Caching in unter 50 Millisekunden wieder da. Kein Warten, keine Ladeanzeigen — einfach weitermachen."
+            delay={400}
           />
           <FeatureRow
             imagePath="/landing/themes.png"
             label="Design"
-            title="Für Menschen gemacht"
-            desc="Dark Mode, sechs sorgfältig abgestimmte Farbthemen, klare Typografie und ein Interface, das sich wie moderne Software anfühlt - nicht wie ein Behördenformular."
+            title="Modern statt Behörde"
+            desc="Dark Mode, sechs sorgfältig abgestimmte Farbthemen und klare Typografie: Lanis fühlt sich an wie moderne Software — und nicht wie ein Formular der Verwaltung."
             reversed
-            delay={300}
+            delay={500}
           />
           <FeatureRow
             imagePath="/landing/navigation.png"
             label="Navigation"
-            title="Ohne Suchen finden"
-            desc="Statt durch verschachtelte Menüs zu klicken: Sidebar mit direktem Zugriff, globale Suche und anheftbare Module. Alles ist maximal drei Klicke entfernt."
-            delay={400} 
+            title="Alles griffbereit"
+            desc="Direkte Sidebar statt verschachtelter Menüs, globale Suche und anpinnbare Module: Du kommst in höchstens drei Klicks zu jedem Modul — ganz ohne Suchen."
+            delay={600}
           />
         </section>
 
         {/* ═══ Bottom CTA ═══ */}
         <section className="max-w-6xl mx-auto px-6 pb-24">
           <Reveal>
-            <div className="rounded-3xl bg-[#f5f5f2] dark:bg-[#111719] border border-black/[0.04] dark:border-white/[0.07] p-10 md:p-16 text-center">
-              <h2 className="text-2xl md:text-3xl font-bold text-[#111] dark:text-[#f3f7f8] tracking-tight mb-3">
-                Bereit für ein besseres Schulportal-Erlebnis?
+            <div className="rounded-3xl bg-[#f5f5f2] dark:bg-surface-900 border border-black/[0.04] dark:border-white/[0.07] p-10 md:p-16 text-center">
+              <h2 className="text-2xl md:text-3xl font-bold text-[#111] dark:text-surface-100 tracking-tight mb-3">
+                Überzeug dich selbst
               </h2>
-              <p className="text-[#888] dark:text-[#879397] text-sm max-w-md mx-auto mb-8">
-                Einfach mit deinem bestehenden Account einloggen.
+              <p className="text-[#888] dark:text-surface-500 text-sm max-w-md mx-auto mb-8">
+                Melde dich einfach mit deinem bestehenden Schulportal-Account an.
               </p>
               <button
                 onClick={() => navigate('/login')}
-                className="px-9 py-4 rounded-xl bg-[#00c0e0] hover:bg-[#00d8f8] text-white font-semibold text-sm transition-all duration-300 active:scale-[0.97] shadow-[0_4px_20px_rgba(0,192,224,0.2)]"
+                className="px-9 py-4 rounded-xl bg-primary-500 hover:bg-primary-400 text-white font-semibold text-sm transition-all duration-300 active:scale-[0.97] shadow-[0_4px_20px_rgb(var(--color-primary-500)/0.25)]"
               >
                 Jetzt einloggen
               </button>
@@ -252,13 +352,13 @@ const Landingpage: React.FC = () => {
 
         {/* ═══ Footer ═══ */}
         <footer className="max-w-6xl mx-auto px-6 pb-12 text-center flex items-center justify-center gap-4">
-          <Link to="/impressum" className="text-[11px] text-[#bbb] dark:text-[#667276] hover:text-[#888] dark:hover:text-[#a9b4b7] transition-colors">
+          <Link to="/impressum" className="text-[11px] text-[#bbb] dark:text-surface-500 hover:text-[#888] dark:hover:text-surface-300 transition-colors">
             Impressum
           </Link>
-          <Link to="/privacy-policy" className="text-[11px] text-[#bbb] dark:text-[#667276] hover:text-[#888] dark:hover:text-[#a9b4b7] transition-colors">
+          <Link to="/privacy-policy" className="text-[11px] text-[#bbb] dark:text-surface-500 hover:text-[#888] dark:hover:text-surface-300 transition-colors">
             Datenschutz
           </Link>
-          <Link to="/set-custom-backend" className="text-[11px] text-[#bbb] dark:text-[#667276] hover:text-[#888] dark:hover:text-[#a9b4b7] transition-colors">
+          <Link to="/set-custom-backend" className="text-[11px] text-[#bbb] dark:text-surface-500 hover:text-[#888] dark:hover:text-surface-300 transition-colors">
             Eigenes Backend
           </Link>
         </footer>
