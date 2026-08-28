@@ -18,6 +18,7 @@ import {
   Bars3Icon,
   XMarkIcon,
   ClipboardDocumentListIcon,
+  FolderIcon,
   MagnifyingGlassIcon,
 } from '@heroicons/react/24/outline';
 import { Link, useLocation } from 'react-router-dom';
@@ -35,6 +36,7 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
   const location = useLocation();
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
   const [isSearchOpen, setIsSearchOpen] = React.useState(false);
+  const [hasNativeDateispeicher, setHasNativeDateispeicher] = React.useState(false);
   const [hasDsbModule, setHasDsbModule] = React.useState(false);
   const mainRef = React.useRef<HTMLElement>(null);
   const pwaRef = React.useRef<any>(null);
@@ -76,12 +78,15 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
         const response = await appsAPI.getModules(token, abortController.signal);
         if (abortController.signal.aborted) return;
         if (response.success) {
-          const dsbExists = response.modules.some(
-            m => m.name.toLowerCase().includes('dsb') ||
-                 m.name.toLowerCase().includes('vertretungsplan') ||
-                 m.url.toLowerCase().includes('dsb') ||
-                 m.url.toLowerCase().includes('vertretung')
-          );
+          const dateispeicherExists = response.modules.some(m => {
+            const links = `${m.url} ${m.direct_url || ''}`.toLowerCase();
+            return links.includes('/dateispeicher.php') || m.name.toLowerCase().includes('dateispeicher');
+          });
+          const dsbExists = response.modules.some(m => {
+            const links = `${m.url} ${m.direct_url || ''}`.toLowerCase();
+            return m.name.toLowerCase().includes('dsb') || links.includes('dsb');
+          });
+          setHasNativeDateispeicher(dateispeicherExists);
           setHasDsbModule(dsbExists);
         }
       } catch (error) {
@@ -116,9 +121,14 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
     { name: 'Einstellungen', href: `${basePath}/settings`, icon: Cog6ToothIcon },
   ];
 
-  const dsbNavItem = hasDsbModule ? { name: 'Vertretungsplan', href: `${basePath}/dsb`, icon: ClipboardDocumentListIcon } : null;
+  const moduleNavItems = [
+    ...(hasNativeDateispeicher ? [{ name: 'Dateispeicher', href: `${basePath}/dateispeicher`, icon: FolderIcon }] : []),
+    ...(hasDsbModule ? [{ name: 'Vertretungsplan', href: `${basePath}/dsb`, icon: ClipboardDocumentListIcon }] : []),
+  ];
 
-  const navigation = dsbNavItem ? [...baseNavigation.slice(0, 2), dsbNavItem, ...baseNavigation.slice(2)] : baseNavigation;
+  const navigation = moduleNavItems.length > 0
+    ? [...baseNavigation.slice(0, 2), ...moduleNavItems, ...baseNavigation.slice(2)]
+    : baseNavigation;
 
   const handleLogout = () => {
     logout();

@@ -123,6 +123,11 @@ const Dashboard: React.FC = () => {
       navigate(`${basePath}/study-groups`);
       return;
     }
+    const moduleLinks = `${module.url} ${module.direct_url || ''}`.toLowerCase();
+    if (moduleLinks.includes('/dateispeicher.php') || module.name.toLowerCase().includes('dateispeicher')) {
+      navigate(`${basePath}/dateispeicher`);
+      return;
+    }
     if (module.url.toLowerCase().includes('dsb') ||
         (module.direct_url && module.direct_url.toLowerCase().includes('dsb')) ||
         module.name.toLowerCase().includes('dsb') ||

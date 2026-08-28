@@ -173,6 +173,8 @@ import {
   CustomLesson,
   CustomLessonsResponse,
   ClassLinksResponse,
+  DateispeicherNodeResponse,
+  DateispeicherSearchResponse,
   StudyGroupsResponse,
   NotificationConfigResponse,
   NotificationPreferences,
@@ -619,6 +621,36 @@ export const timetableAPI = {
       time_slots: timeSlots,
       custom_lessons: Array.isArray(data.custom_lessons) ? data.custom_lessons : undefined,
     };
+  },
+};
+
+// Native Schulportal file-storage API
+export const dateispeicherAPI = {
+  async getNode(token: string, folderId = 0, signal?: AbortSignal): Promise<DateispeicherNodeResponse> {
+    const response = await apiClient.get<DateispeicherNodeResponse>('/dateispeicher', {
+      headers: { 'X-Session-Token': token },
+      params: { folder_id: folderId },
+      signal,
+    });
+    return response.data;
+  },
+
+  async search(token: string, query: string, signal?: AbortSignal): Promise<DateispeicherSearchResponse> {
+    const response = await apiClient.get<DateispeicherSearchResponse>('/dateispeicher/search', {
+      headers: { 'X-Session-Token': token },
+      params: { q: query },
+      signal,
+    });
+    return response.data;
+  },
+
+  async downloadFile(token: string, fileId: number, signal?: AbortSignal): Promise<Blob> {
+    const response = await apiClient.get<Blob>(`/dateispeicher/file/${fileId}`, {
+      headers: { 'X-Session-Token': token },
+      responseType: 'blob',
+      signal,
+    });
+    return response.data;
   },
 };
 

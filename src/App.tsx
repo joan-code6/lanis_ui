@@ -19,6 +19,7 @@ import Impressum from './components/legal/Impressum';
 import PrivacyPolicy from './components/legal/PrivacyPolicy';
 import Timetable from './components/timetable/Timetable';
 import StudyGroups from './components/study-groups/StudyGroups';
+import Dateispeicher from './components/dateispeicher/Dateispeicher';
 import CustomBackend from './components/settings/CustomBackend';
 import Onboarding from './components/onboarding/Onboarding';
 
@@ -79,6 +80,7 @@ const AppRoutes: React.FC = () => {
           <Route path="calendar" element={<Kalender />} />
           <Route path="timetable" element={<Timetable />} />
           <Route path="study-groups" element={<StudyGroups />} />
+          <Route path="dateispeicher" element={<Dateispeicher />} />
           <Route path="dsb" element={<Dsbmobile />} />
           <Route path="profile" element={<Profile />} />
           <Route path="settings/*" element={<Settings />} />
@@ -113,6 +115,7 @@ const AppRoutes: React.FC = () => {
                     <Route path="/calendar" element={<Kalender />} />
                     <Route path="/timetable" element={<Timetable />} />
                     <Route path="/study-groups" element={<StudyGroups />} />
+                    <Route path="/dateispeicher" element={<Dateispeicher />} />
                     <Route path="/dsb" element={<Dsbmobile />} />
                     <Route path="/profile" element={<Profile />} />
                     <Route path="/settings/*" element={<Settings />} />
