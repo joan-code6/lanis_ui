@@ -119,6 +119,7 @@ const Dateispeicher: React.FC = () => {
   const [downloadingId, setDownloadingId] = useState<number | null>(null);
   const [error, setError] = useState('');
   const [reloadKey, setReloadKey] = useState(0);
+  const [searchKey, setSearchKey] = useState(0);
 
   useEffect(() => {
     if (!token) {
@@ -172,7 +173,7 @@ const Dateispeicher: React.FC = () => {
       });
 
     return () => controller.abort();
-  }, [token, submittedQuery]);
+  }, [token, submittedQuery, searchKey]);
 
   const isSearchMode = submittedQuery.length > 0;
 
@@ -205,6 +206,7 @@ const Dateispeicher: React.FC = () => {
     event.preventDefault();
     const value = query.trim();
     setSubmittedQuery(value);
+    setSearchKey(key => key + 1);
   };
 
   const clearSearch = () => {
