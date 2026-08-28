@@ -107,7 +107,7 @@ const Onboarding: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (!token) return;
+    if (!token || isLoading) return;
     const controller = new AbortController();
     appsAPI.getModules(token, controller.signal)
       .then(response => {
@@ -124,7 +124,7 @@ const Onboarding: React.FC = () => {
         if (!controller.signal.aborted) setModulesLoading(false);
       });
     return () => controller.abort();
-  }, [preferences.dashboard.pinned_modules.length, token]);
+  }, [isLoading, token]);
 
   const displayName = user?.vorname || user?.firstname || user?.username || 'du';
 
