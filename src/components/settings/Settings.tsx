@@ -169,6 +169,7 @@ const Settings: React.FC = () => {
   const [ownClass, setOwnClass] = useState('');
   const [availableClasses, setAvailableClasses] = useState<string[]>([]);
   const [vertretungsplanClassesInput, setVertretungsplanClassesInput] = useState('');
+  const [vertretungsplanOptionsStatus, setVertretungsplanOptionsStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [vertretungsplanOptionsError, setVertretungsplanOptionsError] = useState('');
 
   const pushSupported = typeof window !== 'undefined'
@@ -179,7 +180,10 @@ const Settings: React.FC = () => {
     || notificationPrefs.vertretungsplan_enabled;
   const notificationSelectionValid = !notificationPrefs.vertretungsplan_enabled
     || notificationPrefs.vertretungsplan_class_mode === 'all'
-    || notificationPrefs.vertretungsplan_class_mode === 'own'
+    || (
+      notificationPrefs.vertretungsplan_class_mode === 'own'
+      && (Boolean(ownClass) || vertretungsplanOptionsStatus !== 'success')
+    )
     || (
       notificationPrefs.vertretungsplan_class_mode === 'selected'
       && notificationPrefs.vertretungsplan_classes.some(value => value.trim().length > 0)
@@ -240,6 +244,7 @@ const Settings: React.FC = () => {
     setOwnClass('');
     setAvailableClasses([]);
     setVertretungsplanClassesInput('');
+    setVertretungsplanOptionsStatus('idle');
     setVertretungsplanOptionsError('');
 
     if (section !== 'notifications') {
@@ -253,6 +258,7 @@ const Settings: React.FC = () => {
     }
 
     setNotificationsLoading(true);
+    setVertretungsplanOptionsStatus('loading');
 
     const controller = new AbortController();
     const loadVertretungsplanOptions = async () => {
@@ -264,9 +270,11 @@ const Settings: React.FC = () => {
         }
         setOwnClass(options.own_class || '');
         setAvailableClasses(options.available_classes || []);
+        setVertretungsplanOptionsStatus('success');
       } catch (error) {
         if (!controller.signal.aborted) {
           console.error('Failed to load Vertretungsplan notification options:', error);
+          setVertretungsplanOptionsStatus('error');
           setVertretungsplanOptionsError('Klassen konnten gerade nicht aus dem Vertretungsplan geladen werden. Du kannst sie trotzdem manuell eingeben.');
         }
       }
