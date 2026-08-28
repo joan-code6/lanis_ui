@@ -168,6 +168,7 @@ const Settings: React.FC = () => {
   const [notificationMessage, setNotificationMessage] = useState('');
   const [ownClass, setOwnClass] = useState('');
   const [availableClasses, setAvailableClasses] = useState<string[]>([]);
+  const [vertretungsplanClassesInput, setVertretungsplanClassesInput] = useState('');
   const [vertretungsplanOptionsError, setVertretungsplanOptionsError] = useState('');
 
   const pushSupported = typeof window !== 'undefined'
@@ -236,6 +237,7 @@ const Settings: React.FC = () => {
     setNotificationMessage('');
     setOwnClass('');
     setAvailableClasses([]);
+    setVertretungsplanClassesInput('');
     setVertretungsplanOptionsError('');
 
     if (section !== 'notifications') {
@@ -284,6 +286,7 @@ const Settings: React.FC = () => {
         };
         setNotificationConfigured(config.configured);
         setNotificationPrefs(loadedPreferences);
+        setVertretungsplanClassesInput(loadedPreferences.vertretungsplan_classes.join(', '));
         setNotificationSettingsLoaded(true);
         if (pushSupported) {
           setNotificationPermission(Notification.permission);
@@ -428,7 +431,9 @@ const Settings: React.FC = () => {
       if (!response.success || !response.preferences) {
         throw new Error('Benachrichtigungseinstellungen konnten nicht gespeichert werden.');
       }
-      setNotificationPrefs({ ...defaultNotificationPreferences, ...response.preferences });
+      const savedPreferences = { ...defaultNotificationPreferences, ...response.preferences };
+      setNotificationPrefs(savedPreferences);
+      setVertretungsplanClassesInput(savedPreferences.vertretungsplan_classes.join(', '));
       if (!response.preferences.enabled) setNotificationBrowserReady(false);
       setNotificationMessage('Benachrichtigungseinstellungen gespeichert.');
     } catch (error) {
@@ -458,7 +463,9 @@ const Settings: React.FC = () => {
         if (!response.success || !response.preferences) {
           throw new Error('Benachrichtigungseinstellungen konnten nicht aktiviert werden.');
         }
-        setNotificationPrefs({ ...defaultNotificationPreferences, ...response.preferences });
+        const savedPreferences = { ...defaultNotificationPreferences, ...response.preferences };
+        setNotificationPrefs(savedPreferences);
+        setVertretungsplanClassesInput(savedPreferences.vertretungsplan_classes.join(', '));
         setNotificationMessage('Benachrichtigungen sind jetzt aktiv.');
       } catch (error) {
         let rollbackError: Error | null = null;
@@ -791,11 +798,20 @@ const Settings: React.FC = () => {
                       id="notification-classes"
                       type="text"
                       className="input text-sm"
-                      value={notificationPrefs.vertretungsplan_classes.join(', ')}
-                      onChange={event => setNotificationPrefs(previous => ({
-                        ...previous,
-                        vertretungsplan_classes: event.target.value.split(',').map(value => value.trimStart()),
-                      }))}
+                      value={vertretungsplanClassesInput}
+                      onChange={event => {
+                        const input = event.target.value;
+                        setVertretungsplanClassesInput(input);
+                        setNotificationPrefs(previous => ({
+                          ...previous,
+                          vertretungsplan_classes: input.split(',').map(value => value.trim()),
+                        }));
+                      }}
+                      onBlur={() => {
+                        const classes = notificationPrefs.vertretungsplan_classes.filter(value => value.length > 0);
+                        setNotificationPrefs(previous => ({ ...previous, vertretungsplan_classes: classes }));
+                        setVertretungsplanClassesInput(classes.join(', '));
+                      }}
                       placeholder="z. B. 10a, 10b, Q2"
                       disabled={notificationsLoading || notificationsSaving}
                     />
@@ -808,12 +824,13 @@ const Settings: React.FC = () => {
                               key={className}
                               type="button"
                               aria-pressed={selected}
-                              onClick={() => setNotificationPrefs(previous => ({
-                                ...previous,
-                                vertretungsplan_classes: selected
-                                  ? previous.vertretungsplan_classes.filter(value => value !== className)
-                                  : [...previous.vertretungsplan_classes, className],
-                              }))}
+                              onClick={() => {
+                                const classes = selected
+                                  ? notificationPrefs.vertretungsplan_classes.filter(value => value !== className)
+                                  : [...notificationPrefs.vertretungsplan_classes.filter(value => value.length > 0), className];
+                                setNotificationPrefs(previous => ({ ...previous, vertretungsplan_classes: classes }));
+                                setVertretungsplanClassesInput(classes.join(', '));
+                              }}
                               className={`min-h-9 rounded-full px-3 py-1.5 text-xs transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500/50 ${
                                 selected
                                   ? 'bg-primary-600 text-white'
