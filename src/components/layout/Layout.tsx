@@ -84,7 +84,11 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
           });
           const dsbExists = response.modules.some(m => {
             const links = `${m.url} ${m.direct_url || ''}`.toLowerCase();
-            return m.name.toLowerCase().includes('dsb') || links.includes('dsb');
+            const name = m.name.toLowerCase();
+            return name.includes('dsb')
+              || name.includes('vertretungsplan')
+              || links.includes('dsb')
+              || links.includes('vertretung');
           });
           setHasNativeDateispeicher(dateispeicherExists);
           setHasDsbModule(dsbExists);

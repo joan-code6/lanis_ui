@@ -571,6 +571,7 @@ export interface DateispeicherFolder {
   name: string;
   subfolders: number;
   description?: string;
+  parent_folder_id?: number;
 }
 
 export interface DateispeicherFile {

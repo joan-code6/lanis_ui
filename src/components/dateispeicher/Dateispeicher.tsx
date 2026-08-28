@@ -38,6 +38,11 @@ function toId(value: unknown): number | null {
   return Number.isInteger(id) && id > 0 ? id : null;
 }
 
+function toParentId(value: unknown): number | undefined {
+  const id = Number(value);
+  return Number.isInteger(id) && id >= 0 ? id : undefined;
+}
+
 function toFile(value: unknown): DateispeicherFile | null {
   const record = recordValue(value);
   if (!record) return null;
@@ -66,6 +71,7 @@ function toFolder(value: unknown): DateispeicherFolder | null {
     name,
     subfolders: Number(record.subfolders ?? record.folder_count ?? 0) || 0,
     description: typeof record.description === 'string' ? record.description : undefined,
+    parent_folder_id: toParentId(record.parent_folder_id),
   };
 }
 
@@ -123,6 +129,7 @@ const Dateispeicher: React.FC = () => {
     const controller = new AbortController();
     setLoading(true);
     setError('');
+    setNode(null);
     dateispeicherAPI.getNode(token, folderId, controller.signal)
       .then(response => {
         if (!response.success) throw new Error(response.error || 'Der Dateispeicher konnte nicht geladen werden.');
@@ -149,6 +156,7 @@ const Dateispeicher: React.FC = () => {
     const controller = new AbortController();
     setSearching(true);
     setError('');
+    setSearchResults(null);
     dateispeicherAPI.search(token, submittedQuery, controller.signal)
       .then(response => {
         if (!response.success) throw new Error(response.error || 'Die Dateisuche konnte nicht durchgeführt werden.');
@@ -156,6 +164,7 @@ const Dateispeicher: React.FC = () => {
       })
       .catch(err => {
         if (axios.isCancel(err)) return;
+        setSearchResults(null);
         setError(err instanceof Error ? err.message : 'Die Dateisuche konnte nicht durchgeführt werden.');
       })
       .finally(() => {
@@ -165,11 +174,21 @@ const Dateispeicher: React.FC = () => {
     return () => controller.abort();
   }, [token, submittedQuery]);
 
+  const isSearchMode = submittedQuery.length > 0;
+
   const openFolder = (folder: DateispeicherFolder) => {
     const existingIndex = breadcrumbs.findIndex(item => item.id === folder.id);
-    setBreadcrumbs(existingIndex >= 0
+    const parentIndex = typeof folder.parent_folder_id === 'number'
+      ? breadcrumbs.findIndex(item => item.id === folder.parent_folder_id)
+      : -1;
+    const nextBreadcrumbs = existingIndex >= 0
       ? breadcrumbs.slice(0, existingIndex + 1)
-      : [...breadcrumbs, { id: folder.id, name: folder.name }]);
+      : parentIndex >= 0
+        ? [...breadcrumbs.slice(0, parentIndex + 1), { id: folder.id, name: folder.name }]
+        : isSearchMode
+          ? [{ id: 0, name: 'Dateispeicher' }, { id: folder.id, name: folder.name }]
+          : [...breadcrumbs, { id: folder.id, name: folder.name }];
+    setBreadcrumbs(nextBreadcrumbs);
     setFolderId(folder.id);
     setSubmittedQuery('');
     setSearchResults(null);
@@ -217,9 +236,8 @@ const Dateispeicher: React.FC = () => {
     }
   };
 
-  const visibleFolders = searchResults?.folders || node?.folders || [];
-  const visibleFiles = searchResults?.files || node?.files || [];
-  const isSearchMode = submittedQuery.length > 0;
+  const visibleFolders = isSearchMode ? (searchResults?.folders || []) : (node?.folders || []);
+  const visibleFiles = isSearchMode ? (searchResults?.files || []) : (node?.files || []);
 
   if (!token) {
     return (
