@@ -15,17 +15,15 @@ import {
 } from '@heroicons/react/24/outline';
 import { useAuth } from '../../contexts/AuthContext';
 import { useBasePath } from '../../contexts/BasePathContext';
+import { usePreferences } from '../../contexts/PreferencesContext';
 import { timetableAPI } from '../../services/api';
 import { TimetableDay, TimetableLesson, TimetableResponse } from '../../types';
-import {
-  getStoredTimetableViewMode,
-  projectTimetableDays,
-  weekTypeForDate,
-} from '../../utils/timetableView';
+import { projectTimetableDays, weekTypeForDate } from '../../utils/timetableView';
 import SEO from '../seo/SEO';
 
 const Timetable: React.FC = () => {
   const { token } = useAuth();
+  const { preferences } = usePreferences();
   const navigate = useNavigate();
   const basePath = useBasePath();
   const [personalDays, setPersonalDays] = useState<TimetableDay[]>([]);
@@ -33,7 +31,7 @@ const Timetable: React.FC = () => {
   const [activeWeek, setActiveWeek] = useState<'A' | 'B' | undefined>();
   const [referenceWeekStart, setReferenceWeekStart] = useState<string>();
   const [customLessons, setCustomLessons] = useState<NonNullable<TimetableResponse['custom_lessons']>>([]);
-  const [timetableViewMode] = useState(getStoredTimetableViewMode);
+  const timetableViewMode = preferences.timetable.view_mode;
   const [planMode, setPlanMode] = useState<'personal' | 'all'>('personal');
   const [selectedWeek, setSelectedWeek] = useState<'A' | 'B' | undefined>();
   const [loading, setLoading] = useState(true);

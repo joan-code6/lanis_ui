@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useTheme, ThemeColor } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useBasePath } from '../../contexts/BasePathContext';
+import { usePreferences } from '../../contexts/PreferencesContext';
 import { notificationsAPI } from '../../services/api';
 import { NotificationPreferences, PushSubscriptionPayload } from '../../types';
 import {
@@ -19,6 +20,7 @@ import {
   PaintBrushIcon,
   ShieldCheckIcon,
   SunIcon,
+  SparklesIcon,
 } from '@heroicons/react/24/outline';
 import SEO from '../seo/SEO';
 import { getDeferredPrompt } from '../pwa/InstallPrompt';
@@ -136,11 +138,27 @@ const SettingsIndex: React.FC<{ basePath: string }> = ({ basePath }) => (
         <ChevronRightIcon className="h-5 w-5 shrink-0 text-surface-300 group-hover:text-surface-500 dark:text-surface-600" />
       </Link>
     ))}
+    {!basePath && (
+      <Link
+        to="/onboarding"
+        className="group flex items-center gap-4 px-4 py-4 transition-colors hover:bg-surface-50 dark:hover:bg-surface-800/70 sm:px-5"
+      >
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-surface-100 text-surface-600 dark:bg-surface-800 dark:text-surface-300">
+          <SparklesIcon className="h-5 w-5" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <h2 className="font-medium text-surface-900 dark:text-white">Einrichtung erneut starten</h2>
+          <p className="mt-0.5 text-sm text-surface-500">Aussehen, Favoriten und Stundenplan gemeinsam anpassen.</p>
+        </div>
+        <ChevronRightIcon className="h-5 w-5 shrink-0 text-surface-300 group-hover:text-surface-500 dark:text-surface-600" />
+      </Link>
+    )}
   </div>
 );
 
 const Settings: React.FC = () => {
-  const { isDark, isOled, toggleDark, toggleOled, themeColor, setThemeColor } = useTheme();
+  const { isDark, themeMode, setThemeMode, themeColor, setThemeColor } = useTheme();
+  const { updatePreferences, syncError } = usePreferences();
   const { token } = useAuth();
   const location = useLocation();
   const basePath = useBasePath();
@@ -496,6 +514,16 @@ const Settings: React.FC = () => {
     el?.showDialog(true);
   };
 
+  const changeThemeMode = (mode: 'system' | 'light' | 'dark' | 'oled') => {
+    setThemeMode(mode);
+    void updatePreferences({ appearance: { theme_mode: mode } });
+  };
+
+  const changeThemeColor = (color: ThemeColor) => {
+    setThemeColor(color);
+    void updatePreferences({ appearance: { theme_color: color } });
+  };
+
   return (
     <div className="mx-auto max-w-6xl p-4 sm:p-6 lg:p-8">
       <SEO
@@ -517,74 +545,39 @@ const Settings: React.FC = () => {
 
       {section === 'home' && <SettingsIndex basePath={basePath} />}
 
+      {syncError && section !== 'notifications' && section !== 'home' && (
+        <p className="mb-5 rounded-xl bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">{syncError}</p>
+      )}
+
       {section === 'timetable' && <TimetableSettings />}
 
       <div className="space-y-6">
         {section === 'appearance' && (
           <>
-        {/* Dark Mode */}
+        {/* Display mode */}
         <div className="card">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-base font-semibold text-surface-900 dark:text-surface-100">Dark Mode</h3>
-              <p className="text-sm text-surface-500 mt-0.5">
-                {isOled ? 'OLED-Design ist aktiv' : isDark ? 'Dunkles Design ist aktiv' : 'Helles Design ist aktiv'}
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={toggleDark}
-              className={`relative h-7 w-14 shrink-0 rounded-full transition-colors duration-300 ease-out-expo ${
-                isDark ? 'bg-primary-600' : 'bg-surface-300'
-              }`}
-              role="switch"
-              aria-checked={isDark}
-              aria-label="Dunkles Design"
-            >
-              <span
-                className={`absolute top-0.5 left-0.5 w-6 h-6 rounded-full bg-white dark:bg-surface-200 shadow-soft flex items-center justify-center transition-all duration-300 ease-out-expo ${
-                  isDark ? 'translate-x-7' : 'translate-x-0'
-                }`}
-              >
-                {isDark ? (
-                  <MoonIcon className="w-3 h-3 text-primary-600" />
-                ) : (
-                  <SunIcon className="w-3 h-3 text-amber-500" />
-                )}
-              </span>
-            </button>
-          </div>
-
-          {isDark && (
-            <div className="mt-5 flex items-center justify-between gap-4 border-t border-surface-100 pt-5 dark:border-surface-800">
-              <div>
-                <h3 className="text-base font-semibold text-surface-900 dark:text-surface-100">OLED-Modus</h3>
-                <p className="text-sm text-surface-500 mt-0.5">
-                  {isOled
-                    ? 'Reines Schwarz spart Energie auf OLED-Displays'
-                    : 'Schwarzer Hintergrund für OLED-Displays'}
-                </p>
-              </div>
+          <h3 className="text-base font-semibold text-surface-900 dark:text-surface-100">Darstellung</h3>
+          <p className="mt-0.5 text-sm text-surface-500">Wird mit deinem Lanis-Konto synchronisiert.</p>
+          <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {([
+              { id: 'system' as const, label: 'Automatisch', icon: DevicePhoneMobileIcon },
+              { id: 'light' as const, label: 'Hell', icon: SunIcon },
+              { id: 'dark' as const, label: 'Dunkel', icon: MoonIcon },
+              { id: 'oled' as const, label: 'OLED', icon: MoonIcon },
+            ]).map(option => (
               <button
+                key={option.id}
                 type="button"
-                onClick={toggleOled}
-                className={`relative h-7 w-14 shrink-0 rounded-full transition-colors duration-300 ease-out-expo ${
-                  isOled ? 'bg-primary-600' : 'bg-surface-300 dark:bg-surface-700'
-                }`}
-                role="switch"
-                aria-checked={isOled}
-                aria-label="OLED-Modus"
+                onClick={() => changeThemeMode(option.id)}
+                className={`flex items-center gap-2 rounded-xl border p-3 text-sm font-medium transition-all ${themeMode === option.id
+                  ? 'border-primary-500 bg-primary-50 text-primary-800 ring-2 ring-primary-500/15 dark:bg-primary-950/40 dark:text-primary-200'
+                  : 'border-surface-200 bg-white text-surface-600 hover:border-primary-300 dark:border-surface-700 dark:bg-surface-800 dark:text-surface-300'}`}
               >
-                <span
-                  className={`absolute top-0.5 left-0.5 w-6 h-6 rounded-full bg-white dark:bg-surface-200 shadow-soft flex items-center justify-center transition-all duration-300 ease-out-expo ${
-                    isOled ? 'translate-x-7' : 'translate-x-0'
-                  }`}
-                >
-                  <MoonIcon className={`w-3 h-3 ${isOled ? 'text-primary-600' : 'text-surface-400'}`} />
-                </span>
+                <option.icon className="h-4 w-4" />
+                {option.label}
               </button>
-            </div>
-          )}
+            ))}
+          </div>
         </div>
 
         {/* Primary Color */}
@@ -595,7 +588,7 @@ const Settings: React.FC = () => {
             {themeColors.map((c) => (
               <button
                 key={c.key}
-                onClick={() => setThemeColor(c.key)}
+                onClick={() => changeThemeColor(c.key)}
                 className="flex flex-col items-center gap-2 p-3 rounded-xl border transition-all duration-200 ease-out-expo active:scale-95"
                 style={{
                   borderColor: themeColor === c.key

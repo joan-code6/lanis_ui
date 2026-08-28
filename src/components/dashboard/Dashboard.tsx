@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useBasePath } from '../../contexts/BasePathContext';
+import { usePreferences } from '../../contexts/PreferencesContext';
 import { appsAPI } from '../../services/api';
 import axios from 'axios';
 import { Module } from '../../types';
@@ -17,6 +18,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { API_BASE_URL } from '../../services/api';
 import clsx from 'clsx';
+import ModuleIcon from './ModuleIcon';
 
 interface CombinedModule {
   name: string;
@@ -31,6 +33,7 @@ interface CombinedModule {
 
 const Dashboard: React.FC = () => {
   const { token } = useAuth();
+  const { preferences, updatePreferences } = usePreferences();
   const navigate = useNavigate();
   const basePath = useBasePath();
   const [modules, setModules] = useState<CombinedModule[]>(() => {
@@ -43,12 +46,9 @@ const Dashboard: React.FC = () => {
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFolder, setSelectedFolder] = useState<string>('all');
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const viewMode = preferences.dashboard.view_mode;
   const [isEditMode, setIsEditMode] = useState(false);
-  const [pinnedModules, setPinnedModules] = useState<string[]>(() => {
-    const cached = localStorage.getItem('pinned_modules');
-    return cached ? JSON.parse(cached) : [];
-  });
+  const pinnedModules = preferences.dashboard.pinned_modules;
 
   if (!token) {
     return (
@@ -141,13 +141,10 @@ const Dashboard: React.FC = () => {
   };
 
   const togglePin = (moduleName: string) => {
-    setPinnedModules(prev => {
-      const newPinned = prev.includes(moduleName)
-        ? prev.filter(n => n !== moduleName)
-        : [...prev, moduleName];
-      localStorage.setItem('pinned_modules', JSON.stringify(newPinned));
-      return newPinned;
-    });
+    const newPinned = pinnedModules.includes(moduleName)
+      ? pinnedModules.filter(name => name !== moduleName)
+      : [...pinnedModules, moduleName];
+    void updatePreferences({ dashboard: { pinned_modules: newPinned } });
   };
 
   const filteredModules = modules.filter((module) => {
@@ -164,63 +161,6 @@ const Dashboard: React.FC = () => {
     if (!aPinned && bPinned) return 1;
     return 0;
   });
-
-  const getModuleIcon = (logo: string, color: string, size: 'grid' | 'list' = 'list') => {
-    let trimmed = logo ? logo.replace(/\r?\n/g, '').replace(/\s+/g, ' ').trim() : '';
-    let bgColor = color ? color.trim() : '#888888';
-    const iconSize = size === 'grid' ? 'w-16 h-16' : 'w-12 h-12';
-    const iconTextSize = size === 'grid' ? 'text-2xl' : 'text-xl';
-    if (bgColor && !bgColor.startsWith('#') && /^[0-9a-fA-F]{6}$/.test(bgColor)) {
-      bgColor = '#' + bgColor;
-    }
-
-    const iconMap: Record<string, string> = {
-      'fa fa-files-o': 'fa-regular fa-copy',
-      'fa fa-check-square-o': 'fa-regular fa-square-check',
-      'glyphicon glyphicon-comment': 'fa-regular fa-comment',
-      'glyphicon glyphicon-user': 'fa-regular fa-user',
-      'glyphicon glyphicon-home': 'fa-solid fa-house',
-      'glyphicon glyphicon-cog': 'fa-solid fa-gear',
-      'glyphicon glyphicon-envelope': 'fa-regular fa-envelope',
-      'glyphicon glyphicon-file': 'fa-regular fa-file',
-      'glyphicon glyphicon-folder-open': 'fa-regular fa-folder-open',
-      'glyphicon glyphicon-search': 'fa-solid fa-magnifying-glass',
-      'glyphicon glyphicon-star': 'fa-regular fa-star',
-      'glyphicon glyphicon-heart': 'fa-regular fa-heart',
-      'glyphicon glyphicon-ok': 'fa-solid fa-check',
-      'glyphicon glyphicon-remove': 'fa-solid fa-xmark',
-      'glyphicon glyphicon-plus': 'fa-solid fa-plus',
-      'glyphicon glyphicon-minus': 'fa-solid fa-minus',
-      'glyphicon glyphicon-calendar': 'fa-regular fa-calendar',
-      'glyphicon glyphicon-time': 'fa-regular fa-clock',
-      'glyphicon glyphicon-pencil': 'fa-solid fa-pencil',
-      'glyphicon glyphicon-trash': 'fa-regular fa-trash-can',
-    };
-
-    if (iconMap[trimmed]) {
-      trimmed = iconMap[trimmed];
-    }
-
-    if (trimmed.length > 0) {
-      return (
-        <div
-          className={`${iconSize} rounded-2xl flex items-center justify-center text-white ${iconTextSize}`}
-          style={{ backgroundColor: bgColor }}
-        >
-          <i className={trimmed} aria-hidden="true" />
-        </div>
-      );
-    }
-
-    return (
-      <div
-        className={`${iconSize} rounded-2xl flex items-center justify-center text-white ${iconTextSize} font-bold`}
-        style={{ backgroundColor: bgColor }}
-      >
-        ?
-      </div>
-    );
-  };
 
   if (isLoading && (!modules || modules.length === 0)) {
     return (
@@ -285,7 +225,7 @@ const Dashboard: React.FC = () => {
 
           <div className="flex bg-surface-100 dark:bg-surface-800 rounded-lg p-0.5 flex-shrink-0">
             <button
-              onClick={() => setViewMode('grid')}
+              onClick={() => void updatePreferences({ dashboard: { view_mode: 'grid' } })}
               className={clsx(
                 'p-2 rounded-md transition-all duration-200',
                 viewMode === 'grid'
@@ -296,7 +236,7 @@ const Dashboard: React.FC = () => {
               <Squares2X2Icon className="h-4 w-4" />
             </button>
             <button
-              onClick={() => setViewMode('list')}
+              onClick={() => void updatePreferences({ dashboard: { view_mode: 'list' } })}
               className={clsx(
                 'p-2 rounded-md transition-all duration-200',
                 viewMode === 'list'
@@ -356,7 +296,7 @@ const Dashboard: React.FC = () => {
               {viewMode === 'grid' ? (
                 <div className="flex flex-col items-center text-center">
                   <div className="relative">
-                    {getModuleIcon(module.logo, module.color, 'grid')}
+                    <ModuleIcon name={module.name} logo={module.logo} color={module.color} size="grid" />
                     <div className="absolute -top-1 -right-1 w-4 h-4 bg-white dark:bg-surface-800 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-soft">
                       <ArrowTopRightOnSquareIcon className="w-2.5 h-2.5 text-surface-400" />
                     </div>
@@ -393,7 +333,7 @@ const Dashboard: React.FC = () => {
                 </div>
                   ) : (
                 <>
-                  {getModuleIcon(module.logo, module.color, 'list')}
+                  <ModuleIcon name={module.name} logo={module.logo} color={module.color} size="list" />
                   <div className="flex-1 min-w-0">
                     <h3 className="font-medium text-surface-900 dark:text-surface-100 group-hover:text-primary-600 transition-colors text-sm">
                       {module.name}

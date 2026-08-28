@@ -46,23 +46,31 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       const expiresAt = Date.now() + response.expires_in * 1000;
 
+      const basicUser = {
+        username: response.username,
+        school_id: response.school_id,
+        encryption_ready: response.encryption_ready.toString(),
+      };
       setToken(response.access_token);
+      setUser(basicUser);
       setIsAuthenticated(true);
 
       localStorage.setItem(ACCESS_TOKEN_KEY, response.access_token);
       localStorage.setItem(REFRESH_TOKEN_KEY, response.refresh_token);
       localStorage.setItem(TOKEN_EXPIRES_KEY, expiresAt.toString());
-      localStorage.setItem(USER_KEY, JSON.stringify({
-        username: response.username,
-        school_id: response.school_id,
-        encryption_ready: response.encryption_ready,
-      }));
+      localStorage.setItem(USER_KEY, JSON.stringify(basicUser));
 
       try {
         const userResponse = await authAPI.getUserProfile(response.access_token);
         if (userResponse.success) {
-          setUser(userResponse.data);
-          localStorage.setItem(USER_KEY, JSON.stringify(userResponse.data));
+          const accountUser = {
+            ...userResponse.data,
+            username: response.username,
+            school_id: response.school_id,
+            encryption_ready: response.encryption_ready.toString(),
+          };
+          setUser(accountUser);
+          localStorage.setItem(USER_KEY, JSON.stringify(accountUser));
         }
       } catch (error) {
         console.warn('Failed to fetch user profile:', error);

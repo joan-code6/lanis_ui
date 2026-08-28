@@ -7,22 +7,9 @@ import {
   startOfDay,
   startOfWeek,
 } from 'date-fns';
-import { CustomLesson, TimetableDay, TimetableLesson } from '../types';
+import { CustomLesson, TimetableDay, TimetableLesson, TimetableViewMode } from '../types';
 
-export type TimetableViewMode = 'rolling' | 'week';
-
-export const TIMETABLE_VIEW_MODE_KEY = 'lanis_timetable_view_mode';
-export const DEFAULT_TIMETABLE_VIEW_MODE: TimetableViewMode = 'rolling';
-
-export const getStoredTimetableViewMode = (): TimetableViewMode => {
-  if (typeof window === 'undefined') return DEFAULT_TIMETABLE_VIEW_MODE;
-  const value = window.localStorage.getItem(TIMETABLE_VIEW_MODE_KEY);
-  return value === 'week' || value === 'rolling' ? value : DEFAULT_TIMETABLE_VIEW_MODE;
-};
-
-export const storeTimetableViewMode = (mode: TimetableViewMode) => {
-  window.localStorage.setItem(TIMETABLE_VIEW_MODE_KEY, mode);
-};
+export type { TimetableViewMode } from '../types';
 
 const parseDate = (value: string): Date => new Date(`${value}T12:00:00`);
 const dateKey = (value: Date): string => format(value, 'yyyy-MM-dd');

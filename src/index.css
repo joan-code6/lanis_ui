@@ -49,6 +49,42 @@
   opacity: 0.9999;
 }
 
+.onboarding-ambient {
+  background-color: rgb(var(--color-surface-50));
+  background-image:
+    radial-gradient(ellipse 90% 52% at 50% -12%, rgb(var(--color-primary-100) / 0.78), transparent 72%),
+    radial-gradient(ellipse 76% 42% at 50% 108%, rgb(var(--color-primary-100) / 0.56), transparent 72%);
+}
+
+.dark .onboarding-ambient {
+  background-color: rgb(var(--color-surface-950));
+  background-image:
+    radial-gradient(ellipse 90% 52% at 50% -12%, rgb(var(--color-primary-950) / 0.42), transparent 72%),
+    radial-gradient(ellipse 76% 42% at 50% 108%, rgb(var(--color-primary-950) / 0.34), transparent 72%);
+}
+
+html.onboarding-active,
+html.onboarding-active body,
+html.onboarding-active #root {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  overflow-x: clip;
+}
+
+html.onboarding-active,
+html.onboarding-active body,
+.onboarding-scroll-region {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+html.onboarding-active::-webkit-scrollbar,
+html.onboarding-active body::-webkit-scrollbar,
+.onboarding-scroll-region::-webkit-scrollbar {
+  display: none;
+}
+
 /* Default CSS variables (overridden by JS on mount) */
 :root {
   --color-primary-50: 236 254 255;

@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { HelmetProvider } from 'react-helmet-async';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
+import { CURRENT_ONBOARDING_VERSION, PreferencesProvider, usePreferences } from './contexts/PreferencesContext';
 import Layout from './components/layout/Layout';
 import LoginForm from './components/auth/LoginForm';
 import Dashboard from './components/dashboard/Dashboard';
@@ -19,6 +20,7 @@ import PrivacyPolicy from './components/legal/PrivacyPolicy';
 import Timetable from './components/timetable/Timetable';
 import StudyGroups from './components/study-groups/StudyGroups';
 import CustomBackend from './components/settings/CustomBackend';
+import Onboarding from './components/onboarding/Onboarding';
 
 const LandingRoot: React.FC = () => {
   const { isAuthenticated } = useAuth();
@@ -41,6 +43,21 @@ const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   if (isAuthenticated) {
     return <Navigate to="/dashboard" replace />;
   }
+  return <>{children}</>;
+};
+
+const PreferencesGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { preferences, isLoading } = usePreferences();
+  if (isLoading) {
+    return (
+      <div className="flex min-h-[100dvh] items-center justify-center bg-surface-50 dark:bg-surface-950">
+        <div className="h-10 w-10 animate-spin rounded-full border-2 border-surface-200 border-t-primary-600 dark:border-surface-800 dark:border-t-primary-400" />
+      </div>
+    );
+  }
+  const onboardingDone = preferences.onboarding.version >= CURRENT_ONBOARDING_VERSION
+    && (preferences.onboarding.status === 'completed' || preferences.onboarding.status === 'skipped');
+  if (!onboardingDone) return <Navigate to="/onboarding" replace />;
   return <>{children}</>;
 };
 
@@ -75,24 +92,34 @@ const AppRoutes: React.FC = () => {
           }
         />
         <Route
+          path="/onboarding"
+          element={
+            <ProtectedRoute>
+              <Onboarding />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/*"
           element={
             <ProtectedRoute>
-              <Layout>
-                <Routes>
-                  <Route path="/dashboard" element={<Dashboard />} />
-                  <Route path="/messages" element={<Messages />} />
-                  <Route path="/courses" element={<Courses />} />
-                  <Route path="/courses/:id" element={<Courses />} />
-                  <Route path="/calendar" element={<Kalender />} />
-                  <Route path="/timetable" element={<Timetable />} />
-                  <Route path="/study-groups" element={<StudyGroups />} />
-                  <Route path="/dsb" element={<Dsbmobile />} />
-                  <Route path="/profile" element={<Profile />} />
-                  <Route path="/settings/*" element={<Settings />} />
-                  <Route path="*" element={<Navigate to="/dashboard" replace />} />
-                </Routes>
-              </Layout>
+              <PreferencesGate>
+                <Layout>
+                  <Routes>
+                    <Route path="/dashboard" element={<Dashboard />} />
+                    <Route path="/messages" element={<Messages />} />
+                    <Route path="/courses" element={<Courses />} />
+                    <Route path="/courses/:id" element={<Courses />} />
+                    <Route path="/calendar" element={<Kalender />} />
+                    <Route path="/timetable" element={<Timetable />} />
+                    <Route path="/study-groups" element={<StudyGroups />} />
+                    <Route path="/dsb" element={<Dsbmobile />} />
+                    <Route path="/profile" element={<Profile />} />
+                    <Route path="/settings/*" element={<Settings />} />
+                    <Route path="*" element={<Navigate to="/dashboard" replace />} />
+                  </Routes>
+                </Layout>
+              </PreferencesGate>
             </ProtectedRoute>
           }
         />
@@ -106,7 +133,9 @@ const App: React.FC = () => {
     <HelmetProvider>
       <ThemeProvider>
         <AuthProvider>
-          <AppRoutes />
+          <PreferencesProvider>
+            <AppRoutes />
+          </PreferencesProvider>
         </AuthProvider>
       </ThemeProvider>
     </HelmetProvider>

@@ -1,12 +1,15 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { ThemeColor, ThemeMode } from '../types';
 
-export type ThemeColor = 'emerald' | 'sapphire' | 'amethyst' | 'ruby' | 'amber' | 'cyan';
+export type { ThemeColor, ThemeMode } from '../types';
 
 interface ThemeContextType {
   isDark: boolean;
   isOled: boolean;
   toggleDark: () => void;
   toggleOled: () => void;
+  themeMode: ThemeMode;
+  setThemeMode: (mode: ThemeMode) => void;
   themeColor: ThemeColor;
   setThemeColor: (color: ThemeColor) => void;
 }
@@ -22,6 +25,7 @@ export const useTheme = () => {
 const THEME_COLOR_KEY = 'lanis_theme_color';
 const DARK_MODE_KEY = 'lanis_dark_mode';
 const OLED_MODE_KEY = 'lanis_oled_mode';
+const THEME_MODE_KEY = 'lanis_theme_mode';
 
 type ColorScale = Record<string, string>;
 
@@ -78,39 +82,41 @@ function applyPrimaryTheme(color: ThemeColor) {
 }
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [isOled, setIsOled] = useState(() => localStorage.getItem(OLED_MODE_KEY) === 'true');
-  const [isDark, setIsDark] = useState(() => {
-    if (localStorage.getItem(OLED_MODE_KEY) === 'true') return true;
-    const stored = localStorage.getItem(DARK_MODE_KEY);
-    if (stored !== null) return stored === 'true';
-    return window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const [themeMode, setThemeModeState] = useState<ThemeMode>(() => {
+    const storedMode = localStorage.getItem(THEME_MODE_KEY);
+    if (storedMode === 'system' || storedMode === 'light' || storedMode === 'dark' || storedMode === 'oled') {
+      return storedMode;
+    }
+    if (localStorage.getItem(OLED_MODE_KEY) === 'true') return 'oled';
+    const storedDark = localStorage.getItem(DARK_MODE_KEY);
+    if (storedDark === 'true') return 'dark';
+    if (storedDark === 'false') return 'light';
+    return 'system';
   });
+  const [systemDark, setSystemDark] = useState(() => window.matchMedia('(prefers-color-scheme: dark)').matches);
 
   const [themeColor, setThemeColorState] = useState<ThemeColor>(() => {
     return (localStorage.getItem(THEME_COLOR_KEY) as ThemeColor) || 'cyan';
   });
 
-  const toggleDark = useCallback(() => {
-    const next = !isDark;
-    setIsDark(next);
-    localStorage.setItem(DARK_MODE_KEY, String(next));
+  const isOled = themeMode === 'oled';
+  const isDark = themeMode === 'dark' || isOled || (themeMode === 'system' && systemDark);
 
-    if (!next && isOled) {
-      setIsOled(false);
-      localStorage.setItem(OLED_MODE_KEY, 'false');
-    }
-  }, [isDark, isOled]);
+  const setThemeMode = useCallback((mode: ThemeMode) => {
+    setThemeModeState(mode);
+    localStorage.setItem(THEME_MODE_KEY, mode);
+    localStorage.setItem(OLED_MODE_KEY, String(mode === 'oled'));
+    if (mode === 'system') localStorage.removeItem(DARK_MODE_KEY);
+    else localStorage.setItem(DARK_MODE_KEY, String(mode === 'dark' || mode === 'oled'));
+  }, []);
+
+  const toggleDark = useCallback(() => {
+    setThemeMode(isDark ? 'light' : 'dark');
+  }, [isDark, setThemeMode]);
 
   const toggleOled = useCallback(() => {
-    const next = !isOled;
-    setIsOled(next);
-    localStorage.setItem(OLED_MODE_KEY, String(next));
-
-    if (next && !isDark) {
-      setIsDark(true);
-      localStorage.setItem(DARK_MODE_KEY, 'true');
-    }
-  }, [isDark, isOled]);
+    setThemeMode(isOled ? 'dark' : 'oled');
+  }, [isOled, setThemeMode]);
 
   const setThemeColor = useCallback((color: ThemeColor) => {
     setThemeColorState(color);
@@ -129,13 +135,11 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, [isDark, isOled]);
 
   useEffect(() => {
-    if (localStorage.getItem(DARK_MODE_KEY) !== null || isOled) return;
-
     const colorScheme = window.matchMedia('(prefers-color-scheme: dark)');
-    const syncWithSystem = (event: MediaQueryListEvent) => setIsDark(event.matches);
+    const syncWithSystem = (event: MediaQueryListEvent) => setSystemDark(event.matches);
     colorScheme.addEventListener('change', syncWithSystem);
     return () => colorScheme.removeEventListener('change', syncWithSystem);
-  }, [isOled]);
+  }, []);
 
   useEffect(() => {
     applyPrimaryTheme(themeColor);
@@ -152,7 +156,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, [themeColor, isDark, isOled]);
 
   return (
-    <ThemeContext.Provider value={{ isDark, isOled, toggleDark, toggleOled, themeColor, setThemeColor }}>
+    <ThemeContext.Provider value={{ isDark, isOled, toggleDark, toggleOled, themeMode, setThemeMode, themeColor, setThemeColor }}>
       {children}
     </ThemeContext.Provider>
   );
