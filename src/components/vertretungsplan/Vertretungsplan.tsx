@@ -216,13 +216,12 @@ const Vertretungsplan: React.FC = () => {
 
   useEffect(() => {
     if (
-      selectedClass
-      && selectedClass !== 'all'
-      && !classOptions.some(option => normaliseClass(option) === normaliseClass(selectedClass))
+      activeClass !== 'all'
+      && !classOptions.some(option => normaliseClass(option) === normaliseClass(activeClass))
     ) {
       setSelectedClass('all');
     }
-  }, [classOptions, selectedClass]);
+  }, [activeClass, classOptions]);
 
   const visibleEntries = (activeDayData?.substitutions || []).filter(entry => {
     if (activeClass === 'all') return true;
