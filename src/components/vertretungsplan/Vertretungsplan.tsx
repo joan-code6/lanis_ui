@@ -83,28 +83,26 @@ function normaliseClass(value: unknown): string {
     .replace(/[^a-z0-9]+/g, '');
 }
 
+function classParts(value: unknown): string[] {
+  const text = cleanText(value);
+  return [...new Set(text.split(/[,;/|()]+/).flatMap(part => {
+    const trimmedPart = part.trim();
+    if (!trimmedPart) return [];
+    const tokens = trimmedPart.split(/\s+/).filter(Boolean);
+    if (tokens.length <= 1) return [trimmedPart];
+
+    const normalizedTokens = tokens.map(normaliseClass);
+    const hasStandaloneNumber = normalizedTokens.some(token => /^\d+$/.test(token));
+    const allStandaloneNumbers = normalizedTokens.every(token => /^\d+$/.test(token));
+    return allStandaloneNumbers || !hasStandaloneNumber ? tokens : [trimmedPart];
+  }))];
+}
+
 function classVariants(value: unknown): string[] {
   const text = cleanText(value);
   const normalizedText = normaliseClass(text);
   const separatedValues = classParts(text).map(normaliseClass);
-  const whitespaceValues = text.split(/\s+/).map(normaliseClass).filter(Boolean);
-  const hasNumericValue = whitespaceValues.some(valuePart => /^\d+$/.test(valuePart));
-  const allNumericValues = whitespaceValues.length > 1
-    && whitespaceValues.every(valuePart => /^\d+$/.test(valuePart));
-  const tokenValues = whitespaceValues.filter(valuePart => (
-    allNumericValues
-    || (!/^\d+$/.test(valuePart) && (valuePart.length >= 2 || !hasNumericValue))
-  ));
-  return [...new Set([normalizedText, ...separatedValues, ...tokenValues])].filter(Boolean);
-}
-
-function classParts(value: unknown): string[] {
-  return [...new Set(
-    cleanText(value)
-      .split(/[,;/|()]+/)
-      .map(part => part.trim())
-      .filter(Boolean),
-  )];
+  return [...new Set([normalizedText, ...separatedValues])].filter(Boolean);
 }
 
 function fuzzyClassMatches(value: unknown, target: unknown): boolean {
