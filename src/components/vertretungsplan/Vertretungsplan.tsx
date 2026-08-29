@@ -163,6 +163,7 @@ const Vertretungsplan: React.FC = () => {
   const [selectedClass, setSelectedClass] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [optionsLoading, setOptionsLoading] = useState(true);
+  const [optionsRequestSucceeded, setOptionsRequestSucceeded] = useState(false);
   const [error, setError] = useState('');
   const [reloadKey, setReloadKey] = useState(0);
 
@@ -171,12 +172,15 @@ const Vertretungsplan: React.FC = () => {
     previousToken.current = token;
     if (!token) {
       setLoading(false);
+      setOptionsLoading(false);
+      setOptionsRequestSucceeded(false);
       return undefined;
     }
 
     const controller = new AbortController();
     setLoading(true);
     setOptionsLoading(true);
+    setOptionsRequestSucceeded(false);
     setError('');
     if (tokenChanged) {
       setOptions({ success: false, own_class: '', available_classes: [] });
@@ -211,6 +215,7 @@ const Vertretungsplan: React.FC = () => {
       const optionsResponse = await optionsPromise;
       if (controller.signal.aborted) return;
       if (optionsResponse) setOptions(optionsResponse);
+      setOptionsRequestSucceeded(optionsResponse !== null);
       setOptionsLoading(false);
     };
 
@@ -245,6 +250,20 @@ const Vertretungsplan: React.FC = () => {
     }
     return [...values].sort((left, right) => left.localeCompare(right, 'de'));
   }, [days, options.available_classes, options.own_class]);
+  const planClassOptions = useMemo(() => {
+    const values = new Set<string>();
+    const addParts = (value: unknown) => {
+      classParts(value).forEach(part => values.add(part));
+    };
+
+    for (const day of days) {
+      for (const entry of day.substitutions || []) {
+        addParts(entry.klasse);
+        addParts(entry.klasse_alt);
+      }
+    }
+    return [...values];
+  }, [days]);
 
   const configuredClass = preferences.vertretungsplan.class_override.trim();
   const profileClass = options.own_class.trim();
@@ -253,7 +272,12 @@ const Vertretungsplan: React.FC = () => {
     () => matchingClassOption(preferredClass, classOptions),
     [classOptions, preferredClass],
   ) || 'all';
-  const activeClass = selectedClass ?? defaultClass;
+  const requestedClass = selectedClass ?? defaultClass;
+  const activeClass = requestedClass !== 'all'
+    && !optionsRequestSucceeded
+    && !planClassOptions.some(option => normaliseClass(option) === normaliseClass(requestedClass))
+    ? 'all'
+    : requestedClass;
   const selectionOptions = useMemo(() => {
     return [...classOptions].sort((left, right) => left.localeCompare(right, 'de'));
   }, [classOptions]);
@@ -262,13 +286,14 @@ const Vertretungsplan: React.FC = () => {
     if (
       !loading
       && !optionsLoading
+      && optionsRequestSucceeded
       && selectedClass
       && selectedClass !== 'all'
       && !classOptions.some(option => normaliseClass(option) === normaliseClass(selectedClass))
     ) {
       setSelectedClass('all');
     }
-  }, [classOptions, loading, optionsLoading, selectedClass]);
+  }, [classOptions, loading, optionsLoading, optionsRequestSucceeded, selectedClass]);
 
   const visibleEntries = (activeDayData?.substitutions || []).filter(entry => {
     if (activeClass === 'all') return true;
