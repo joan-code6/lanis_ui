@@ -284,8 +284,10 @@ const Vertretungsplan: React.FC = () => {
     ? 'all'
     : requestedClass;
   const selectionOptions = useMemo(() => {
-    return [...classOptions].sort((left, right) => left.localeCompare(right, 'de'));
-  }, [classOptions]);
+    const values = new Set(classOptions);
+    if (preservesExplicitSelection && requestedClass !== 'all') values.add(requestedClass);
+    return [...values].sort((left, right) => left.localeCompare(right, 'de'));
+  }, [classOptions, preservesExplicitSelection, requestedClass]);
 
   useEffect(() => {
     if (
