@@ -97,8 +97,24 @@ function classParts(value: unknown): string[] {
     const hasCompleteAlphanumericToken = normalizedTokens.some(token => (
       /\d/.test(token) && /[a-z]/.test(token)
     ));
-    return allStandaloneNumbers || !hasStandaloneNumber || hasCompleteAlphanumericToken
-      ? tokens
+    const compactedTokens: string[] = [];
+    let combinedFormattedIdentifier = false;
+    for (let index = 0; index < tokens.length; index += 1) {
+      const currentToken = normalizedTokens[index];
+      const nextToken = normalizedTokens[index + 1];
+      if (/^\d+$/.test(currentToken) && /^[a-z]$/.test(nextToken || '')) {
+        compactedTokens.push(`${tokens[index]} ${tokens[index + 1]}`);
+        combinedFormattedIdentifier = true;
+        index += 1;
+      } else {
+        compactedTokens.push(tokens[index]);
+      }
+    }
+    if (allStandaloneNumbers || !hasStandaloneNumber || hasCompleteAlphanumericToken) {
+      return compactedTokens;
+    }
+    return combinedFormattedIdentifier && compactedTokens.length > 1
+      ? compactedTokens
       : [trimmedPart];
   }))];
 }
