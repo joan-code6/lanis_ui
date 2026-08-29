@@ -93,6 +93,15 @@ function classVariants(value: unknown): string[] {
   return [...new Set([normalizedText, ...separatedValues])].filter(Boolean);
 }
 
+function classParts(value: unknown): string[] {
+  return [...new Set(
+    cleanText(value)
+      .split(/[,;/|]+/)
+      .map(part => part.trim())
+      .filter(Boolean),
+  )];
+}
+
 function fuzzyClassMatches(value: unknown, target: unknown): boolean {
   const targetVariants = classVariants(target);
   if (targetVariants.length === 0) return false;
@@ -189,14 +198,20 @@ const Vertretungsplan: React.FC = () => {
   const activeDayData = days.find(day => day.date === activeDay) || days[0];
   const classOptions = useMemo(() => {
     const values = new Set<string>();
+    const addParts = (value: unknown) => {
+      classParts(value).forEach(part => values.add(part));
+    };
+
+    options.available_classes.forEach(addParts);
+    addParts(options.own_class);
     for (const day of days) {
       for (const entry of day.substitutions || []) {
-        const value = firstValue(entry.klasse, entry.klasse_alt);
-        if (value) values.add(value);
+        addParts(entry.klasse);
+        addParts(entry.klasse_alt);
       }
     }
     return [...values].sort((left, right) => left.localeCompare(right, 'de'));
-  }, [days]);
+  }, [days, options.available_classes, options.own_class]);
 
   const configuredClass = preferences.vertretungsplan.class_override.trim();
   const profileClass = options.own_class.trim();
