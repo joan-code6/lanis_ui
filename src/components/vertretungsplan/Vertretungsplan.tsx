@@ -137,6 +137,7 @@ const Vertretungsplan: React.FC = () => {
   const [activeDay, setActiveDay] = useState('');
   const [selectedClass, setSelectedClass] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [optionsLoading, setOptionsLoading] = useState(true);
   const [error, setError] = useState('');
   const [reloadKey, setReloadKey] = useState(0);
 
@@ -148,6 +149,7 @@ const Vertretungsplan: React.FC = () => {
 
     const controller = new AbortController();
     setLoading(true);
+    setOptionsLoading(true);
     setError('');
     setOptions({ success: false, own_class: '', available_classes: [] });
 
@@ -179,6 +181,7 @@ const Vertretungsplan: React.FC = () => {
       const optionsResponse = await optionsPromise;
       if (controller.signal.aborted) return;
       if (optionsResponse) setOptions(optionsResponse);
+      setOptionsLoading(false);
     };
 
     load()
@@ -227,13 +230,15 @@ const Vertretungsplan: React.FC = () => {
 
   useEffect(() => {
     if (
-      selectedClass
+      !loading
+      && !optionsLoading
+      && selectedClass
       && selectedClass !== 'all'
       && !classOptions.some(option => normaliseClass(option) === normaliseClass(selectedClass))
     ) {
       setSelectedClass('all');
     }
-  }, [classOptions, selectedClass]);
+  }, [classOptions, loading, optionsLoading, selectedClass]);
 
   const visibleEntries = (activeDayData?.substitutions || []).filter(entry => {
     if (activeClass === 'all') return true;
