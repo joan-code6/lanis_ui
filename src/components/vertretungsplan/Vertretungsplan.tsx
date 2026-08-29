@@ -154,7 +154,6 @@ const Vertretungsplan: React.FC = () => {
     setLoading(true);
     setOptionsLoading(true);
     setError('');
-    setOptions({ success: false, own_class: '', available_classes: [] });
 
     const load = async () => {
       const optionsPromise = vertretungsplanAPI.getOptions(token, controller.signal)
