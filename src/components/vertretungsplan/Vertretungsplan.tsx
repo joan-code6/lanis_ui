@@ -271,10 +271,15 @@ const Vertretungsplan: React.FC = () => {
   const defaultClass = useMemo(
     () => matchingClassOption(preferredClass, classOptions),
     [classOptions, preferredClass],
-  ) || 'all';
+  ) || (!optionsRequestSucceeded && preferredClass ? preferredClass : 'all');
   const requestedClass = selectedClass ?? defaultClass;
+  const keepsKnownPreference = Boolean(
+    (configuredClass && fuzzyClassMatches(requestedClass, configuredClass))
+    || (selectedClass === null && preferredClass && fuzzyClassMatches(requestedClass, preferredClass)),
+  );
   const activeClass = requestedClass !== 'all'
     && !optionsRequestSucceeded
+    && !keepsKnownPreference
     && !planClassOptions.some(option => normaliseClass(option) === normaliseClass(requestedClass))
     ? 'all'
     : requestedClass;
