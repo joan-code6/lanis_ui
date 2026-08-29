@@ -94,7 +94,12 @@ function classParts(value: unknown): string[] {
     const normalizedTokens = tokens.map(normaliseClass);
     const hasStandaloneNumber = normalizedTokens.some(token => /^\d+$/.test(token));
     const allStandaloneNumbers = normalizedTokens.every(token => /^\d+$/.test(token));
-    return allStandaloneNumbers || !hasStandaloneNumber ? tokens : [trimmedPart];
+    const hasCompleteAlphanumericToken = normalizedTokens.some(token => (
+      /\d/.test(token) && /[a-z]/.test(token)
+    ));
+    return allStandaloneNumbers || !hasStandaloneNumber || hasCompleteAlphanumericToken
+      ? tokens
+      : [trimmedPart];
   }))];
 }
 
