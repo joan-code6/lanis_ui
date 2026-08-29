@@ -218,7 +218,7 @@ const Vertretungsplan: React.FC = () => {
     if (
       selectedClass
       && selectedClass !== 'all'
-      && !classOptions.some(option => fuzzyClassMatches(option, selectedClass))
+      && !classOptions.some(option => normaliseClass(option) === normaliseClass(selectedClass))
     ) {
       setSelectedClass('all');
     }
