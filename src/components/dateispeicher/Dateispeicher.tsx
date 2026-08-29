@@ -264,10 +264,16 @@ const Dateispeicher: React.FC = () => {
           <button
             type="button"
             className="btn btn-secondary self-start"
-            onClick={() => setReloadKey(value => value + 1)}
-            disabled={loading}
+            onClick={() => {
+              if (isSearchMode) {
+                setSearchKey(value => value + 1);
+              } else {
+                setReloadKey(value => value + 1);
+              }
+            }}
+            disabled={loading || searching}
           >
-            <ArrowPathIcon className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            <ArrowPathIcon className={`mr-2 h-4 w-4 ${loading || searching ? 'animate-spin' : ''}`} />
             Aktualisieren
           </button>
         </header>
