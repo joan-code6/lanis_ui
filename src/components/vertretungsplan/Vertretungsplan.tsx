@@ -86,17 +86,22 @@ function normaliseClass(value: unknown): string {
 function classVariants(value: unknown): string[] {
   const text = cleanText(value);
   const normalizedText = normaliseClass(text);
-  const separatedValues = text
-    .split(/[,\s;/|]+/)
-    .map(normaliseClass)
-    .filter(valuePart => valuePart && /[a-z]/.test(valuePart));
-  return [...new Set([normalizedText, ...separatedValues])].filter(Boolean);
+  const separatedValues = classParts(text).map(normaliseClass);
+  const whitespaceValues = text.split(/\s+/).map(normaliseClass).filter(Boolean);
+  const hasNumericValue = whitespaceValues.some(valuePart => /^\d+$/.test(valuePart));
+  const allNumericValues = whitespaceValues.length > 1
+    && whitespaceValues.every(valuePart => /^\d+$/.test(valuePart));
+  const tokenValues = whitespaceValues.filter(valuePart => (
+    allNumericValues
+    || (!/^\d+$/.test(valuePart) && (valuePart.length >= 2 || !hasNumericValue))
+  ));
+  return [...new Set([normalizedText, ...separatedValues, ...tokenValues])].filter(Boolean);
 }
 
 function classParts(value: unknown): string[] {
   return [...new Set(
     cleanText(value)
-      .split(/[,;/|]+/)
+      .split(/[,;/|()]+/)
       .map(part => part.trim())
       .filter(Boolean),
   )];
