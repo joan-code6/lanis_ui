@@ -85,27 +85,25 @@ function normaliseClass(value: unknown): string {
 
 function classVariants(value: unknown): string[] {
   const text = cleanText(value);
-  return [...new Set([text, ...text.split(/[,\s;/|]+/)])]
+  const normalizedText = normaliseClass(text);
+  const separatedValues = text
+    .split(/[,\s;/|]+/)
     .map(normaliseClass)
-    .filter(Boolean);
+    .filter(valuePart => valuePart && /[a-z]/.test(valuePart));
+  return [...new Set([normalizedText, ...separatedValues])].filter(Boolean);
 }
 
 function fuzzyClassMatches(value: unknown, target: unknown): boolean {
-  const targetClass = normaliseClass(target);
-  if (!targetClass) return false;
-  return classVariants(value).some(candidate => (
-    candidate === targetClass
-    || (candidate.length >= 3
-      && targetClass.length >= 3
-      && (candidate.startsWith(targetClass) || targetClass.startsWith(candidate)))
-  ));
+  const targetVariants = classVariants(target);
+  if (targetVariants.length === 0) return false;
+  return classVariants(value).some(candidate => targetVariants.includes(candidate));
 }
 
 function matchingClassOption(target: string, options: string[]): string {
   if (!target) return '';
   return options.find(option => normaliseClass(option) === normaliseClass(target))
     || options.find(option => fuzzyClassMatches(option, target))
-    || target;
+    || '';
 }
 
 const PlanField: React.FC<{ label: string; value: string | null }> = ({ label, value }) => {
@@ -209,19 +207,18 @@ const Vertretungsplan: React.FC = () => {
   ) || 'all';
   const activeClass = selectedClass ?? defaultClass;
   const selectionOptions = useMemo(() => {
-    const values = new Set(classOptions);
-    if (preferredClass) values.add(matchingClassOption(preferredClass, classOptions));
-    return [...values].filter(Boolean).sort((left, right) => left.localeCompare(right, 'de'));
-  }, [classOptions, preferredClass]);
+    return [...classOptions].sort((left, right) => left.localeCompare(right, 'de'));
+  }, [classOptions]);
 
   useEffect(() => {
     if (
-      activeClass !== 'all'
-      && !classOptions.some(option => normaliseClass(option) === normaliseClass(activeClass))
+      selectedClass
+      && selectedClass !== 'all'
+      && !classOptions.some(option => normaliseClass(option) === normaliseClass(selectedClass))
     ) {
       setSelectedClass('all');
     }
-  }, [activeClass, classOptions]);
+  }, [classOptions, selectedClass]);
 
   const visibleEntries = (activeDayData?.substitutions || []).filter(entry => {
     if (activeClass === 'all') return true;
