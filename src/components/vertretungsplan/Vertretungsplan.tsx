@@ -1,13 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
-import { Link } from 'react-router-dom';
 import {
   ArrowPathIcon,
   CalendarDaysIcon,
   InformationCircleIcon,
 } from '@heroicons/react/24/outline';
 import { useAuth } from '../../contexts/AuthContext';
-import { useBasePath } from '../../contexts/BasePathContext';
 import { usePreferences } from '../../contexts/PreferencesContext';
 import { vertretungsplanAPI } from '../../services/api';
 import { VertretungsplanDay, VertretungsplanEntry, VertretungsplanOptionsResponse, VertretungsplanResponse } from '../../types';
@@ -123,7 +121,6 @@ const PlanField: React.FC<{ label: string; value: string | null }> = ({ label, v
 const Vertretungsplan: React.FC = () => {
   const { token } = useAuth();
   const { preferences } = usePreferences();
-  const basePath = useBasePath();
   const [plan, setPlan] = useState<VertretungsplanResponse | null>(null);
   const [options, setOptions] = useState<VertretungsplanOptionsResponse>({
     success: false,
@@ -324,27 +321,17 @@ const Vertretungsplan: React.FC = () => {
             )}
 
             {preferredClass ? (
-              <div className="mb-5 rounded-xl border border-primary-100 bg-primary-50/60 px-4 py-3 text-sm text-primary-900 dark:border-primary-900 dark:bg-primary-950/30 dark:text-primary-100">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p>
-                    {configuredClass ? 'Dein gespeicherter Klassenfilter:' : 'Automatisch erkannte Klasse:'}{' '}
-                    <strong>{defaultClass}</strong>
-                  </p>
-                  <Link className="font-medium text-primary-700 underline underline-offset-2 hover:text-primary-900 dark:text-primary-300 dark:hover:text-primary-100" to={`${basePath}/settings/vertretungsplan`}>
-                    In Einstellungen ändern
-                  </Link>
-                </div>
-              </div>
+              <p className="mb-5 text-xs text-surface-500 dark:text-surface-400">
+                {configuredClass ? 'Dein gespeicherter Klassenfilter:' : 'Automatisch erkannte Klasse:'}{' '}
+                <span className="font-medium text-surface-700 dark:text-surface-300">{defaultClass}</span>
+              </p>
             ) : (
-              <div className="mb-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-100">
-                Keine Klasse im Schulportal-Profil gefunden. Es werden alle Klassen angezeigt; du kannst den Filter in den Einstellungen festlegen.
-                <Link className="ml-1 font-medium underline underline-offset-2" to={`${basePath}/settings/vertretungsplan`}>
-                  Einstellungen öffnen
-                </Link>
-              </div>
+              <p className="mb-5 text-xs text-surface-500 dark:text-surface-400">
+                Keine Klasse im Schulportal-Profil gefunden. Es werden alle Klassen angezeigt.
+              </p>
             )}
 
-            {selectionOptions.length > 1 && (
+            {selectionOptions.length > 0 && (
               <div className="mb-5 flex flex-wrap items-center gap-2">
                 <label htmlFor="vertretungsplan-class" className="text-sm font-medium text-surface-600 dark:text-surface-300">
                   Klasse
