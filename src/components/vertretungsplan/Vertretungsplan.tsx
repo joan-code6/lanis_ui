@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import axios from 'axios';
 import {
   ArrowPathIcon,
@@ -131,6 +131,7 @@ const PlanField: React.FC<{ label: string; value: string | null }> = ({ label, v
 const Vertretungsplan: React.FC = () => {
   const { token } = useAuth();
   const { preferences } = usePreferences();
+  const previousToken = useRef<string | null>(null);
   const [plan, setPlan] = useState<VertretungsplanResponse | null>(null);
   const [options, setOptions] = useState<VertretungsplanOptionsResponse>({
     success: false,
@@ -145,6 +146,8 @@ const Vertretungsplan: React.FC = () => {
   const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
+    const tokenChanged = previousToken.current !== token;
+    previousToken.current = token;
     if (!token) {
       setLoading(false);
       return undefined;
@@ -154,6 +157,10 @@ const Vertretungsplan: React.FC = () => {
     setLoading(true);
     setOptionsLoading(true);
     setError('');
+    if (tokenChanged) {
+      setOptions({ success: false, own_class: '', available_classes: [] });
+      setSelectedClass(null);
+    }
 
     const load = async () => {
       const optionsPromise = vertretungsplanAPI.getOptions(token, controller.signal)
