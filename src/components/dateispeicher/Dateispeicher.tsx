@@ -141,6 +141,16 @@ const Dateispeicher: React.FC = () => {
   const [searchKey, setSearchKey] = useState(0);
   const forceFolderRefresh = useRef(false);
   const forceSearchRefresh = useRef(false);
+  const downloadControllerRef = useRef<AbortController | null>(null);
+
+  const cancelDownload = () => {
+    downloadControllerRef.current?.abort();
+    downloadControllerRef.current = null;
+    setDownloadingId(null);
+    setDownloadError('');
+  };
+
+  useEffect(() => () => downloadControllerRef.current?.abort(), []);
 
   useEffect(() => {
     if (!token) {
@@ -205,6 +215,7 @@ const Dateispeicher: React.FC = () => {
   const isSearchMode = submittedQuery.length > 0;
 
   const openFolder = (folder: DateispeicherFolder) => {
+    cancelDownload();
     const existingIndex = breadcrumbs.findIndex(item => item.id === folder.id);
     const parentIndex = typeof folder.parent_folder_id === 'number'
       ? breadcrumbs.findIndex(item => item.id === folder.parent_folder_id)
@@ -227,6 +238,7 @@ const Dateispeicher: React.FC = () => {
   };
 
   const openBreadcrumb = (breadcrumb: Breadcrumb, index: number) => {
+    cancelDownload();
     setBreadcrumbs(breadcrumbs.slice(0, index + 1));
     setFolderId(breadcrumb.id);
     setSubmittedQuery('');
@@ -235,12 +247,14 @@ const Dateispeicher: React.FC = () => {
 
   const submitSearch = (event: FormEvent) => {
     event.preventDefault();
+    cancelDownload();
     const value = query.trim();
     setSubmittedQuery(value);
     setSearchKey(key => key + 1);
   };
 
   const clearSearch = () => {
+    cancelDownload();
     setQuery('');
     setSubmittedQuery('');
     setSearchResults(null);
@@ -250,10 +264,12 @@ const Dateispeicher: React.FC = () => {
 
   const downloadFile = async (file: DateispeicherFile) => {
     if (!token || downloadingId !== null) return;
+    const controller = new AbortController();
+    downloadControllerRef.current = controller;
     setDownloadingId(file.id);
     setDownloadError('');
     try {
-      const blob = await dateispeicherAPI.downloadFile(token, file.id);
+      const blob = await dateispeicherAPI.downloadFile(token, file.id, controller.signal);
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
@@ -266,7 +282,10 @@ const Dateispeicher: React.FC = () => {
       if (axios.isCancel(err)) return;
       setDownloadError(err instanceof Error ? err.message : 'Die Datei konnte nicht heruntergeladen werden.');
     } finally {
-      setDownloadingId(null);
+      if (downloadControllerRef.current === controller) {
+        downloadControllerRef.current = null;
+        setDownloadingId(null);
+      }
     }
   };
 
@@ -300,6 +319,7 @@ const Dateispeicher: React.FC = () => {
             type="button"
             className="btn btn-secondary self-start"
             onClick={() => {
+              cancelDownload();
               if (isSearchMode) {
                 forceSearchRefresh.current = true;
                 setSearchKey(value => value + 1);
