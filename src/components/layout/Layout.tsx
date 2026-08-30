@@ -23,6 +23,24 @@ import {
 import { Link, useLocation } from 'react-router-dom';
 import GlobalSearch from '../search/GlobalSearch';
 import InstallPrompt from '../pwa/InstallPrompt';
+import { readModulesCache, writeModulesCache } from '../../utils/moduleCache';
+import type { CachedModule } from '../../utils/moduleCache';
+
+function planModuleAvailability(modules: CachedModule[]) {
+  const hasDsbModule = modules.some(module => {
+    const links = `${module.url} ${module.direct_url || ''}`.toLowerCase();
+    return module.name.toLowerCase().includes('dsb') || links.includes('dsb');
+  });
+  const hasNativeSubstitutionPlan = modules.some(module => {
+    const links = `${module.url} ${module.direct_url || ''}`.toLowerCase();
+    const name = module.name.toLowerCase();
+    const isDsb = links.includes('dsb') || name.includes('dsb');
+    return !isDsb && (
+      links.includes('/vertretungsplan.php') || name.includes('vertretungsplan')
+    );
+  });
+  return { hasDsbModule, hasNativeSubstitutionPlan };
+}
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -35,6 +53,7 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
   const location = useLocation();
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
   const [isSearchOpen, setIsSearchOpen] = React.useState(false);
+  const [hasNativeSubstitutionPlan, setHasNativeSubstitutionPlan] = React.useState(false);
   const [hasDsbModule, setHasDsbModule] = React.useState(false);
   const mainRef = React.useRef<HTMLElement>(null);
   const pwaRef = React.useRef<any>(null);
@@ -70,19 +89,21 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
   React.useEffect(() => {
     if (!token) return;
     const abortController = new AbortController();
+    const applyModuleAvailability = (modules: CachedModule[]) => {
+      const availability = planModuleAvailability(modules);
+      setHasNativeSubstitutionPlan(availability.hasNativeSubstitutionPlan);
+      setHasDsbModule(availability.hasDsbModule);
+    };
+    const cachedModules = readModulesCache(user);
+    applyModuleAvailability(cachedModules);
 
     const checkDsbModule = async () => {
       try {
         const response = await appsAPI.getModules(token, abortController.signal);
         if (abortController.signal.aborted) return;
         if (response.success) {
-          const dsbExists = response.modules.some(
-            m => m.name.toLowerCase().includes('dsb') ||
-                 m.name.toLowerCase().includes('vertretungsplan') ||
-                 m.url.toLowerCase().includes('dsb') ||
-                 m.url.toLowerCase().includes('vertretung')
-          );
-          setHasDsbModule(dsbExists);
+          applyModuleAvailability(response.modules);
+          writeModulesCache(user, response.modules);
         }
       } catch (error) {
         if (axios.isCancel(error)) return;
@@ -92,7 +113,7 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
 
     checkDsbModule();
     return () => abortController.abort();
-  }, [token]);
+  }, [token, user?.school_id, user?.username]);
 
   React.useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -116,9 +137,14 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
     { name: 'Einstellungen', href: `${basePath}/settings`, icon: Cog6ToothIcon },
   ];
 
-  const dsbNavItem = hasDsbModule ? { name: 'Vertretungsplan', href: `${basePath}/dsb`, icon: ClipboardDocumentListIcon } : null;
+  const planNavItems = [
+    ...(hasNativeSubstitutionPlan ? [{ name: 'Vertretungsplan', href: `${basePath}/vertretungsplan`, icon: ClipboardDocumentListIcon }] : []),
+    ...(hasDsbModule ? [{ name: 'DSBmobile', href: `${basePath}/dsb`, icon: ClipboardDocumentListIcon }] : []),
+  ];
 
-  const navigation = dsbNavItem ? [...baseNavigation.slice(0, 2), dsbNavItem, ...baseNavigation.slice(2)] : baseNavigation;
+  const navigation = planNavItems.length > 0
+    ? [...baseNavigation.slice(0, 2), ...planNavItems, ...baseNavigation.slice(2)]
+    : baseNavigation;
 
   const handleLogout = () => {
     logout();
@@ -184,7 +210,13 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
           </div>
         </BasePathProvider>
       </main>
-      <GlobalSearch isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
+      <GlobalSearch
+        isOpen={isSearchOpen}
+        onClose={() => setIsSearchOpen(false)}
+        basePath={basePath}
+        hasNativeSubstitutionPlan={hasNativeSubstitutionPlan}
+        hasDsbModule={hasDsbModule}
+      />
       <pwa-install
         ref={pwaRef}
         manifest-url="/favicon/site.webmanifest"
