@@ -222,6 +222,7 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
         isOpen={isSearchOpen}
         onClose={() => setIsSearchOpen(false)}
         basePath={basePath}
+        hasNativeDateispeicher={hasNativeDateispeicher}
         hasNativeSubstitutionPlan={hasNativeSubstitutionPlan}
         hasDsbModule={hasDsbModule}
       />
