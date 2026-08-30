@@ -80,36 +80,46 @@ function asArray(value: unknown): unknown[] {
   return Array.isArray(value) ? value : [];
 }
 
+function classifySearchItems(values: unknown[]): SearchCollections {
+  const files: DateispeicherFile[] = [];
+  const folders: DateispeicherFolder[] = [];
+  for (const item of values) {
+    const itemRecord = recordValue(item);
+    const isFile = Boolean(itemRecord && (
+      'file_id' in itemRecord || 'download_url' in itemRecord || itemRecord.type === 'file'
+    ));
+    const isFolder = Boolean(itemRecord && !isFile && (
+      'subfolders' in itemRecord || 'folder_id' in itemRecord || itemRecord.type === 'folder'
+    ));
+    if (isFolder) {
+      const folder = toFolder(item);
+      if (folder) folders.push(folder);
+    } else {
+      const file = toFile(item);
+      if (file) files.push(file);
+    }
+  }
+  return { files, folders };
+}
+
 function normaliseSearchResults(raw: unknown): SearchCollections {
   const record = recordValue(raw);
-  if (Array.isArray(raw)) {
-    const files: DateispeicherFile[] = [];
-    const folders: DateispeicherFolder[] = [];
-    for (const item of raw) {
-      const itemRecord = recordValue(item);
-      const isFile = Boolean(itemRecord && (
-        'file_id' in itemRecord || 'download_url' in itemRecord || itemRecord.type === 'file'
-      ));
-      const isFolder = Boolean(itemRecord && !isFile && (
-        'subfolders' in itemRecord || 'folder_id' in itemRecord || itemRecord.type === 'folder'
-      ));
-      if (isFolder) {
-        const folder = toFolder(item);
-        if (folder) folders.push(folder);
-      } else {
-        const file = toFile(item);
-        if (file) files.push(file);
-      }
-    }
-    return { files, folders };
-  }
+  if (Array.isArray(raw)) return classifySearchItems(raw);
   if (!record) return { files: [], folders: [] };
 
-  const fileValues = asArray(record.files ?? record.items ?? record.results);
+  const fileValues = asArray(record.files);
   const folderValues = asArray(record.folders);
+  const mixedValues = record.files == null ? asArray(record.items ?? record.results) : [];
+  const mixedCollections = classifySearchItems(mixedValues);
   return {
-    files: fileValues.map(toFile).filter((file): file is DateispeicherFile => file !== null),
-    folders: folderValues.map(toFolder).filter((folder): folder is DateispeicherFolder => folder !== null),
+    files: [
+      ...fileValues.map(toFile).filter((file): file is DateispeicherFile => file !== null),
+      ...mixedCollections.files,
+    ],
+    folders: [
+      ...folderValues.map(toFolder).filter((folder): folder is DateispeicherFolder => folder !== null),
+      ...mixedCollections.folders,
+    ],
   };
 }
 
