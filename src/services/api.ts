@@ -173,7 +173,11 @@ import {
   TimetableDay,
   CustomLesson,
   CustomLessonsResponse,
+  VertretungsplanResponse,
+  VertretungsplanOptionsResponse,
   ClassLinksResponse,
+  DateispeicherNodeResponse,
+  DateispeicherSearchResponse,
   StudyGroupsResponse,
   NotificationConfigResponse,
   NotificationPreferences,
@@ -629,6 +633,56 @@ export const timetableAPI = {
       time_slots: timeSlots,
       custom_lessons: Array.isArray(data.custom_lessons) ? data.custom_lessons : undefined,
     };
+  },
+};
+
+// Native Schulportal file-storage API
+export const dateispeicherAPI = {
+  async getNode(token: string, folderId = 0, refresh = false, signal?: AbortSignal): Promise<DateispeicherNodeResponse> {
+    const response = await apiClient.get<DateispeicherNodeResponse>('/dateispeicher', {
+      headers: { 'X-Session-Token': token },
+      params: { folder_id: folderId, refresh },
+      signal,
+    });
+    return response.data;
+  },
+
+  async search(token: string, query: string, refresh = false, signal?: AbortSignal): Promise<DateispeicherSearchResponse> {
+    const response = await apiClient.get<DateispeicherSearchResponse>('/dateispeicher/search', {
+      headers: { 'X-Session-Token': token },
+      params: { q: query, refresh },
+      signal,
+    });
+    return response.data;
+  },
+
+  async downloadFile(token: string, fileId: number, signal?: AbortSignal): Promise<Blob> {
+    const response = await apiClient.get<Blob>(`/dateispeicher/file/${fileId}`, {
+      headers: { 'X-Session-Token': token },
+      responseType: 'blob',
+      signal,
+    });
+    return response.data;
+  },
+};
+
+// Native Schulportal substitution plan API
+export const vertretungsplanAPI = {
+  async getPlan(token: string, refresh = false, signal?: AbortSignal): Promise<VertretungsplanResponse> {
+    const response = await apiClient.get<VertretungsplanResponse>('/vertretungsplan', {
+      headers: { 'X-Session-Token': token },
+      params: { refresh },
+      signal,
+    });
+    return response.data;
+  },
+
+  async getOptions(token: string, signal?: AbortSignal): Promise<VertretungsplanOptionsResponse> {
+    const response = await apiClient.get<VertretungsplanOptionsResponse>('/vertretungsplan/options', {
+      headers: { 'X-Session-Token': token },
+      signal,
+    });
+    return response.data;
   },
 };
 

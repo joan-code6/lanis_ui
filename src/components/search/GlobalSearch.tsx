@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { authAPI, messagesAPI, calendarAPI, coursesAPI, appsAPI, searchAPI, studyGroupsAPI, timetableAPI } from '../../services/api';
 import type { SemanticSearchResult } from '../../services/api';
+import { readModulesCache } from '../../utils/moduleCache';
+import type { CachedModule } from '../../utils/moduleCache';
 import {
   MagnifyingGlassIcon,
   HomeIcon,
@@ -12,6 +14,7 @@ import {
   UserIcon,
   Cog6ToothIcon,
   ClipboardDocumentListIcon,
+  FolderIcon,
   ArrowPathIcon,
   ClockIcon,
   UserGroupIcon,
@@ -30,6 +33,44 @@ interface SearchItem {
 interface GlobalSearchProps {
   isOpen: boolean;
   onClose: () => void;
+  basePath?: string;
+  hasNativeDateispeicher?: boolean;
+  hasNativeSubstitutionPlan?: boolean;
+  hasDsbModule?: boolean;
+}
+
+interface NavigationItem {
+  name: string;
+  href: string;
+  icon: React.ComponentType<{ className?: string }>;
+  cat: string;
+}
+
+interface ModuleLinkSource {
+  name?: string;
+  url?: string;
+  direct_url?: string;
+}
+
+function moduleInAppHref(
+  module: ModuleLinkSource,
+  planNavigation: NavigationItem[],
+  basePath: string,
+): string | undefined {
+  const moduleLinks = `${module.url || ''} ${module.direct_url || ''}`.toLowerCase();
+  const moduleName = String(module.name || '').toLowerCase();
+  const isDateispeicher = moduleName.includes('dateispeicher') || moduleLinks.includes('/dateispeicher.php');
+  const isDsbModule = moduleName.includes('dsb') || moduleLinks.includes('dsb');
+  const isNativeSubstitutionPlan = !isDsbModule && (
+    moduleLinks.includes('/vertretungsplan.php') || moduleName.includes('vertretungsplan')
+  );
+  const nativePlanHref = planNavigation.find(item => item.href.endsWith('/vertretungsplan'))?.href;
+  const dsbHref = planNavigation.find(item => item.href.endsWith('/dsb'))?.href;
+  const dateispeicherHref = planNavigation.find(item => item.href.endsWith('/dateispeicher'))?.href;
+  return (isDateispeicher && (dateispeicherHref || `${basePath}/dateispeicher`))
+    || (isNativeSubstitutionPlan && (nativePlanHref || `${basePath}/vertretungsplan`))
+    || (isDsbModule && (dsbHref || `${basePath}/dsb`))
+    || undefined;
 }
 
 const CATEGORY_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -76,7 +117,12 @@ function htmlToText(value: unknown): string {
 
 // ── Tier 1: cache search ──────────────────────────────────────────
 
-function searchCacheData(query: string): SearchItem[] {
+function searchCacheData(
+  query: string,
+  planNavigation: NavigationItem[],
+  basePath: string,
+  cachedModules: CachedModule[],
+): SearchItem[] {
   if (!query || query.length < 1) return [];
   const results: SearchItem[] = [];
 
@@ -128,26 +174,18 @@ function searchCacheData(query: string): SearchItem[] {
     }
   } catch {}
 
-  try {
-    const raw = localStorage.getItem('modules_cache');
-    if (raw) {
-      const mods = JSON.parse(raw);
-      if (Array.isArray(mods)) {
-        for (const m of mods) {
-          if (searchText(query, m)) {
-            results.push({
-              id: `mod-${m.url || m.name || Math.random()}`,
-              title: m.name || '',
-              subtitle: m.url || (Array.isArray(m.folders) ? m.folders.join(', ') : ''),
-              category: 'Module',
-              icon: HomeIcon,
-              href: '/dashboard',
-            });
-          }
-        }
-      }
+  for (const module of cachedModules) {
+    if (searchText(query, module)) {
+      results.push({
+        id: `mod-${module.url || module.name}`,
+        title: module.name,
+        subtitle: module.url || module.folders?.join(', ') || '',
+        category: 'Module',
+        icon: HomeIcon,
+        href: moduleInAppHref(module, planNavigation, basePath) || '/dashboard',
+      });
     }
-  } catch {}
+  }
 
   try {
     const raw = localStorage.getItem('dsb_plan_cache_v2');
@@ -214,7 +252,7 @@ function searchCacheData(query: string): SearchItem[] {
     { name: 'Kalender', href: '/calendar', icon: CalendarDaysIcon, cat: 'Kalender' },
     { name: 'Stundenplan', href: '/timetable', icon: ClockIcon, cat: 'Stundenplan' },
     { name: 'Lerngruppen', href: '/study-groups', icon: UserGroupIcon, cat: 'Lerngruppen' },
-    { name: 'Vertretungsplan', href: '/dsb', icon: ClipboardDocumentListIcon, cat: 'Vertretungsplan' },
+    ...planNavigation,
     { name: 'Profil', href: '/profile', icon: UserIcon, cat: 'Profil' },
     { name: 'Einstellungen', href: '/settings', icon: Cog6ToothIcon, cat: 'Einstellungen' },
   ];
@@ -228,8 +266,15 @@ function searchCacheData(query: string): SearchItem[] {
   return results.slice(0, 30);
 }
 
-export default function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
-  const { token } = useAuth();
+export default function GlobalSearch({
+  isOpen,
+  onClose,
+  basePath = '',
+  hasNativeDateispeicher = false,
+  hasNativeSubstitutionPlan = false,
+  hasDsbModule = false,
+}: GlobalSearchProps) {
+  const { token, user } = useAuth();
   const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
@@ -242,7 +287,27 @@ export default function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
   const [apiResults, setApiResults] = useState<SearchItem[]>([]);
   const [semanticResults, setSemanticResults] = useState<SearchItem[]>([]);
 
-  const cacheResults = useMemo(() => searchCacheData(query), [query]);
+  const planNavigation = useMemo<NavigationItem[]>(() => {
+    const moduleItems: NavigationItem[] = hasNativeDateispeicher
+      ? [{ name: 'Dateispeicher', href: `${basePath}/dateispeicher`, icon: FolderIcon, cat: 'Module' }]
+      : [];
+    if (hasNativeSubstitutionPlan) {
+      return [
+        ...moduleItems,
+        { name: 'Vertretungsplan', href: `${basePath}/vertretungsplan`, icon: ClipboardDocumentListIcon, cat: 'Vertretungsplan' },
+        ...(hasDsbModule ? [{ name: 'DSBmobile', href: `${basePath}/dsb`, icon: ClipboardDocumentListIcon, cat: 'Vertretungsplan' }] : []),
+      ];
+    }
+    return hasDsbModule
+      ? [...moduleItems, { name: 'Vertretungsplan', href: `${basePath}/dsb`, icon: ClipboardDocumentListIcon, cat: 'Vertretungsplan' }]
+      : moduleItems;
+  }, [basePath, hasDsbModule, hasNativeDateispeicher, hasNativeSubstitutionPlan]);
+
+  const cachedModules = readModulesCache(user);
+  const cacheResults = useMemo(
+    () => searchCacheData(query, planNavigation, basePath, cachedModules),
+    [basePath, cachedModules, planNavigation, query],
+  );
 
   const combinedResults = useMemo(() => {
     const seen = new Set<string>();
@@ -334,7 +399,7 @@ export default function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
         appsAPI.getModules(token, controller.signal).then(res =>
           !res.success ? [] : res.modules.filter(module => searchText(query, module)).map(module => ({
             id: `api-mod-${module.url}`, title: module.name, subtitle: module.folders?.join(' · ') || 'Modul',
-            category: 'Module', icon: HomeIcon, href: '/dashboard',
+            category: 'Module', icon: HomeIcon, href: moduleInAppHref(module, planNavigation, basePath) || '/dashboard',
           }))),
         timetableAPI.getTimetable(token, controller.signal).then(res => {
           if (!res.success) return [];
