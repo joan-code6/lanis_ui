@@ -249,7 +249,7 @@ const Dateispeicher: React.FC = () => {
   };
 
   const downloadFile = async (file: DateispeicherFile) => {
-    if (!token) return;
+    if (!token || downloadingId !== null) return;
     setDownloadingId(file.id);
     setDownloadError('');
     try {
@@ -426,7 +426,7 @@ const Dateispeicher: React.FC = () => {
                         type="button"
                         className="btn btn-secondary shrink-0 !px-3"
                         onClick={() => void downloadFile(file)}
-                        disabled={downloadingId === file.id}
+                        disabled={downloadingId !== null}
                         title={`${file.name} herunterladen`}
                       >
                         <ArrowDownTrayIcon className={`h-5 w-5 ${downloadingId === file.id ? 'animate-bounce' : ''}`} />
