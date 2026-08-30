@@ -597,8 +597,8 @@ const Courses: React.FC = () => {
       
       {/* Header */}
       <div className="mb-8">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex min-w-0 items-center">
             {viewMode !== 'overview' && (
               <button
                 onClick={goBack}
@@ -607,8 +607,8 @@ const Courses: React.FC = () => {
                 <ArrowLeftIcon className="h-5 w-5" />
               </button>
             )}
-            <div>
-<h1 className="text-3xl font-bold text-surface-900 dark:text-surface-100">
+            <div className="min-w-0">
+              <h1 className="break-words text-3xl font-bold text-surface-900 dark:text-surface-100">
                 {viewMode === 'overview' && 'Mein Unterricht'}
                 {viewMode === 'course-detail' && selectedCourseName}
                 {viewMode === 'weekly' && 'Wochenansicht'}
@@ -622,13 +622,20 @@ const Courses: React.FC = () => {
           </div>
 
           {viewMode === 'overview' && (
-            <div className="flex space-x-3">
+            <div className="flex w-full flex-col gap-3 sm:w-auto sm:shrink-0 sm:flex-row">
               <button
                 onClick={loadSubmissions}
-                className="btn btn-secondary"
+                className="btn btn-secondary w-full sm:w-auto"
               >
                 <ClockIcon className="h-4 w-4 mr-2" />
                 Abgaben
+              </button>
+              <button
+                onClick={() => navigate(`${basePath}/courses/attendance`)}
+                className="btn btn-secondary w-full sm:w-auto"
+              >
+                <ChartBarIcon className="h-4 w-4 mr-2" />
+                Anwesenheit
               </button>
             </div>
           )}

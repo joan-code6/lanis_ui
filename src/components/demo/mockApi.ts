@@ -258,6 +258,24 @@ const mockCourseDetails: Record<string, any> = {
   },
 };
 
+const mockAttendanceOverview = {
+  success: true,
+  source: 'schulportal',
+  available: true,
+  totals: { anwesend: 101, entschuldigt: 5, unentschuldigt: 1 },
+  courses: [
+    { course_id: 'b1', course_name: 'Mathematik GK', teacher_short: 'Wb', teacher_full: 'Dr. Heinrich Weber', attendance_summary: { anwesend: 18, entschuldigt: 1, unentschuldigt: 0 } },
+    { course_id: 'b2', course_name: 'Deutsch LK', teacher_short: 'Re', teacher_full: 'Prof. Anna Reinhardt', attendance_summary: { anwesend: 15, entschuldigt: 0, unentschuldigt: 0 } },
+    { course_id: 'b3', course_name: 'Englisch GK', teacher_short: "O'C", teacher_full: "James O'Connor", attendance_summary: { anwesend: 20, entschuldigt: 2, unentschuldigt: 0 } },
+    { course_id: 'b4', course_name: 'Physik LK', teacher_short: 'Kl', teacher_full: 'Dr. Sabine Keller', attendance_summary: { anwesend: 12, entschuldigt: 0, unentschuldigt: 1 } },
+    { course_id: 'b5', course_name: 'Geschichte GK', teacher_short: 'Bg', teacher_full: 'Herr Thomas Bergmann', attendance_summary: { anwesend: 22, entschuldigt: 1, unentschuldigt: 0 } },
+    { course_id: 'b6', course_name: 'Informatik LK', teacher_short: 'Ch', teacher_full: 'Frau Dr. Laura Chen', attendance_summary: { anwesend: 14, entschuldigt: 1, unentschuldigt: 0 } },
+  ],
+  course_count: 6,
+  attendance_course_count: 6,
+  failed_course_count: 0,
+};
+
 const mockEntryDetails: Record<string, any> = {
   'b1e1': {
     id: 'b1e1',
@@ -618,6 +636,7 @@ export function getMockResponse(url: string, method: string, config: any): { dat
     }));
     return { status: 200, data: { success: true, entries, entry_count: entries.length } };
   }
+  if (u === '/meinunterricht/attendance' && method === 'get') { return { status: 200, data: mockAttendanceOverview }; }
   if (u.startsWith('/meinunterricht/course/') && method === 'get') {
     const courseId = u.split('/')[3]?.split('?')[0];
     const detail = mockCourseDetails[courseId];
