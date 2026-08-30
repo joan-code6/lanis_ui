@@ -57,7 +57,7 @@ function toFile(value: unknown): DateispeicherFile | null {
     changed: typeof record.changed === 'string' ? record.changed : undefined,
     size: typeof record.size === 'string' ? record.size : undefined,
     note: typeof record.note === 'string' ? record.note : null,
-    parent_folder_id: toId(record.parent_folder_id) ?? undefined,
+    parent_folder_id: toParentId(record.parent_folder_id ?? record.folder_id),
   };
 }
 
@@ -87,7 +87,13 @@ function normaliseSearchResults(raw: unknown): SearchCollections {
     const folders: DateispeicherFolder[] = [];
     for (const item of raw) {
       const itemRecord = recordValue(item);
-      if (itemRecord && ('subfolders' in itemRecord || 'folder_id' in itemRecord || itemRecord.type === 'folder')) {
+      const isFile = Boolean(itemRecord && (
+        'file_id' in itemRecord || 'download_url' in itemRecord || itemRecord.type === 'file'
+      ));
+      const isFolder = Boolean(itemRecord && !isFile && (
+        'subfolders' in itemRecord || 'folder_id' in itemRecord || itemRecord.type === 'folder'
+      ));
+      if (isFolder) {
         const folder = toFolder(item);
         if (folder) folders.push(folder);
       } else {
