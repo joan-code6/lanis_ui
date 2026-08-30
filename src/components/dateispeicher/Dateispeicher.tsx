@@ -20,6 +20,7 @@ import SEO from '../seo/SEO';
 interface Breadcrumb {
   id: number;
   name: string;
+  navigable?: boolean;
 }
 
 interface SearchCollections {
@@ -187,7 +188,11 @@ const Dateispeicher: React.FC = () => {
       : parentIndex >= 0
         ? [...breadcrumbs.slice(0, parentIndex + 1), { id: folder.id, name: folder.name }]
         : isSearchMode
-          ? [{ id: 0, name: 'Dateispeicher' }, { id: folder.id, name: folder.name }]
+          ? [
+            { id: 0, name: 'Dateispeicher' },
+            { id: -1, name: '…', navigable: false },
+            { id: folder.id, name: folder.name },
+          ]
           : [...breadcrumbs, { id: folder.id, name: folder.name }];
     setBreadcrumbs(nextBreadcrumbs);
     setFolderId(folder.id);
@@ -308,15 +313,21 @@ const Dateispeicher: React.FC = () => {
         ) : (
           <nav aria-label="Ordnerpfad" className="mb-5 flex items-center gap-1 overflow-x-auto text-sm">
             {breadcrumbs.map((breadcrumb, index) => (
-              <React.Fragment key={breadcrumb.id}>
+              <React.Fragment key={`${breadcrumb.id}-${index}`}>
                 {index > 0 && <ChevronRightIcon className="h-4 w-4 shrink-0 text-surface-300" />}
-                <button
-                  type="button"
-                  className={`shrink-0 rounded-md px-2 py-1 ${index === breadcrumbs.length - 1 ? 'font-semibold text-surface-900 dark:text-white' : 'text-primary-600 hover:bg-primary-50 dark:text-primary-400 dark:hover:bg-primary-950/40'}`}
-                  onClick={() => openBreadcrumb(breadcrumb, index)}
-                >
-                  {breadcrumb.name}
-                </button>
+                {breadcrumb.navigable === false ? (
+                  <span className="shrink-0 px-1 text-surface-400" aria-label="Weitere übergeordnete Ordner">
+                    {breadcrumb.name}
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    className={`shrink-0 rounded-md px-2 py-1 ${index === breadcrumbs.length - 1 ? 'font-semibold text-surface-900 dark:text-white' : 'text-primary-600 hover:bg-primary-50 dark:text-primary-400 dark:hover:bg-primary-950/40'}`}
+                    onClick={() => openBreadcrumb(breadcrumb, index)}
+                  >
+                    {breadcrumb.name}
+                  </button>
+                )}
               </React.Fragment>
             ))}
           </nav>
