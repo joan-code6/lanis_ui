@@ -1,4 +1,4 @@
-import React, { FormEvent, useEffect, useState } from 'react';
+import React, { FormEvent, useEffect, useRef, useState } from 'react';
 import axios from 'axios';
 import {
   ArrowDownTrayIcon,
@@ -121,6 +121,8 @@ const Dateispeicher: React.FC = () => {
   const [error, setError] = useState('');
   const [reloadKey, setReloadKey] = useState(0);
   const [searchKey, setSearchKey] = useState(0);
+  const forceFolderRefresh = useRef(false);
+  const forceSearchRefresh = useRef(false);
 
   useEffect(() => {
     if (!token) {
@@ -129,10 +131,12 @@ const Dateispeicher: React.FC = () => {
     }
 
     const controller = new AbortController();
+    const refresh = forceFolderRefresh.current;
+    forceFolderRefresh.current = false;
     setLoading(true);
     setError('');
     setNode(null);
-    dateispeicherAPI.getNode(token, folderId, reloadKey > 0, controller.signal)
+    dateispeicherAPI.getNode(token, folderId, refresh, controller.signal)
       .then(response => {
         if (!response.success) throw new Error(response.error || 'Der Dateispeicher konnte nicht geladen werden.');
         setNode(response);
@@ -156,10 +160,12 @@ const Dateispeicher: React.FC = () => {
     }
 
     const controller = new AbortController();
+    const refresh = forceSearchRefresh.current;
+    forceSearchRefresh.current = false;
     setSearching(true);
     setError('');
     setSearchResults(null);
-    dateispeicherAPI.search(token, submittedQuery, searchKey > 1, controller.signal)
+    dateispeicherAPI.search(token, submittedQuery, refresh, controller.signal)
       .then(response => {
         if (!response.success) throw new Error(response.error || 'Die Dateisuche konnte nicht durchgeführt werden.');
         setSearchResults(normaliseSearchResults(response.results));
@@ -271,8 +277,10 @@ const Dateispeicher: React.FC = () => {
             className="btn btn-secondary self-start"
             onClick={() => {
               if (isSearchMode) {
+                forceSearchRefresh.current = true;
                 setSearchKey(value => value + 1);
               } else {
+                forceFolderRefresh.current = true;
                 setReloadKey(value => value + 1);
               }
             }}
