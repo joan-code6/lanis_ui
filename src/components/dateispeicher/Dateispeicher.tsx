@@ -245,6 +245,7 @@ const Dateispeicher: React.FC = () => {
     setSubmittedQuery('');
     setSearchResults(null);
     setSearchError('');
+    setDownloadError('');
   };
 
   const downloadFile = async (file: DateispeicherFile) => {
