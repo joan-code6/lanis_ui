@@ -124,7 +124,9 @@ const Dateispeicher: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [searching, setSearching] = useState(false);
   const [downloadingId, setDownloadingId] = useState<number | null>(null);
-  const [error, setError] = useState('');
+  const [folderError, setFolderError] = useState('');
+  const [searchError, setSearchError] = useState('');
+  const [downloadError, setDownloadError] = useState('');
   const [reloadKey, setReloadKey] = useState(0);
   const [searchKey, setSearchKey] = useState(0);
   const forceFolderRefresh = useRef(false);
@@ -140,7 +142,8 @@ const Dateispeicher: React.FC = () => {
     const refresh = forceFolderRefresh.current;
     forceFolderRefresh.current = false;
     setLoading(true);
-    setError('');
+    setFolderError('');
+    setDownloadError('');
     setNode(null);
     dateispeicherAPI.getNode(token, folderId, refresh, controller.signal)
       .then(response => {
@@ -149,7 +152,7 @@ const Dateispeicher: React.FC = () => {
       })
       .catch(err => {
         if (axios.isCancel(err)) return;
-        setError(err instanceof Error ? err.message : 'Der Dateispeicher konnte nicht geladen werden.');
+        setFolderError(err instanceof Error ? err.message : 'Der Dateispeicher konnte nicht geladen werden.');
       })
       .finally(() => {
         if (!controller.signal.aborted) setLoading(false);
@@ -169,7 +172,8 @@ const Dateispeicher: React.FC = () => {
     const refresh = forceSearchRefresh.current;
     forceSearchRefresh.current = false;
     setSearching(true);
-    setError('');
+    setSearchError('');
+    setDownloadError('');
     setSearchResults(null);
     dateispeicherAPI.search(token, submittedQuery, refresh, controller.signal)
       .then(response => {
@@ -179,7 +183,7 @@ const Dateispeicher: React.FC = () => {
       .catch(err => {
         if (axios.isCancel(err)) return;
         setSearchResults(null);
-        setError(err instanceof Error ? err.message : 'Die Dateisuche konnte nicht durchgeführt werden.');
+        setSearchError(err instanceof Error ? err.message : 'Die Dateisuche konnte nicht durchgeführt werden.');
       })
       .finally(() => {
         if (!controller.signal.aborted) setSearching(false);
@@ -230,13 +234,13 @@ const Dateispeicher: React.FC = () => {
     setQuery('');
     setSubmittedQuery('');
     setSearchResults(null);
-    setError('');
+    setSearchError('');
   };
 
   const downloadFile = async (file: DateispeicherFile) => {
     if (!token) return;
     setDownloadingId(file.id);
-    setError('');
+    setDownloadError('');
     try {
       const blob = await dateispeicherAPI.downloadFile(token, file.id);
       const url = URL.createObjectURL(blob);
@@ -249,7 +253,7 @@ const Dateispeicher: React.FC = () => {
       window.setTimeout(() => URL.revokeObjectURL(url), 1000);
     } catch (err) {
       if (axios.isCancel(err)) return;
-      setError(err instanceof Error ? err.message : 'Die Datei konnte nicht heruntergeladen werden.');
+      setDownloadError(err instanceof Error ? err.message : 'Die Datei konnte nicht heruntergeladen werden.');
     } finally {
       setDownloadingId(null);
     }
@@ -258,6 +262,7 @@ const Dateispeicher: React.FC = () => {
   const visibleFolders = isSearchMode ? (searchResults?.folders || []) : (node?.folders || []);
   const visibleFiles = isSearchMode ? (searchResults?.files || []) : (node?.files || []);
   const busy = isSearchMode ? searching : loading;
+  const visibleError = downloadError || (isSearchMode ? searchError : folderError);
 
   if (!token) {
     return (
@@ -348,9 +353,9 @@ const Dateispeicher: React.FC = () => {
           </nav>
         )}
 
-        {error && (
+        {visibleError && (
           <div className="card mb-5 border-red-200 bg-red-50 text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300">
-            {error}
+            {visibleError}
           </div>
         )}
 
