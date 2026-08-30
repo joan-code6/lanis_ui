@@ -6,6 +6,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import Layout from '../layout/Layout';
 
 const mockUser = {
+  school_id: 'demo',
   username: 'max.mustermann',
   vorname: 'Max',
   nachname: 'Mustermann',

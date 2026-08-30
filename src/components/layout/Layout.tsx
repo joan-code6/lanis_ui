@@ -23,30 +23,10 @@ import {
 import { Link, useLocation } from 'react-router-dom';
 import GlobalSearch from '../search/GlobalSearch';
 import InstallPrompt from '../pwa/InstallPrompt';
+import { readModulesCache, writeModulesCache } from '../../utils/moduleCache';
+import type { CachedModule } from '../../utils/moduleCache';
 
-interface PlanModuleSource {
-  name: string;
-  url: string;
-  direct_url?: string;
-}
-
-function readCachedPlanModules(): PlanModuleSource[] {
-  try {
-    const parsed: unknown = JSON.parse(localStorage.getItem('modules_cache') || '[]');
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter((module): module is PlanModuleSource => {
-      if (!module || typeof module !== 'object') return false;
-      const candidate = module as Record<string, unknown>;
-      return typeof candidate.name === 'string'
-        && typeof candidate.url === 'string'
-        && (candidate.direct_url === undefined || typeof candidate.direct_url === 'string');
-    });
-  } catch {
-    return [];
-  }
-}
-
-function planModuleAvailability(modules: PlanModuleSource[]) {
+function planModuleAvailability(modules: CachedModule[]) {
   const hasDsbModule = modules.some(module => {
     const links = `${module.url} ${module.direct_url || ''}`.toLowerCase();
     return module.name.toLowerCase().includes('dsb') || links.includes('dsb');
@@ -109,12 +89,12 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
   React.useEffect(() => {
     if (!token) return;
     const abortController = new AbortController();
-    const applyModuleAvailability = (modules: PlanModuleSource[]) => {
+    const applyModuleAvailability = (modules: CachedModule[]) => {
       const availability = planModuleAvailability(modules);
       setHasNativeSubstitutionPlan(availability.hasNativeSubstitutionPlan);
       setHasDsbModule(availability.hasDsbModule);
     };
-    const cachedModules = readCachedPlanModules();
+    const cachedModules = readModulesCache(user);
     applyModuleAvailability(cachedModules);
 
     const checkDsbModule = async () => {
@@ -123,7 +103,7 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
         if (abortController.signal.aborted) return;
         if (response.success) {
           applyModuleAvailability(response.modules);
-          localStorage.setItem('modules_cache', JSON.stringify(response.modules));
+          writeModulesCache(user, response.modules);
         }
       } catch (error) {
         if (axios.isCancel(error)) return;
@@ -133,7 +113,7 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
 
     checkDsbModule();
     return () => abortController.abort();
-  }, [token]);
+  }, [token, user?.school_id, user?.username]);
 
   React.useEffect(() => {
     const handler = (e: KeyboardEvent) => {

@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { authAPI, messagesAPI, calendarAPI, coursesAPI, appsAPI, searchAPI, studyGroupsAPI, timetableAPI } from '../../services/api';
 import type { SemanticSearchResult } from '../../services/api';
+import { readModulesCache } from '../../utils/moduleCache';
+import type { CachedModule } from '../../utils/moduleCache';
 import {
   MagnifyingGlassIcon,
   HomeIcon,
@@ -110,7 +112,12 @@ function htmlToText(value: unknown): string {
 
 // ── Tier 1: cache search ──────────────────────────────────────────
 
-function searchCacheData(query: string, planNavigation: NavigationItem[], basePath: string): SearchItem[] {
+function searchCacheData(
+  query: string,
+  planNavigation: NavigationItem[],
+  basePath: string,
+  cachedModules: CachedModule[],
+): SearchItem[] {
   if (!query || query.length < 1) return [];
   const results: SearchItem[] = [];
 
@@ -162,26 +169,18 @@ function searchCacheData(query: string, planNavigation: NavigationItem[], basePa
     }
   } catch {}
 
-  try {
-    const raw = localStorage.getItem('modules_cache');
-    if (raw) {
-      const mods = JSON.parse(raw);
-      if (Array.isArray(mods)) {
-        for (const m of mods) {
-          if (searchText(query, m)) {
-            results.push({
-              id: `mod-${m.url || m.name || Math.random()}`,
-              title: m.name || '',
-              subtitle: m.url || (Array.isArray(m.folders) ? m.folders.join(', ') : ''),
-              category: 'Module',
-              icon: HomeIcon,
-              href: modulePlanHref(m, planNavigation, basePath) || '/dashboard',
-            });
-          }
-        }
-      }
+  for (const module of cachedModules) {
+    if (searchText(query, module)) {
+      results.push({
+        id: `mod-${module.url || module.name}`,
+        title: module.name,
+        subtitle: module.url || module.folders?.join(', ') || '',
+        category: 'Module',
+        icon: HomeIcon,
+        href: modulePlanHref(module, planNavigation, basePath) || '/dashboard',
+      });
     }
-  } catch {}
+  }
 
   try {
     const raw = localStorage.getItem('dsb_plan_cache_v2');
@@ -269,7 +268,7 @@ export default function GlobalSearch({
   hasNativeSubstitutionPlan = false,
   hasDsbModule = false,
 }: GlobalSearchProps) {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
@@ -294,9 +293,10 @@ export default function GlobalSearch({
       : [];
   }, [basePath, hasDsbModule, hasNativeSubstitutionPlan]);
 
+  const cachedModules = readModulesCache(user);
   const cacheResults = useMemo(
-    () => searchCacheData(query, planNavigation, basePath),
-    [basePath, planNavigation, query],
+    () => searchCacheData(query, planNavigation, basePath, cachedModules),
+    [basePath, cachedModules, planNavigation, query],
   );
 
   const combinedResults = useMemo(() => {
