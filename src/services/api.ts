@@ -450,9 +450,10 @@ export const coursesAPI = {
     return response.data;
   },
 
-  async getAttendanceOverview(token: string, signal?: AbortSignal): Promise<AttendanceOverviewResponse> {
+  async getAttendanceOverview(token: string, refresh = false, signal?: AbortSignal): Promise<AttendanceOverviewResponse> {
     const response = await apiClient.get<AttendanceOverviewResponse>('/meinunterricht/attendance', {
       headers: { 'X-Session-Token': token },
+      params: { refresh },
       signal,
     });
     return response.data;

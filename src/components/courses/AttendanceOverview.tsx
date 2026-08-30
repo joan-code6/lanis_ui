@@ -109,7 +109,7 @@ const AttendanceOverview: React.FC = () => {
     const controller = new AbortController();
     setLoading(true);
     setError('');
-    coursesAPI.getAttendanceOverview(token, controller.signal)
+    coursesAPI.getAttendanceOverview(token, reloadKey > 0, controller.signal)
       .then(response => {
         if (!response.success) throw new Error(response.error || 'Die Anwesenheitsdaten konnten nicht geladen werden.');
         setData(response);
