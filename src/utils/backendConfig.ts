@@ -24,6 +24,8 @@ const BACKEND_SCOPED_COOKIE_KEYS = [
   'lastSchoolLocation',
 ];
 
+const BACKEND_SCOPED_STORAGE_PREFIXES = ['modules_cache:'];
+
 export function normalizeBackendUrl(value: string): string {
   const input = value.trim();
   if (!input) {
@@ -79,6 +81,12 @@ export function resetCustomBackendUrl(): void {
 export function clearBackendScopedStorage(): void {
   for (const key of BACKEND_SCOPED_STORAGE_KEYS) {
     window.localStorage.removeItem(key);
+  }
+  for (let index = window.localStorage.length - 1; index >= 0; index -= 1) {
+    const key = window.localStorage.key(index);
+    if (key && BACKEND_SCOPED_STORAGE_PREFIXES.some(prefix => key.startsWith(prefix))) {
+      window.localStorage.removeItem(key);
+    }
   }
   for (const key of BACKEND_SCOPED_COOKIE_KEYS) {
     document.cookie = `${key}=;max-age=0;path=/;SameSite=Lax`;

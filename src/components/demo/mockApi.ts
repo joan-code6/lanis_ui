@@ -75,7 +75,8 @@ const mockModules = [
   { name: 'Nachrichten', url: 'https://schulportal.hessen.de/nachrichten.php', direct_url: 'https://schulportal.hessen.de/nachrichten.php', proxy_app: false, color: '#0891b2', logo: 'fa fa-envelope-o', folders: ['Kommunikation'], target: '_self' },
   { name: 'Kalender', url: 'https://schulportal.hessen.de/kalender.php', direct_url: 'https://schulportal.hessen.de/kalender.php', proxy_app: false, color: '#dc2626', logo: 'fa fa-calendar-o', folders: ['Schule'], target: '_self' },
   { name: 'Dateispeicher', url: 'https://schulportal.hessen.de/dateispeicher.php', direct_url: 'https://schulportal.hessen.de/dateispeicher.php', proxy_app: false, color: '#0f766e', logo: 'fa fa-folder-open-o', folders: ['Schule'], target: '_self' },
-  { name: 'Vertretungsplan', url: 'https://schulportal.hessen.de/dsb.php', direct_url: 'https://schulportal.hessen.de/dsb.php', proxy_app: false, color: '#7c3aed', logo: 'fa fa-files-o', folders: ['Schule'], target: '_self' },
+  { name: 'Vertretungsplan', url: 'https://schulportal.hessen.de/vertretungsplan.php', direct_url: 'https://schulportal.hessen.de/vertretungsplan.php', proxy_app: false, color: '#7c3aed', logo: 'fa fa-files-o', folders: ['Schule'], target: '_self' },
+  { name: 'DSBmobile', url: 'https://dsb.hessen.de/dsb.php', direct_url: 'https://dsb.hessen.de/dsb.php', proxy_app: false, color: '#64748b', logo: 'fa fa-files-o', folders: ['Schule'], target: '_self' },
   { name: 'Klassenbuch', url: 'https://schulportal.hessen.de/klassenbuch.php', direct_url: 'https://schulportal.hessen.de/klassenbuch.php', proxy_app: false, color: '#059669', logo: 'fa fa-files-o', folders: ['Schule'], target: '_blank' },
   { name: 'Stundenplan', url: 'https://schulportal.hessen.de/stundenplan.php', direct_url: 'https://schulportal.hessen.de/stundenplan.php', proxy_app: false, color: '#d97706', logo: 'fa fa-calendar-o', folders: ['Schule'], target: '_blank' },
   { name: 'Notenübersicht', url: 'https://schulportal.hessen.de/noten.php', direct_url: 'https://schulportal.hessen.de/noten.php', proxy_app: false, color: '#be185d', logo: 'fa fa-files-o', folders: ['Leistung'], target: '_blank' },
@@ -405,6 +406,32 @@ const mockCalendarEvents = [
   { id: 'ev15', title: 'Sporttag Q2', category: '2', category_name: 'Veranstaltungen', category_color: '#2563eb', description: '<p>Sporttag der Q2 in der Sportanlage Nord.</p><p><strong>Angebotene Sportarten:</strong></p><ul><li>Fußball (Turnier)</li><li>Volleyball</li><li>Leichtathletik</li><li>Badminton</li></ul><p>Bitte Sportkleidung und Handtuch mitbringen.</p>', start: relDateTime(13, '08:00:00'), end: relDateTime(13, '15:00:00'), all_day: false, new: '0', editable: false, properties: { 'Ort': 'Sportanlage Nord', 'Klasse': 'Q2', 'Sportarten': 'Fußball, Volleyball, Leichtathletik, Badminton' }, raw: {} },
 ];
 
+const mockVertretungsplan = {
+  success: true,
+  source: 'schulportal',
+  available: true,
+  mode: 'ajax',
+  last_updated: new Date().toISOString(),
+  days: [
+    {
+      date: relDate(0),
+      substitutions: [
+        { tag: relDate(0), tag_en: relDate(0), stunde: '1 - 2', fach: 'Mathematik', klasse: 'Q2', lehrer: 'Dr. Weber', vertreter: 'Frau Schmidt', raum: 'A12', art: 'Vertretung', hinweis: 'Raum A12 bleibt bestehen.' },
+        { tag: relDate(0), tag_en: relDate(0), stunde: '4', fach: 'Deutsch', klasse: 'Q2', lehrer: 'Frau Reinhardt', vertreter: null, raum: 'B05', art: 'Entfall', hinweis: 'Der Unterricht entfällt.' },
+      ],
+      infos: [{ header: 'Hinweis', values: ['Bitte Änderungen bis zum Unterrichtsbeginn beachten.'] }],
+    },
+    {
+      date: relDate(1),
+      substitutions: [
+        { tag: relDate(1), tag_en: relDate(1), stunde: '3', fach: 'Physik', klasse: 'Q2', lehrer: 'Frau Keller', vertreter: 'Herr Fischer', raum: 'D17', art: 'Vertretung' },
+      ],
+    },
+  ],
+  count: 3,
+  raw_html: null,
+};
+
 const mockDsbData = {
   menuItems: ['Heute', 'Morgen'],
   planUrls: ['/plan/heute', '/plan/morgen'],
@@ -547,6 +574,16 @@ export function getMockResponse(url: string, method: string, config: any): { dat
       },
     };
   }
+  if (u === '/vertretungsplan/options' && method === 'get') {
+    return {
+      status: 200,
+      data: {
+        success: true,
+        own_class: mockUser.klasse,
+        available_classes: ['Q1', 'Q2'],
+      },
+    };
+  }
 
   // Courses and account-specific class links
   if (u === '/settings/class-links' && method === 'get') {
@@ -677,6 +714,7 @@ export function getMockResponse(url: string, method: string, config: any): { dat
     const fileId = u.split('/').pop();
     return { status: 200, data: new Blob([`Demo-Datei ${fileId}`], { type: 'text/plain' }) };
   }
+  if (u === '/vertretungsplan' && method === 'get') { return { status: 200, data: mockVertretungsplan }; }
   if (u === '/lerngruppen' && method === 'get') {
     return { status: 200, data: { success: true, groups: mockStudyGroups, group_count: mockStudyGroups.length, exams: mockStudyGroupExams, exam_count: mockStudyGroupExams.length } };
   }

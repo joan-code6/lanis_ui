@@ -19,27 +19,14 @@ import {
 import { API_BASE_URL } from '../../services/api';
 import clsx from 'clsx';
 import ModuleIcon from './ModuleIcon';
-
-interface CombinedModule {
-  name: string;
-  url: string;
-  direct_url: string;
-  proxy_app: boolean;
-  color: string;
-  logo: string;
-  folders: string[];
-  target: string;
-}
+import { readModulesCache, writeModulesCache } from '../../utils/moduleCache';
 
 const Dashboard: React.FC = () => {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const { preferences, updatePreferences } = usePreferences();
   const navigate = useNavigate();
   const basePath = useBasePath();
-  const [modules, setModules] = useState<CombinedModule[]>(() => {
-    const cached = localStorage.getItem('modules_cache');
-    return cached ? JSON.parse(cached) : [];
-  });
+  const [modules, setModules] = useState<Module[]>(() => readModulesCache(user));
   const [isUpdating, setIsUpdating] = useState(false);
   const [folders, setFolders] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -63,10 +50,11 @@ const Dashboard: React.FC = () => {
 
   useEffect(() => {
     if (!token) return;
+    setModules(readModulesCache(user));
     const abortController = new AbortController();
     loadModules(abortController.signal);
     return () => abortController.abort();
-  }, [token]);
+  }, [token, user?.school_id, user?.username]);
 
   const loadModules = async (signal?: AbortSignal) => {
     if (!token) return;
@@ -77,7 +65,7 @@ const Dashboard: React.FC = () => {
       if (signal?.aborted) return;
       if (modulesResponse.success) {
         setModules(modulesResponse.modules);
-        localStorage.setItem('modules_cache', JSON.stringify(modulesResponse.modules));
+        writeModulesCache(user, modulesResponse.modules);
         const allFolders: string[] = [];
         modulesResponse.modules.forEach((module: Module) => {
           module.folders.forEach((folder) => {
@@ -99,7 +87,7 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  const handleModuleClick = (module: CombinedModule) => {
+  const handleModuleClick = (module: Module) => {
     if (isEditMode) return;
     if (module.url.includes('/nachrichten.php')) {
       navigate(`${basePath}/messages`);
@@ -128,12 +116,16 @@ const Dashboard: React.FC = () => {
       navigate(`${basePath}/dateispeicher`);
       return;
     }
-    if (module.url.toLowerCase().includes('dsb') ||
-        (module.direct_url && module.direct_url.toLowerCase().includes('dsb')) ||
-        module.name.toLowerCase().includes('dsb') ||
-        module.name.toLowerCase().includes('vertretungsplan') ||
-        module.url.toLowerCase().includes('vertretung') ||
-        (module.direct_url && module.direct_url.toLowerCase().includes('vertretung'))) {
+    const moduleName = module.name.toLowerCase();
+    const isDsbModule = moduleLinks.includes('dsb') || moduleName.includes('dsb');
+    const isNativeSubstitutionPlan = !isDsbModule && (
+      moduleLinks.includes('/vertretungsplan.php') || moduleName.includes('vertretungsplan')
+    );
+    if (isNativeSubstitutionPlan) {
+      navigate(`${basePath}/vertretungsplan`);
+      return;
+    }
+    if (isDsbModule) {
       navigate(`${basePath}/dsb`);
       return;
     }

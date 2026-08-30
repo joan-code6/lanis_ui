@@ -6,6 +6,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import Layout from '../layout/Layout';
 
 const mockUser = {
+  school_id: 'demo',
   username: 'max.mustermann',
   vorname: 'Max',
   nachname: 'Mustermann',
@@ -36,14 +37,14 @@ const seedLocalStorage = () => {
     { name: 'Nachrichten', url: 'https://schulportal.hessen.de/nachrichten.php', color: '#0891b2', logo: 'fa fa-envelope-o', folders: ['Kommunikation'], target: '_self' },
     { name: 'Kalender', url: 'https://schulportal.hessen.de/kalender.php', color: '#dc2626', logo: 'fa fa-calendar-o', folders: ['Schule'], target: '_self' },
     { name: 'Dateispeicher', url: 'https://schulportal.hessen.de/dateispeicher.php', color: '#0f766e', logo: 'fa fa-folder-open-o', folders: ['Schule'], target: '_self' },
-    { name: 'Vertretungsplan', url: 'https://schulportal.hessen.de/dsb.php', color: '#7c3aed', logo: 'fa fa-files-o', folders: ['Schule'], target: '_self' },
+    { name: 'Vertretungsplan', url: 'https://schulportal.hessen.de/vertretungsplan.php', color: '#7c3aed', logo: 'fa fa-files-o', folders: ['Schule'], target: '_self' },
+    { name: 'DSBmobile', url: 'https://dsb.hessen.de/dsb.php', color: '#64748b', logo: 'fa fa-files-o', folders: ['Schule'], target: '_self' },
     { name: 'Klassenbuch', url: 'https://schulportal.hessen.de/klassenbuch.php', color: '#059669', logo: 'fa fa-files-o', folders: ['Schule'], target: '_blank' },
     { name: 'Stundenplan', url: 'https://schulportal.hessen.de/stundenplan.php', color: '#d97706', logo: 'fa fa-calendar-o', folders: ['Schule'], target: '_blank' },
     { name: 'Lerngruppen', url: 'https://schulportal.hessen.de/lerngruppen.php', color: '#0d9488', logo: 'fa fa-users', folders: ['Schule'], target: '_self' },
     { name: 'Notenübersicht', url: 'https://schulportal.hessen.de/noten.php', color: '#be185d', logo: 'fa fa-files-o', folders: ['Leistung'], target: '_blank' },
     { name: 'Klausurplan', url: 'https://schulportal.hessen.de/klausuren.php', color: '#2563eb', logo: 'fa fa-files-o', folders: ['Leistung'], target: '_blank' },
   ];
-  localStorage.setItem('modules_cache', JSON.stringify(modules));
   localStorage.setItem('pinned_modules', JSON.stringify(['Klassenbuch', 'Notenübersicht']));
 
   const messages = [
