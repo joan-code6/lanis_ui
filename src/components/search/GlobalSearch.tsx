@@ -48,7 +48,11 @@ interface ModuleLinkSource {
   direct_url?: string;
 }
 
-function modulePlanHref(module: ModuleLinkSource, planNavigation: NavigationItem[]): string | undefined {
+function modulePlanHref(
+  module: ModuleLinkSource,
+  planNavigation: NavigationItem[],
+  basePath: string,
+): string | undefined {
   const moduleLinks = `${module.url || ''} ${module.direct_url || ''}`.toLowerCase();
   const moduleName = String(module.name || '').toLowerCase();
   const isDsbModule = moduleName.includes('dsb') || moduleLinks.includes('dsb');
@@ -57,8 +61,8 @@ function modulePlanHref(module: ModuleLinkSource, planNavigation: NavigationItem
   );
   const nativePlanHref = planNavigation.find(item => item.href.endsWith('/vertretungsplan'))?.href;
   const dsbHref = planNavigation.find(item => item.href.endsWith('/dsb'))?.href;
-  return (isNativeSubstitutionPlan && nativePlanHref)
-    || (isDsbModule && dsbHref)
+  return (isNativeSubstitutionPlan && (nativePlanHref || `${basePath}/vertretungsplan`))
+    || (isDsbModule && (dsbHref || `${basePath}/dsb`))
     || undefined;
 }
 
@@ -106,7 +110,7 @@ function htmlToText(value: unknown): string {
 
 // ── Tier 1: cache search ──────────────────────────────────────────
 
-function searchCacheData(query: string, planNavigation: NavigationItem[]): SearchItem[] {
+function searchCacheData(query: string, planNavigation: NavigationItem[], basePath: string): SearchItem[] {
   if (!query || query.length < 1) return [];
   const results: SearchItem[] = [];
 
@@ -171,7 +175,7 @@ function searchCacheData(query: string, planNavigation: NavigationItem[]): Searc
               subtitle: m.url || (Array.isArray(m.folders) ? m.folders.join(', ') : ''),
               category: 'Module',
               icon: HomeIcon,
-              href: modulePlanHref(m, planNavigation) || '/dashboard',
+              href: modulePlanHref(m, planNavigation, basePath) || '/dashboard',
             });
           }
         }
@@ -290,7 +294,10 @@ export default function GlobalSearch({
       : [];
   }, [basePath, hasDsbModule, hasNativeSubstitutionPlan]);
 
-  const cacheResults = useMemo(() => searchCacheData(query, planNavigation), [planNavigation, query]);
+  const cacheResults = useMemo(
+    () => searchCacheData(query, planNavigation, basePath),
+    [basePath, planNavigation, query],
+  );
 
   const combinedResults = useMemo(() => {
     const seen = new Set<string>();
@@ -382,7 +389,7 @@ export default function GlobalSearch({
         appsAPI.getModules(token, controller.signal).then(res =>
           !res.success ? [] : res.modules.filter(module => searchText(query, module)).map(module => ({
             id: `api-mod-${module.url}`, title: module.name, subtitle: module.folders?.join(' · ') || 'Modul',
-            category: 'Module', icon: HomeIcon, href: modulePlanHref(module, planNavigation) || '/dashboard',
+            category: 'Module', icon: HomeIcon, href: modulePlanHref(module, planNavigation, basePath) || '/dashboard',
           }))),
         timetableAPI.getTimetable(token, controller.signal).then(res => {
           if (!res.success) return [];

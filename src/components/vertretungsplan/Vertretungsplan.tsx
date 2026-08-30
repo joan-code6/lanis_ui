@@ -188,18 +188,7 @@ const Vertretungsplan: React.FC = () => {
     }
 
     const load = async () => {
-      const response = await vertretungsplanAPI.getPlan(token, reloadKey > 0, controller.signal);
-      if (controller.signal.aborted) return;
-      if (!response.success) {
-        throw new Error(response.error || 'Der Vertretungsplan konnte nicht geladen werden.');
-      }
-      const days = Array.isArray(response.days) ? response.days : [];
-      setPlan({ ...response, days, count: response.count || 0 });
-      setActiveDay(current => days.some(day => day.date === current) ? current : (days[0]?.date || ''));
-      // Class metadata is optional; show the plan as soon as its required request is ready.
-      setLoading(false);
-
-      const optionsResponse = await vertretungsplanAPI.getOptions(token, controller.signal)
+      const optionsPromise = vertretungsplanAPI.getOptions(token, controller.signal)
         .then(result => {
           if (!result.success) {
             throw new Error(result.error || 'Die Klassen konnten nicht geladen werden.');
@@ -212,6 +201,18 @@ const Vertretungsplan: React.FC = () => {
           }
           return null;
         });
+      const response = await vertretungsplanAPI.getPlan(token, reloadKey > 0, controller.signal);
+      if (controller.signal.aborted) return;
+      if (!response.success) {
+        throw new Error(response.error || 'Der Vertretungsplan konnte nicht geladen werden.');
+      }
+      const days = Array.isArray(response.days) ? response.days : [];
+      setPlan({ ...response, days, count: response.count || 0 });
+      setActiveDay(current => days.some(day => day.date === current) ? current : (days[0]?.date || ''));
+      // Class metadata is optional; show the plan as soon as its required request is ready.
+      setLoading(false);
+
+      const optionsResponse = await optionsPromise;
       if (controller.signal.aborted) return;
       if (optionsResponse) setOptions(optionsResponse);
       setOptionsRequestSucceeded(optionsResponse !== null);
