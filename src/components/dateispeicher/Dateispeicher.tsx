@@ -251,6 +251,7 @@ const Dateispeicher: React.FC = () => {
 
   const visibleFolders = isSearchMode ? (searchResults?.folders || []) : (node?.folders || []);
   const visibleFiles = isSearchMode ? (searchResults?.files || []) : (node?.files || []);
+  const busy = isSearchMode ? searching : loading;
 
   if (!token) {
     return (
@@ -284,9 +285,9 @@ const Dateispeicher: React.FC = () => {
                 setReloadKey(value => value + 1);
               }
             }}
-            disabled={loading || searching}
+            disabled={busy}
           >
-            <ArrowPathIcon className={`mr-2 h-4 w-4 ${loading || searching ? 'animate-spin' : ''}`} />
+            <ArrowPathIcon className={`mr-2 h-4 w-4 ${busy ? 'animate-spin' : ''}`} />
             Aktualisieren
           </button>
         </header>
@@ -347,11 +348,11 @@ const Dateispeicher: React.FC = () => {
           </div>
         )}
 
-        {loading || searching ? (
+        {busy ? (
           <div className="card flex min-h-64 items-center justify-center">
             <div className="text-center text-surface-500">
               <ArrowPathIcon className="mx-auto mb-3 h-7 w-7 animate-spin text-primary-500" />
-              {searching ? 'Dateispeicher wird durchsucht …' : 'Dateispeicher wird geladen …'}
+              {isSearchMode ? 'Dateispeicher wird durchsucht …' : 'Dateispeicher wird geladen …'}
             </div>
           </div>
         ) : (
