@@ -272,7 +272,8 @@ const Dateispeicher: React.FC = () => {
   const visibleFolders = isSearchMode ? (searchResults?.folders || []) : (node?.folders || []);
   const visibleFiles = isSearchMode ? (searchResults?.files || []) : (node?.files || []);
   const busy = isSearchMode ? searching : loading;
-  const visibleError = downloadError || (isSearchMode ? searchError : folderError);
+  const requestError = isSearchMode ? searchError : folderError;
+  const visibleError = downloadError || requestError;
 
   if (!token) {
     return (
@@ -434,7 +435,7 @@ const Dateispeicher: React.FC = () => {
                   ))}
                 </div>
               </section>
-            ) : visibleFolders.length === 0 ? (
+            ) : visibleFolders.length === 0 && !requestError ? (
               <div className="card flex min-h-64 flex-col items-center justify-center text-center">
                 <FolderIcon className="mb-3 h-10 w-10 text-surface-300" />
                 <h2 className="font-semibold text-surface-900 dark:text-white">Keine Dateien gefunden</h2>
