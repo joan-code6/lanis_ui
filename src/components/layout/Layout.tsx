@@ -24,6 +24,44 @@ import { Link, useLocation } from 'react-router-dom';
 import GlobalSearch from '../search/GlobalSearch';
 import InstallPrompt from '../pwa/InstallPrompt';
 
+interface PlanModuleSource {
+  name: string;
+  url: string;
+  direct_url?: string;
+}
+
+function readCachedPlanModules(): PlanModuleSource[] {
+  try {
+    const parsed: unknown = JSON.parse(localStorage.getItem('modules_cache') || '[]');
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((module): module is PlanModuleSource => {
+      if (!module || typeof module !== 'object') return false;
+      const candidate = module as Record<string, unknown>;
+      return typeof candidate.name === 'string'
+        && typeof candidate.url === 'string'
+        && (candidate.direct_url === undefined || typeof candidate.direct_url === 'string');
+    });
+  } catch {
+    return [];
+  }
+}
+
+function planModuleAvailability(modules: PlanModuleSource[]) {
+  const hasDsbModule = modules.some(module => {
+    const links = `${module.url} ${module.direct_url || ''}`.toLowerCase();
+    return module.name.toLowerCase().includes('dsb') || links.includes('dsb');
+  });
+  const hasNativeSubstitutionPlan = modules.some(module => {
+    const links = `${module.url} ${module.direct_url || ''}`.toLowerCase();
+    const name = module.name.toLowerCase();
+    const isDsb = links.includes('dsb') || name.includes('dsb');
+    return !isDsb && (
+      links.includes('/vertretungsplan.php') || name.includes('vertretungsplan')
+    );
+  });
+  return { hasDsbModule, hasNativeSubstitutionPlan };
+}
+
 interface LayoutProps {
   children: React.ReactNode;
   basePath?: string;
@@ -71,27 +109,21 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
   React.useEffect(() => {
     if (!token) return;
     const abortController = new AbortController();
+    const applyModuleAvailability = (modules: PlanModuleSource[]) => {
+      const availability = planModuleAvailability(modules);
+      setHasNativeSubstitutionPlan(availability.hasNativeSubstitutionPlan);
+      setHasDsbModule(availability.hasDsbModule);
+    };
+    const cachedModules = readCachedPlanModules();
+    applyModuleAvailability(cachedModules);
 
     const checkDsbModule = async () => {
       try {
         const response = await appsAPI.getModules(token, abortController.signal);
         if (abortController.signal.aborted) return;
-          if (response.success) {
-            const nativePlanExists = response.modules.some(m => {
-              const links = `${m.url} ${m.direct_url || ''}`.toLowerCase();
-              const name = m.name.toLowerCase();
-              const isDsb = links.includes('dsb') || name.includes('dsb');
-              return !isDsb && (
-                links.includes('/vertretungsplan.php') || name.includes('vertretungsplan')
-              );
-            });
-            const dsbExists = response.modules.some(m => {
-              const links = `${m.url} ${m.direct_url || ''}`.toLowerCase();
-              const name = m.name.toLowerCase();
-              return name.includes('dsb') || links.includes('dsb');
-            });
-          setHasNativeSubstitutionPlan(nativePlanExists);
-          setHasDsbModule(dsbExists);
+        if (response.success) {
+          applyModuleAvailability(response.modules);
+          localStorage.setItem('modules_cache', JSON.stringify(response.modules));
         }
       } catch (error) {
         if (axios.isCancel(error)) return;
