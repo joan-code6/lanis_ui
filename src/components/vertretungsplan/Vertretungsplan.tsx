@@ -274,6 +274,7 @@ const Vertretungsplan: React.FC = () => {
   const requestedClass = selectedClass ?? defaultClass;
   const preservesExplicitSelection = Boolean(
     (configuredClass && fuzzyClassMatches(requestedClass, configuredClass))
+    || (options.success && profileClass && fuzzyClassMatches(requestedClass, profileClass))
     || (selectedClass !== null && requestedClass !== 'all'),
   );
   const activeClass = requestedClass !== 'all'
