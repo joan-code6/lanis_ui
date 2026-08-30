@@ -1,9 +1,6 @@
-export interface CachedModule {
-  name: string;
-  url: string;
-  direct_url?: string;
-  folders?: string[];
-}
+import type { Module } from '../types';
+
+export type CachedModule = Module;
 
 interface ModuleCacheOwner {
   school_id?: string;
@@ -28,11 +25,13 @@ export function readModulesCache(owner: ModuleCacheOwner | null): CachedModule[]
       const candidate = module as Record<string, unknown>;
       return typeof candidate.name === 'string'
         && typeof candidate.url === 'string'
-        && (candidate.direct_url === undefined || typeof candidate.direct_url === 'string')
-        && (candidate.folders === undefined || (
-          Array.isArray(candidate.folders)
-          && candidate.folders.every(folder => typeof folder === 'string')
-        ));
+        && typeof candidate.direct_url === 'string'
+        && typeof candidate.proxy_app === 'boolean'
+        && typeof candidate.color === 'string'
+        && typeof candidate.logo === 'string'
+        && Array.isArray(candidate.folders)
+        && candidate.folders.every(folder => typeof folder === 'string')
+        && typeof candidate.target === 'string';
     });
   } catch {
     return [];

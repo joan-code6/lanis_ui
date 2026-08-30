@@ -44,7 +44,6 @@ const seedLocalStorage = () => {
     { name: 'Notenübersicht', url: 'https://schulportal.hessen.de/noten.php', color: '#be185d', logo: 'fa fa-files-o', folders: ['Leistung'], target: '_blank' },
     { name: 'Klausurplan', url: 'https://schulportal.hessen.de/klausuren.php', color: '#2563eb', logo: 'fa fa-files-o', folders: ['Leistung'], target: '_blank' },
   ];
-  localStorage.setItem('modules_cache', JSON.stringify(modules));
   localStorage.setItem('pinned_modules', JSON.stringify(['Klassenbuch', 'Notenübersicht']));
 
   const messages = [
