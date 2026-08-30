@@ -74,6 +74,7 @@ const mockModules = [
   { name: 'Mein Unterricht', url: 'https://schulportal.hessen.de/meinunterricht.php', direct_url: 'https://schulportal.hessen.de/meinunterricht.php', proxy_app: false, color: '#4f46e5', logo: 'fa fa-files-o', folders: ['Schule'], target: '_self' },
   { name: 'Nachrichten', url: 'https://schulportal.hessen.de/nachrichten.php', direct_url: 'https://schulportal.hessen.de/nachrichten.php', proxy_app: false, color: '#0891b2', logo: 'fa fa-envelope-o', folders: ['Kommunikation'], target: '_self' },
   { name: 'Kalender', url: 'https://schulportal.hessen.de/kalender.php', direct_url: 'https://schulportal.hessen.de/kalender.php', proxy_app: false, color: '#dc2626', logo: 'fa fa-calendar-o', folders: ['Schule'], target: '_self' },
+  { name: 'Dateispeicher', url: 'https://schulportal.hessen.de/dateispeicher.php', direct_url: 'https://schulportal.hessen.de/dateispeicher.php', proxy_app: false, color: '#0f766e', logo: 'fa fa-folder-open-o', folders: ['Schule'], target: '_self' },
   { name: 'Vertretungsplan', url: 'https://schulportal.hessen.de/vertretungsplan.php', direct_url: 'https://schulportal.hessen.de/vertretungsplan.php', proxy_app: false, color: '#7c3aed', logo: 'fa fa-files-o', folders: ['Schule'], target: '_self' },
   { name: 'DSBmobile', url: 'https://dsb.hessen.de/dsb.php', direct_url: 'https://dsb.hessen.de/dsb.php', proxy_app: false, color: '#64748b', logo: 'fa fa-files-o', folders: ['Schule'], target: '_self' },
   { name: 'Klassenbuch', url: 'https://schulportal.hessen.de/klassenbuch.php', direct_url: 'https://schulportal.hessen.de/klassenbuch.php', proxy_app: false, color: '#059669', logo: 'fa fa-files-o', folders: ['Schule'], target: '_blank' },
@@ -81,6 +82,43 @@ const mockModules = [
   { name: 'Notenübersicht', url: 'https://schulportal.hessen.de/noten.php', direct_url: 'https://schulportal.hessen.de/noten.php', proxy_app: false, color: '#be185d', logo: 'fa fa-files-o', folders: ['Leistung'], target: '_blank' },
   { name: 'Klausurplan', url: 'https://schulportal.hessen.de/klausuren.php', direct_url: 'https://schulportal.hessen.de/klausuren.php', proxy_app: false, color: '#2563eb', logo: 'fa fa-files-o', folders: ['Leistung'], target: '_blank' },
 ];
+
+const mockDateispeicherNodes = {
+  0: {
+    success: true,
+    folder_id: 0,
+    folders: [
+      { id: 1, name: 'Unterrichtsmaterialien', subfolders: 0, description: 'Arbeitsblätter und Zusammenfassungen' },
+      { id: 2, name: 'Projekte', subfolders: 0, description: 'Gemeinsame Projektdateien' },
+    ],
+    files: [
+      { id: 101, name: 'Schuljahreskalender.pdf', changed: '28.08.2026', size: '248 KB', note: null, download_url: 'https://start.schulportal.hessen.de/dateispeicher.php?a=download&f=101' },
+    ],
+    file_count: 1,
+    folder_count: 2,
+  },
+  1: {
+    success: true,
+    folder_id: 1,
+    folders: [],
+    files: [
+      { id: 102, name: 'Mathematik_Formelsammlung.pdf', changed: '26.08.2026', size: '1,2 MB', note: 'Für die Oberstufe', download_url: 'https://start.schulportal.hessen.de/dateispeicher.php?a=download&f=102' },
+      { id: 103, name: 'Deutsch_Lektürehilfe.pdf', changed: '20.08.2026', size: '860 KB', note: null, download_url: 'https://start.schulportal.hessen.de/dateispeicher.php?a=download&f=103' },
+    ],
+    file_count: 2,
+    folder_count: 0,
+  },
+  2: {
+    success: true,
+    folder_id: 2,
+    folders: [],
+    files: [
+      { id: 104, name: 'Projektplanung_Nachhaltigkeit.docx', changed: '18.08.2026', size: '92 KB', note: null, download_url: 'https://start.schulportal.hessen.de/dateispeicher.php?a=download&f=104' },
+    ],
+    file_count: 1,
+    folder_count: 0,
+  },
+};
 
 const mockMessageHeaders = [
   { Id: 'dm-1', Uniquid: 'uq-1', Sender: 'Herr Müller', Betreff: 'Klausur am Freitag — Wichtige Informationen', Papierkorb: '0', private: 0, WeitereEmpfaenger: '', empf: ['max.mustermann'], unread: true, date: daysAgo(1) },
@@ -658,6 +696,23 @@ export function getMockResponse(url: string, method: string, config: any): { dat
   if (u === '/stundenplan' && method === 'get') {
     const days = getMockTimetable();
     return { status: 200, data: { success: true, week_start: days[0].date, week_end: days[4].date, active_week: 'A', days, custom_lessons: mockCustomLessons } };
+  }
+  if (u === '/dateispeicher' && method === 'get') {
+    const folderId = Number(config?.params?.folder_id || 0);
+    return { status: 200, data: mockDateispeicherNodes[folderId as keyof typeof mockDateispeicherNodes] || { success: true, folder_id: folderId, folders: [], files: [], file_count: 0, folder_count: 0 } };
+  }
+  if (u === '/dateispeicher/search' && method === 'get') {
+    const query = String(config?.params?.q || '').toLowerCase();
+    const allFiles = Object.values(mockDateispeicherNodes).flatMap(node => node.files);
+    const allFolders = Object.values(mockDateispeicherNodes).flatMap(node => node.folders);
+    return { status: 200, data: { success: true, query, source: 'server', results: {
+      files: allFiles.filter(file => file.name.toLowerCase().includes(query)),
+      folders: allFolders.filter(folder => folder.name.toLowerCase().includes(query)),
+    } } };
+  }
+  if (u.startsWith('/dateispeicher/file/') && method === 'get') {
+    const fileId = u.split('/').pop();
+    return { status: 200, data: new Blob([`Demo-Datei ${fileId}`], { type: 'text/plain' }) };
   }
   if (u === '/vertretungsplan' && method === 'get') { return { status: 200, data: mockVertretungsplan }; }
   if (u === '/lerngruppen' && method === 'get') {

@@ -621,6 +621,43 @@ export interface ClassLinksResponse {
   links: ClassLink[];
 }
 
+// Native Schulportal file-storage types
+export interface DateispeicherFolder {
+  id: number;
+  name: string;
+  subfolders: number;
+  description?: string;
+  parent_folder_id?: number;
+}
+
+export interface DateispeicherFile {
+  id: number;
+  name: string;
+  download_url?: string;
+  changed?: string;
+  size?: string;
+  note?: string | null;
+  parent_folder_id?: number;
+}
+
+export interface DateispeicherNodeResponse {
+  success: boolean;
+  folder_id: number;
+  files: DateispeicherFile[];
+  folders: DateispeicherFolder[];
+  file_count: number;
+  folder_count: number;
+  error?: string;
+}
+
+export interface DateispeicherSearchResponse {
+  success: boolean;
+  query: string;
+  results: unknown;
+  source?: string;
+  error?: string;
+}
+
 // Study-group types
 export interface StudyGroupTeacher {
   krz: string;

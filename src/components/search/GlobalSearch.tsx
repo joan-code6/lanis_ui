@@ -14,6 +14,7 @@ import {
   UserIcon,
   Cog6ToothIcon,
   ClipboardDocumentListIcon,
+  FolderIcon,
   ArrowPathIcon,
   ClockIcon,
   UserGroupIcon,
@@ -33,6 +34,7 @@ interface GlobalSearchProps {
   isOpen: boolean;
   onClose: () => void;
   basePath?: string;
+  hasNativeDateispeicher?: boolean;
   hasNativeSubstitutionPlan?: boolean;
   hasDsbModule?: boolean;
 }
@@ -50,20 +52,23 @@ interface ModuleLinkSource {
   direct_url?: string;
 }
 
-function modulePlanHref(
+function moduleInAppHref(
   module: ModuleLinkSource,
   planNavigation: NavigationItem[],
   basePath: string,
 ): string | undefined {
   const moduleLinks = `${module.url || ''} ${module.direct_url || ''}`.toLowerCase();
   const moduleName = String(module.name || '').toLowerCase();
+  const isDateispeicher = moduleName.includes('dateispeicher') || moduleLinks.includes('/dateispeicher.php');
   const isDsbModule = moduleName.includes('dsb') || moduleLinks.includes('dsb');
   const isNativeSubstitutionPlan = !isDsbModule && (
     moduleLinks.includes('/vertretungsplan.php') || moduleName.includes('vertretungsplan')
   );
   const nativePlanHref = planNavigation.find(item => item.href.endsWith('/vertretungsplan'))?.href;
   const dsbHref = planNavigation.find(item => item.href.endsWith('/dsb'))?.href;
-  return (isNativeSubstitutionPlan && (nativePlanHref || `${basePath}/vertretungsplan`))
+  const dateispeicherHref = planNavigation.find(item => item.href.endsWith('/dateispeicher'))?.href;
+  return (isDateispeicher && (dateispeicherHref || `${basePath}/dateispeicher`))
+    || (isNativeSubstitutionPlan && (nativePlanHref || `${basePath}/vertretungsplan`))
     || (isDsbModule && (dsbHref || `${basePath}/dsb`))
     || undefined;
 }
@@ -177,7 +182,7 @@ function searchCacheData(
         subtitle: module.url || module.folders?.join(', ') || '',
         category: 'Module',
         icon: HomeIcon,
-        href: modulePlanHref(module, planNavigation, basePath) || '/dashboard',
+        href: moduleInAppHref(module, planNavigation, basePath) || '/dashboard',
       });
     }
   }
@@ -265,6 +270,7 @@ export default function GlobalSearch({
   isOpen,
   onClose,
   basePath = '',
+  hasNativeDateispeicher = false,
   hasNativeSubstitutionPlan = false,
   hasDsbModule = false,
 }: GlobalSearchProps) {
@@ -282,16 +288,20 @@ export default function GlobalSearch({
   const [semanticResults, setSemanticResults] = useState<SearchItem[]>([]);
 
   const planNavigation = useMemo<NavigationItem[]>(() => {
+    const moduleItems: NavigationItem[] = hasNativeDateispeicher
+      ? [{ name: 'Dateispeicher', href: `${basePath}/dateispeicher`, icon: FolderIcon, cat: 'Module' }]
+      : [];
     if (hasNativeSubstitutionPlan) {
       return [
+        ...moduleItems,
         { name: 'Vertretungsplan', href: `${basePath}/vertretungsplan`, icon: ClipboardDocumentListIcon, cat: 'Vertretungsplan' },
         ...(hasDsbModule ? [{ name: 'DSBmobile', href: `${basePath}/dsb`, icon: ClipboardDocumentListIcon, cat: 'Vertretungsplan' }] : []),
       ];
     }
     return hasDsbModule
-      ? [{ name: 'Vertretungsplan', href: `${basePath}/dsb`, icon: ClipboardDocumentListIcon, cat: 'Vertretungsplan' }]
-      : [];
-  }, [basePath, hasDsbModule, hasNativeSubstitutionPlan]);
+      ? [...moduleItems, { name: 'Vertretungsplan', href: `${basePath}/dsb`, icon: ClipboardDocumentListIcon, cat: 'Vertretungsplan' }]
+      : moduleItems;
+  }, [basePath, hasDsbModule, hasNativeDateispeicher, hasNativeSubstitutionPlan]);
 
   const cachedModules = readModulesCache(user);
   const cacheResults = useMemo(
@@ -389,7 +399,7 @@ export default function GlobalSearch({
         appsAPI.getModules(token, controller.signal).then(res =>
           !res.success ? [] : res.modules.filter(module => searchText(query, module)).map(module => ({
             id: `api-mod-${module.url}`, title: module.name, subtitle: module.folders?.join(' · ') || 'Modul',
-            category: 'Module', icon: HomeIcon, href: modulePlanHref(module, planNavigation, basePath) || '/dashboard',
+            category: 'Module', icon: HomeIcon, href: moduleInAppHref(module, planNavigation, basePath) || '/dashboard',
           }))),
         timetableAPI.getTimetable(token, controller.signal).then(res => {
           if (!res.success) return [];

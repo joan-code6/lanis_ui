@@ -18,6 +18,7 @@ import {
   Bars3Icon,
   XMarkIcon,
   ClipboardDocumentListIcon,
+  FolderIcon,
   MagnifyingGlassIcon,
 } from '@heroicons/react/24/outline';
 import { Link, useLocation } from 'react-router-dom';
@@ -53,6 +54,7 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
   const location = useLocation();
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
   const [isSearchOpen, setIsSearchOpen] = React.useState(false);
+  const [hasNativeDateispeicher, setHasNativeDateispeicher] = React.useState(false);
   const [hasNativeSubstitutionPlan, setHasNativeSubstitutionPlan] = React.useState(false);
   const [hasDsbModule, setHasDsbModule] = React.useState(false);
   const mainRef = React.useRef<HTMLElement>(null);
@@ -91,6 +93,11 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
     const abortController = new AbortController();
     const applyModuleAvailability = (modules: CachedModule[]) => {
       const availability = planModuleAvailability(modules);
+      const hasDateispeicher = modules.some(module => {
+        const links = `${module.url} ${module.direct_url || ''}`.toLowerCase();
+        return links.includes('/dateispeicher.php') || module.name.toLowerCase().includes('dateispeicher');
+      });
+      setHasNativeDateispeicher(hasDateispeicher);
       setHasNativeSubstitutionPlan(availability.hasNativeSubstitutionPlan);
       setHasDsbModule(availability.hasDsbModule);
     };
@@ -137,13 +144,14 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
     { name: 'Einstellungen', href: `${basePath}/settings`, icon: Cog6ToothIcon },
   ];
 
-  const planNavItems = [
+  const moduleNavItems = [
+    ...(hasNativeDateispeicher ? [{ name: 'Dateispeicher', href: `${basePath}/dateispeicher`, icon: FolderIcon }] : []),
     ...(hasNativeSubstitutionPlan ? [{ name: 'Vertretungsplan', href: `${basePath}/vertretungsplan`, icon: ClipboardDocumentListIcon }] : []),
     ...(hasDsbModule ? [{ name: 'DSBmobile', href: `${basePath}/dsb`, icon: ClipboardDocumentListIcon }] : []),
   ];
 
-  const navigation = planNavItems.length > 0
-    ? [...baseNavigation.slice(0, 2), ...planNavItems, ...baseNavigation.slice(2)]
+  const navigation = moduleNavItems.length > 0
+    ? [...baseNavigation.slice(0, 2), ...moduleNavItems, ...baseNavigation.slice(2)]
     : baseNavigation;
 
   const handleLogout = () => {
@@ -214,6 +222,7 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
         isOpen={isSearchOpen}
         onClose={() => setIsSearchOpen(false)}
         basePath={basePath}
+        hasNativeDateispeicher={hasNativeDateispeicher}
         hasNativeSubstitutionPlan={hasNativeSubstitutionPlan}
         hasDsbModule={hasDsbModule}
       />

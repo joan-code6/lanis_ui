@@ -112,6 +112,10 @@ const Dashboard: React.FC = () => {
       return;
     }
     const moduleLinks = `${module.url} ${module.direct_url || ''}`.toLowerCase();
+    if (moduleLinks.includes('/dateispeicher.php') || module.name.toLowerCase().includes('dateispeicher')) {
+      navigate(`${basePath}/dateispeicher`);
+      return;
+    }
     const moduleName = module.name.toLowerCase();
     const isDsbModule = moduleLinks.includes('dsb') || moduleName.includes('dsb');
     const isNativeSubstitutionPlan = !isDsbModule && (

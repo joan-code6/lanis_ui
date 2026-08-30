@@ -36,6 +36,7 @@ const seedLocalStorage = () => {
     { name: 'Mein Unterricht', url: 'https://schulportal.hessen.de/meinunterricht.php', color: '#4f46e5', logo: 'fa fa-files-o', folders: ['Schule'], target: '_self' },
     { name: 'Nachrichten', url: 'https://schulportal.hessen.de/nachrichten.php', color: '#0891b2', logo: 'fa fa-envelope-o', folders: ['Kommunikation'], target: '_self' },
     { name: 'Kalender', url: 'https://schulportal.hessen.de/kalender.php', color: '#dc2626', logo: 'fa fa-calendar-o', folders: ['Schule'], target: '_self' },
+    { name: 'Dateispeicher', url: 'https://schulportal.hessen.de/dateispeicher.php', color: '#0f766e', logo: 'fa fa-folder-open-o', folders: ['Schule'], target: '_self' },
     { name: 'Vertretungsplan', url: 'https://schulportal.hessen.de/vertretungsplan.php', color: '#7c3aed', logo: 'fa fa-files-o', folders: ['Schule'], target: '_self' },
     { name: 'DSBmobile', url: 'https://dsb.hessen.de/dsb.php', color: '#64748b', logo: 'fa fa-files-o', folders: ['Schule'], target: '_self' },
     { name: 'Klassenbuch', url: 'https://schulportal.hessen.de/klassenbuch.php', color: '#059669', logo: 'fa fa-files-o', folders: ['Schule'], target: '_blank' },
