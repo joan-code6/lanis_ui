@@ -76,21 +76,20 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
       try {
         const response = await appsAPI.getModules(token, abortController.signal);
         if (abortController.signal.aborted) return;
-        if (response.success) {
-          const nativePlanExists = response.modules.some(m => {
-            const links = `${m.url} ${m.direct_url || ''}`.toLowerCase();
-            return links.includes('/vertretungsplan.php') ||
-              (m.name.toLowerCase().includes('vertretungsplan') && !links.includes('dsb'));
-          });
-          const dsbExists = response.modules.some(m => {
-            const links = `${m.url} ${m.direct_url || ''}`.toLowerCase();
-            const isNativePlan = links.includes('/vertretungsplan.php') ||
-              (m.name.toLowerCase().includes('vertretungsplan') && !links.includes('dsb'));
-            return !isNativePlan && (
-              m.name.toLowerCase().includes('dsb') ||
-              links.includes('dsb')
-            );
-          });
+          if (response.success) {
+            const nativePlanExists = response.modules.some(m => {
+              const links = `${m.url} ${m.direct_url || ''}`.toLowerCase();
+              const name = m.name.toLowerCase();
+              const isDsb = links.includes('dsb') || name.includes('dsb');
+              return !isDsb && (
+                links.includes('/vertretungsplan.php') || name.includes('vertretungsplan')
+              );
+            });
+            const dsbExists = response.modules.some(m => {
+              const links = `${m.url} ${m.direct_url || ''}`.toLowerCase();
+              const name = m.name.toLowerCase();
+              return name.includes('dsb') || links.includes('dsb');
+            });
           setHasNativeSubstitutionPlan(nativePlanExists);
           setHasDsbModule(dsbExists);
         }

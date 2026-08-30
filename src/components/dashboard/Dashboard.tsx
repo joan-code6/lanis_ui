@@ -124,13 +124,16 @@ const Dashboard: React.FC = () => {
       return;
     }
     const moduleLinks = `${module.url} ${module.direct_url || ''}`.toLowerCase();
-    const isNativeSubstitutionPlan = moduleLinks.includes('/vertretungsplan.php') ||
-      (module.name.toLowerCase().includes('vertretungsplan') && !moduleLinks.includes('dsb'));
+    const moduleName = module.name.toLowerCase();
+    const isDsbModule = moduleLinks.includes('dsb') || moduleName.includes('dsb');
+    const isNativeSubstitutionPlan = !isDsbModule && (
+      moduleLinks.includes('/vertretungsplan.php') || moduleName.includes('vertretungsplan')
+    );
     if (isNativeSubstitutionPlan) {
       navigate(`${basePath}/vertretungsplan`);
       return;
     }
-    if (moduleLinks.includes('dsb') || module.name.toLowerCase().includes('dsb')) {
+    if (isDsbModule) {
       navigate(`${basePath}/dsb`);
       return;
     }

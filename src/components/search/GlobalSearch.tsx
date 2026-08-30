@@ -147,10 +147,10 @@ function searchCacheData(query: string, planNavigation: NavigationItem[]): Searc
           if (searchText(query, m)) {
             const moduleLinks = `${m.url || ''} ${m.direct_url || ''}`.toLowerCase();
             const moduleName = String(m.name || '').toLowerCase();
-            const isNativeSubstitutionPlan = moduleLinks.includes('/vertretungsplan.php')
-              || (moduleName.includes('vertretungsplan') && !moduleLinks.includes('dsb'));
-            const isDsbModule = !isNativeSubstitutionPlan
-              && (moduleName.includes('dsb') || moduleLinks.includes('dsb'));
+            const isDsbModule = moduleName.includes('dsb') || moduleLinks.includes('dsb');
+            const isNativeSubstitutionPlan = !isDsbModule && (
+              moduleLinks.includes('/vertretungsplan.php') || moduleName.includes('vertretungsplan')
+            );
             const nativePlanHref = planNavigation.find(item => item.href.endsWith('/vertretungsplan'))?.href;
             const dsbHref = planNavigation.find(item => item.href.endsWith('/dsb'))?.href;
             results.push({

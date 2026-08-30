@@ -7,7 +7,7 @@ import { vertretungsplanAPI } from '../../services/api';
 
 const VertretungsplanSettings: React.FC = () => {
   const { token } = useAuth();
-  const { preferences, updatePreferences, syncError } = usePreferences();
+  const { preferences, updatePreferences } = usePreferences();
   const [classOverride, setClassOverride] = useState(preferences.vertretungsplan.class_override);
   const [ownClass, setOwnClass] = useState('');
   const [availableClasses, setAvailableClasses] = useState<string[]>([]);
@@ -61,7 +61,7 @@ const VertretungsplanSettings: React.FC = () => {
     if (saved) {
       setMessage('Klassenfilter gespeichert.');
     } else {
-      setError(syncError || 'Klassenfilter konnte nicht gespeichert werden.');
+      setError('Klassenfilter ist lokal gespeichert und wird beim nächsten Versuch synchronisiert.');
     }
     setSaving(false);
   };
