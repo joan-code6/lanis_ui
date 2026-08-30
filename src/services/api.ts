@@ -626,9 +626,10 @@ export const timetableAPI = {
 
 // Native Schulportal substitution plan API
 export const vertretungsplanAPI = {
-  async getPlan(token: string, signal?: AbortSignal): Promise<VertretungsplanResponse> {
+  async getPlan(token: string, refresh = false, signal?: AbortSignal): Promise<VertretungsplanResponse> {
     const response = await apiClient.get<VertretungsplanResponse>('/vertretungsplan', {
       headers: { 'X-Session-Token': token },
+      params: { refresh },
       signal,
     });
     return response.data;

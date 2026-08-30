@@ -188,20 +188,7 @@ const Vertretungsplan: React.FC = () => {
     }
 
     const load = async () => {
-      const optionsPromise = vertretungsplanAPI.getOptions(token, controller.signal)
-        .then(optionsResponse => {
-          if (!optionsResponse.success) {
-            throw new Error(optionsResponse.error || 'Die Klassen konnten nicht geladen werden.');
-          }
-          return optionsResponse;
-        })
-        .catch(optionsError => {
-          if (!axios.isCancel(optionsError)) {
-            console.warn('Failed to load Vertretungsplan class options:', optionsError);
-          }
-          return null;
-        });
-      const response = await vertretungsplanAPI.getPlan(token, controller.signal);
+      const response = await vertretungsplanAPI.getPlan(token, reloadKey > 0, controller.signal);
       if (controller.signal.aborted) return;
       if (!response.success) {
         throw new Error(response.error || 'Der Vertretungsplan konnte nicht geladen werden.');
@@ -212,7 +199,19 @@ const Vertretungsplan: React.FC = () => {
       // Class metadata is optional; show the plan as soon as its required request is ready.
       setLoading(false);
 
-      const optionsResponse = await optionsPromise;
+      const optionsResponse = await vertretungsplanAPI.getOptions(token, controller.signal)
+        .then(result => {
+          if (!result.success) {
+            throw new Error(result.error || 'Die Klassen konnten nicht geladen werden.');
+          }
+          return result;
+        })
+        .catch(optionsError => {
+          if (!axios.isCancel(optionsError)) {
+            console.warn('Failed to load Vertretungsplan class options:', optionsError);
+          }
+          return null;
+        });
       if (controller.signal.aborted) return;
       if (optionsResponse) setOptions(optionsResponse);
       setOptionsRequestSucceeded(optionsResponse !== null);

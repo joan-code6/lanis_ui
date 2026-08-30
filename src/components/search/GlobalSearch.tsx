@@ -145,13 +145,23 @@ function searchCacheData(query: string, planNavigation: NavigationItem[]): Searc
       if (Array.isArray(mods)) {
         for (const m of mods) {
           if (searchText(query, m)) {
+            const moduleLinks = `${m.url || ''} ${m.direct_url || ''}`.toLowerCase();
+            const moduleName = String(m.name || '').toLowerCase();
+            const isNativeSubstitutionPlan = moduleLinks.includes('/vertretungsplan.php')
+              || (moduleName.includes('vertretungsplan') && !moduleLinks.includes('dsb'));
+            const isDsbModule = !isNativeSubstitutionPlan
+              && (moduleName.includes('dsb') || moduleLinks.includes('dsb'));
+            const nativePlanHref = planNavigation.find(item => item.href.endsWith('/vertretungsplan'))?.href;
+            const dsbHref = planNavigation.find(item => item.href.endsWith('/dsb'))?.href;
             results.push({
               id: `mod-${m.url || m.name || Math.random()}`,
               title: m.name || '',
               subtitle: m.url || (Array.isArray(m.folders) ? m.folders.join(', ') : ''),
               category: 'Module',
               icon: HomeIcon,
-              href: '/dashboard',
+              href: (isNativeSubstitutionPlan && nativePlanHref)
+                || (isDsbModule && dsbHref)
+                || '/dashboard',
             });
           }
         }
