@@ -626,19 +626,19 @@ export const timetableAPI = {
 
 // Native Schulportal file-storage API
 export const dateispeicherAPI = {
-  async getNode(token: string, folderId = 0, signal?: AbortSignal): Promise<DateispeicherNodeResponse> {
+  async getNode(token: string, folderId = 0, refresh = false, signal?: AbortSignal): Promise<DateispeicherNodeResponse> {
     const response = await apiClient.get<DateispeicherNodeResponse>('/dateispeicher', {
       headers: { 'X-Session-Token': token },
-      params: { folder_id: folderId },
+      params: { folder_id: folderId, refresh },
       signal,
     });
     return response.data;
   },
 
-  async search(token: string, query: string, signal?: AbortSignal): Promise<DateispeicherSearchResponse> {
+  async search(token: string, query: string, refresh = false, signal?: AbortSignal): Promise<DateispeicherSearchResponse> {
     const response = await apiClient.get<DateispeicherSearchResponse>('/dateispeicher/search', {
       headers: { 'X-Session-Token': token },
-      params: { q: query },
+      params: { q: query, refresh },
       signal,
     });
     return response.data;

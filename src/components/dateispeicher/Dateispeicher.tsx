@@ -131,7 +131,7 @@ const Dateispeicher: React.FC = () => {
     setLoading(true);
     setError('');
     setNode(null);
-    dateispeicherAPI.getNode(token, folderId, controller.signal)
+    dateispeicherAPI.getNode(token, folderId, reloadKey > 0, controller.signal)
       .then(response => {
         if (!response.success) throw new Error(response.error || 'Der Dateispeicher konnte nicht geladen werden.');
         setNode(response);
@@ -158,7 +158,7 @@ const Dateispeicher: React.FC = () => {
     setSearching(true);
     setError('');
     setSearchResults(null);
-    dateispeicherAPI.search(token, submittedQuery, controller.signal)
+    dateispeicherAPI.search(token, submittedQuery, searchKey > 1, controller.signal)
       .then(response => {
         if (!response.success) throw new Error(response.error || 'Die Dateisuche konnte nicht durchgeführt werden.');
         setSearchResults(normaliseSearchResults(response.results));
