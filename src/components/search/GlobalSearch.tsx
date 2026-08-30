@@ -42,6 +42,26 @@ interface NavigationItem {
   cat: string;
 }
 
+interface ModuleLinkSource {
+  name?: string;
+  url?: string;
+  direct_url?: string;
+}
+
+function modulePlanHref(module: ModuleLinkSource, planNavigation: NavigationItem[]): string | undefined {
+  const moduleLinks = `${module.url || ''} ${module.direct_url || ''}`.toLowerCase();
+  const moduleName = String(module.name || '').toLowerCase();
+  const isDsbModule = moduleName.includes('dsb') || moduleLinks.includes('dsb');
+  const isNativeSubstitutionPlan = !isDsbModule && (
+    moduleLinks.includes('/vertretungsplan.php') || moduleName.includes('vertretungsplan')
+  );
+  const nativePlanHref = planNavigation.find(item => item.href.endsWith('/vertretungsplan'))?.href;
+  const dsbHref = planNavigation.find(item => item.href.endsWith('/dsb'))?.href;
+  return (isNativeSubstitutionPlan && nativePlanHref)
+    || (isDsbModule && dsbHref)
+    || undefined;
+}
+
 const CATEGORY_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   Dashboard: HomeIcon,
   Nachrichten: ChatBubbleLeftRightIcon,
@@ -145,23 +165,13 @@ function searchCacheData(query: string, planNavigation: NavigationItem[]): Searc
       if (Array.isArray(mods)) {
         for (const m of mods) {
           if (searchText(query, m)) {
-            const moduleLinks = `${m.url || ''} ${m.direct_url || ''}`.toLowerCase();
-            const moduleName = String(m.name || '').toLowerCase();
-            const isDsbModule = moduleName.includes('dsb') || moduleLinks.includes('dsb');
-            const isNativeSubstitutionPlan = !isDsbModule && (
-              moduleLinks.includes('/vertretungsplan.php') || moduleName.includes('vertretungsplan')
-            );
-            const nativePlanHref = planNavigation.find(item => item.href.endsWith('/vertretungsplan'))?.href;
-            const dsbHref = planNavigation.find(item => item.href.endsWith('/dsb'))?.href;
             results.push({
               id: `mod-${m.url || m.name || Math.random()}`,
               title: m.name || '',
               subtitle: m.url || (Array.isArray(m.folders) ? m.folders.join(', ') : ''),
               category: 'Module',
               icon: HomeIcon,
-              href: (isNativeSubstitutionPlan && nativePlanHref)
-                || (isDsbModule && dsbHref)
-                || '/dashboard',
+              href: modulePlanHref(m, planNavigation) || '/dashboard',
             });
           }
         }
@@ -372,7 +382,7 @@ export default function GlobalSearch({
         appsAPI.getModules(token, controller.signal).then(res =>
           !res.success ? [] : res.modules.filter(module => searchText(query, module)).map(module => ({
             id: `api-mod-${module.url}`, title: module.name, subtitle: module.folders?.join(' · ') || 'Modul',
-            category: 'Module', icon: HomeIcon, href: '/dashboard',
+            category: 'Module', icon: HomeIcon, href: modulePlanHref(module, planNavigation) || '/dashboard',
           }))),
         timetableAPI.getTimetable(token, controller.signal).then(res => {
           if (!res.success) return [];
