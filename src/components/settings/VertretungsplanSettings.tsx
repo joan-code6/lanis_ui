@@ -87,8 +87,13 @@ const VertretungsplanSettings: React.FC = () => {
           <div className="flex items-start gap-2 rounded-xl bg-surface-50 p-3 dark:bg-surface-800/70">
             <InformationCircleIcon className="mt-0.5 h-5 w-5 shrink-0 text-primary-500" />
             <p className="text-sm text-surface-600 dark:text-surface-300">
-              Automatisch erkannt:{' '}
-              <strong className="font-semibold text-surface-900 dark:text-surface-100">{ownClass || 'keine Klasse'}</strong>
+              {ownClass ? (
+                <>Automatisch erkannt:{' '}<strong className="font-semibold text-surface-900 dark:text-surface-100">{ownClass}</strong></>
+              ) : availableClasses.length > 0 ? (
+                <>Keine Profilklasse erkannt. Wähle unten eine Klasse aus dem aktuellen Plan.</>
+              ) : (
+                <>Keine Klasse im Profil oder im aktuellen Plan erkannt.</>
+              )}
             </p>
           </div>
         )}

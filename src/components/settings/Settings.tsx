@@ -4,8 +4,10 @@ import { useTheme, ThemeColor } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useBasePath } from '../../contexts/BasePathContext';
 import { usePreferences } from '../../contexts/PreferencesContext';
-import { notificationsAPI } from '../../services/api';
+import axios from 'axios';
+import { appsAPI, notificationsAPI } from '../../services/api';
 import { NotificationPreferences, PushSubscriptionPayload } from '../../types';
+import { getModuleAvailability, readModulesCache, writeModulesCache } from '../../utils/moduleCache';
 import {
   ArrowDownTrayIcon,
   ArrowLeftIcon,
@@ -133,9 +135,12 @@ const sectionMeta: Record<SettingsSection, { title: string; subtitle: string }> 
   app: { title: 'App & Installation', subtitle: 'Lanis auf deinem Gerät griffbereit halten.' },
 };
 
-const SettingsIndex: React.FC<{ basePath: string }> = ({ basePath }) => (
+const SettingsIndex: React.FC<{
+  basePath: string;
+  sections: typeof settingsSections;
+}> = ({ basePath, sections }) => (
   <div className="divide-y divide-surface-100 overflow-hidden rounded-xl border border-surface-200 bg-white dark:divide-surface-800 dark:border-surface-800 dark:bg-surface-900">
-    {settingsSections.map(item => (
+    {sections.map(item => (
       <Link
         key={item.id}
         to={`${basePath}/settings/${item.id}`}
@@ -172,12 +177,18 @@ const SettingsIndex: React.FC<{ basePath: string }> = ({ basePath }) => (
 const Settings: React.FC = () => {
   const { isDark, themeMode, setThemeMode, themeColor, setThemeColor } = useTheme();
   const { updatePreferences, syncError } = usePreferences();
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const location = useLocation();
   const basePath = useBasePath();
   const settingsRoot = `${basePath}/settings`;
+  const [hasNativeSubstitutionPlan, setHasNativeSubstitutionPlan] = useState(
+    () => getModuleAvailability(readModulesCache(user)).hasNativeSubstitutionPlan,
+  );
+  const visibleSettingsSections = settingsSections.filter(item => (
+    item.id !== 'vertretungsplan' || hasNativeSubstitutionPlan
+  ));
   const requestedSection = location.pathname.slice(settingsRoot.length).split('/').filter(Boolean)[0] as SettingsSection | undefined;
-  const section: SettingsSection = requestedSection && settingsSections.some(item => item.id === requestedSection)
+  const section: SettingsSection = requestedSection && visibleSettingsSections.some(item => item.id === requestedSection)
     ? requestedSection
     : 'home';
   const [installStatus, setInstallStatus] = useState<'idle' | 'installed' | 'unsupported'>('unsupported');
@@ -218,6 +229,29 @@ const Settings: React.FC = () => {
       notificationPrefs.vertretungsplan_class_mode === 'selected'
       && notificationPrefs.vertretungsplan_classes.some(value => value.trim().length > 0)
     );
+
+  useEffect(() => {
+    const cachedModules = readModulesCache(user);
+    setHasNativeSubstitutionPlan(getModuleAvailability(cachedModules).hasNativeSubstitutionPlan);
+    if (!token) return undefined;
+
+    const controller = new AbortController();
+    appsAPI.getModules(token, controller.signal)
+      .then(response => {
+        if (controller.signal.aborted || !response.success) return;
+        writeModulesCache(user, response.modules);
+        setHasNativeSubstitutionPlan(
+          getModuleAvailability(response.modules).hasNativeSubstitutionPlan,
+        );
+      })
+      .catch(error => {
+        if (!axios.isCancel(error)) {
+          console.error('Failed to check Vertretungsplan settings availability:', error);
+        }
+      });
+
+    return () => controller.abort();
+  }, [token, user?.school_id, user?.username]);
 
   useEffect(() => {
     const prompt = getDeferredPrompt();
@@ -628,7 +662,7 @@ const Settings: React.FC = () => {
         <p className="page-subtitle">{sectionMeta[section].subtitle}</p>
       </div>
 
-      {section === 'home' && <SettingsIndex basePath={basePath} />}
+      {section === 'home' && <SettingsIndex basePath={basePath} sections={visibleSettingsSections} />}
 
       {syncError && section !== 'notifications' && section !== 'home' && (
         <p className="mb-5 rounded-xl bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">{syncError}</p>

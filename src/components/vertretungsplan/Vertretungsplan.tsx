@@ -406,7 +406,9 @@ const Vertretungsplan: React.FC = () => {
               </p>
             ) : (
               <p className="mb-5 text-xs text-surface-500 dark:text-surface-400">
-                Keine Klasse im Schulportal-Profil gefunden. Es werden alle Klassen angezeigt.
+                {classOptions.length > 0
+                  ? 'Keine Klasse im Schulportal-Profil gefunden. Wähle eine der Klassen aus dem aktuellen Plan.'
+                  : 'Keine Klasse im Schulportal-Profil oder im aktuellen Plan gefunden.'}
               </p>
             )}
 

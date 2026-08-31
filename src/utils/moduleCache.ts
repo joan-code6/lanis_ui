@@ -2,6 +2,32 @@ import type { Module } from '../types';
 
 export type CachedModule = Module;
 
+export interface ModuleAvailability {
+  hasDsbModule: boolean;
+  hasNativeDateispeicher: boolean;
+  hasNativeSubstitutionPlan: boolean;
+}
+
+export function getModuleAvailability(modules: CachedModule[]): ModuleAvailability {
+  let hasDsbModule = false;
+  let hasNativeDateispeicher = false;
+  let hasNativeSubstitutionPlan = false;
+
+  for (const module of modules) {
+    const links = `${module.url} ${module.direct_url || ''}`.toLowerCase();
+    const name = module.name.toLowerCase();
+    const isDsb = links.includes('dsb') || name.includes('dsb');
+
+    hasDsbModule ||= isDsb;
+    hasNativeDateispeicher ||= links.includes('/dateispeicher.php') || name.includes('dateispeicher');
+    hasNativeSubstitutionPlan ||= !isDsb && (
+      links.includes('/vertretungsplan.php') || name.includes('vertretungsplan')
+    );
+  }
+
+  return { hasDsbModule, hasNativeDateispeicher, hasNativeSubstitutionPlan };
+}
+
 interface ModuleCacheOwner {
   school_id?: string;
   username?: string;

@@ -24,24 +24,8 @@ import {
 import { Link, useLocation } from 'react-router-dom';
 import GlobalSearch from '../search/GlobalSearch';
 import InstallPrompt from '../pwa/InstallPrompt';
-import { readModulesCache, writeModulesCache } from '../../utils/moduleCache';
+import { getModuleAvailability, readModulesCache, writeModulesCache } from '../../utils/moduleCache';
 import type { CachedModule } from '../../utils/moduleCache';
-
-function planModuleAvailability(modules: CachedModule[]) {
-  const hasDsbModule = modules.some(module => {
-    const links = `${module.url} ${module.direct_url || ''}`.toLowerCase();
-    return module.name.toLowerCase().includes('dsb') || links.includes('dsb');
-  });
-  const hasNativeSubstitutionPlan = modules.some(module => {
-    const links = `${module.url} ${module.direct_url || ''}`.toLowerCase();
-    const name = module.name.toLowerCase();
-    const isDsb = links.includes('dsb') || name.includes('dsb');
-    return !isDsb && (
-      links.includes('/vertretungsplan.php') || name.includes('vertretungsplan')
-    );
-  });
-  return { hasDsbModule, hasNativeSubstitutionPlan };
-}
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -92,12 +76,8 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
     if (!token) return;
     const abortController = new AbortController();
     const applyModuleAvailability = (modules: CachedModule[]) => {
-      const availability = planModuleAvailability(modules);
-      const hasDateispeicher = modules.some(module => {
-        const links = `${module.url} ${module.direct_url || ''}`.toLowerCase();
-        return links.includes('/dateispeicher.php') || module.name.toLowerCase().includes('dateispeicher');
-      });
-      setHasNativeDateispeicher(hasDateispeicher);
+      const availability = getModuleAvailability(modules);
+      setHasNativeDateispeicher(availability.hasNativeDateispeicher);
       setHasNativeSubstitutionPlan(availability.hasNativeSubstitutionPlan);
       setHasDsbModule(availability.hasDsbModule);
     };

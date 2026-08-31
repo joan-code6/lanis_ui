@@ -678,11 +678,21 @@ export const vertretungsplanAPI = {
   },
 
   async getOptions(token: string, signal?: AbortSignal): Promise<VertretungsplanOptionsResponse> {
-    const response = await apiClient.get<VertretungsplanOptionsResponse>('/vertretungsplan/options', {
+    const config = {
       headers: { 'X-Session-Token': token },
       signal,
-    });
-    return response.data;
+    };
+    try {
+      const response = await apiClient.get<VertretungsplanOptionsResponse>(
+        '/notifications/vertretungsplan/options',
+        config,
+      );
+      return response.data;
+    } catch (error) {
+      if (!axios.isAxiosError(error) || error.response?.status !== 404) throw error;
+      const response = await apiClient.get<VertretungsplanOptionsResponse>('/vertretungsplan/options', config);
+      return response.data;
+    }
   },
 };
 
