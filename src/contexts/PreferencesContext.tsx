@@ -11,6 +11,7 @@ export const DEFAULT_USER_PREFERENCES: UserPreferences = {
   appearance: { theme_mode: 'system', theme_color: 'cyan' },
   dashboard: { pinned_modules: [], view_mode: 'grid' },
   timetable: { view_mode: 'rolling' },
+  homework: { completed_display: 'green' },
   vertretungsplan: { class_override: '' },
   onboarding: { version: 0, status: 'not_started', last_step: 'welcome' },
 };
@@ -37,20 +38,28 @@ const mergePreferences = (
   appearance: { ...current.appearance, ...patch.appearance },
   dashboard: { ...current.dashboard, ...patch.dashboard },
   timetable: { ...current.timetable, ...patch.timetable },
+  homework: { ...current.homework, ...patch.homework },
   vertretungsplan: { ...current.vertretungsplan, ...patch.vertretungsplan },
   onboarding: { ...current.onboarding, ...patch.onboarding },
 });
 
-const normalizePreferences = (value?: Partial<UserPreferences>): UserPreferences => mergePreferences(
-  DEFAULT_USER_PREFERENCES,
-  {
+const normalizePreferences = (value?: Partial<UserPreferences>): UserPreferences => {
+  const homework = value?.homework as (Partial<UserPreferences['homework']> & { hide_completed_in_overview?: boolean }) | undefined;
+  const migratedHomework = homework?.completed_display
+    ? { completed_display: homework.completed_display }
+    : typeof homework?.hide_completed_in_overview === 'boolean'
+      ? { completed_display: homework.hide_completed_in_overview ? 'hidden' as const : 'orange' as const }
+      : undefined;
+
+  return mergePreferences(DEFAULT_USER_PREFERENCES, {
     appearance: value?.appearance,
     dashboard: value?.dashboard,
     timetable: value?.timetable,
+    homework: migratedHomework,
     vertretungsplan: value?.vertretungsplan,
     onboarding: value?.onboarding,
-  },
-);
+  });
+};
 
 const legacyPreferences = (): UserPreferences => {
   const mode = localStorage.getItem('lanis_theme_mode');

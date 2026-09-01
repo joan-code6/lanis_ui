@@ -13,6 +13,7 @@ import {
   ArrowLeftIcon,
   BellAlertIcon,
   BellIcon,
+  BookOpenIcon,
   CalendarDaysIcon,
   CheckIcon,
   ChevronRightIcon,
@@ -29,6 +30,7 @@ import SEO from '../seo/SEO';
 import { getDeferredPrompt } from '../pwa/InstallPrompt';
 import TimetableSettings from './TimetableSettings';
 import VertretungsplanSettings from './VertretungsplanSettings';
+import HomeworkSettings from './HomeworkSettings';
 
 const isStandalone = () =>
   window.matchMedia('(display-mode: standalone)').matches ||
@@ -86,7 +88,7 @@ const pushSubscriptionToPayload = (subscription: PushSubscription): PushSubscrip
   };
 };
 
-type SettingsSection = 'home' | 'appearance' | 'timetable' | 'vertretungsplan' | 'notifications' | 'app';
+type SettingsSection = 'home' | 'appearance' | 'timetable' | 'homework' | 'vertretungsplan' | 'notifications' | 'app';
 
 const settingsSections: Array<{
   id: Exclude<SettingsSection, 'home'>;
@@ -105,6 +107,12 @@ const settingsSections: Array<{
     title: 'Stundenplan',
     description: 'Anzeige wählen, Stunden ändern und Kurse verknüpfen.',
     icon: CalendarDaysIcon,
+  },
+  {
+    id: 'homework',
+    title: 'Hausaufgaben',
+    description: 'Festlegen, ob erledigte Aufgaben in der Übersicht erscheinen.',
+    icon: BookOpenIcon,
   },
   {
     id: 'vertretungsplan',
@@ -130,6 +138,7 @@ const sectionMeta: Record<SettingsSection, { title: string; subtitle: string }> 
   home: { title: 'Einstellungen', subtitle: 'Passe dein Schulportal an.' },
   appearance: { title: 'Erscheinungsbild', subtitle: 'Farben und Oberfläche an deine Gewohnheiten anpassen.' },
   timetable: { title: 'Stundenplan', subtitle: 'Anzeige und eigene Stundenplanänderungen verwalten.' },
+  homework: { title: 'Hausaufgaben', subtitle: 'Lege fest, ob erledigte Aufgaben in „Mein Unterricht“ erscheinen.' },
   vertretungsplan: { title: 'Vertretungsplan', subtitle: 'Die passende Klasse automatisch auswählen oder selbst festlegen.' },
   notifications: { title: 'Benachrichtigungen', subtitle: 'Nachrichten und neue Vertretungsplan-Einträge per Web-Push mitbekommen.' },
   app: { title: 'App & Installation', subtitle: 'Lanis auf deinem Gerät griffbereit halten.' },
@@ -166,7 +175,7 @@ const SettingsIndex: React.FC<{
         </div>
         <div className="min-w-0 flex-1">
           <h2 className="font-medium text-surface-900 dark:text-white">Einrichtung erneut starten</h2>
-          <p className="mt-0.5 text-sm text-surface-500">Aussehen, Favoriten und Stundenplan gemeinsam anpassen.</p>
+          <p className="mt-0.5 text-sm text-surface-500">Aussehen, Favoriten, Stundenplan und Hausaufgaben gemeinsam anpassen.</p>
         </div>
         <ChevronRightIcon className="h-5 w-5 shrink-0 text-surface-300 group-hover:text-surface-500 dark:text-surface-600" />
       </Link>
@@ -669,6 +678,7 @@ const Settings: React.FC = () => {
       )}
 
       {section === 'timetable' && <TimetableSettings />}
+      {section === 'homework' && <HomeworkSettings />}
       {section === 'vertretungsplan' && <VertretungsplanSettings />}
 
       <div className="space-y-6">

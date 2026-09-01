@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useBasePath } from '../../contexts/BasePathContext';
+import { usePreferences } from '../../contexts/PreferencesContext';
 import { useNavigate, useParams } from 'react-router-dom';
 import { coursesAPI } from '../../services/api';
 import axios from 'axios';
@@ -249,6 +250,7 @@ const CourseExams: React.FC<{ exams?: string[] }> = ({ exams = [] }) => {
 
 const Courses: React.FC = () => {
   const { token } = useAuth();
+  const { preferences } = usePreferences();
   const navigate = useNavigate();
   const { id: courseIdFromUrl } = useParams();
   const basePath = useBasePath();
@@ -271,6 +273,7 @@ const Courses: React.FC = () => {
   const [detailViewMode, setDetailViewMode] = useState<'cards' | 'timeline'>('cards');
   const [dynamicAttendanceOptions, setDynamicAttendanceOptions] = useState<string[]>([]);
   const [courseDetailTab, setCourseDetailTab] = useState<CourseDetailTab>('history');
+  const completedHomeworkDisplay = preferences.homework.completed_display;
 
   const selectedCourseOverview = useMemo(
     () => courses.find(course => course.book_id === (selectedCourse?.course_id || courseIdFromUrl)),
@@ -692,10 +695,34 @@ const Courses: React.FC = () => {
                     </div>
                   )}
                   
-                  {course.homework && (
-                    <div className="mt-3 p-2 border border-yellow-200 dark:border-yellow-700 rounded">
-                      <div className="text-xs font-medium text-yellow-700 dark:text-yellow-300 mb-1">Hausaufgaben:</div>
-                      <div className="text-sm text-yellow-800 dark:text-yellow-200">{course.homework?.trim()}</div>
+                  {course.homework && (!course.homework_done || completedHomeworkDisplay !== 'hidden') && (
+                    <div className={clsx(
+                      'mt-3 rounded border p-2 transition-colors',
+                      !course.homework_done
+                        ? 'border-yellow-200 dark:border-yellow-700'
+                        : completedHomeworkDisplay === 'orange'
+                          ? 'border-orange-200 bg-orange-50/40 dark:border-orange-800 dark:bg-orange-950/20'
+                          : 'border-emerald-100 bg-emerald-50/60 dark:border-emerald-900 dark:bg-emerald-950/20',
+                    )}>
+                      <div className={clsx(
+                        'mb-1 flex items-center gap-1 text-xs font-medium',
+                        !course.homework_done
+                          ? 'text-yellow-700 dark:text-yellow-300'
+                          : completedHomeworkDisplay === 'orange'
+                            ? 'text-orange-700 dark:text-orange-300'
+                            : 'text-emerald-700 dark:text-emerald-300',
+                      )}>
+                        {course.homework_done && <CheckCircleIcon className="h-3.5 w-3.5" />}
+                        Hausaufgaben{course.homework_done ? ' · Erledigt' : ''}:
+                      </div>
+                      <div className={clsx(
+                        'text-sm',
+                        !course.homework_done
+                          ? 'text-yellow-800 dark:text-yellow-200'
+                          : completedHomeworkDisplay === 'orange'
+                            ? 'text-orange-800 dark:text-orange-200'
+                            : 'text-emerald-800 dark:text-emerald-200',
+                      )}>{course.homework?.trim()}</div>
                     </div>
                   )}
 
