@@ -70,6 +70,7 @@ export type DashboardViewMode = 'grid' | 'list';
 export type TimetableViewMode = 'rolling' | 'week';
 export type OnboardingStatus = 'not_started' | 'in_progress' | 'completed' | 'skipped';
 export type OnboardingStep = 'welcome' | 'appearance' | 'dashboard' | 'timetable' | 'homework' | 'guide' | 'complete';
+export type CompletedHomeworkDisplay = 'orange' | 'green' | 'hidden';
 
 export interface UserPreferences {
   appearance: {
@@ -84,7 +85,7 @@ export interface UserPreferences {
     view_mode: TimetableViewMode;
   };
   homework: {
-    hide_completed_in_overview: boolean;
+    completed_display: CompletedHomeworkDisplay;
   };
   vertretungsplan: {
     class_override: string;
