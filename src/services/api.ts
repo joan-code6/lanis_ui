@@ -493,6 +493,15 @@ export const coursesAPI = {
     return response.data;
   },
 
+  async downloadFile(token: string, fileHash: string, signal?: AbortSignal): Promise<Blob> {
+    const response = await apiClient.get<Blob>(`/meinunterricht/file/${encodeURIComponent(fileHash)}`, {
+      headers: { 'X-Session-Token': token },
+      responseType: 'blob',
+      signal,
+    });
+    return response.data;
+  },
+
   async getEntryDetails(token: string, url: string, signal?: AbortSignal): Promise<EntryDetailsResponse> {
     const response = await apiClient.get<EntryDetailsResponse>('/meinunterricht/entry', {
       headers: { 'X-Session-Token': token },

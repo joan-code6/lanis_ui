@@ -365,6 +365,7 @@ export interface CourseDetailsResponse {
 export interface EntryAttachment {
   name: string;
   url: string;
+  file_hash?: string;
   [key: string]: any;
 }
 

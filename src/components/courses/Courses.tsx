@@ -12,6 +12,7 @@ import {
   CourseDetails,
   CourseMark,
   CourseDetailEntry,
+  EntryAttachment,
   EntryDetailsResponse,
   EntryDetails,
   WeeklyViewResponse,
@@ -271,6 +272,7 @@ const Courses: React.FC = () => {
   const [detailViewMode, setDetailViewMode] = useState<'cards' | 'timeline'>('cards');
   const [dynamicAttendanceOptions, setDynamicAttendanceOptions] = useState<string[]>([]);
   const [courseDetailTab, setCourseDetailTab] = useState<CourseDetailTab>('history');
+  const [downloadingFileHash, setDownloadingFileHash] = useState<string | null>(null);
 
   const selectedCourseOverview = useMemo(
     () => courses.find(course => course.book_id === (selectedCourse?.course_id || courseIdFromUrl)),
@@ -400,6 +402,31 @@ const Courses: React.FC = () => {
       console.error('Error loading entry details:', error);
       setError('Fehler beim Laden der Eintragsdetails.');
       setIsLoading(false);
+    }
+  };
+
+  const downloadCourseFile = async (file: EntryAttachment) => {
+    if (!token || !file.file_hash || downloadingFileHash !== null) return;
+
+    setDownloadingFileHash(file.file_hash);
+    setError('');
+    try {
+      const blob = await coursesAPI.downloadFile(token, file.file_hash);
+      const objectUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = objectUrl;
+      link.download = file.name || 'download';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+    } catch (error) {
+      if (!axios.isCancel(error)) {
+        console.error('Error downloading course file:', error);
+        setError('Die Datei konnte nicht heruntergeladen werden.');
+      }
+    } finally {
+      setDownloadingFileHash(null);
     }
   };
 
@@ -983,31 +1010,36 @@ const Courses: React.FC = () => {
                             {entry.files.map((file, index) => (
                               <a
                                 key={index}
-                                href={file.url !== '#' ? file.url : undefined}
+                                href={!file.file_hash && file.url !== '#' ? file.url : undefined}
+                                onClick={file.file_hash ? (event) => {
+                                  event.preventDefault();
+                                  void downloadCourseFile(file);
+                                } : undefined}
                                 className={clsx(
                                   "inline-flex items-center p-2.5 sm:p-3 rounded-lg border transition-all min-w-0 sm:min-w-48",
-                                  file.url !== '#' 
+                                  file.file_hash || file.url !== '#'
                                     ? "border-primary-200 hover:border-primary-300 cursor-pointer group" 
                                     : "border-surface-200 dark:border-surface-700 cursor-not-allowed opacity-60"
                                 )}
-                                target="_blank"
-                                rel="noopener noreferrer"
+                                target={!file.file_hash ? "_blank" : undefined}
+                                rel={!file.file_hash ? "noopener noreferrer" : undefined}
+                                aria-busy={downloadingFileHash === file.file_hash}
                               >
                                 <div className={clsx(
                                   "h-8 w-8 rounded flex items-center justify-center flex-shrink-0"
                                 )}>
                                   <DocumentTextIcon className={clsx(
                                     "h-4 w-4",
-                                    file.url !== '#' ? "text-primary-600" : "text-surface-400 dark:text-surface-500"
+                                    file.file_hash || file.url !== '#' ? "text-primary-600" : "text-surface-400 dark:text-surface-500"
                                   )} />
                                 </div>
                                 <span className={clsx(
                                   "ml-3 text-sm font-medium truncate",
-                                  file.url !== '#' ? "text-primary-700 group-hover:text-primary-800" : "text-surface-500 dark:text-surface-400"
+                                  file.file_hash || file.url !== '#' ? "text-primary-700 group-hover:text-primary-800" : "text-surface-500 dark:text-surface-400"
                                 )}>
-                                  {file.name}
+                                  {downloadingFileHash === file.file_hash ? 'Wird geladen…' : file.name}
                                 </span>
-                                {file.url !== '#' && (
+                                {(file.file_hash || file.url !== '#') && downloadingFileHash !== file.file_hash && (
                                   <ArrowTopRightOnSquareIcon className="h-4 w-4 ml-auto text-primary-500 opacity-0 group-hover:opacity-100 transition-opacity" />
                                 )}
                               </a>
@@ -1101,18 +1133,23 @@ const Courses: React.FC = () => {
                               {entry.files.map((file, fileIndex) => (
                                 <a
                                   key={fileIndex}
-                                  href={file.url !== '#' ? file.url : undefined}
+                                  href={!file.file_hash && file.url !== '#' ? file.url : undefined}
+                                  onClick={file.file_hash ? (event) => {
+                                    event.preventDefault();
+                                    void downloadCourseFile(file);
+                                  } : undefined}
                                   className={clsx(
                                     "inline-flex items-center px-3 py-1.5 rounded-lg text-xs border",
-                                    file.url !== '#'
+                                    file.file_hash || file.url !== '#'
                                       ? "border-primary-200 text-primary-700 cursor-pointer"
                                       : "border-surface-200 dark:border-surface-700 text-surface-400 dark:text-surface-500 cursor-not-allowed"
                                   )}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
+                                  target={!file.file_hash ? "_blank" : undefined}
+                                  rel={!file.file_hash ? "noopener noreferrer" : undefined}
+                                  aria-busy={downloadingFileHash === file.file_hash}
                                 >
                                   <DocumentTextIcon className="h-3 w-3 mr-1" />
-                                  {file.name}
+                                  {downloadingFileHash === file.file_hash ? 'Wird geladen…' : file.name}
                                 </a>
                               ))}
                             </div>
