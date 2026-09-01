@@ -69,7 +69,7 @@ export type ThemeColor = 'emerald' | 'sapphire' | 'amethyst' | 'ruby' | 'amber' 
 export type DashboardViewMode = 'grid' | 'list';
 export type TimetableViewMode = 'rolling' | 'week';
 export type OnboardingStatus = 'not_started' | 'in_progress' | 'completed' | 'skipped';
-export type OnboardingStep = 'welcome' | 'appearance' | 'dashboard' | 'timetable' | 'guide' | 'complete';
+export type OnboardingStep = 'welcome' | 'appearance' | 'dashboard' | 'timetable' | 'homework' | 'guide' | 'complete';
 
 export interface UserPreferences {
   appearance: {
@@ -82,6 +82,9 @@ export interface UserPreferences {
   };
   timetable: {
     view_mode: TimetableViewMode;
+  };
+  homework: {
+    hide_completed_in_overview: boolean;
   };
   vertretungsplan: {
     class_override: string;

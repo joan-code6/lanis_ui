@@ -5,7 +5,9 @@ import {
   ArrowLeftIcon,
   ArrowRightIcon,
   Bars3Icon,
+  BookOpenIcon,
   CalendarDaysIcon,
+  CheckCircleIcon,
   CheckIcon,
   CloudArrowUpIcon,
   Cog6ToothIcon,
@@ -28,6 +30,7 @@ const steps: Array<{ id: Exclude<OnboardingStep, 'complete'>; label: string }> =
   { id: 'appearance', label: 'Aussehen' },
   { id: 'dashboard', label: 'Favoriten' },
   { id: 'timetable', label: 'Stundenplan' },
+  { id: 'homework', label: 'Hausaufgaben' },
   { id: 'guide', label: 'Loslegen' },
 ];
 
@@ -66,6 +69,9 @@ const Onboarding: React.FC = () => {
   const [themeColor, setDraftThemeColor] = useState(preferences.appearance.theme_color);
   const [pinnedModules, setPinnedModules] = useState(preferences.dashboard.pinned_modules);
   const [timetableMode, setTimetableMode] = useState<TimetableViewMode>(preferences.timetable.view_mode);
+  const [hideCompletedHomeworkInOverview, setHideCompletedHomeworkInOverview] = useState(
+    preferences.homework.hide_completed_in_overview,
+  );
   const [modules, setModules] = useState<Module[]>([]);
   const [modulesLoading, setModulesLoading] = useState(true);
   const [localError, setLocalError] = useState('');
@@ -87,6 +93,7 @@ const Onboarding: React.FC = () => {
     setDraftThemeColor(preferences.appearance.theme_color);
     setPinnedModules(preferences.dashboard.pinned_modules);
     setTimetableMode(preferences.timetable.view_mode);
+    setHideCompletedHomeworkInOverview(preferences.homework.hide_completed_in_overview);
   }, [isLoading, preferences]);
 
   useEffect(() => {
@@ -137,7 +144,9 @@ const Onboarding: React.FC = () => {
         ? { dashboard: { pinned_modules: pinnedModules } }
         : activeStep.id === 'timetable'
           ? { timetable: { view_mode: timetableMode } }
-          : {};
+          : activeStep.id === 'homework'
+            ? { homework: { hide_completed_in_overview: hideCompletedHomeworkInOverview } }
+            : {};
     if (activeStep.id === 'appearance') {
       appearanceToRestoreRef.current = { theme_mode: themeMode, theme_color: themeColor };
     }
@@ -168,6 +177,7 @@ const Onboarding: React.FC = () => {
       appearance: original.appearance,
       dashboard: original.dashboard,
       timetable: original.timetable,
+      homework: original.homework,
       onboarding: { version: CURRENT_ONBOARDING_VERSION, status: 'skipped', last_step: 'complete' },
     });
     navigate('/dashboard', { replace: true });
@@ -179,6 +189,7 @@ const Onboarding: React.FC = () => {
       appearance: { theme_mode: themeMode, theme_color: themeColor },
       dashboard: { pinned_modules: pinnedModules },
       timetable: { view_mode: timetableMode },
+      homework: { hide_completed_in_overview: hideCompletedHomeworkInOverview },
       onboarding: { version: CURRENT_ONBOARDING_VERSION, status: 'completed', last_step: 'complete' },
     });
     navigate('/dashboard', { replace: true });
@@ -314,6 +325,32 @@ const Onboarding: React.FC = () => {
               </div>
             )}
 
+            {activeStep.id === 'homework' && (
+              <div className="max-w-2xl">
+                <StepHeading
+                  icon={BookOpenIcon}
+                  eyebrow="Klare Prioritäten"
+                  title="Sollen erledigte Hausaufgaben aus der Übersicht verschwinden?"
+                  description="In den Kursdetails bleiben alle Hausaufgaben sichtbar. Hier entscheidest du nur über die Übersicht in „Mein Unterricht“."
+                />
+                <div className="mt-7 grid gap-4 sm:grid-cols-2">
+                  <HomeworkChoice
+                    selected={hideCompletedHomeworkInOverview}
+                    title="Aus der Übersicht ausblenden"
+                    description="Nach dem Abhaken verschwindet die Hausaufgabe aus „Mein Unterricht“."
+                    hiddenInOverview
+                    onClick={() => setHideCompletedHomeworkInOverview(true)}
+                  />
+                  <HomeworkChoice
+                    selected={!hideCompletedHomeworkInOverview}
+                    title="Weiterhin anzeigen"
+                    description="Erledigte Hausaufgaben bleiben auch in der Übersicht sichtbar."
+                    onClick={() => setHideCompletedHomeworkInOverview(false)}
+                  />
+                </div>
+              </div>
+            )}
+
             {activeStep.id === 'guide' && (
               <div className="max-w-2xl">
                 <StepHeading icon={AcademicCapIcon} eyebrow="Gut zu wissen" title="So findest du dich sofort zurecht." description="Vier Dinge reichen für den Start. Alles Weitere entdeckst du dort, wo du es brauchst." />
@@ -359,6 +396,31 @@ const StepHeading: React.FC<{ icon: React.ComponentType<React.SVGProps<SVGSVGEle
 const TimetableChoice: React.FC<{ selected: boolean; title: string; description: string; days: string[]; onClick: () => void }> = ({ selected, title, description, days, onClick }) => (
   <button type="button" onClick={onClick} className={`rounded-2xl border p-4 text-left transition-all ${selected ? 'border-primary-500 bg-primary-50 ring-2 ring-primary-500/15 dark:bg-primary-950/40' : 'border-surface-200 bg-white hover:border-primary-300 dark:border-surface-800 dark:bg-surface-900'}`} aria-pressed={selected}>
     <div className="mb-4 flex gap-1">{days.map((day, index) => <span key={day} className={`flex h-8 min-w-8 flex-1 items-center justify-center rounded-lg text-[9px] font-semibold ${index === 0 ? 'bg-primary-600 text-white' : 'bg-surface-100 text-surface-500 dark:bg-surface-800'}`}>{day}</span>)}</div>
+    <p className="font-semibold">{title}</p>
+    <p className="mt-1 text-sm leading-5 text-surface-500">{description}</p>
+  </button>
+);
+
+const HomeworkChoice: React.FC<{
+  selected: boolean;
+  title: string;
+  description: string;
+  hiddenInOverview?: boolean;
+  onClick: () => void;
+}> = ({ selected, title, description, hiddenInOverview = false, onClick }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    className={`rounded-2xl border p-4 text-left transition-all ${selected ? 'border-primary-500 bg-primary-50 ring-2 ring-primary-500/15 dark:bg-primary-950/40' : 'border-surface-200 bg-white hover:border-primary-300 dark:border-surface-800 dark:bg-surface-900'}`}
+    aria-pressed={selected}
+  >
+    <div className={`mb-4 rounded-xl border-l-4 p-3 ${hiddenInOverview ? 'border-dashed border-surface-300 bg-surface-50 dark:border-surface-600 dark:bg-surface-800/70' : 'border-amber-400 bg-amber-50 dark:border-amber-500 dark:bg-amber-950/35'}`}>
+      <span className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">
+        <CheckCircleIcon className="h-3.5 w-3.5" />
+        {hiddenInOverview ? 'In der Übersicht ausgeblendet' : 'Erledigt · sichtbar'}
+      </span>
+      <span className="mt-1.5 block text-xs text-surface-500 line-through decoration-surface-400">Arbeitsblatt fertigstellen</span>
+    </div>
     <p className="font-semibold">{title}</p>
     <p className="mt-1 text-sm leading-5 text-surface-500">{description}</p>
   </button>

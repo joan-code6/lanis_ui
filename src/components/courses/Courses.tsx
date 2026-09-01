@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useBasePath } from '../../contexts/BasePathContext';
+import { usePreferences } from '../../contexts/PreferencesContext';
 import { useNavigate, useParams } from 'react-router-dom';
 import { coursesAPI } from '../../services/api';
 import axios from 'axios';
@@ -249,6 +250,7 @@ const CourseExams: React.FC<{ exams?: string[] }> = ({ exams = [] }) => {
 
 const Courses: React.FC = () => {
   const { token } = useAuth();
+  const { preferences } = usePreferences();
   const navigate = useNavigate();
   const { id: courseIdFromUrl } = useParams();
   const basePath = useBasePath();
@@ -271,6 +273,7 @@ const Courses: React.FC = () => {
   const [detailViewMode, setDetailViewMode] = useState<'cards' | 'timeline'>('cards');
   const [dynamicAttendanceOptions, setDynamicAttendanceOptions] = useState<string[]>([]);
   const [courseDetailTab, setCourseDetailTab] = useState<CourseDetailTab>('history');
+  const hideCompletedHomeworkInOverview = preferences.homework.hide_completed_in_overview;
 
   const selectedCourseOverview = useMemo(
     () => courses.find(course => course.book_id === (selectedCourse?.course_id || courseIdFromUrl)),
@@ -692,7 +695,7 @@ const Courses: React.FC = () => {
                     </div>
                   )}
                   
-                  {course.homework && (
+                  {course.homework && (!course.homework_done || !hideCompletedHomeworkInOverview) && (
                     <div className="mt-3 p-2 border border-yellow-200 dark:border-yellow-700 rounded">
                       <div className="text-xs font-medium text-yellow-700 dark:text-yellow-300 mb-1">Hausaufgaben:</div>
                       <div className="text-sm text-yellow-800 dark:text-yellow-200">{course.homework?.trim()}</div>
