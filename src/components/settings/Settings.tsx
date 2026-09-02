@@ -11,18 +11,23 @@ import { getModuleAvailability, readModulesCache, writeModulesCache } from '../.
 import {
   ArrowDownTrayIcon,
   ArrowLeftIcon,
+  ArrowPathIcon,
+  Bars3Icon,
   BellAlertIcon,
   BellIcon,
   BookOpenIcon,
   CalendarDaysIcon,
   CheckIcon,
   ChevronRightIcon,
+  ChevronDownIcon,
+  ChevronUpIcon,
   ClockIcon,
   ClipboardDocumentListIcon,
   DevicePhoneMobileIcon,
   InboxIcon,
   MoonIcon,
   PaintBrushIcon,
+  ServerStackIcon,
   SunIcon,
   SparklesIcon,
 } from '@heroicons/react/24/outline';
@@ -31,6 +36,12 @@ import { getDeferredPrompt } from '../pwa/InstallPrompt';
 import TimetableSettings from './TimetableSettings';
 import VertretungsplanSettings from './VertretungsplanSettings';
 import HomeworkSettings from './HomeworkSettings';
+import {
+  DEFAULT_SIDEBAR_ORDER,
+  normalizeSidebarOrder,
+  SIDEBAR_ITEM_LABELS,
+  SidebarItemId,
+} from '../../utils/sidebarNavigation';
 
 const isStandalone = () =>
   window.matchMedia('(display-mode: standalone)').matches ||
@@ -88,7 +99,7 @@ const pushSubscriptionToPayload = (subscription: PushSubscription): PushSubscrip
   };
 };
 
-type SettingsSection = 'home' | 'appearance' | 'timetable' | 'homework' | 'vertretungsplan' | 'notifications' | 'app';
+type SettingsSection = 'home' | 'appearance' | 'timetable' | 'homework' | 'vertretungsplan' | 'notifications' | 'app' | 'sidebar';
 
 const settingsSections: Array<{
   id: Exclude<SettingsSection, 'home'>;
@@ -132,6 +143,12 @@ const settingsSections: Array<{
     description: 'Lanis installieren und Geräteoptionen ansehen.',
     icon: DevicePhoneMobileIcon,
   },
+  {
+    id: 'sidebar',
+    title: 'Seitenleiste',
+    description: 'Reihenfolge der Einträge in der Seitenleiste anpassen.',
+    icon: Bars3Icon,
+  },
 ];
 
 const sectionMeta: Record<SettingsSection, { title: string; subtitle: string }> = {
@@ -142,6 +159,170 @@ const sectionMeta: Record<SettingsSection, { title: string; subtitle: string }> 
   vertretungsplan: { title: 'Vertretungsplan', subtitle: 'Die passende Klasse automatisch auswählen oder selbst festlegen.' },
   notifications: { title: 'Benachrichtigungen', subtitle: 'Nachrichten und neue Vertretungsplan-Einträge per Web-Push mitbekommen.' },
   app: { title: 'App & Installation', subtitle: 'Lanis auf deinem Gerät griffbereit halten.' },
+  sidebar: { title: 'Seitenleiste', subtitle: 'Ordne die Einträge in der Seitenleiste nach deinen Wünschen.' },
+};
+
+type SidebarSaveState = 'idle' | 'saved' | 'error';
+
+const SidebarSettings: React.FC = () => {
+  const { preferences, updatePreferences, isSaving } = usePreferences();
+  const [order, setOrder] = useState(() => normalizeSidebarOrder(preferences.sidebar.order));
+  const [draggedId, setDraggedId] = useState<SidebarItemId | null>(null);
+  const [saveState, setSaveState] = useState<SidebarSaveState>('idle');
+
+  useEffect(() => {
+    setOrder(normalizeSidebarOrder(preferences.sidebar.order));
+  }, [preferences.sidebar.order]);
+
+  const moveItem = (index: number, direction: -1 | 1) => {
+    const nextIndex = index + direction;
+    if (nextIndex < 0 || nextIndex >= order.length) return;
+    const next = [...order];
+    [next[index], next[nextIndex]] = [next[nextIndex], next[index]];
+    setOrder(next);
+    setSaveState('idle');
+  };
+
+  const moveItemTo = (itemId: SidebarItemId, targetId: SidebarItemId) => {
+    setOrder(current => {
+      const fromIndex = current.indexOf(itemId);
+      const toIndex = current.indexOf(targetId);
+      if (fromIndex === -1 || toIndex === -1 || fromIndex === toIndex) return current;
+      const next = [...current];
+      const [movedItem] = next.splice(fromIndex, 1);
+      next.splice(toIndex, 0, movedItem);
+      return next;
+    });
+    setSaveState('idle');
+  };
+
+  const hasChanges = JSON.stringify(order) !== JSON.stringify(normalizeSidebarOrder(preferences.sidebar.order));
+
+  const applyOrder = async () => {
+    setSaveState('idle');
+    const saved = await updatePreferences({ sidebar: { order } });
+    setSaveState(saved ? 'saved' : 'error');
+  };
+
+  const cancelChanges = () => {
+    setOrder(normalizeSidebarOrder(preferences.sidebar.order));
+    setSaveState('idle');
+  };
+
+  const resetOrder = () => {
+    setOrder([...DEFAULT_SIDEBAR_ORDER]);
+    setSaveState('idle');
+  };
+
+  return (
+    <section className="card !p-0 overflow-hidden">
+      <div className="border-b border-surface-100 px-5 py-5 dark:border-surface-800 sm:px-6">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h3 className="text-base font-semibold text-surface-900 dark:text-surface-100">Deine Navigation</h3>
+            <p className="mt-1 max-w-xl text-sm leading-6 text-surface-500 dark:text-surface-400">
+              Ziehe Einträge am Griff an ihre neue Position oder nutze die Pfeile. Die Reihenfolge gilt auf all deinen Geräten.
+            </p>
+          </div>
+          {hasChanges && (
+            <span className="badge badge-primary shrink-0">Nicht gespeichert</span>
+          )}
+        </div>
+      </div>
+
+      <ol className="space-y-2 bg-surface-50/70 p-3 dark:bg-surface-950/30 sm:p-4" aria-label="Reihenfolge der Seitenleiste">
+        {order.map((id, index) => (
+          <li
+            key={id}
+            onDragOver={(event) => event.preventDefault()}
+            onDragEnter={() => {
+              if (draggedId) moveItemTo(draggedId, id);
+            }}
+            onDrop={() => setDraggedId(null)}
+            className={`flex min-h-14 items-center gap-3 rounded-xl border bg-white px-3 py-2 shadow-sm transition-[transform,background-color,border-color,box-shadow] duration-150 dark:bg-surface-900 sm:px-4 ${
+              draggedId === id
+                ? 'scale-[1.015] border-primary-300 bg-primary-50 shadow-soft-md dark:border-primary-700 dark:bg-primary-950/30'
+                : 'border-surface-200 dark:border-surface-700'
+            }`}
+          >
+            <span className="w-6 shrink-0 text-center text-xs font-semibold tabular-nums text-surface-400 dark:text-surface-500" aria-hidden="true">
+              {String(index + 1).padStart(2, '0')}
+            </span>
+            <span
+              draggable
+              onDragStart={(event) => {
+                event.dataTransfer.effectAllowed = 'move';
+                event.dataTransfer.setData('text/plain', id);
+                setDraggedId(id);
+              }}
+              onDragEnd={() => setDraggedId(null)}
+              className="hidden cursor-grab touch-none rounded-lg p-2 text-surface-400 hover:bg-surface-100 hover:text-surface-600 active:cursor-grabbing dark:hover:bg-surface-800 dark:hover:text-surface-200 sm:block"
+              title={`${SIDEBAR_ITEM_LABELS[id]} ziehen`}
+            >
+              <Bars3Icon className="h-5 w-5" aria-hidden="true" />
+            </span>
+            <span className="min-w-0 flex-1 text-sm font-medium text-surface-800 dark:text-surface-200">
+              {SIDEBAR_ITEM_LABELS[id]}
+            </span>
+            <span className="sr-only">Position {index + 1} von {order.length}</span>
+            <button
+              type="button"
+              onClick={() => moveItem(index, -1)}
+              disabled={index === 0}
+              aria-label={`${SIDEBAR_ITEM_LABELS[id]} nach oben verschieben`}
+              className="flex h-10 w-10 items-center justify-center rounded-lg text-surface-500 transition-colors hover:bg-surface-100 hover:text-surface-800 focus:outline-none focus:ring-2 focus:ring-primary-500/40 disabled:cursor-not-allowed disabled:opacity-25 dark:hover:bg-surface-800 dark:hover:text-surface-100"
+            >
+              <ChevronUpIcon className="h-5 w-5" aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              onClick={() => moveItem(index, 1)}
+              disabled={index === order.length - 1}
+              aria-label={`${SIDEBAR_ITEM_LABELS[id]} nach unten verschieben`}
+              className="flex h-10 w-10 items-center justify-center rounded-lg text-surface-500 transition-colors hover:bg-surface-100 hover:text-surface-800 focus:outline-none focus:ring-2 focus:ring-primary-500/40 disabled:cursor-not-allowed disabled:opacity-25 dark:hover:bg-surface-800 dark:hover:text-surface-100"
+            >
+              <ChevronDownIcon className="h-5 w-5" aria-hidden="true" />
+            </button>
+          </li>
+        ))}
+      </ol>
+
+      <div className="border-t border-surface-100 px-4 py-4 dark:border-surface-800 sm:px-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <button type="button" onClick={resetOrder} disabled={isSaving} className="btn btn-ghost justify-center sm:justify-start">
+            <ArrowPathIcon className="mr-2 h-4 w-4" aria-hidden="true" />
+            Standard wiederherstellen
+          </button>
+          <div className="flex gap-3 sm:ml-auto">
+            <button type="button" onClick={cancelChanges} disabled={!hasChanges || isSaving} className="btn btn-secondary flex-1 disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none">
+              Verwerfen
+            </button>
+            <button
+              type="button"
+              onClick={() => void applyOrder()}
+              disabled={(!hasChanges && saveState !== 'error') || isSaving}
+              className="btn btn-primary flex-1 disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none"
+            >
+              {isSaving ? 'Wird gespeichert…' : 'Reihenfolge speichern'}
+            </button>
+          </div>
+        </div>
+        <div className="mt-3 min-h-5 text-sm" aria-live="polite">
+          {saveState === 'saved' && (
+            <p className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400">
+              <CheckIcon className="h-4 w-4" aria-hidden="true" />
+              Gespeichert und mit deinem Konto synchronisiert.
+            </p>
+          )}
+          {saveState === 'error' && (
+            <p className="text-amber-700 dark:text-amber-300">
+              Lokal gespeichert, aber noch nicht mit deinem Konto synchronisiert. Versuche es erneut.
+            </p>
+          )}
+        </div>
+      </div>
+    </section>
+  );
 };
 
 const SettingsIndex: React.FC<{
@@ -165,6 +346,19 @@ const SettingsIndex: React.FC<{
         <ChevronRightIcon className="h-5 w-5 shrink-0 text-surface-300 group-hover:text-surface-500 dark:text-surface-600" />
       </Link>
     ))}
+    <Link
+      to="/set-custom-backend"
+      className="group flex items-center gap-4 px-4 py-4 transition-colors hover:bg-surface-50 dark:hover:bg-surface-800/70 sm:px-5"
+    >
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-surface-100 text-surface-600 dark:bg-surface-800 dark:text-surface-300">
+        <ServerStackIcon className="h-5 w-5" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <h2 className="font-medium text-surface-900 dark:text-white">Backend-Adresse</h2>
+        <p className="mt-0.5 text-sm text-surface-500">Das Backend für dieses Gerät konfigurieren.</p>
+      </div>
+      <ChevronRightIcon className="h-5 w-5 shrink-0 text-surface-300 group-hover:text-surface-500 dark:text-surface-600" />
+    </Link>
     {!basePath && (
       <Link
         to="/onboarding"
@@ -680,6 +874,7 @@ const Settings: React.FC = () => {
       {section === 'timetable' && <TimetableSettings />}
       {section === 'homework' && <HomeworkSettings />}
       {section === 'vertretungsplan' && <VertretungsplanSettings />}
+      {section === 'sidebar' && <SidebarSettings />}
 
       <div className="space-y-6">
         {section === 'appearance' && (

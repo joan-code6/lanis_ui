@@ -1,5 +1,6 @@
 import React from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { usePreferences } from '../../contexts/PreferencesContext';
 import { BasePathProvider } from '../../contexts/BasePathContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import DemoBar from '../demo/DemoBar';
@@ -28,6 +29,7 @@ import { getModuleAvailability, readModulesCache, writeModulesCache } from '../.
 import type { CachedModule } from '../../utils/moduleCache';
 import { getThemeIconUrl, getThemeManifestUrl, THEME_COLOR_HEX } from '../../utils/themeAssets';
 import AppIcon from '../AppIcon';
+import { normalizeSidebarOrder, SidebarItemId } from '../../utils/sidebarNavigation';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -36,6 +38,7 @@ interface LayoutProps {
 
 const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
   const { user, token, logout } = useAuth();
+  const { preferences } = usePreferences();
   const { themeColor } = useTheme();
   const location = useLocation();
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
@@ -111,26 +114,28 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
     return () => document.removeEventListener('keydown', handler);
   }, []);
 
-  const baseNavigation = [
-    { name: 'Dashboard', href: `${basePath}/dashboard`, icon: HomeIcon },
-    { name: 'Nachrichten', href: `${basePath}/messages`, icon: ChatBubbleLeftRightIcon },
-    { name: 'Mein Unterricht', href: `${basePath}/courses`, icon: AcademicCapIcon },
-    { name: 'Stundenplan', href: `${basePath}/timetable`, icon: ClockIcon },
-    { name: 'Lerngruppen', href: `${basePath}/study-groups`, icon: UserGroupIcon },
-    { name: 'Kalender', href: `${basePath}/calendar`, icon: CalendarDaysIcon },
-    { name: 'Profil', href: `${basePath}/profile`, icon: UserIcon },
-    { name: 'Einstellungen', href: `${basePath}/settings`, icon: Cog6ToothIcon },
-  ];
-
-  const moduleNavItems = [
-    ...(hasNativeDateispeicher ? [{ name: 'Dateispeicher', href: `${basePath}/dateispeicher`, icon: FolderIcon }] : []),
-    ...(hasNativeSubstitutionPlan ? [{ name: 'Vertretungsplan', href: `${basePath}/vertretungsplan`, icon: ClipboardDocumentListIcon }] : []),
-    ...(hasDsbModule ? [{ name: 'DSBmobile', href: `${basePath}/dsb`, icon: ClipboardDocumentListIcon }] : []),
-  ];
-
-  const navigation = moduleNavItems.length > 0
-    ? [...baseNavigation.slice(0, 2), ...moduleNavItems, ...baseNavigation.slice(2)]
-    : baseNavigation;
+  const navigationItems = {
+    dashboard: { name: 'Dashboard', href: `${basePath}/dashboard`, icon: HomeIcon },
+    messages: { name: 'Nachrichten', href: `${basePath}/messages`, icon: ChatBubbleLeftRightIcon },
+    dateispeicher: { name: 'Dateispeicher', href: `${basePath}/dateispeicher`, icon: FolderIcon },
+    vertretungsplan: { name: 'Vertretungsplan', href: `${basePath}/vertretungsplan`, icon: ClipboardDocumentListIcon },
+    dsb: { name: 'DSBmobile', href: `${basePath}/dsb`, icon: ClipboardDocumentListIcon },
+    courses: { name: 'Mein Unterricht', href: `${basePath}/courses`, icon: AcademicCapIcon },
+    timetable: { name: 'Stundenplan', href: `${basePath}/timetable`, icon: ClockIcon },
+    'study-groups': { name: 'Lerngruppen', href: `${basePath}/study-groups`, icon: UserGroupIcon },
+    calendar: { name: 'Kalender', href: `${basePath}/calendar`, icon: CalendarDaysIcon },
+    profile: { name: 'Profil', href: `${basePath}/profile`, icon: UserIcon },
+    settings: { name: 'Einstellungen', href: `${basePath}/settings`, icon: Cog6ToothIcon },
+  } satisfies Record<SidebarItemId, { name: string; href: string; icon: React.ComponentType<React.SVGProps<SVGSVGElement>> }>;
+  const availableItems = new Set<SidebarItemId>([
+    'dashboard', 'messages', 'courses', 'timetable', 'study-groups', 'calendar', 'profile', 'settings',
+    ...(hasNativeDateispeicher ? ['dateispeicher' as const] : []),
+    ...(hasNativeSubstitutionPlan ? ['vertretungsplan' as const] : []),
+    ...(hasDsbModule ? ['dsb' as const] : []),
+  ]);
+  const navigation = normalizeSidebarOrder(preferences.sidebar.order)
+    .filter(id => availableItems.has(id))
+    .map(id => navigationItems[id]);
 
   const handleLogout = () => {
     logout();
@@ -216,7 +221,7 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
     </div>
   );
 
-  function SidebarContent({ navigation }: { navigation: typeof baseNavigation }) {
+  function SidebarContent({ navigation }: { navigation: typeof navigationItems[SidebarItemId][] }) {
     return (
       <>
         <div className="flex items-center flex-shrink-0 px-5 py-5">
