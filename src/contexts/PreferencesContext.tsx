@@ -3,12 +3,14 @@ import { useAuth } from './AuthContext';
 import { useTheme } from './ThemeContext';
 import { settingsAPI } from '../services/api';
 import { UserPreferences, UserPreferencesPatch } from '../types';
+import { DEFAULT_SIDEBAR_ORDER } from '../utils/sidebarNavigation';
 
 export const CURRENT_ONBOARDING_VERSION = 1;
 const LEGACY_PREFERENCES_OWNER_KEY = 'lanis_preferences_legacy_owner';
 
 export const DEFAULT_USER_PREFERENCES: UserPreferences = {
   appearance: { theme_mode: 'system', theme_color: 'cyan' },
+  sidebar: { order: DEFAULT_SIDEBAR_ORDER },
   dashboard: { pinned_modules: [], view_mode: 'grid' },
   timetable: { view_mode: 'rolling' },
   homework: { completed_display: 'green' },
@@ -36,6 +38,7 @@ const mergePreferences = (
   patch: UserPreferencesPatch,
 ): UserPreferences => ({
   appearance: { ...current.appearance, ...patch.appearance },
+  sidebar: { ...current.sidebar, ...patch.sidebar },
   dashboard: { ...current.dashboard, ...patch.dashboard },
   timetable: { ...current.timetable, ...patch.timetable },
   homework: { ...current.homework, ...patch.homework },
@@ -53,6 +56,7 @@ const normalizePreferences = (value?: Partial<UserPreferences>): UserPreferences
 
   return mergePreferences(DEFAULT_USER_PREFERENCES, {
     appearance: value?.appearance,
+    sidebar: value?.sidebar,
     dashboard: value?.dashboard,
     timetable: value?.timetable,
     homework: migratedHomework,
@@ -169,12 +173,20 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode; sync?: b
       try {
         const response = await settingsAPI.getPreferences(token, controller.signal);
         if (controller.signal.aborted) return;
-        let next = normalizePreferences(response.preferences);
+        let next = normalizePreferences({
+          ...response.preferences,
+          sidebar: response.preferences.sidebar
+            || cached?.preferences.sidebar
+            || localFallback.sidebar,
+        });
         if (!response.stored || cached?.dirty) {
           next = cached?.preferences || localFallback;
           const migrated = await settingsAPI.updatePreferences(token, next, controller.signal);
           if (controller.signal.aborted) return;
-          next = normalizePreferences(migrated.preferences);
+          next = normalizePreferences({
+            ...migrated.preferences,
+            sidebar: migrated.preferences.sidebar || next.sidebar,
+          });
         }
         applyPreferences(next);
         writeCache(next, false);
@@ -211,7 +223,10 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode; sync?: b
       setIsSaving(true);
       try {
         const response = await settingsAPI.updatePreferences(token, next);
-        const saved = normalizePreferences(response.preferences);
+        const saved = normalizePreferences({
+          ...response.preferences,
+          sidebar: response.preferences.sidebar || next.sidebar,
+        });
         if (JSON.stringify(preferencesRef.current) === JSON.stringify(next)) {
           applyPreferences(saved);
           writeCache(saved, false);

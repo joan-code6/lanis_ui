@@ -77,6 +77,9 @@ export interface UserPreferences {
     theme_mode: ThemeMode;
     theme_color: ThemeColor;
   };
+  sidebar: {
+    order: string[];
+  };
   dashboard: {
     pinned_modules: string[];
     view_mode: DashboardViewMode;

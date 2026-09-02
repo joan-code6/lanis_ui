@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTheme, ThemeColor } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useBasePath } from '../../contexts/BasePathContext';
@@ -11,18 +11,22 @@ import { getModuleAvailability, readModulesCache, writeModulesCache } from '../.
 import {
   ArrowDownTrayIcon,
   ArrowLeftIcon,
+  Bars3Icon,
   BellAlertIcon,
   BellIcon,
   BookOpenIcon,
   CalendarDaysIcon,
   CheckIcon,
   ChevronRightIcon,
+  ChevronDownIcon,
+  ChevronUpIcon,
   ClockIcon,
   ClipboardDocumentListIcon,
   DevicePhoneMobileIcon,
   InboxIcon,
   MoonIcon,
   PaintBrushIcon,
+  ServerStackIcon,
   SunIcon,
   SparklesIcon,
 } from '@heroicons/react/24/outline';
@@ -31,6 +35,12 @@ import { getDeferredPrompt } from '../pwa/InstallPrompt';
 import TimetableSettings from './TimetableSettings';
 import VertretungsplanSettings from './VertretungsplanSettings';
 import HomeworkSettings from './HomeworkSettings';
+import {
+  DEFAULT_SIDEBAR_ORDER,
+  normalizeSidebarOrder,
+  SIDEBAR_ITEM_LABELS,
+  SidebarItemId,
+} from '../../utils/sidebarNavigation';
 
 const isStandalone = () =>
   window.matchMedia('(display-mode: standalone)').matches ||
@@ -88,7 +98,7 @@ const pushSubscriptionToPayload = (subscription: PushSubscription): PushSubscrip
   };
 };
 
-type SettingsSection = 'home' | 'appearance' | 'timetable' | 'homework' | 'vertretungsplan' | 'notifications' | 'app';
+type SettingsSection = 'home' | 'appearance' | 'timetable' | 'homework' | 'vertretungsplan' | 'notifications' | 'app' | 'sidebar';
 
 const settingsSections: Array<{
   id: Exclude<SettingsSection, 'home'>;
@@ -132,6 +142,12 @@ const settingsSections: Array<{
     description: 'Lanis installieren und Geräteoptionen ansehen.',
     icon: DevicePhoneMobileIcon,
   },
+  {
+    id: 'sidebar',
+    title: 'Seitenleiste',
+    description: 'Reihenfolge der Einträge in der Seitenleiste anpassen.',
+    icon: ClipboardDocumentListIcon,
+  },
 ];
 
 const sectionMeta: Record<SettingsSection, { title: string; subtitle: string }> = {
@@ -142,6 +158,109 @@ const sectionMeta: Record<SettingsSection, { title: string; subtitle: string }> 
   vertretungsplan: { title: 'Vertretungsplan', subtitle: 'Die passende Klasse automatisch auswählen oder selbst festlegen.' },
   notifications: { title: 'Benachrichtigungen', subtitle: 'Nachrichten und neue Vertretungsplan-Einträge per Web-Push mitbekommen.' },
   app: { title: 'App & Installation', subtitle: 'Lanis auf deinem Gerät griffbereit halten.' },
+  sidebar: { title: 'Seitenleiste', subtitle: 'Ordne die Einträge in der Seitenleiste nach deinen Wünschen.' },
+};
+
+const SidebarSettings: React.FC<{ settingsRoot: string }> = ({ settingsRoot }) => {
+  const { preferences, updatePreferences } = usePreferences();
+  const navigate = useNavigate();
+  const [order, setOrder] = useState(() => normalizeSidebarOrder(preferences.sidebar.order));
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+
+  useEffect(() => {
+    setOrder(normalizeSidebarOrder(preferences.sidebar.order));
+  }, [preferences.sidebar.order]);
+
+  const moveItem = (index: number, direction: -1 | 1) => {
+    const nextIndex = index + direction;
+    if (nextIndex < 0 || nextIndex >= order.length) return;
+    const next = [...order];
+    [next[index], next[nextIndex]] = [next[nextIndex], next[index]];
+    setOrder(next);
+  };
+
+  const moveItemTo = (fromIndex: number, toIndex: number) => {
+    if (fromIndex === toIndex) return;
+    const next = [...order];
+    const [movedItem] = next.splice(fromIndex, 1);
+    next.splice(toIndex, 0, movedItem);
+    setOrder(next);
+  };
+
+  const hasChanges = JSON.stringify(order) !== JSON.stringify(normalizeSidebarOrder(preferences.sidebar.order));
+
+  const applyOrder = async () => {
+    await updatePreferences({ sidebar: { order } });
+    navigate(settingsRoot);
+  };
+
+  const cancelChanges = () => {
+    setOrder(normalizeSidebarOrder(preferences.sidebar.order));
+    navigate(settingsRoot);
+  };
+
+  const resetOrder = () => setOrder(DEFAULT_SIDEBAR_ORDER);
+
+  return (
+    <div className="card">
+      <h3 className="text-base font-semibold text-surface-900 dark:text-surface-100">Einträge sortieren</h3>
+      <p className="mt-1 text-sm text-surface-500">Nutze die Pfeile, um die Reihenfolge der Seitenleiste zu ändern.</p>
+      <div className="mt-5 divide-y divide-surface-100 overflow-hidden rounded-xl border border-surface-200 dark:divide-surface-800 dark:border-surface-700">
+        {order.map((id, index) => (
+          <div
+            key={id}
+            draggable
+            onDragStart={() => setDraggedIndex(index)}
+            onDragOver={(event) => event.preventDefault()}
+            onDrop={() => {
+              if (draggedIndex !== null) moveItemTo(draggedIndex, index);
+              setDraggedIndex(null);
+            }}
+            onDragEnd={() => setDraggedIndex(null)}
+            className={`flex cursor-grab items-center gap-3 px-4 py-3 transition-colors active:cursor-grabbing ${
+              draggedIndex === index ? 'bg-primary-50 dark:bg-primary-950/30' : ''
+            }`}
+          >
+            <Bars3Icon className="h-5 w-5 shrink-0 text-surface-400" aria-hidden="true" />
+            <span className="min-w-0 flex-1 text-sm font-medium text-surface-800 dark:text-surface-200">
+              {SIDEBAR_ITEM_LABELS[id as SidebarItemId]}
+            </span>
+            <button
+              type="button"
+              onClick={() => moveItem(index, -1)}
+              disabled={index === 0}
+              aria-label={`${SIDEBAR_ITEM_LABELS[id as SidebarItemId]} nach oben verschieben`}
+              className="rounded-lg p-1.5 text-surface-500 hover:bg-surface-100 disabled:opacity-30 dark:hover:bg-surface-800"
+            >
+              <ChevronUpIcon className="h-5 w-5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => moveItem(index, 1)}
+              disabled={index === order.length - 1}
+              aria-label={`${SIDEBAR_ITEM_LABELS[id as SidebarItemId]} nach unten verschieben`}
+              className="rounded-lg p-1.5 text-surface-500 hover:bg-surface-100 disabled:opacity-30 dark:hover:bg-surface-800"
+            >
+              <ChevronDownIcon className="h-5 w-5" />
+            </button>
+          </div>
+        ))}
+      </div>
+      <div className="mt-4 flex flex-wrap gap-3">
+        <button type="button" onClick={resetOrder} className="btn btn-ghost">
+          Standardreihenfolge
+        </button>
+        <div className="ml-auto flex gap-3">
+          <button type="button" onClick={cancelChanges} className="btn btn-secondary">
+            Abbrechen
+          </button>
+          <button type="button" onClick={applyOrder} disabled={!hasChanges} className="btn btn-primary">
+            Anwenden
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 const SettingsIndex: React.FC<{
@@ -165,6 +284,19 @@ const SettingsIndex: React.FC<{
         <ChevronRightIcon className="h-5 w-5 shrink-0 text-surface-300 group-hover:text-surface-500 dark:text-surface-600" />
       </Link>
     ))}
+    <Link
+      to="/set-custom-backend"
+      className="group flex items-center gap-4 px-4 py-4 transition-colors hover:bg-surface-50 dark:hover:bg-surface-800/70 sm:px-5"
+    >
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-surface-100 text-surface-600 dark:bg-surface-800 dark:text-surface-300">
+        <ServerStackIcon className="h-5 w-5" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <h2 className="font-medium text-surface-900 dark:text-white">Backend-Adresse</h2>
+        <p className="mt-0.5 text-sm text-surface-500">Das Backend für dieses Gerät konfigurieren.</p>
+      </div>
+      <ChevronRightIcon className="h-5 w-5 shrink-0 text-surface-300 group-hover:text-surface-500 dark:text-surface-600" />
+    </Link>
     {!basePath && (
       <Link
         to="/onboarding"
@@ -680,6 +812,7 @@ const Settings: React.FC = () => {
       {section === 'timetable' && <TimetableSettings />}
       {section === 'homework' && <HomeworkSettings />}
       {section === 'vertretungsplan' && <VertretungsplanSettings />}
+      {section === 'sidebar' && <SidebarSettings settingsRoot={settingsRoot} />}
 
       <div className="space-y-6">
         {section === 'appearance' && (
