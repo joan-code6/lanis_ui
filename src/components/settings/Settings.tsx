@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useTheme, ThemeColor } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useBasePath } from '../../contexts/BasePathContext';
@@ -11,6 +11,7 @@ import { getModuleAvailability, readModulesCache, writeModulesCache } from '../.
 import {
   ArrowDownTrayIcon,
   ArrowLeftIcon,
+  ArrowPathIcon,
   Bars3Icon,
   BellAlertIcon,
   BellIcon,
@@ -146,7 +147,7 @@ const settingsSections: Array<{
     id: 'sidebar',
     title: 'Seitenleiste',
     description: 'Reihenfolge der Einträge in der Seitenleiste anpassen.',
-    icon: ClipboardDocumentListIcon,
+    icon: Bars3Icon,
   },
 ];
 
@@ -161,11 +162,13 @@ const sectionMeta: Record<SettingsSection, { title: string; subtitle: string }> 
   sidebar: { title: 'Seitenleiste', subtitle: 'Ordne die Einträge in der Seitenleiste nach deinen Wünschen.' },
 };
 
-const SidebarSettings: React.FC<{ settingsRoot: string }> = ({ settingsRoot }) => {
-  const { preferences, updatePreferences } = usePreferences();
-  const navigate = useNavigate();
+type SidebarSaveState = 'idle' | 'saved' | 'error';
+
+const SidebarSettings: React.FC = () => {
+  const { preferences, updatePreferences, isSaving } = usePreferences();
   const [order, setOrder] = useState(() => normalizeSidebarOrder(preferences.sidebar.order));
-  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [draggedId, setDraggedId] = useState<SidebarItemId | null>(null);
+  const [saveState, setSaveState] = useState<SidebarSaveState>('idle');
 
   useEffect(() => {
     setOrder(normalizeSidebarOrder(preferences.sidebar.order));
@@ -177,89 +180,148 @@ const SidebarSettings: React.FC<{ settingsRoot: string }> = ({ settingsRoot }) =
     const next = [...order];
     [next[index], next[nextIndex]] = [next[nextIndex], next[index]];
     setOrder(next);
+    setSaveState('idle');
   };
 
-  const moveItemTo = (fromIndex: number, toIndex: number) => {
-    if (fromIndex === toIndex) return;
-    const next = [...order];
-    const [movedItem] = next.splice(fromIndex, 1);
-    next.splice(toIndex, 0, movedItem);
-    setOrder(next);
+  const moveItemTo = (itemId: SidebarItemId, targetId: SidebarItemId) => {
+    setOrder(current => {
+      const fromIndex = current.indexOf(itemId);
+      const toIndex = current.indexOf(targetId);
+      if (fromIndex === -1 || toIndex === -1 || fromIndex === toIndex) return current;
+      const next = [...current];
+      const [movedItem] = next.splice(fromIndex, 1);
+      next.splice(toIndex, 0, movedItem);
+      return next;
+    });
+    setSaveState('idle');
   };
 
   const hasChanges = JSON.stringify(order) !== JSON.stringify(normalizeSidebarOrder(preferences.sidebar.order));
 
   const applyOrder = async () => {
-    await updatePreferences({ sidebar: { order } });
-    navigate(settingsRoot);
+    setSaveState('idle');
+    const saved = await updatePreferences({ sidebar: { order } });
+    setSaveState(saved ? 'saved' : 'error');
   };
 
   const cancelChanges = () => {
     setOrder(normalizeSidebarOrder(preferences.sidebar.order));
-    navigate(settingsRoot);
+    setSaveState('idle');
   };
 
-  const resetOrder = () => setOrder(DEFAULT_SIDEBAR_ORDER);
+  const resetOrder = () => {
+    setOrder([...DEFAULT_SIDEBAR_ORDER]);
+    setSaveState('idle');
+  };
 
   return (
-    <div className="card">
-      <h3 className="text-base font-semibold text-surface-900 dark:text-surface-100">Einträge sortieren</h3>
-      <p className="mt-1 text-sm text-surface-500">Nutze die Pfeile, um die Reihenfolge der Seitenleiste zu ändern.</p>
-      <div className="mt-5 divide-y divide-surface-100 overflow-hidden rounded-xl border border-surface-200 dark:divide-surface-800 dark:border-surface-700">
+    <section className="card !p-0 overflow-hidden">
+      <div className="border-b border-surface-100 px-5 py-5 dark:border-surface-800 sm:px-6">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h3 className="text-base font-semibold text-surface-900 dark:text-surface-100">Deine Navigation</h3>
+            <p className="mt-1 max-w-xl text-sm leading-6 text-surface-500 dark:text-surface-400">
+              Ziehe Einträge am Griff an ihre neue Position oder nutze die Pfeile. Die Reihenfolge gilt auf all deinen Geräten.
+            </p>
+          </div>
+          {hasChanges && (
+            <span className="badge badge-primary shrink-0">Nicht gespeichert</span>
+          )}
+        </div>
+      </div>
+
+      <ol className="space-y-2 bg-surface-50/70 p-3 dark:bg-surface-950/30 sm:p-4" aria-label="Reihenfolge der Seitenleiste">
         {order.map((id, index) => (
-          <div
+          <li
             key={id}
-            draggable
-            onDragStart={() => setDraggedIndex(index)}
             onDragOver={(event) => event.preventDefault()}
-            onDrop={() => {
-              if (draggedIndex !== null) moveItemTo(draggedIndex, index);
-              setDraggedIndex(null);
+            onDragEnter={() => {
+              if (draggedId) moveItemTo(draggedId, id);
             }}
-            onDragEnd={() => setDraggedIndex(null)}
-            className={`flex cursor-grab items-center gap-3 px-4 py-3 transition-colors active:cursor-grabbing ${
-              draggedIndex === index ? 'bg-primary-50 dark:bg-primary-950/30' : ''
+            onDrop={() => setDraggedId(null)}
+            className={`flex min-h-14 items-center gap-3 rounded-xl border bg-white px-3 py-2 shadow-sm transition-[transform,background-color,border-color,box-shadow] duration-150 dark:bg-surface-900 sm:px-4 ${
+              draggedId === id
+                ? 'scale-[1.015] border-primary-300 bg-primary-50 shadow-soft-md dark:border-primary-700 dark:bg-primary-950/30'
+                : 'border-surface-200 dark:border-surface-700'
             }`}
           >
-            <Bars3Icon className="h-5 w-5 shrink-0 text-surface-400" aria-hidden="true" />
-            <span className="min-w-0 flex-1 text-sm font-medium text-surface-800 dark:text-surface-200">
-              {SIDEBAR_ITEM_LABELS[id as SidebarItemId]}
+            <span className="w-6 shrink-0 text-center text-xs font-semibold tabular-nums text-surface-400 dark:text-surface-500" aria-hidden="true">
+              {String(index + 1).padStart(2, '0')}
             </span>
+            <span
+              draggable
+              onDragStart={(event) => {
+                event.dataTransfer.effectAllowed = 'move';
+                event.dataTransfer.setData('text/plain', id);
+                setDraggedId(id);
+              }}
+              onDragEnd={() => setDraggedId(null)}
+              className="hidden cursor-grab touch-none rounded-lg p-2 text-surface-400 hover:bg-surface-100 hover:text-surface-600 active:cursor-grabbing dark:hover:bg-surface-800 dark:hover:text-surface-200 sm:block"
+              title={`${SIDEBAR_ITEM_LABELS[id]} ziehen`}
+            >
+              <Bars3Icon className="h-5 w-5" aria-hidden="true" />
+            </span>
+            <span className="min-w-0 flex-1 text-sm font-medium text-surface-800 dark:text-surface-200">
+              {SIDEBAR_ITEM_LABELS[id]}
+            </span>
+            <span className="sr-only">Position {index + 1} von {order.length}</span>
             <button
               type="button"
               onClick={() => moveItem(index, -1)}
               disabled={index === 0}
-              aria-label={`${SIDEBAR_ITEM_LABELS[id as SidebarItemId]} nach oben verschieben`}
-              className="rounded-lg p-1.5 text-surface-500 hover:bg-surface-100 disabled:opacity-30 dark:hover:bg-surface-800"
+              aria-label={`${SIDEBAR_ITEM_LABELS[id]} nach oben verschieben`}
+              className="flex h-10 w-10 items-center justify-center rounded-lg text-surface-500 transition-colors hover:bg-surface-100 hover:text-surface-800 focus:outline-none focus:ring-2 focus:ring-primary-500/40 disabled:cursor-not-allowed disabled:opacity-25 dark:hover:bg-surface-800 dark:hover:text-surface-100"
             >
-              <ChevronUpIcon className="h-5 w-5" />
+              <ChevronUpIcon className="h-5 w-5" aria-hidden="true" />
             </button>
             <button
               type="button"
               onClick={() => moveItem(index, 1)}
               disabled={index === order.length - 1}
-              aria-label={`${SIDEBAR_ITEM_LABELS[id as SidebarItemId]} nach unten verschieben`}
-              className="rounded-lg p-1.5 text-surface-500 hover:bg-surface-100 disabled:opacity-30 dark:hover:bg-surface-800"
+              aria-label={`${SIDEBAR_ITEM_LABELS[id]} nach unten verschieben`}
+              className="flex h-10 w-10 items-center justify-center rounded-lg text-surface-500 transition-colors hover:bg-surface-100 hover:text-surface-800 focus:outline-none focus:ring-2 focus:ring-primary-500/40 disabled:cursor-not-allowed disabled:opacity-25 dark:hover:bg-surface-800 dark:hover:text-surface-100"
             >
-              <ChevronDownIcon className="h-5 w-5" />
+              <ChevronDownIcon className="h-5 w-5" aria-hidden="true" />
+            </button>
+          </li>
+        ))}
+      </ol>
+
+      <div className="border-t border-surface-100 px-4 py-4 dark:border-surface-800 sm:px-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <button type="button" onClick={resetOrder} disabled={isSaving} className="btn btn-ghost justify-center sm:justify-start">
+            <ArrowPathIcon className="mr-2 h-4 w-4" aria-hidden="true" />
+            Standard wiederherstellen
+          </button>
+          <div className="flex gap-3 sm:ml-auto">
+            <button type="button" onClick={cancelChanges} disabled={!hasChanges || isSaving} className="btn btn-secondary flex-1 disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none">
+              Verwerfen
+            </button>
+            <button
+              type="button"
+              onClick={() => void applyOrder()}
+              disabled={(!hasChanges && saveState !== 'error') || isSaving}
+              className="btn btn-primary flex-1 disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none"
+            >
+              {isSaving ? 'Wird gespeichert…' : 'Reihenfolge speichern'}
             </button>
           </div>
-        ))}
-      </div>
-      <div className="mt-4 flex flex-wrap gap-3">
-        <button type="button" onClick={resetOrder} className="btn btn-ghost">
-          Standardreihenfolge
-        </button>
-        <div className="ml-auto flex gap-3">
-          <button type="button" onClick={cancelChanges} className="btn btn-secondary">
-            Abbrechen
-          </button>
-          <button type="button" onClick={applyOrder} disabled={!hasChanges} className="btn btn-primary">
-            Anwenden
-          </button>
+        </div>
+        <div className="mt-3 min-h-5 text-sm" aria-live="polite">
+          {saveState === 'saved' && (
+            <p className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400">
+              <CheckIcon className="h-4 w-4" aria-hidden="true" />
+              Gespeichert und mit deinem Konto synchronisiert.
+            </p>
+          )}
+          {saveState === 'error' && (
+            <p className="text-amber-700 dark:text-amber-300">
+              Lokal gespeichert, aber noch nicht mit deinem Konto synchronisiert. Versuche es erneut.
+            </p>
+          )}
         </div>
       </div>
-    </div>
+    </section>
   );
 };
 
@@ -812,7 +874,7 @@ const Settings: React.FC = () => {
       {section === 'timetable' && <TimetableSettings />}
       {section === 'homework' && <HomeworkSettings />}
       {section === 'vertretungsplan' && <VertretungsplanSettings />}
-      {section === 'sidebar' && <SidebarSettings settingsRoot={settingsRoot} />}
+      {section === 'sidebar' && <SidebarSettings />}
 
       <div className="space-y-6">
         {section === 'appearance' && (

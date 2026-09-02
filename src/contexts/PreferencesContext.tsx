@@ -3,7 +3,7 @@ import { useAuth } from './AuthContext';
 import { useTheme } from './ThemeContext';
 import { settingsAPI } from '../services/api';
 import { UserPreferences, UserPreferencesPatch } from '../types';
-import { DEFAULT_SIDEBAR_ORDER } from '../utils/sidebarNavigation';
+import { DEFAULT_SIDEBAR_ORDER, normalizeSidebarOrder } from '../utils/sidebarNavigation';
 
 export const CURRENT_ONBOARDING_VERSION = 1;
 const LEGACY_PREFERENCES_OWNER_KEY = 'lanis_preferences_legacy_owner';
@@ -223,6 +223,13 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode; sync?: b
       setIsSaving(true);
       try {
         const response = await settingsAPI.updatePreferences(token, next);
+        if (patch.sidebar?.order) {
+          const persistedOrder = response.preferences.sidebar?.order;
+          if (!persistedOrder
+            || JSON.stringify(normalizeSidebarOrder(persistedOrder)) !== JSON.stringify(next.sidebar.order)) {
+            throw new Error('The backend did not persist the sidebar order.');
+          }
+        }
         const saved = normalizePreferences({
           ...response.preferences,
           sidebar: response.preferences.sidebar || next.sidebar,
