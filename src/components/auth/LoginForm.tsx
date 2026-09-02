@@ -4,6 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { EyeIcon, EyeSlashIcon, SunIcon, MoonIcon } from '@heroicons/react/24/outline';
 import SEO from '../seo/SEO';
+import AppIcon from '../AppIcon';
 
 import { schoolListAPI } from '../../services/api';
 import axios from 'axios';
@@ -215,7 +216,7 @@ const LoginForm: React.FC = () => {
       </button>
       <div className="w-full max-w-sm">
         <div className="text-center mb-10">
-            <img src="/favicon/android-chrome-192x192.png" alt="Schulportal" className="mx-auto h-14 w-14 rounded-2xl mb-6 shadow-soft-md" />
+            <AppIcon alt="Schulportal" className="mx-auto h-14 w-14 rounded-2xl mb-6 shadow-soft-md" />
           <h2 className="text-3xl font-bold text-surface-900 dark:text-surface-100 tracking-tight">
             Schulportal Hessen
           </h2>

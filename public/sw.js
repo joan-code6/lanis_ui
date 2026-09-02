@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lanis-ui-shell-v3'
+const CACHE_NAME = 'lanis-ui-shell-v4'
 const OFFLINE_RESPONSE = () =>
   new Response('Offline', {
     status: 503,
@@ -7,6 +7,16 @@ const OFFLINE_RESPONSE = () =>
       'Content-Type': 'text/plain;charset=UTF-8',
     },
   })
+
+const THEME_NAMES = ['cyan', 'emerald', 'sapphire', 'amethyst', 'ruby', 'amber']
+const THEME_ASSET_NAMES = [
+  'site.webmanifest',
+  'favicon-16x16.png',
+  'favicon-32x32.png',
+  'apple-touch-icon.png',
+  'android-chrome-192x192.png',
+  'android-chrome-512x512.png',
+]
 
 const PRECACHE_URLS = [
   '/',
@@ -18,13 +28,16 @@ const PRECACHE_URLS = [
   '/favicon/apple-touch-icon.png',
   '/favicon/android-chrome-192x192.png',
   '/favicon/android-chrome-512x512.png',
+  ...THEME_NAMES.flatMap((theme) =>
+    THEME_ASSET_NAMES.map((asset) => `/favicon/themes/${theme}/${asset}`),
+  ),
 ]
 
 const isApiRequest = (url) =>
   url.pathname.startsWith('/api/')
 
 const isStaticAsset = (url) =>
-  /\.(js|css|png|jpg|jpeg|gif|svg|webp|ico|woff2?|ttf|eot)$/i.test(url.pathname)
+  /\.(js|css|png|jpg|jpeg|gif|svg|webp|ico|webmanifest|woff2?|ttf|eot)$/i.test(url.pathname)
 
 const logCacheError = (context, error) => {
   console.error(`Service worker cache failed for ${context}:`, error)

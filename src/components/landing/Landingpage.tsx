@@ -1,6 +1,7 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import SEO from '../seo/SEO';
+import AppIcon from '../AppIcon';
 import {
   BookOpenIcon,
   ChatBubbleLeftRightIcon,
@@ -194,7 +195,7 @@ const Landingpage: React.FC = () => {
         {/* ═══ Navigation ═══ */}
         <nav className="flex items-center justify-between px-6 py-6 max-w-6xl mx-auto">
           <div className="flex items-center gap-2.5">
-            <img src="/favicon/android-chrome-192x192.png" alt="Lanis" className="w-7 h-7 rounded-lg" />
+            <AppIcon alt="Lanis" className="w-7 h-7 rounded-lg" />
             <span className="text-sm font-semibold text-[#555] dark:text-surface-300 tracking-tight">Lanis</span>
           </div>
           <button

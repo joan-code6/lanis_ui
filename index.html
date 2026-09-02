@@ -72,11 +72,24 @@
     </script>
 
     <!-- Favicon -->
-    <link rel="icon" type="image/png" sizes="32x32" href="/favicon/favicon-32x32.png" />
-    <link rel="icon" type="image/png" sizes="16x16" href="/favicon/favicon-16x16.png" />
-    <link rel="shortcut icon" href="/favicon/favicon.ico" />
-    <link rel="apple-touch-icon" sizes="180x180" href="/favicon/apple-touch-icon.png" />
-    <link rel="manifest" href="/favicon/site.webmanifest" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon/themes/cyan/favicon-32x32.png" data-theme-icon="favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon/themes/cyan/favicon-16x16.png" data-theme-icon="favicon-16x16.png" />
+    <link rel="shortcut icon" type="image/png" href="/favicon/themes/cyan/favicon-32x32.png" data-theme-icon="favicon-32x32.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/favicon/themes/cyan/apple-touch-icon.png" data-theme-icon="apple-touch-icon.png" />
+    <link rel="manifest" href="/favicon/themes/cyan/site.webmanifest" data-theme-manifest />
+    <script>
+      try {
+        const supportedThemes = ['cyan', 'emerald', 'sapphire', 'amethyst', 'ruby', 'amber'];
+        const storedTheme = localStorage.getItem('lanis_theme_color');
+        const theme = supportedThemes.includes(storedTheme) ? storedTheme : 'cyan';
+        document.querySelectorAll('link[data-theme-icon]').forEach((link) => {
+          link.href = `/favicon/themes/${theme}/${link.dataset.themeIcon}`;
+        });
+        document.querySelector('link[data-theme-manifest]').href = `/favicon/themes/${theme}/site.webmanifest`;
+      } catch (_) {
+        // Keep the cyan fallback when storage is unavailable.
+      }
+    </script>
 
     <!-- Premium fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
