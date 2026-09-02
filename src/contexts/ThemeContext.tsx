@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { ThemeColor, ThemeMode } from '../types';
+import { applyThemeAssets, isThemeColor, THEME_COLOR_HEX } from '../utils/themeAssets';
 
 export type { ThemeColor, ThemeMode } from '../types';
 
@@ -68,17 +69,9 @@ const THEMES: Record<ThemeColor, ColorScale> = {
   },
 };
 
-const THEME_COLOR_HEX: Record<ThemeColor, string> = {
-  cyan: '#06b6d4',
-  emerald: '#10b981',
-  sapphire: '#3b82f6',
-  amethyst: '#a855f7',
-  ruby: '#f43f5e',
-  amber: '#f59e0b',
-};
-
 function applyPrimaryTheme(color: ThemeColor) {
   document.documentElement.setAttribute('data-theme', color);
+  applyThemeAssets(color);
 }
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -96,7 +89,8 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [systemDark, setSystemDark] = useState(() => window.matchMedia('(prefers-color-scheme: dark)').matches);
 
   const [themeColor, setThemeColorState] = useState<ThemeColor>(() => {
-    return (localStorage.getItem(THEME_COLOR_KEY) as ThemeColor) || 'cyan';
+    const storedTheme = localStorage.getItem(THEME_COLOR_KEY);
+    return isThemeColor(storedTheme) ? storedTheme : 'cyan';
   });
 
   const isOled = themeMode === 'oled';

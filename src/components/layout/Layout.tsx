@@ -26,6 +26,8 @@ import GlobalSearch from '../search/GlobalSearch';
 import InstallPrompt from '../pwa/InstallPrompt';
 import { getModuleAvailability, readModulesCache, writeModulesCache } from '../../utils/moduleCache';
 import type { CachedModule } from '../../utils/moduleCache';
+import { getThemeIconUrl, getThemeManifestUrl, THEME_COLOR_HEX } from '../../utils/themeAssets';
+import AppIcon from '../AppIcon';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -44,14 +46,8 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
   const mainRef = React.useRef<HTMLElement>(null);
   const pwaRef = React.useRef<any>(null);
 
-  const tintColors: Record<string, string> = {
-    cyan: '#06b6d4',
-    emerald: '#10b981',
-    sapphire: '#3b82f6',
-    amethyst: '#a855f7',
-    ruby: '#f43f5e',
-    amber: '#f59e0b',
-  };
+  const appIconUrl = getThemeIconUrl(themeColor);
+  const manifestUrl = getThemeManifestUrl(themeColor);
 
   React.useLayoutEffect(() => {
     const el = pwaRef.current;
@@ -59,14 +55,16 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
     el.manualApple = true;
     el.manualChrome = true;
     el.useLocalStorage = true;
-    el.styles = { '--tint-color': tintColors[themeColor] };
+    el.styles = { '--tint-color': THEME_COLOR_HEX[themeColor] };
   }, []);
 
   React.useEffect(() => {
     const el = pwaRef.current;
     if (!el) return;
-    el.styles = { '--tint-color': tintColors[themeColor] };
-  }, [themeColor]);
+    el.icon = appIconUrl;
+    el.manifestUrl = manifestUrl;
+    el.styles = { '--tint-color': THEME_COLOR_HEX[themeColor] };
+  }, [appIconUrl, manifestUrl, themeColor]);
 
   React.useLayoutEffect(() => {
     mainRef.current?.scrollTo(0, 0);
@@ -180,7 +178,7 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
           className="flex items-center gap-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500/50"
           aria-label="Zum Dashboard"
         >
-          <img src="/favicon/android-chrome-192x192.png" alt="Schulportal" className="h-7 w-7 rounded-lg" />
+          <AppIcon alt="Schulportal" className="h-7 w-7 rounded-lg" />
           <span className="text-sm font-semibold text-surface-900 dark:text-surface-100">Schulportal</span>
         </Link>
         <button
@@ -208,9 +206,9 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
       />
       <pwa-install
         ref={pwaRef}
-        manifest-url="/favicon/site.webmanifest"
+        manifest-url={manifestUrl}
         name="Lanis"
-        icon="/favicon/android-chrome-192x192.png"
+        icon={appIconUrl}
         description="Moderne Benutzeroberfläche für das Schulportal Hessen"
         install-description="Direkt vom Homescreen öffnen — wie eine echte App."
       ></pwa-install>
@@ -223,7 +221,7 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
       <>
         <div className="flex items-center flex-shrink-0 px-5 py-5">
           <div className="flex items-center gap-3">
-            <img src="/favicon/android-chrome-192x192.png" alt="Schulportal" className="h-9 w-9 rounded-xl" />
+            <AppIcon alt="Schulportal" className="h-9 w-9 rounded-xl" />
             <div>
               <h1 className="text-base font-semibold text-surface-900 dark:text-surface-100 tracking-tight">Schulportal</h1>
               <p className="text-[11px] text-surface-500 dark:text-surface-400 font-medium tracking-wide uppercase">Hessen</p>

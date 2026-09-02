@@ -25,6 +25,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { CompletedHomeworkDisplay, Module, OnboardingStep, ThemeColor, ThemeMode, TimetableViewMode, UserPreferences, UserPreferencesPatch } from '../../types';
 import SEO from '../seo/SEO';
 import ModuleIcon from '../dashboard/ModuleIcon';
+import AppIcon from '../AppIcon';
 
 const steps: Array<{ id: Exclude<OnboardingStep, 'complete'>; label: string }> = [
   { id: 'welcome', label: 'Start' },
@@ -221,7 +222,7 @@ const Onboarding: React.FC = () => {
       <main className="relative mx-auto flex min-h-[100dvh] w-full min-w-0 max-w-7xl flex-col px-4 py-5 sm:px-6 min-[900px]:px-10 min-[900px]:py-8 xl:px-12">
         <header className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3 min-[900px]:gap-4">
-            <img src="/favicon/android-chrome-192x192.png" alt="" className="h-10 w-10 rounded-xl shadow-soft min-[900px]:h-12 min-[900px]:w-12 min-[900px]:rounded-2xl" />
+            <AppIcon alt="" className="h-10 w-10 rounded-xl shadow-soft min-[900px]:h-12 min-[900px]:w-12 min-[900px]:rounded-2xl" />
             <div>
               <p className="font-semibold tracking-tight min-[900px]:text-lg">Lanis</p>
               <p className="text-xs text-surface-500 min-[900px]:text-sm">Dein Schulportal</p>
