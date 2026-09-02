@@ -6,15 +6,15 @@ const faviconDirectory = join(process.cwd(), 'public', 'favicon');
 const sourcePath = join(faviconDirectory, 'android-chrome-512x512.png');
 
 const sourceBase = [1, 188, 214];
-const sourceDark = [9, 64, 116];
+const sourceHat = [9, 64, 116];
 
 const themes = {
-  cyan: { base: sourceBase, dark: sourceDark, themeColor: '#06b6d4' },
-  emerald: { base: [16, 185, 129], dark: [6, 78, 59], themeColor: '#10b981' },
-  sapphire: { base: [59, 130, 246], dark: [30, 58, 138], themeColor: '#3b82f6' },
-  amethyst: { base: [168, 85, 247], dark: [88, 28, 135], themeColor: '#a855f7' },
-  ruby: { base: [244, 63, 94], dark: [136, 19, 55], themeColor: '#f43f5e' },
-  amber: { base: [245, 158, 11], dark: [120, 53, 15], themeColor: '#f59e0b' },
+  cyan: { base: sourceBase, hat: sourceHat, themeColor: '#06b6d4' },
+  emerald: { base: [16, 185, 129], hat: [6, 76, 66], themeColor: '#10b981' },
+  sapphire: { base: [59, 130, 246], hat: [38, 56, 108], themeColor: '#3b82f6' },
+  amethyst: { base: [168, 85, 247], hat: [72, 35, 95], themeColor: '#a855f7' },
+  ruby: { base: [244, 63, 94], hat: [96, 35, 54], themeColor: '#f43f5e' },
+  amber: { base: [245, 158, 11], hat: [104, 69, 31], themeColor: '#f59e0b' },
 };
 
 const iconSizes = {
@@ -25,7 +25,7 @@ const iconSizes = {
   'android-chrome-512x512.png': 512,
 };
 
-const sourceVector = sourceBase.map((channel, index) => channel - sourceDark[index]);
+const sourceVector = sourceBase.map((channel, index) => channel - sourceHat[index]);
 const sourceVectorMagnitude = sourceVector.reduce((sum, channel) => sum + channel ** 2, 0);
 
 const clampByte = (value) => Math.round(Math.max(0, Math.min(255, value)));
@@ -36,11 +36,11 @@ function recolor(source, theme) {
   for (let offset = 0; offset < source.length; offset += 4) {
     const pixel = [source[offset], source[offset + 1], source[offset + 2]];
     let mix = pixel.reduce(
-      (sum, channel, index) => sum + (channel - sourceDark[index]) * sourceVector[index],
+      (sum, channel, index) => sum + (channel - sourceHat[index]) * sourceVector[index],
       0,
     ) / sourceVectorMagnitude;
 
-    const reconstructed = sourceDark.map(
+    const reconstructed = sourceHat.map(
       (channel, index) => channel + mix * sourceVector[index],
     );
     const residualLuminance = (
@@ -52,8 +52,8 @@ function recolor(source, theme) {
     mix = Math.max(0, Math.min(1, mix));
     for (let channel = 0; channel < 3; channel += 1) {
       result[offset + channel] = clampByte(
-        theme.dark[channel]
-        + mix * (theme.base[channel] - theme.dark[channel])
+        theme.hat[channel]
+        + mix * (theme.base[channel] - theme.hat[channel])
         + residualLuminance,
       );
     }
