@@ -239,10 +239,10 @@ const Onboarding: React.FC = () => {
           ))}
         </div>
 
-        <div className="flex flex-1 items-center py-8 min-[900px]:items-start min-[900px]:py-14">
+        <div className="flex flex-1 items-center py-8 sm:items-start sm:py-12 min-[900px]:py-14">
           <section key={activeStep.id} className="mx-auto w-full min-w-0 max-w-6xl animate-fade-in">
             {activeStep.id === 'welcome' && (
-              <div className="max-w-2xl min-[900px]:grid min-[900px]:max-w-none min-[900px]:grid-cols-[minmax(0,1.1fr)_minmax(22rem,0.9fr)] min-[900px]:items-center min-[900px]:gap-16 xl:gap-24">
+              <div className="max-w-2xl sm:grid sm:max-w-none sm:grid-cols-[minmax(0,0.85fr)_minmax(18rem,1.15fr)] sm:items-center sm:gap-8 min-[900px]:grid-cols-[minmax(0,1.1fr)_minmax(22rem,0.9fr)] min-[900px]:gap-16 xl:gap-24">
                 <div>
                   <div className="mb-6 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-primary-100 text-primary-700 dark:bg-primary-950 dark:text-primary-300 min-[900px]:h-14 min-[900px]:w-14">
                     <SparklesIcon className="h-6 w-6 min-[900px]:h-7 min-[900px]:w-7" />
@@ -253,7 +253,7 @@ const Onboarding: React.FC = () => {
                     Lanis holt Stundenplan, Nachrichten, Kurse und Kalender aus dem Schulportal Hessen und bringt alles in eine schnellere, übersichtlichere Oberfläche.
                   </p>
                 </div>
-                <div className="mt-8 grid gap-3 sm:grid-cols-2 min-[900px]:mt-0 min-[900px]:grid-cols-1 min-[900px]:gap-4">
+                <div className="mt-8 grid gap-3 sm:mt-0 sm:grid-cols-1 min-[900px]:gap-4">
                   <div className="rounded-2xl border border-surface-200 bg-white/80 p-4 dark:border-surface-800 dark:bg-surface-900/80 min-[900px]:p-5">
                     <CloudArrowUpIcon className="h-5 w-5 text-primary-600" />
                     <p className="mt-3 font-medium">Auf allen Geräten</p>
@@ -269,9 +269,9 @@ const Onboarding: React.FC = () => {
             )}
 
             {activeStep.id === 'appearance' && (
-              <div className="max-w-2xl min-[900px]:grid min-[900px]:max-w-none min-[900px]:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] min-[900px]:items-start min-[900px]:gap-16 xl:gap-24">
+              <div className="max-w-2xl sm:grid sm:max-w-none sm:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] sm:items-start sm:gap-8 min-[900px]:gap-16 xl:gap-24">
                 <StepHeading icon={PaintBrushIcon} eyebrow="Dein Stil" title="Wie soll sich Lanis anfühlen?" description="Die Vorschau reagiert sofort. Darstellung und Farbe folgen dir auf andere Geräte." />
-                <div className="mt-7 min-[900px]:mt-0">
+                <div className="mt-7 sm:mt-0">
                   <fieldset>
                     <legend className="mb-3 text-sm font-semibold min-[900px]:text-base">Darstellung</legend>
                     <div className="grid grid-cols-2 gap-3 min-[900px]:gap-4 xl:grid-cols-4">
@@ -299,10 +299,10 @@ const Onboarding: React.FC = () => {
             )}
 
             {activeStep.id === 'dashboard' && (
-              <div className="max-w-2xl min-[900px]:grid min-[900px]:max-w-none min-[900px]:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] min-[900px]:items-start min-[900px]:gap-16 xl:gap-24">
+              <div className="max-w-2xl sm:grid sm:max-w-none sm:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] sm:items-start sm:gap-8 min-[900px]:gap-16 xl:gap-24">
                 <StepHeading icon={StarIcon} eyebrow="Schnell erreichbar" title="Was brauchst du jeden Tag?" description="Favoriten stehen oben auf deinem Dashboard. Wähle bis zu sechs – den Rest findest du weiterhin darunter oder über die Suche." />
-                <div className="mt-7 min-[900px]:mt-0">
-                  <div className="onboarding-scroll-region grid max-h-[25rem] gap-3 overflow-y-auto pr-1 sm:grid-cols-2 min-[900px]:max-h-none min-[900px]:gap-4 min-[900px]:overflow-visible min-[900px]:pr-0">
+                <div className="mt-7 sm:mt-0">
+                  <div className="onboarding-scroll-region grid max-h-[25rem] gap-3 overflow-y-auto pr-1 sm:max-h-none sm:grid-cols-1 sm:overflow-visible sm:pr-0 min-[900px]:grid-cols-2 min-[900px]:gap-4">
                     {modulesLoading && Array.from({ length: 6 }).map((_, index) => <div key={index} className="skeleton h-16 rounded-2xl min-[900px]:h-[4.5rem]" />)}
                     {!modulesLoading && modules.map(module => {
                       const selected = pinnedModules.includes(module.name);
@@ -321,9 +321,9 @@ const Onboarding: React.FC = () => {
             )}
 
             {activeStep.id === 'timetable' && (
-              <div className="max-w-2xl min-[900px]:grid min-[900px]:max-w-none min-[900px]:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] min-[900px]:items-start min-[900px]:gap-16 xl:gap-24">
+              <div className="max-w-2xl sm:grid sm:max-w-none sm:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] sm:items-start sm:gap-8 min-[900px]:gap-16 xl:gap-24">
                 <StepHeading icon={CalendarDaysIcon} eyebrow="Deine Woche" title="Wie möchtest du deinen Stundenplan sehen?" description="Beide Ansichten berücksichtigen A-/B-Wochen und deine eigenen Stundenplananpassungen." />
-                <div className="mt-7 grid gap-4 sm:grid-cols-2 min-[900px]:mt-0">
+                <div className="mt-7 grid gap-4 sm:mt-0 sm:grid-cols-1 min-[900px]:grid-cols-2">
                   <TimetableChoice selected={timetableMode === 'rolling'} title="Kommende Schultage" description="Zeigt ab heute, was als Nächstes ansteht – ideal auf dem Handy." days={['HEUTE', 'MORGEN', 'MO', 'DI']} onClick={() => setTimetableMode('rolling')} />
                   <TimetableChoice selected={timetableMode === 'week'} title="Feste Schulwoche" description="Zeigt immer Montag bis Freitag – ideal zum Planen." days={['MO', 'DI', 'MI', 'DO', 'FR']} onClick={() => setTimetableMode('week')} />
                 </div>
@@ -331,14 +331,14 @@ const Onboarding: React.FC = () => {
             )}
 
             {activeStep.id === 'homework' && (
-              <div className="max-w-2xl min-[900px]:grid min-[900px]:max-w-none min-[900px]:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] min-[900px]:items-start min-[900px]:gap-16 xl:gap-24">
+              <div className="max-w-2xl sm:grid sm:max-w-none sm:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] sm:items-start sm:gap-8 min-[900px]:gap-16 xl:gap-24">
                 <StepHeading
                   icon={BookOpenIcon}
                   eyebrow="Klare Prioritäten"
                   title="Wie sollen erledigte Hausaufgaben aussehen?"
                   description="In den Kursdetails bleiben alle Hausaufgaben sichtbar. Hier entscheidest du nur über die Übersicht in „Mein Unterricht“."
                 />
-                <div className="mt-7 grid gap-4 sm:grid-cols-3 min-[900px]:mt-0 min-[900px]:grid-cols-1 min-[1180px]:grid-cols-3">
+                <div className="mt-7 grid gap-4 sm:mt-0 sm:grid-cols-1 min-[1180px]:grid-cols-3">
                   <HomeworkChoice
                     selected={completedHomeworkDisplay === 'orange'}
                     title="Orange · deutlich"
@@ -365,10 +365,10 @@ const Onboarding: React.FC = () => {
             )}
 
             {activeStep.id === 'guide' && (
-              <div className="max-w-2xl min-[900px]:grid min-[900px]:max-w-none min-[900px]:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] min-[900px]:items-start min-[900px]:gap-16 xl:gap-24">
+              <div className="max-w-2xl sm:grid sm:max-w-none sm:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] sm:items-start sm:gap-8 min-[900px]:gap-16 xl:gap-24">
                 <StepHeading icon={AcademicCapIcon} eyebrow="Gut zu wissen" title="So findest du dich sofort zurecht." description="Vier Dinge reichen für den Start. Alles Weitere entdeckst du dort, wo du es brauchst." />
-                <div className="mt-7 min-[900px]:mt-0">
-                  <div className="grid gap-3 sm:grid-cols-2 min-[900px]:gap-4">
+                <div className="mt-7 sm:mt-0">
+                  <div className="grid gap-3 sm:grid-cols-1 min-[900px]:grid-cols-2 min-[900px]:gap-4">
                     <GuideCard icon={Bars3Icon} title="Bereiche wechseln" text="Die Navigation bringt dich zu Nachrichten, Kursen, Stundenplan und Kalender." />
                     <GuideCard icon={MagnifyingGlassIcon} title="Alles durchsuchen" text="Öffne die Suche in der Navigation oder mit Strg/⌘ + K." />
                     <GuideCard icon={CalendarDaysIcon} title="Stunden korrigieren" text="Unter Einstellungen › Stundenplan kannst du wiederkehrende Stunden ändern oder ausblenden." />
@@ -383,7 +383,7 @@ const Onboarding: React.FC = () => {
 
             {(localError || syncError) && <p className="mt-5 rounded-xl bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">{localError || syncError}</p>}
 
-            <div className="mt-8 flex items-center justify-between gap-3 min-[900px]:mt-12">
+            <div className="mt-8 flex items-center justify-between gap-3 sm:mt-10 min-[900px]:mt-12">
               <button type="button" onClick={goBack} className={`btn btn-ghost ${stepIndex === 0 ? 'invisible' : ''}`} disabled={stepIndex === 0}><ArrowLeftIcon className="mr-2 h-4 w-4" />Zurück</button>
               {activeStep.id === 'guide' ? (
                 <button type="button" onClick={complete} className="btn btn-primary px-6">Zum Dashboard<ArrowRightIcon className="ml-2 h-4 w-4" /></button>
