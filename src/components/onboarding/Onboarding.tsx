@@ -218,48 +218,48 @@ const Onboarding: React.FC = () => {
     <div className="relative min-h-[100dvh] w-full max-w-full overflow-x-clip bg-surface-50 text-surface-900 dark:bg-surface-950 dark:text-surface-100">
       <SEO title="Lanis einrichten" description="Passe Lanis an deinen Schulalltag an." path="/onboarding" noindex />
       <div className="onboarding-ambient pointer-events-none fixed inset-0" />
-      <main className="relative mx-auto flex min-h-[100dvh] w-full min-w-0 max-w-7xl flex-col px-4 py-5 sm:px-6 lg:px-10 lg:py-8 xl:px-12">
+      <main className="relative mx-auto flex min-h-[100dvh] w-full min-w-0 max-w-7xl flex-col px-4 py-5 sm:px-6 min-[900px]:px-10 min-[900px]:py-8 xl:px-12">
         <header className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3 lg:gap-4">
-            <img src="/favicon/android-chrome-192x192.png" alt="" className="h-10 w-10 rounded-xl shadow-soft lg:h-12 lg:w-12 lg:rounded-2xl" />
+          <div className="flex items-center gap-3 min-[900px]:gap-4">
+            <img src="/favicon/android-chrome-192x192.png" alt="" className="h-10 w-10 rounded-xl shadow-soft min-[900px]:h-12 min-[900px]:w-12 min-[900px]:rounded-2xl" />
             <div>
-              <p className="font-semibold tracking-tight lg:text-lg">Lanis</p>
-              <p className="text-xs text-surface-500 lg:text-sm">Dein Schulportal</p>
+              <p className="font-semibold tracking-tight min-[900px]:text-lg">Lanis</p>
+              <p className="text-xs text-surface-500 min-[900px]:text-sm">Dein Schulportal</p>
             </div>
           </div>
           <button type="button" onClick={skip} className="btn btn-ghost px-3">Später einrichten</button>
         </header>
 
-        <div className="mt-6 grid gap-2 sm:mt-8 lg:mt-10 lg:gap-3" style={{ gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))` }} aria-label={`Schritt ${stepIndex + 1} von ${steps.length}`}>
+        <div className="mt-6 grid gap-2 sm:mt-8 min-[900px]:mt-10 min-[900px]:gap-3" style={{ gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))` }} aria-label={`Schritt ${stepIndex + 1} von ${steps.length}`}>
           {steps.map((step, index) => (
             <div key={step.id} className="flex min-w-0 flex-col gap-2" aria-current={index === stepIndex ? 'step' : undefined}>
               <span className={`h-1.5 w-full rounded-full transition-colors ${index <= stepIndex ? 'bg-primary-500' : 'bg-surface-200 dark:bg-surface-800'}`} />
-              <span className={`hidden truncate text-center text-[11px] font-medium sm:block lg:text-sm ${index === stepIndex ? 'text-primary-700 dark:text-primary-300' : 'text-surface-400'}`}>{step.label}</span>
+              <span className={`hidden truncate text-center text-[11px] font-medium sm:block min-[900px]:text-sm ${index === stepIndex ? 'text-primary-700 dark:text-primary-300' : 'text-surface-400'}`}>{step.label}</span>
             </div>
           ))}
         </div>
 
-        <div className="flex flex-1 items-center py-8 lg:py-14">
+        <div className="flex flex-1 items-center py-8 min-[900px]:items-start min-[900px]:py-14">
           <section key={activeStep.id} className="mx-auto w-full min-w-0 max-w-6xl animate-fade-in">
             {activeStep.id === 'welcome' && (
-              <div className="max-w-2xl lg:grid lg:max-w-none lg:grid-cols-[minmax(0,1.1fr)_minmax(22rem,0.9fr)] lg:items-center lg:gap-16 xl:gap-24">
+              <div className="max-w-2xl min-[900px]:grid min-[900px]:max-w-none min-[900px]:grid-cols-[minmax(0,1.1fr)_minmax(22rem,0.9fr)] min-[900px]:items-center min-[900px]:gap-16 xl:gap-24">
                 <div>
-                  <div className="mb-6 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-primary-100 text-primary-700 dark:bg-primary-950 dark:text-primary-300 lg:h-14 lg:w-14">
-                    <SparklesIcon className="h-6 w-6 lg:h-7 lg:w-7" />
+                  <div className="mb-6 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-primary-100 text-primary-700 dark:bg-primary-950 dark:text-primary-300 min-[900px]:h-14 min-[900px]:w-14">
+                    <SparklesIcon className="h-6 w-6 min-[900px]:h-7 min-[900px]:w-7" />
                   </div>
-                  <p className="mb-3 text-sm font-semibold text-primary-700 dark:text-primary-300 lg:text-base">Willkommen, {displayName}</p>
-                  <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl lg:text-6xl">Mach Lanis zu deinem Schulportal.</h1>
-                  <p className="mt-5 max-w-xl text-base leading-7 text-surface-600 dark:text-surface-300 sm:text-lg lg:mt-6 lg:text-xl lg:leading-8">
+                  <p className="mb-3 text-sm font-semibold text-primary-700 dark:text-primary-300 min-[900px]:text-base">Willkommen, {displayName}</p>
+                  <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl min-[900px]:text-6xl">Mach Lanis zu deinem Schulportal.</h1>
+                  <p className="mt-5 max-w-xl text-base leading-7 text-surface-600 dark:text-surface-300 sm:text-lg min-[900px]:mt-6 min-[900px]:text-xl min-[900px]:leading-8">
                     Lanis holt Stundenplan, Nachrichten, Kurse und Kalender aus dem Schulportal Hessen und bringt alles in eine schnellere, übersichtlichere Oberfläche.
                   </p>
                 </div>
-                <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:mt-0 lg:grid-cols-1 lg:gap-4">
-                  <div className="rounded-2xl border border-surface-200 bg-white/80 p-4 dark:border-surface-800 dark:bg-surface-900/80 lg:p-5">
+                <div className="mt-8 grid gap-3 sm:grid-cols-2 min-[900px]:mt-0 min-[900px]:grid-cols-1 min-[900px]:gap-4">
+                  <div className="rounded-2xl border border-surface-200 bg-white/80 p-4 dark:border-surface-800 dark:bg-surface-900/80 min-[900px]:p-5">
                     <CloudArrowUpIcon className="h-5 w-5 text-primary-600" />
                     <p className="mt-3 font-medium">Auf allen Geräten</p>
                     <p className="mt-1 text-sm text-surface-500">Deine Auswahl wird mit deinem Lanis-Konto synchronisiert.</p>
                   </div>
-                  <div className="rounded-2xl border border-surface-200 bg-white/80 p-4 dark:border-surface-800 dark:bg-surface-900/80 lg:p-5">
+                  <div className="rounded-2xl border border-surface-200 bg-white/80 p-4 dark:border-surface-800 dark:bg-surface-900/80 min-[900px]:p-5">
                     <Cog6ToothIcon className="h-5 w-5 text-primary-600" />
                     <p className="mt-3 font-medium">Jederzeit änderbar</p>
                     <p className="mt-1 text-sm text-surface-500">Alles bleibt später unter Einstellungen erreichbar.</p>
@@ -269,26 +269,26 @@ const Onboarding: React.FC = () => {
             )}
 
             {activeStep.id === 'appearance' && (
-              <div className="max-w-2xl lg:grid lg:max-w-none lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] lg:items-start lg:gap-16 xl:gap-24">
+              <div className="max-w-2xl min-[900px]:grid min-[900px]:max-w-none min-[900px]:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] min-[900px]:items-start min-[900px]:gap-16 xl:gap-24">
                 <StepHeading icon={PaintBrushIcon} eyebrow="Dein Stil" title="Wie soll sich Lanis anfühlen?" description="Die Vorschau reagiert sofort. Darstellung und Farbe folgen dir auf andere Geräte." />
-                <div className="mt-7 lg:mt-0">
+                <div className="mt-7 min-[900px]:mt-0">
                   <fieldset>
-                    <legend className="mb-3 text-sm font-semibold lg:text-base">Darstellung</legend>
-                    <div className="grid grid-cols-2 gap-3 lg:gap-4 xl:grid-cols-4">
+                    <legend className="mb-3 text-sm font-semibold min-[900px]:text-base">Darstellung</legend>
+                    <div className="grid grid-cols-2 gap-3 min-[900px]:gap-4 xl:grid-cols-4">
                       {themeModes.map(mode => (
-                        <button key={mode.id} type="button" onClick={() => setDraftThemeMode(mode.id)} className={`rounded-2xl border p-3 text-left transition-all lg:min-h-24 lg:p-4 ${themeMode === mode.id ? 'border-primary-500 bg-primary-50 ring-2 ring-primary-500/15 dark:bg-primary-950/40' : 'border-surface-200 bg-white hover:border-primary-300 dark:border-surface-800 dark:bg-surface-900'}`}>
-                          <span className="block text-sm font-semibold lg:text-base">{mode.label}</span>
-                          <span className="mt-1 block text-xs text-surface-500 lg:text-sm">{mode.note}</span>
+                        <button key={mode.id} type="button" onClick={() => setDraftThemeMode(mode.id)} className={`rounded-2xl border p-3 text-left transition-all min-[900px]:min-h-24 min-[900px]:p-4 ${themeMode === mode.id ? 'border-primary-500 bg-primary-50 ring-2 ring-primary-500/15 dark:bg-primary-950/40' : 'border-surface-200 bg-white hover:border-primary-300 dark:border-surface-800 dark:bg-surface-900'}`}>
+                          <span className="block text-sm font-semibold min-[900px]:text-base">{mode.label}</span>
+                          <span className="mt-1 block text-xs text-surface-500 min-[900px]:text-sm">{mode.note}</span>
                         </button>
                       ))}
                     </div>
                   </fieldset>
-                  <fieldset className="mt-7 lg:mt-9">
-                    <legend className="mb-3 text-sm font-semibold lg:text-base">Akzentfarbe</legend>
+                  <fieldset className="mt-7 min-[900px]:mt-9">
+                    <legend className="mb-3 text-sm font-semibold min-[900px]:text-base">Akzentfarbe</legend>
                     <div className="flex flex-wrap gap-3">
                       {themeColors.map(color => (
-                        <button key={color.id} type="button" onClick={() => setDraftThemeColor(color.id)} className={`group flex items-center gap-2 rounded-full border bg-white py-2 pl-2 pr-3 text-sm font-medium transition-all dark:bg-surface-900 lg:pr-4 lg:text-base ${themeColor === color.id ? 'border-primary-500 ring-2 ring-primary-500/15' : 'border-surface-200 dark:border-surface-800'}`} aria-pressed={themeColor === color.id}>
-                          <span className="flex h-7 w-7 items-center justify-center rounded-full lg:h-8 lg:w-8" style={{ backgroundColor: color.hex }}>{themeColor === color.id && <CheckIcon className="h-4 w-4 text-white" />}</span>
+                        <button key={color.id} type="button" onClick={() => setDraftThemeColor(color.id)} className={`group flex items-center gap-2 rounded-full border bg-white py-2 pl-2 pr-3 text-sm font-medium transition-all dark:bg-surface-900 min-[900px]:pr-4 min-[900px]:text-base ${themeColor === color.id ? 'border-primary-500 ring-2 ring-primary-500/15' : 'border-surface-200 dark:border-surface-800'}`} aria-pressed={themeColor === color.id}>
+                          <span className="flex h-7 w-7 items-center justify-center rounded-full min-[900px]:h-8 min-[900px]:w-8" style={{ backgroundColor: color.hex }}>{themeColor === color.id && <CheckIcon className="h-4 w-4 text-white" />}</span>
                           {color.label}
                         </button>
                       ))}
@@ -299,31 +299,31 @@ const Onboarding: React.FC = () => {
             )}
 
             {activeStep.id === 'dashboard' && (
-              <div className="max-w-2xl lg:grid lg:max-w-none lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] lg:items-start lg:gap-16 xl:gap-24">
+              <div className="max-w-2xl min-[900px]:grid min-[900px]:max-w-none min-[900px]:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] min-[900px]:items-start min-[900px]:gap-16 xl:gap-24">
                 <StepHeading icon={StarIcon} eyebrow="Schnell erreichbar" title="Was brauchst du jeden Tag?" description="Favoriten stehen oben auf deinem Dashboard. Wähle bis zu sechs – den Rest findest du weiterhin darunter oder über die Suche." />
-                <div className="mt-7 lg:mt-0">
-                  <div className="onboarding-scroll-region grid max-h-[25rem] gap-3 overflow-y-auto pr-1 sm:grid-cols-2 lg:max-h-none lg:gap-4 lg:overflow-visible lg:pr-0">
-                    {modulesLoading && Array.from({ length: 6 }).map((_, index) => <div key={index} className="skeleton h-16 rounded-2xl lg:h-[4.5rem]" />)}
+                <div className="mt-7 min-[900px]:mt-0">
+                  <div className="onboarding-scroll-region grid max-h-[25rem] gap-3 overflow-y-auto pr-1 sm:grid-cols-2 min-[900px]:max-h-none min-[900px]:gap-4 min-[900px]:overflow-visible min-[900px]:pr-0">
+                    {modulesLoading && Array.from({ length: 6 }).map((_, index) => <div key={index} className="skeleton h-16 rounded-2xl min-[900px]:h-[4.5rem]" />)}
                     {!modulesLoading && modules.map(module => {
                       const selected = pinnedModules.includes(module.name);
                       return (
-                        <button key={module.name} type="button" onClick={() => toggleModule(module.name)} className={`flex items-center gap-3 rounded-2xl border p-3 text-left transition-all lg:min-h-[4.5rem] lg:p-4 ${selected ? 'border-primary-500 bg-primary-50 dark:bg-primary-950/40 lg:ring-2 lg:ring-primary-500/15' : 'border-surface-200 bg-white hover:border-primary-300 dark:border-surface-800 dark:bg-surface-900'}`} aria-pressed={selected}>
+                        <button key={module.name} type="button" onClick={() => toggleModule(module.name)} className={`flex items-center gap-3 rounded-2xl border p-3 text-left transition-all min-[900px]:min-h-[4.5rem] min-[900px]:p-4 ${selected ? 'border-primary-500 bg-primary-50 dark:bg-primary-950/40 min-[900px]:ring-2 min-[900px]:ring-primary-500/15' : 'border-surface-200 bg-white hover:border-primary-300 dark:border-surface-800 dark:bg-surface-900'}`} aria-pressed={selected}>
                           <ModuleIcon name={module.name} logo={module.logo} color={module.color} size="small" />
-                          <span className="min-w-0 flex-1 truncate text-sm font-medium lg:text-base">{module.name}</span>
-                          <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full lg:h-7 lg:w-7 ${selected ? 'bg-primary-600 text-white' : 'bg-surface-100 text-surface-400 dark:bg-surface-800'}`}>{selected ? <CheckIcon className="h-4 w-4" /> : <StarIcon className="h-4 w-4" />}</span>
+                          <span className="min-w-0 flex-1 truncate text-sm font-medium min-[900px]:text-base">{module.name}</span>
+                          <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full min-[900px]:h-7 min-[900px]:w-7 ${selected ? 'bg-primary-600 text-white' : 'bg-surface-100 text-surface-400 dark:bg-surface-800'}`}>{selected ? <CheckIcon className="h-4 w-4" /> : <StarIcon className="h-4 w-4" />}</span>
                         </button>
                       );
                     })}
                   </div>
-                  <p className="mt-3 text-sm text-surface-500 lg:mt-4">{pinnedModules.length} von 6 ausgewählt</p>
+                  <p className="mt-3 text-sm text-surface-500 min-[900px]:mt-4">{pinnedModules.length} von 6 ausgewählt</p>
                 </div>
               </div>
             )}
 
             {activeStep.id === 'timetable' && (
-              <div className="max-w-2xl lg:grid lg:max-w-none lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] lg:items-start lg:gap-16 xl:gap-24">
+              <div className="max-w-2xl min-[900px]:grid min-[900px]:max-w-none min-[900px]:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] min-[900px]:items-start min-[900px]:gap-16 xl:gap-24">
                 <StepHeading icon={CalendarDaysIcon} eyebrow="Deine Woche" title="Wie möchtest du deinen Stundenplan sehen?" description="Beide Ansichten berücksichtigen A-/B-Wochen und deine eigenen Stundenplananpassungen." />
-                <div className="mt-7 grid gap-4 sm:grid-cols-2 lg:mt-0">
+                <div className="mt-7 grid gap-4 sm:grid-cols-2 min-[900px]:mt-0">
                   <TimetableChoice selected={timetableMode === 'rolling'} title="Kommende Schultage" description="Zeigt ab heute, was als Nächstes ansteht – ideal auf dem Handy." days={['HEUTE', 'MORGEN', 'MO', 'DI']} onClick={() => setTimetableMode('rolling')} />
                   <TimetableChoice selected={timetableMode === 'week'} title="Feste Schulwoche" description="Zeigt immer Montag bis Freitag – ideal zum Planen." days={['MO', 'DI', 'MI', 'DO', 'FR']} onClick={() => setTimetableMode('week')} />
                 </div>
@@ -331,14 +331,14 @@ const Onboarding: React.FC = () => {
             )}
 
             {activeStep.id === 'homework' && (
-              <div className="max-w-2xl lg:grid lg:max-w-none lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] lg:items-start lg:gap-16 xl:gap-24">
+              <div className="max-w-2xl min-[900px]:grid min-[900px]:max-w-none min-[900px]:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] min-[900px]:items-start min-[900px]:gap-16 xl:gap-24">
                 <StepHeading
                   icon={BookOpenIcon}
                   eyebrow="Klare Prioritäten"
                   title="Wie sollen erledigte Hausaufgaben aussehen?"
                   description="In den Kursdetails bleiben alle Hausaufgaben sichtbar. Hier entscheidest du nur über die Übersicht in „Mein Unterricht“."
                 />
-                <div className="mt-7 grid gap-4 sm:grid-cols-3 lg:mt-0">
+                <div className="mt-7 grid gap-4 sm:grid-cols-3 min-[900px]:mt-0 min-[900px]:grid-cols-1 min-[1180px]:grid-cols-3">
                   <HomeworkChoice
                     selected={completedHomeworkDisplay === 'orange'}
                     title="Orange · deutlich"
@@ -365,16 +365,16 @@ const Onboarding: React.FC = () => {
             )}
 
             {activeStep.id === 'guide' && (
-              <div className="max-w-2xl lg:grid lg:max-w-none lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] lg:items-start lg:gap-16 xl:gap-24">
+              <div className="max-w-2xl min-[900px]:grid min-[900px]:max-w-none min-[900px]:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] min-[900px]:items-start min-[900px]:gap-16 xl:gap-24">
                 <StepHeading icon={AcademicCapIcon} eyebrow="Gut zu wissen" title="So findest du dich sofort zurecht." description="Vier Dinge reichen für den Start. Alles Weitere entdeckst du dort, wo du es brauchst." />
-                <div className="mt-7 lg:mt-0">
-                  <div className="grid gap-3 sm:grid-cols-2 lg:gap-4">
+                <div className="mt-7 min-[900px]:mt-0">
+                  <div className="grid gap-3 sm:grid-cols-2 min-[900px]:gap-4">
                     <GuideCard icon={Bars3Icon} title="Bereiche wechseln" text="Die Navigation bringt dich zu Nachrichten, Kursen, Stundenplan und Kalender." />
                     <GuideCard icon={MagnifyingGlassIcon} title="Alles durchsuchen" text="Öffne die Suche in der Navigation oder mit Strg/⌘ + K." />
                     <GuideCard icon={CalendarDaysIcon} title="Stunden korrigieren" text="Unter Einstellungen › Stundenplan kannst du wiederkehrende Stunden ändern oder ausblenden." />
                     <GuideCard icon={Cog6ToothIcon} title="Später weiter anpassen" text="Farben, Benachrichtigungen, Installation und weitere Optionen bleiben in den Einstellungen." />
                   </div>
-                  <div className="mt-6 rounded-2xl border border-primary-200 bg-primary-50 p-4 text-sm text-primary-800 dark:border-primary-900 dark:bg-primary-950/30 dark:text-primary-200 lg:p-5">
+                  <div className="mt-6 rounded-2xl border border-primary-200 bg-primary-50 p-4 text-sm text-primary-800 dark:border-primary-900 dark:bg-primary-950/30 dark:text-primary-200 min-[900px]:p-5">
                     Benachrichtigungen fragen wir erst an, wenn du sie selbst aktivierst. So behältst du die Kontrolle über Browser-Berechtigungen.
                   </div>
                 </div>
@@ -383,7 +383,7 @@ const Onboarding: React.FC = () => {
 
             {(localError || syncError) && <p className="mt-5 rounded-xl bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">{localError || syncError}</p>}
 
-            <div className="mt-8 flex items-center justify-between gap-3 lg:mt-12">
+            <div className="mt-8 flex items-center justify-between gap-3 min-[900px]:mt-12">
               <button type="button" onClick={goBack} className={`btn btn-ghost ${stepIndex === 0 ? 'invisible' : ''}`} disabled={stepIndex === 0}><ArrowLeftIcon className="mr-2 h-4 w-4" />Zurück</button>
               {activeStep.id === 'guide' ? (
                 <button type="button" onClick={complete} className="btn btn-primary px-6">Zum Dashboard<ArrowRightIcon className="ml-2 h-4 w-4" /></button>
@@ -401,15 +401,15 @@ const Onboarding: React.FC = () => {
 
 const StepHeading: React.FC<{ icon: React.ComponentType<React.SVGProps<SVGSVGElement>>; eyebrow: string; title: string; description: string }> = ({ icon: Icon, eyebrow, title, description }) => (
   <div>
-    <div className="mb-5 flex h-11 w-11 items-center justify-center rounded-2xl bg-primary-100 text-primary-700 dark:bg-primary-950 dark:text-primary-300 lg:h-14 lg:w-14"><Icon className="h-5 w-5 lg:h-7 lg:w-7" /></div>
-    <p className="text-sm font-semibold text-primary-700 dark:text-primary-300 lg:text-base">{eyebrow}</p>
-    <h1 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl lg:text-5xl">{title}</h1>
-    <p className="mt-4 max-w-xl leading-7 text-surface-600 dark:text-surface-300 lg:mt-5 lg:text-lg lg:leading-8">{description}</p>
+    <div className="mb-5 flex h-11 w-11 items-center justify-center rounded-2xl bg-primary-100 text-primary-700 dark:bg-primary-950 dark:text-primary-300 min-[900px]:h-14 min-[900px]:w-14"><Icon className="h-5 w-5 min-[900px]:h-7 min-[900px]:w-7" /></div>
+    <p className="text-sm font-semibold text-primary-700 dark:text-primary-300 min-[900px]:text-base">{eyebrow}</p>
+    <h1 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl min-[900px]:text-5xl">{title}</h1>
+    <p className="mt-4 max-w-xl leading-7 text-surface-600 dark:text-surface-300 min-[900px]:mt-5 min-[900px]:text-lg min-[900px]:leading-8">{description}</p>
   </div>
 );
 
 const TimetableChoice: React.FC<{ selected: boolean; title: string; description: string; days: string[]; onClick: () => void }> = ({ selected, title, description, days, onClick }) => (
-  <button type="button" onClick={onClick} className={`rounded-2xl border p-4 text-left transition-all lg:p-5 ${selected ? 'border-primary-500 bg-primary-50 ring-2 ring-primary-500/15 dark:bg-primary-950/40' : 'border-surface-200 bg-white hover:border-primary-300 dark:border-surface-800 dark:bg-surface-900'}`} aria-pressed={selected}>
+  <button type="button" onClick={onClick} className={`rounded-2xl border p-4 text-left transition-all min-[900px]:p-5 ${selected ? 'border-primary-500 bg-primary-50 ring-2 ring-primary-500/15 dark:bg-primary-950/40' : 'border-surface-200 bg-white hover:border-primary-300 dark:border-surface-800 dark:bg-surface-900'}`} aria-pressed={selected}>
     <div className="mb-4 flex gap-1">{days.map((day, index) => <span key={day} className={`flex h-8 min-w-8 flex-1 items-center justify-center rounded-lg text-[9px] font-semibold ${index === 0 ? 'bg-primary-600 text-white' : 'bg-surface-100 text-surface-500 dark:bg-surface-800'}`}>{day}</span>)}</div>
     <p className="font-semibold">{title}</p>
     <p className="mt-1 text-sm leading-5 text-surface-500">{description}</p>
@@ -426,7 +426,7 @@ const HomeworkChoice: React.FC<{
   <button
     type="button"
     onClick={onClick}
-    className={`rounded-2xl border p-4 text-left transition-all lg:p-5 ${selected ? 'border-primary-500 bg-primary-50 ring-2 ring-primary-500/15 dark:bg-primary-950/40' : 'border-surface-200 bg-white hover:border-primary-300 dark:border-surface-800 dark:bg-surface-900'}`}
+    className={`rounded-2xl border p-4 text-left transition-all min-[900px]:p-5 ${selected ? 'border-primary-500 bg-primary-50 ring-2 ring-primary-500/15 dark:bg-primary-950/40' : 'border-surface-200 bg-white hover:border-primary-300 dark:border-surface-800 dark:bg-surface-900'}`}
     aria-pressed={selected}
   >
     <div className={`mb-4 rounded-xl border-l-4 p-3 ${display === 'hidden' ? 'border-dashed border-surface-300 bg-surface-50 dark:border-surface-600 dark:bg-surface-800/70' : display === 'green' ? 'border-emerald-400 bg-emerald-50 dark:border-emerald-500 dark:bg-emerald-950/35' : 'border-orange-400 bg-orange-50 dark:border-orange-500 dark:bg-orange-950/35'}`}>
@@ -442,7 +442,7 @@ const HomeworkChoice: React.FC<{
 );
 
 const GuideCard: React.FC<{ icon: React.ComponentType<React.SVGProps<SVGSVGElement>>; title: string; text: string }> = ({ icon: Icon, title, text }) => (
-  <div className="rounded-2xl border border-surface-200 bg-white p-4 dark:border-surface-800 dark:bg-surface-900 lg:p-5">
+  <div className="rounded-2xl border border-surface-200 bg-white p-4 dark:border-surface-800 dark:bg-surface-900 min-[900px]:p-5">
     <Icon className="h-5 w-5 text-primary-600" />
     <p className="mt-3 font-semibold">{title}</p>
     <p className="mt-1 text-sm leading-5 text-surface-500">{text}</p>
