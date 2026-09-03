@@ -127,7 +127,7 @@ function searchCacheData(
   const results: SearchItem[] = [];
 
   try {
-    const raw = localStorage.getItem('messages_cache');
+    const raw = basePath === '/demo' ? null : localStorage.getItem('messages_cache');
     if (raw) {
       const msgs = JSON.parse(raw);
       if (Array.isArray(msgs)) {
@@ -154,7 +154,7 @@ function searchCacheData(
   } catch {}
 
   try {
-    const raw = localStorage.getItem('courses_cache');
+    const raw = basePath === '/demo' ? null : localStorage.getItem('courses_cache');
     if (raw) {
       const entries = JSON.parse(raw);
       if (Array.isArray(entries)) {
@@ -188,7 +188,7 @@ function searchCacheData(
   }
 
   try {
-    const raw = localStorage.getItem('dsb_plan_cache_v2');
+    const raw = basePath === '/demo' ? null : localStorage.getItem('dsb_plan_cache_v2');
     if (raw) {
       const data = JSON.parse(raw);
       for (const t of data?.tables || []) {
@@ -207,7 +207,7 @@ function searchCacheData(
   } catch {}
 
   try {
-    const raw = localStorage.getItem('username_cache');
+    const raw = basePath === '/demo' ? null : localStorage.getItem('username_cache');
     if (raw) {
       const p = JSON.parse(raw);
       const data = p?.data || p;
@@ -228,7 +228,7 @@ function searchCacheData(
   } catch {}
 
   try {
-    const raw = localStorage.getItem('profile_cache');
+    const raw = basePath === '/demo' ? null : localStorage.getItem('profile_cache');
     if (raw) {
       const profile = JSON.parse(raw);
       if (searchText(query, profile)) {

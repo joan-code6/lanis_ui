@@ -1,11 +1,32 @@
+import { demoModules, demoUser } from './demoData';
+
 const now = new Date();
 const fmt = (d: Date) => d.toISOString();
 const daysAgo = (n: number) => fmt(new Date(now.getTime() - n * 86400000));
 const hoursAgo = (n: number) => fmt(new Date(now.getTime() - n * 3600000));
 const daysFromNow = (n: number) => fmt(new Date(now.getTime() + n * 86400000));
 const hoursFromNow = (n: number) => fmt(new Date(now.getTime() + n * 3600000));
-const relDate = (daysOffset: number) => fmt(new Date(now.getTime() + daysOffset * 86400000)).slice(0, 10);
+const localDate = (daysOffset: number) => {
+  const date = new Date(now);
+  date.setHours(12, 0, 0, 0);
+  date.setDate(date.getDate() + daysOffset);
+  return date;
+};
+const formatLocalDate = (date: Date) => [
+  date.getFullYear(),
+  String(date.getMonth() + 1).padStart(2, '0'),
+  String(date.getDate()).padStart(2, '0'),
+].join('-');
+const relDate = (daysOffset: number) => formatLocalDate(localDate(daysOffset));
 const relDateTime = (daysOffset: number, time: string) => relDate(daysOffset) + 'T' + time;
+const schoolWeekStart = new Date(now);
+schoolWeekStart.setHours(12, 0, 0, 0);
+schoolWeekStart.setDate(schoolWeekStart.getDate() - ((schoolWeekStart.getDay() + 6) % 7));
+const weekDate = (dayOffset: number) => {
+  const date = new Date(schoolWeekStart);
+  date.setDate(date.getDate() + dayOffset);
+  return formatLocalDate(date);
+};
 
 const readMockStorage = (key: string): unknown => {
   if (typeof window === 'undefined') return undefined;
@@ -24,22 +45,6 @@ const writeMockStorage = (key: string, value: unknown) => {
   } catch {
     // Demo mode still works when storage is blocked or unavailable.
   }
-};
-
-const mockUser = {
-  username: 'max.mustermann',
-  vorname: 'Max',
-  nachname: 'Mustermann',
-  klasse: 'Q2',
-  email: 'max.mustermann@goethe-gymnasium.de',
-  schule: 'Goethe-Gymnasium Frankfurt',
-  role: 'Schüler',
-  tutor: 'Herr Dr. Weber',
-  geburtsdatum: '01.01.2008',
-  geschlecht: 'm',
-  strasse: 'Schulstraße 1',
-  plz: '60311',
-  ort: 'Frankfurt am Main',
 };
 
 const defaultMockNotificationPreferences = {
@@ -70,19 +75,6 @@ const persistMockOverrides = () => {
   writeMockStorage('lanis_demo_class_link_overrides', mockClassLinkOverrides);
 };
 
-const mockModules = [
-  { name: 'Mein Unterricht', url: 'https://schulportal.hessen.de/meinunterricht.php', direct_url: 'https://schulportal.hessen.de/meinunterricht.php', proxy_app: false, color: '#4f46e5', logo: 'fa fa-files-o', folders: ['Schule'], target: '_self' },
-  { name: 'Nachrichten', url: 'https://schulportal.hessen.de/nachrichten.php', direct_url: 'https://schulportal.hessen.de/nachrichten.php', proxy_app: false, color: '#0891b2', logo: 'fa fa-envelope-o', folders: ['Kommunikation'], target: '_self' },
-  { name: 'Kalender', url: 'https://schulportal.hessen.de/kalender.php', direct_url: 'https://schulportal.hessen.de/kalender.php', proxy_app: false, color: '#dc2626', logo: 'fa fa-calendar-o', folders: ['Schule'], target: '_self' },
-  { name: 'Dateispeicher', url: 'https://schulportal.hessen.de/dateispeicher.php', direct_url: 'https://schulportal.hessen.de/dateispeicher.php', proxy_app: false, color: '#0f766e', logo: 'fa fa-folder-open-o', folders: ['Schule'], target: '_self' },
-  { name: 'Vertretungsplan', url: 'https://schulportal.hessen.de/vertretungsplan.php', direct_url: 'https://schulportal.hessen.de/vertretungsplan.php', proxy_app: false, color: '#7c3aed', logo: 'fa fa-files-o', folders: ['Schule'], target: '_self' },
-  { name: 'DSBmobile', url: 'https://dsb.hessen.de/dsb.php', direct_url: 'https://dsb.hessen.de/dsb.php', proxy_app: false, color: '#64748b', logo: 'fa fa-files-o', folders: ['Schule'], target: '_self' },
-  { name: 'Klassenbuch', url: 'https://schulportal.hessen.de/klassenbuch.php', direct_url: 'https://schulportal.hessen.de/klassenbuch.php', proxy_app: false, color: '#059669', logo: 'fa fa-files-o', folders: ['Schule'], target: '_blank' },
-  { name: 'Stundenplan', url: 'https://schulportal.hessen.de/stundenplan.php', direct_url: 'https://schulportal.hessen.de/stundenplan.php', proxy_app: false, color: '#d97706', logo: 'fa fa-calendar-o', folders: ['Schule'], target: '_blank' },
-  { name: 'Notenübersicht', url: 'https://schulportal.hessen.de/noten.php', direct_url: 'https://schulportal.hessen.de/noten.php', proxy_app: false, color: '#be185d', logo: 'fa fa-files-o', folders: ['Leistung'], target: '_blank' },
-  { name: 'Klausurplan', url: 'https://schulportal.hessen.de/klausuren.php', direct_url: 'https://schulportal.hessen.de/klausuren.php', proxy_app: false, color: '#2563eb', logo: 'fa fa-files-o', folders: ['Leistung'], target: '_blank' },
-];
-
 const mockDateispeicherNodes = {
   0: {
     success: true,
@@ -90,12 +82,16 @@ const mockDateispeicherNodes = {
     folders: [
       { id: 1, name: 'Unterrichtsmaterialien', subfolders: 0, description: 'Arbeitsblätter und Zusammenfassungen' },
       { id: 2, name: 'Projekte', subfolders: 0, description: 'Gemeinsame Projektdateien' },
+      { id: 3, name: 'Abgaben', subfolders: 0, description: 'Einreichungen für Unterricht und Projekte' },
+      { id: 4, name: 'Schulorganisation', subfolders: 0, description: 'Wichtige Informationen rund um die Schule' },
     ],
     files: [
       { id: 101, name: 'Schuljahreskalender.pdf', changed: '28.08.2026', size: '248 KB', note: null, download_url: 'https://start.schulportal.hessen.de/dateispeicher.php?a=download&f=101' },
+      { id: 105, name: 'Raumplan_9C.pdf', changed: '01.09.2026', size: '174 KB', note: 'Stand: September 2026', download_url: 'https://start.schulportal.hessen.de/dateispeicher.php?a=download&f=105' },
+      { id: 106, name: 'Regeln_fuer_Projektarbeit.pdf', changed: '25.08.2026', size: '312 KB', note: null, download_url: 'https://start.schulportal.hessen.de/dateispeicher.php?a=download&f=106' },
     ],
-    file_count: 1,
-    folder_count: 2,
+    file_count: 3,
+    folder_count: 4,
   },
   1: {
     success: true,
@@ -104,8 +100,10 @@ const mockDateispeicherNodes = {
     files: [
       { id: 102, name: 'Mathematik_Formelsammlung.pdf', changed: '26.08.2026', size: '1,2 MB', note: 'Für die Oberstufe', download_url: 'https://start.schulportal.hessen.de/dateispeicher.php?a=download&f=102' },
       { id: 103, name: 'Deutsch_Lektürehilfe.pdf', changed: '20.08.2026', size: '860 KB', note: null, download_url: 'https://start.schulportal.hessen.de/dateispeicher.php?a=download&f=103' },
+      { id: 107, name: 'Biologie_See-Experiment.pdf', changed: '19.08.2026', size: '1,1 MB', note: 'Versuchsaufbau und Messwerte', download_url: 'https://start.schulportal.hessen.de/dateispeicher.php?a=download&f=107' },
+      { id: 108, name: 'Englisch_Speech-Planner.pdf', changed: '15.08.2026', size: '426 KB', note: null, download_url: 'https://start.schulportal.hessen.de/dateispeicher.php?a=download&f=108' },
     ],
-    file_count: 2,
+    file_count: 4,
     folder_count: 0,
   },
   2: {
@@ -114,314 +112,216 @@ const mockDateispeicherNodes = {
     folders: [],
     files: [
       { id: 104, name: 'Projektplanung_Nachhaltigkeit.docx', changed: '18.08.2026', size: '92 KB', note: null, download_url: 'https://start.schulportal.hessen.de/dateispeicher.php?a=download&f=104' },
+      { id: 109, name: 'Präsentation_Entwurf.pptx', changed: '17.08.2026', size: '2,4 MB', note: 'Gemeinsamer Entwurf der Gruppe', download_url: 'https://start.schulportal.hessen.de/dateispeicher.php?a=download&f=109' },
+      { id: 110, name: 'Quellen_und_Notizen.odt', changed: '14.08.2026', size: '68 KB', note: null, download_url: 'https://start.schulportal.hessen.de/dateispeicher.php?a=download&f=110' },
     ],
-    file_count: 1,
+    file_count: 3,
+    folder_count: 0,
+  },
+  3: {
+    success: true,
+    folder_id: 3,
+    folders: [],
+    files: [
+      { id: 111, name: 'Deutsch_Gedichtvergleich.docx', changed: '02.09.2026', size: '84 KB', note: 'Noch nicht abgegeben', download_url: 'https://start.schulportal.hessen.de/dateispeicher.php?a=download&f=111' },
+      { id: 112, name: 'Informatik_Checkliste.html', changed: '29.08.2026', size: '12 KB', note: 'Projektdatei', download_url: 'https://start.schulportal.hessen.de/dateispeicher.php?a=download&f=112' },
+    ],
+    file_count: 2,
+    folder_count: 0,
+  },
+  4: {
+    success: true,
+    folder_id: 4,
+    folders: [],
+    files: [
+      { id: 113, name: 'Schulordnung_2026.pdf', changed: '22.08.2026', size: '518 KB', note: null, download_url: 'https://start.schulportal.hessen.de/dateispeicher.php?a=download&f=113' },
+      { id: 114, name: 'Ansprechpartner_und_Sprechzeiten.pdf', changed: '21.08.2026', size: '205 KB', note: null, download_url: 'https://start.schulportal.hessen.de/dateispeicher.php?a=download&f=114' },
+    ],
+    file_count: 2,
     folder_count: 0,
   },
 };
 
 const mockMessageHeaders = [
-  { Id: 'dm-1', Uniquid: 'uq-1', Sender: 'Herr Müller', Betreff: 'Klausur am Freitag — Wichtige Informationen', Papierkorb: '0', private: 0, WeitereEmpfaenger: '', empf: ['max.mustermann'], unread: true, date: daysAgo(1) },
-  { Id: 'dm-2', Uniquid: 'uq-2', Sender: 'Frau Schmidt', Betreff: 'Projektabgabe verlängert', Papierkorb: '0', private: 0, WeitereEmpfaenger: '', empf: ['max.mustermann'], unread: false, read: true, date: daysAgo(3) },
-  { Id: 'dm-3', Uniquid: 'uq-3', Sender: 'Schulleitung', Betreff: 'Wichtige Mitteilung: Schulausflug', Papierkorb: '0', private: 0, WeitereEmpfaenger: '', empf: ['max.mustermann'], unread: true, date: daysAgo(5) },
-  { Id: 'dm-4', Uniquid: 'uq-4', Sender: 'Hr. Dr. Weber', Betreff: 'Sprechstunde diese Woche', Papierkorb: '0', private: 0, WeitereEmpfaenger: '', empf: ['max.mustermann'], unread: false, read: true, date: daysAgo(7) },
-  { Id: 'dm-5', Uniquid: 'uq-5', Sender: 'Sekretariat', Betreff: 'Zeugnisausgabe', Papierkorb: '0', private: 0, WeitereEmpfaenger: '', empf: ['max.mustermann'], unread: true, date: daysAgo(10) },
+  { Id: 'dm-1', Uniquid: 'uq-1', Sender: 'Frau Neumann', Betreff: 'Deutsch: Gedichtvergleich für Montag', Papierkorb: '0', private: 0, WeitereEmpfaenger: '', empf: [demoUser.username], unread: true, date: hoursAgo(8) },
+  { Id: 'dm-2', Uniquid: 'uq-2', Sender: 'Herr Vogel', Betreff: 'Mathematik: Abgabe zum Funktionsgraphen', Papierkorb: '0', private: 0, WeitereEmpfaenger: '', empf: [demoUser.username], unread: true, date: daysAgo(1) },
+  { Id: 'dm-3', Uniquid: 'uq-3', Sender: 'Frau Özdemir', Betreff: 'Biologie: Protokoll zum See-Experiment', Papierkorb: '0', private: 0, WeitereEmpfaenger: '', empf: [demoUser.username], unread: false, read: true, date: daysAgo(2) },
+  { Id: 'dm-4', Uniquid: 'uq-4', Sender: 'Herr Brandt', Betreff: 'Klassenfahrt: Einverständniserklärung', Papierkorb: '0', private: 0, WeitereEmpfaenger: '', empf: [demoUser.username], unread: true, date: daysAgo(3) },
+  { Id: 'dm-5', Uniquid: 'uq-5', Sender: 'Sekretariat', Betreff: 'Sprechzeiten im Herbst', Papierkorb: '0', private: 0, WeitereEmpfaenger: '', empf: [demoUser.username], unread: false, read: true, date: daysAgo(6) },
+  { Id: 'dm-6', Uniquid: 'uq-6', Sender: 'Frau Winter', Betreff: 'Sportfest: Laufzettel und Zeiten', Papierkorb: '0', private: 0, WeitereEmpfaenger: '', empf: [demoUser.username], unread: false, read: true, date: daysAgo(8) },
+  { Id: 'dm-7', Uniquid: 'uq-7', Sender: 'Schulbibliothek', Betreff: 'Neue Bücher im Leseraum', Papierkorb: '0', private: 0, WeitereEmpfaenger: '', empf: [demoUser.username], unread: true, date: daysAgo(10) },
+  { Id: 'dm-8', Uniquid: 'uq-8', Sender: 'SV-Team', Betreff: 'Ideen für die Projektwoche', Papierkorb: '0', private: 0, WeitereEmpfaenger: '', empf: [demoUser.username], unread: false, read: true, date: daysAgo(12) },
 ];
 
 const mockConversations: Record<string, { messages: any[] }> = {
   'uq-1': { messages: [
-    { id: 'c1-1', sender: 'Herr Müller', content: 'Liebe Schülerinnen und Schüler,\n\nam kommenden Freitag, den 05.06.2026, findet die angekündigte Klausur zum Thema „Analysis: Kurvendiskussion" statt. Bitte erscheinen Sie pünktlich um 8:00 Uhr in Raum A12.\n\nErlaubte Hilfsmittel: Taschenrechner (nicht programmierbar), Formelsammlung.\n\nBei Rückfragen stehe ich in meiner Sprechstunde zur Verfügung.\n\nMit freundlichen Grüßen\nHerr Müller', date: daysAgo(1) },
-    { id: 'c1-2', sender: 'Max Mustermann', content: 'Sehr geehrter Herr Müller,\n\nvielen Dank für die Informationen. Ich habe noch eine Frage: Dürfen wir auch einen programmierbaren Taschenrechner verwenden, wenn wir den Speicher vorher löschen?\n\nMit freundlichen Grüßen\nMax Mustermann', date: hoursAgo(23) },
-    { id: 'c1-3', sender: 'Herr Müller', content: 'Hallo Max,\n\nleider nein. Laut Schulordnung sind bei Klausuren ausschließlich nicht-programmierbare Taschenrechner zugelassen. Bitte besorge dir rechtzeitig einen geeigneten Taschenrechner.\n\nViele Grüße\nHerr Müller', date: hoursAgo(22) },
+    { id: 'c1-1', sender: 'Frau Neumann', content: 'Hallo zusammen,\n\nbitte bringt für Montag euren Vergleich der beiden Gedichte mit. Markiert jeweils ein sprachliches Bild und erklärt kurz seine Wirkung.\n\nViele Grüße\nFrau Neumann', date: hoursAgo(8) },
+    { id: 'c1-2', sender: 'Mia Keller', content: 'Guten Morgen Frau Neumann,\n\nich ergänze noch die Stelle mit dem Perspektivwechsel. Dann bringe ich die Tabelle am Montag mit.\n\nViele Grüße\nMia', date: hoursAgo(5) },
   ]},
   'uq-2': { messages: [
-    { id: 'c2-1', sender: 'Frau Schmidt', content: 'Liebe Klasse,\n\ndie Abgabefrist für das Gruppenprojekt zum Thema „Nachhaltigkeit" wird um eine Woche verlängert.\n\nNeue Abgabefrist: 15.06.2026\n\nNutzt die zusätzliche Zeit bitte sinnvoll!\n\nViele Grüße\nFrau Schmidt', date: daysAgo(3) },
+    { id: 'c2-1', sender: 'Herr Vogel', content: 'Liebe 9C,\n\nzeichnet den Graphen der linearen Funktion aus dem Arbeitsblatt sauber in euer Heft und notiert den Rechenweg für den Schnittpunkt mit der y-Achse.\n\nViele Grüße\nHerr Vogel', date: daysAgo(1) },
   ]},
   'uq-3': { messages: [
-    { id: 'c3-1', sender: 'Schulleitung', content: 'Liebe Schulgemeinschaft,\n\nam 20. Juni findet der jährliche Schulausflug statt. Alle Klassen nehmen teil.\n\nZiele:\n- Klassen 5-7: Opel-Zoo Kronberg\n- Klassen 8-10: Mathematikum Gießen\n- Oberstufe (Q1-Q4): Goethe-Haus + Senckenbergmuseum Frankfurt\n\nAbfahrt: 8:00 Uhr | Rückkehr: ca. 16:00 Uhr\n\nBitte geben Sie die Einverständniserklärung bis zum 12.06. bei der Klassenleitung ab.\n\nMit freundlichen Grüßen\nDie Schulleitung', date: daysAgo(5) },
+    { id: 'c3-1', sender: 'Frau Özdemir', content: 'Für die nächste Stunde: Ergänzt euer Protokoll zum See-Experiment um eine begründete Vermutung. Denkt an Beobachtung, Erklärung und ein kurzes Fazit.\n\nViele Grüße\nFrau Özdemir', date: daysAgo(2) },
   ]},
   'uq-4': { messages: [
-    { id: 'c4-1', sender: 'Hr. Dr. Weber', content: 'Guten Tag,\n\nmeine Sprechstunde findet diese Woche ausnahmsweise am Mittwoch (03.06.) von 14:00-15:30 Uhr statt, statt wie gewohnt am Dienstag.\n\nGrund ist eine Fachkonferenz am Dienstag.\n\nViele Grüße\nDr. Weber', date: daysAgo(7) },
+    { id: 'c4-1', sender: 'Herr Brandt', content: 'Liebe 9C,\n\nfür die Klassenfahrt brauchen wir die unterschriebene Einverständniserklärung bis Ende der Woche. Gebt sie direkt bei eurer Klassenleitung ab.\n\nViele Grüße\nHerr Brandt', date: daysAgo(3) },
   ]},
   'uq-5': { messages: [
-    { id: 'c5-1', sender: 'Sekretariat', content: 'Sehr geehrte Eltern und Erziehungsberechtigte,\n\nhiermit möchten wir Sie über die Termine der Zeugnisausgabe informieren:\n\n- letzter Schultag: 18.07.2026\n- Zeugnisausgabe: 18.07.2026, 10:00 Uhr in der Aula\n\nBitte stellen Sie sicher, dass Ihr Kind an diesem Tag anwesend ist.\n\nMit freundlichen Grüßen\nDas Sekretariat', date: daysAgo(10) },
+    { id: 'c5-1', sender: 'Sekretariat', content: 'Liebe Schülerinnen und Schüler,\n\ndie Sprechzeiten der Schulleitung und des Sekretariats für das neue Halbjahr hängen ab sofort im Eingangsbereich aus.\n\nViele Grüße\nDas Sekretariat', date: daysAgo(6) },
+  ]},
+  'uq-6': { messages: [
+    { id: 'c6-1', sender: 'Frau Winter', content: 'Hallo 9C,\n\nfür das Sportfest findet ihr den Laufzettel ab heute im Dateispeicher. Die Startzeiten eurer Gruppe besprecht ihr bitte am Freitag in der ersten Stunde.\n\nViele Grüße\nFrau Winter', date: daysAgo(8) },
+  ]},
+  'uq-7': { messages: [
+    { id: 'c7-1', sender: 'Schulbibliothek', content: 'Hallo Mia,\n\nim Leseraum sind neue Jugendromane und Sachbücher eingetroffen. Die Ausleihe ist montags und donnerstags in der großen Pause möglich.\n\nViele Grüße\nDas Bibliotheksteam', date: daysAgo(10) },
+  ]},
+  'uq-8': { messages: [
+    { id: 'c8-1', sender: 'SV-Team', content: 'Hallo zusammen,\n\nfür die Projektwoche sammeln wir noch Ideen. Wenn ihr einen Workshop oder eine Aktion anbieten möchtet, tragt euren Vorschlag bitte bis Freitag in die Liste ein.\n\nViele Grüße\nEuer SV-Team', date: daysAgo(12) },
   ]},
 };
 
 const mockCourses = [
-  { entry_id: 'e1', book_id: 'b1', name: 'Mathematik GK', course_link: 'https://schulportal.hessen.de/courses/b1', teacher_full_name: 'Dr. Heinrich Weber', teacher_short: 'Wb', teacher_message_link: '', thema: 'Analysis: Kurvendiskussion und Extremwertprobleme', datum: daysAgo(0), homework: 'Aufgaben 1–5 auf Seite 142', homework_done: false },
-  { entry_id: 'e2', book_id: 'b2', name: 'Deutsch LK', course_link: 'https://schulportal.hessen.de/courses/b2', teacher_full_name: 'Prof. Anna Reinhardt', teacher_short: 'Re', teacher_message_link: '', thema: 'Faust I: Analyse des Osterspaziergangs', datum: daysAgo(1), homework: 'Essay: Die Rolle des Erdgeists in Faust I', homework_done: true },
-  { entry_id: 'e3', book_id: 'b3', name: 'Englisch GK', course_link: 'https://schulportal.hessen.de/courses/b3', teacher_full_name: "James O'Connor", teacher_short: "O'C", teacher_message_link: '', thema: 'Shakespeare: Hamlet Act III — To be or not to be', datum: daysAgo(2), homework: 'Read Act IV, Scene 1–3', homework_done: false },
-  { entry_id: 'e4', book_id: 'b4', name: 'Physik LK', course_link: 'https://schulportal.hessen.de/courses/b4', teacher_full_name: 'Dr. Sabine Keller', teacher_short: 'Kl', teacher_message_link: '', thema: 'Quantenmechanik: Doppelspaltexperiment', datum: daysAgo(3), homework: 'Berechnungen zum Doppelspaltexperiment', homework_done: false },
-  { entry_id: 'e5', book_id: 'b5', name: 'Geschichte GK', course_link: 'https://schulportal.hessen.de/courses/b5', teacher_full_name: 'Herr Thomas Bergmann', teacher_short: 'Bg', teacher_message_link: '', thema: 'Weimarer Republik: Die Goldenen Zwanziger', datum: daysAgo(4), homework: 'Quellenanalyse: Tagebucheintrag 1925', homework_done: true },
-  { entry_id: 'e6', book_id: 'b6', name: 'Informatik LK', course_link: 'https://schulportal.hessen.de/courses/b6', teacher_full_name: 'Frau Dr. Laura Chen', teacher_short: 'Ch', teacher_message_link: '', thema: 'Datenstrukturen: Binäre Suchbäume', datum: daysAgo(5), homework: 'Implementierung eines BST in Java', homework_done: false },
+  { entry_id: 'e1', book_id: 'b1', name: 'Deutsch 9c', course_link: 'https://schulportal.hessen.de/courses/b1', teacher_full_name: 'Neumann, Clara (CN)', teacher_short: 'CN', teacher_message_link: '', thema: 'Gedichtvergleich: Stadt und Natur', datum: daysAgo(1), homework: 'Vergleichstabelle zu den beiden Gedichten vervollständigen', homework_done: false },
+  { entry_id: 'e2', book_id: 'b2', name: 'Mathematik 9c', course_link: 'https://schulportal.hessen.de/courses/b2', teacher_full_name: 'Vogel, Martin (MV)', teacher_short: 'MV', teacher_message_link: '', thema: 'Lineare Funktionen und Steigung', datum: daysAgo(2), homework: 'Arbeitsblatt „Funktionsgraphen“: Nr. 4–7', homework_done: false },
+  { entry_id: 'e3', book_id: 'b3', name: 'Englisch 9c', course_link: 'https://schulportal.hessen.de/courses/b3', teacher_full_name: 'Özdemir, Aylin (AO)', teacher_short: 'AO', teacher_message_link: '', thema: 'Writing a persuasive speech', datum: daysAgo(3), homework: 'Write an opening paragraph for your speech', homework_done: true },
+  { entry_id: 'e4', book_id: 'b4', name: 'Biologie 9c', course_link: 'https://schulportal.hessen.de/courses/b4', teacher_full_name: 'Brandt, Felix (FB)', teacher_short: 'FB', teacher_message_link: '', thema: 'Ökosystem See', datum: daysAgo(1), homework: 'Versuchsprotokoll um die Auswertung ergänzen', homework_done: false },
+  { entry_id: 'e5', book_id: 'b5', name: 'Geschichte 9c', course_link: 'https://schulportal.hessen.de/courses/b5', teacher_full_name: 'Seidel, Marie (MS)', teacher_short: 'MS', teacher_message_link: '', thema: 'Industrialisierung und soziale Frage', datum: daysAgo(4), homework: 'Quelle zur Fabrikarbeit mit drei Stichpunkten auswerten', homework_done: true },
+  { entry_id: 'e6', book_id: 'b6', name: 'Informatik 9c', course_link: 'https://schulportal.hessen.de/courses/b6', teacher_full_name: 'Roth, Leonie (LR)', teacher_short: 'LR', teacher_message_link: '', thema: 'Barrierefreie Website', datum: daysAgo(2), homework: 'Alt-Texte für die Bilder im HTML-Dokument ergänzen', homework_done: false },
 ];
 
 const mockSubmissions = [
-  { id: 's1', title: 'Mathe-Klausur Q2', course: 'Mathematik GK', due_date: relDateTime(7, '08:00:00'), status: 'Anstehend', url: '' },
-  { id: 's2', title: 'Faust Essay', course: 'Deutsch LK', due_date: relDateTime(5, '23:59:00'), status: 'Ausstehend', url: '' },
-  { id: 's3', title: 'Hamlet Reading', course: 'Englisch GK', due_date: relDateTime(-2, '08:00:00'), status: 'Abgegeben', url: '' },
-  { id: 's4', title: 'Physik Berechnungen', course: 'Physik LK', due_date: relDateTime(14, '08:00:00'), status: 'Anstehend', url: '' },
-  { id: 's5', title: 'Informatik BST', course: 'Informatik LK', due_date: relDateTime(8, '23:59:00'), status: 'Ausstehend', url: '' },
-  { id: 's6', title: 'Geschichte Quellenanalyse', course: 'Geschichte GK', due_date: relDateTime(-1, '23:59:00'), status: 'Überfällig', url: '' },
+  { id: 's1', title: 'Mathematik: Funktionsgraphen', course: 'Mathematik 9c', due_date: relDateTime(1, '23:59:00'), status: 'Ausstehend', url: '' },
+  { id: 's2', title: 'Deutsch: Gedichtvergleich', course: 'Deutsch 9c', due_date: relDateTime(3, '09:40:00'), status: 'Anstehend', url: '' },
+  { id: 's3', title: 'Biologie: See-Experiment', course: 'Biologie 9c', due_date: relDateTime(-1, '23:59:00'), status: 'Abgegeben', url: '' },
+  { id: 's4', title: 'Englisch: Persuasive speech', course: 'Englisch 9c', due_date: relDateTime(4, '23:59:00'), status: 'Ausstehend', url: '' },
+  { id: 's5', title: 'Geschichte: Fabrikarbeit im 19. Jahrhundert', course: 'Geschichte 9c', due_date: relDateTime(8, '23:59:00'), status: 'Ausstehend', url: '' },
+  { id: 's6', title: 'Informatik: Barrierefreie Website', course: 'Informatik 9c', due_date: relDateTime(12, '09:40:00'), status: 'Anstehend', url: '' },
 ];
-
-const mockCourseDetails: Record<string, any> = {
-  'b1': {
-    course_id: 'b1', course_name: 'Mathematik GK', semester: 'Q2/2. Halbjahr', teacher_short: 'Wb', teacher_full: 'Dr. Heinrich Weber',
-    entries: [
-      { entry_id: 'b1e1', date: daysAgo(0), hours: '1–2', thema: 'Analysis: Kurvendiskussion und Extremwertprobleme', homework: 'Aufgaben 1–5 auf Seite 142', homework_done: false, attendance: 'anwesend', files: [], content: 'Heute haben wir die Kurvendiskussion fortgesetzt. Schwerpunkte: Bestimmung von Extremwerten, Wendepunkten und das Verhalten im Unendlichen.' },
-      { entry_id: 'b1e2', date: daysAgo(2), hours: '3–4', thema: 'Analysis: Ableitungen höherer Ordnung', homework: 'Arbeitsblatt 3 ausfüllen', homework_done: true, attendance: 'anwesend', files: [{ name: 'Arbeitsblatt_3.pdf', url: '/files/ab3.pdf' }], content: 'Einführung in Ableitungen höherer Ordnung und deren Anwendung bei der Kurvendiskussion.' },
-      { entry_id: 'b1e3', date: daysAgo(4), hours: '1–2', thema: 'Analysis: Nullstellenberechnung', homework: '', homework_done: true, attendance: 'anwesend', files: [], content: 'Wiederholung der Nullstellenberechnung mit verschiedenen Verfahren.' },
-      { entry_id: 'b1e4', date: daysAgo(7), hours: '5–6', thema: 'Analysis: Einführung Kurvendiskussion', homework: 'Seite 140 lesen', homework_done: true, attendance: 'anwesend', files: [], content: 'Erste Einführung in das Thema Kurvendiskussion.' },
-      { entry_id: 'b1e5', date: daysAgo(10), hours: '1–2', thema: 'Analysis: Grenzwerte und Stetigkeit', homework: 'Aufgaben 1–3 auf dem Arbeitsblatt', homework_done: true, attendance: 'anwesend', files: [{ name: 'Grenzwerte.pdf', url: '/files/grenzwerte.pdf' }, { name: 'Übungen_Stetigkeit.pdf', url: '/files/stetigkeit.pdf' }], content: 'Einführung in Grenzwerte von Funktionen und das Konzept der Stetigkeit.' },
-      { entry_id: 'b1e6', date: daysAgo(14), hours: '3–4', thema: 'Analysis: Wiederholung Differentialrechnung', homework: '', homework_done: true, attendance: 'entschuldigt', files: [], content: '' },
-    ],
-    entry_count: 6,
-    marks: [
-      { name: 'Klausur', date: '23.10.2026', mark: '2', comment: 'Sicheres Verständnis der Kurvendiskussion; die Argumentation bei den Wendepunkten könnte noch präziser sein.' },
-      { name: 'Mitarbeit', date: '16.10.2026', mark: '1−', comment: 'Aktive und hilfreiche Beiträge im Unterricht.' },
-      { name: 'Hausaufgaben', date: '09.10.2026', mark: '2+', comment: null },
-    ],
-    exams: [
-      '23.10.2026 Arbeit, 3., 4. Std. (60 Min.)',
-      '22.12.2026 Arbeit, 1., 2. Std. (60 Min.)',
-      '23.10.2026 Arbeit',
-      '22.12.2026 Arbeit',
-    ],
-    attendance_summary: { anwesend: '18', entschuldigt: '1', unentschuldigt: '0' },
-  },
-  'b2': {
-    course_id: 'b2', course_name: 'Deutsch LK', semester: 'Q2/2. Halbjahr', teacher_short: 'Re', teacher_full: 'Prof. Anna Reinhardt',
-    entries: [
-      { entry_id: 'b2e1', date: daysAgo(1), hours: '1–3', thema: 'Faust I: Analyse des Osterspaziergangs', homework: 'Essay: Die Rolle des Erdgeists in Faust I', homework_done: true, attendance: 'anwesend', files: [], content: 'Ausführliche Analyse des Osterspaziergangs als Schlüsselszene.' },
-      { entry_id: 'b2e2', date: daysAgo(3), hours: '4–5', thema: 'Faust I: Der Pakt mit Mephisto', homework: 'Szenenanalyse der Paktszene', homework_done: true, attendance: 'anwesend', files: [], content: 'Analyse der Paktszene zwischen Faust und Mephistopheles.' },
-      { entry_id: 'b2e3', date: daysAgo(6), hours: '1–2', thema: 'Faust I: Einführung und Prolog', homework: 'Prolog im Himmel lesen', homework_done: true, attendance: 'anwesend', files: [{ name: 'Faust_Leseliste.pdf', url: '/files/faust.pdf' }], content: 'Einführung in die Lektüre. Besprechung des Prologs im Himmel.' },
-      { entry_id: 'b2e4', date: daysAgo(8), hours: '3–4', thema: 'Faust I: Studierzimmer-Szene', homework: 'Vergleich der beiden Seelen in Fausts Brust', homework_done: false, attendance: 'anwesend', files: [], content: 'Analyse der Studierzimmer-Szene. Diskussion von Fausts innerem Zwiespalt.' },
-      { entry_id: 'b2e5', date: daysAgo(12), hours: '5–6', thema: 'Literaturgeschichte: Sturm und Drang', homework: 'Referate vorbereiten', homework_done: true, attendance: 'anwesend', files: [{ name: 'Sturm_und_Drang.pdf', url: '/files/sturm.pdf' }], content: 'Überblick über die Epoche des Sturm und Drang mit Bezügen zu Goethes frühen Werken.' },
-    ],
-    entry_count: 5,
-    exams: ['Klausur am ' + fmt(new Date(now.getTime() + 14 * 86400000)).slice(0, 10) + ': Faust I'],
-    attendance_summary: { anwesend: '15', entschuldigt: '0', unentschuldigt: '0' },
-  },
-  'b3': {
-    course_id: 'b3', course_name: 'Englisch GK', semester: 'Q2/2. Halbjahr', teacher_short: "O'C", teacher_full: "James O'Connor",
-    entries: [
-      { entry_id: 'b3e1', date: daysAgo(2), hours: '3–4', thema: 'Shakespeare: Hamlet Act III — To be or not to be', homework: 'Read Act IV, Scene 1–3', homework_done: false, attendance: 'anwesend', files: [], content: 'Analyse des berühmten Monologs. Diskussion über Hamlets inneren Konflikt.' },
-      { entry_id: 'b3e2', date: daysAgo(5), hours: '3–4', thema: 'Shakespeare: Hamlet Act II', homework: 'Summary of Act II', homework_done: true, attendance: 'entschuldigt', files: [], content: '' },
-      { entry_id: 'b3e3', date: daysAgo(8), hours: '1–2', thema: 'Shakespeare: Hamlet Act I — Characters', homework: 'Character sketch of Claudius', homework_done: true, attendance: 'anwesend', files: [], content: 'Einführung in die Charaktere des Stücks. Fokus auf Claudius und Gertrude.' },
-      { entry_id: 'b3e4', date: daysAgo(11), hours: '5–6', thema: 'Shakespeare: Elizabethan Theatre', homework: 'Worksheet: Globe Theatre', homework_done: true, attendance: 'anwesend', files: [{ name: 'Globe_Theatre.pdf', url: '/files/globe.pdf' }], content: 'Historischer Kontext zum elisabethanischen Theater und zur Aufführungspraxis.' },
-      { entry_id: 'b3e5', date: daysAgo(15), hours: '3–4', thema: 'Sonnet Analysis: Shakespeare\'s Sonnet 18', homework: 'Write your own sonnet', homework_done: false, attendance: 'fehlend', files: [], content: '' },
-    ],
-    entry_count: 5,
-    exams: ['Klausur am ' + fmt(new Date(now.getTime() + 21 * 86400000)).slice(0, 10) + ': Hamlet'],
-    attendance_summary: { anwesend: '20', entschuldigt: '2', unentschuldigt: '0' },
-  },
-  'b4': {
-    course_id: 'b4', course_name: 'Physik LK', semester: 'Q2/2. Halbjahr', teacher_short: 'Kl', teacher_full: 'Dr. Sabine Keller',
-    entries: [
-      { entry_id: 'b4e1', date: daysAgo(3), hours: '1–2', thema: 'Quantenmechanik: Doppelspaltexperiment', homework: 'Berechnungen zum Doppelspaltexperiment', homework_done: false, attendance: 'anwesend', files: [], content: 'Durchführung und Analyse des Doppelspaltexperiments. Wellen-Teilchen-Dualismus.' },
-      { entry_id: 'b4e2', date: daysAgo(6), hours: '5–6', thema: 'Quantenmechanik: Photoeffekt', homework: '', homework_done: true, attendance: 'anwesend', files: [{ name: 'Photoeffekt_Experiment.pdf', url: '/files/photo.pdf' }], content: 'Experimentelle Untersuchung des Photoeffekts.' },
-      { entry_id: 'b4e3', date: daysAgo(9), hours: '1–2', thema: 'Quantenmechanik: Heisenbergsche Unschärferelation', homework: 'Aufgaben zur Unschärferelation', homework_done: true, attendance: 'anwesend', files: [], content: 'Einführung in die Heisenbergsche Unschärferelation und ihre Bedeutung.' },
-      { entry_id: 'b4e4', date: daysAgo(13), hours: '3–4', thema: 'Atomphysik: Bohrsches Atommodell', homework: 'Energieniveaus berechnen', homework_done: true, attendance: 'anwesend', files: [{ name: 'Bohr_Atommodell.pdf', url: '/files/bohr.pdf' }], content: 'Wiederholung des Bohrschen Atommodells und der Energieniveaus.' },
-      { entry_id: 'b4e5', date: daysAgo(17), hours: '5–6', thema: 'Atomphysik: Absorption und Emission', homework: '', homework_done: true, attendance: 'unentschuldigt', files: [], content: '' },
-    ],
-    entry_count: 5,
-    exams: ['Klausur am ' + fmt(new Date(now.getTime() + 21 * 86400000)).slice(0, 10) + ': Quantenmechanik'],
-    attendance_summary: { anwesend: '12', entschuldigt: '0', unentschuldigt: '1' },
-  },
-  'b5': {
-    course_id: 'b5', course_name: 'Geschichte GK', semester: 'Q2/2. Halbjahr', teacher_short: 'Bg', teacher_full: 'Herr Thomas Bergmann',
-    entries: [
-      { entry_id: 'b5e1', date: daysAgo(4), hours: '1–2', thema: 'Weimarer Republik: Die Goldenen Zwanziger', homework: 'Quellenanalyse: Tagebucheintrag 1925', homework_done: true, attendance: 'anwesend', files: [], content: 'Besprechung der wirtschaftlichen und kulturellen Blütezeit der Weimarer Republik.' },
-      { entry_id: 'b5e2', date: daysAgo(6), hours: '3–4', thema: 'Weimarer Republik: Inflation 1923', homework: 'Schaubild zur Inflation analysieren', homework_done: true, attendance: 'anwesend', files: [{ name: 'Inflation_1923.pdf', url: '/files/inflation.pdf' }], content: 'Analyse der Hyperinflation von 1923 und ihrer sozialen Auswirkungen.' },
-      { entry_id: 'b5e3', date: daysAgo(9), hours: '1–2', thema: 'Weimarer Republik: Versailler Vertrag', homework: 'Karikaturenanalyse', homework_done: true, attendance: 'anwesend', files: [], content: 'Diskussion der Folgen des Versailler Vertrags für die Weimarer Republik.' },
-      { entry_id: 'b5e4', date: daysAgo(12), hours: '5–6', thema: 'Kaiserreich: Erster Weltkrieg', homework: 'Referate vorbereiten', homework_done: false, attendance: 'anwesend', files: [{ name: 'Weltkrieg_Verlauf.pdf', url: '/files/ww1.pdf' }], content: 'Zusammenfassung der Kriegsereignisse und der Kriegsschuldfrage.' },
-      { entry_id: 'b5e5', date: daysAgo(16), hours: '3–4', thema: 'Kaiserreich: Bismarck-Ära', homework: '', homework_done: true, attendance: 'entschuldigt', files: [], content: '' },
-    ],
-    entry_count: 5,
-    exams: ['Klausur am ' + fmt(new Date(now.getTime() + 10 * 86400000)).slice(0, 10) + ': Weimarer Republik'],
-    attendance_summary: { anwesend: '22', entschuldigt: '1', unentschuldigt: '0' },
-  },
-  'b6': {
-    course_id: 'b6', course_name: 'Informatik LK', semester: 'Q2/2. Halbjahr', teacher_short: 'Ch', teacher_full: 'Frau Dr. Laura Chen',
-    entries: [
-      { entry_id: 'b6e1', date: daysAgo(5), hours: '1–3', thema: 'Datenstrukturen: Binäre Suchbäume', homework: 'Implementierung eines BST in Java', homework_done: false, attendance: 'anwesend', files: [], content: 'Einführung in binäre Suchbäume: Eigenschaften, Operationen (Einfügen, Suchen, Löschen) und Traversierung.' },
-      { entry_id: 'b6e2', date: daysAgo(7), hours: '1–2', thema: 'Datenstrukturen: Bäume und Graphen', homework: 'Übungsblatt 4 bearbeiten', homework_done: true, attendance: 'anwesend', files: [{ name: 'Graphen_Einführung.pdf', url: '/files/graphen.pdf' }], content: 'Grundlagen der Graphentheorie: gerichtete/ungerichtete Graphen, Adjazenzmatrix, Adjazenzliste.' },
-      { entry_id: 'b6e3', date: daysAgo(10), hours: '3–4', thema: 'Algorithmen: Sortierverfahren', homework: 'Merge-Sort implementieren', homework_done: true, attendance: 'anwesend', files: [{ name: 'Sortierverfahren.pdf', url: '/files/sorting.pdf' }], content: 'Vergleich von Sortierverfahren: Bubble Sort, Selection Sort, Merge Sort, Quick Sort.' },
-      { entry_id: 'b6e4', date: daysAgo(13), hours: '1–2', thema: 'Algorithmen: Rekursion', homework: 'Rekursive Fibonacci-Funktion', homework_done: true, attendance: 'anwesend', files: [], content: 'Einführung in die rekursive Programmierung anhand von Beispielen.' },
-      { entry_id: 'b6e5', date: daysAgo(18), hours: '5–6', thema: 'Objektorientierung: Vererbung und Polymorphie', homework: '', homework_done: true, attendance: 'anwesend', files: [], content: 'Wiederholung der OOP-Konzepte Vererbung, Polymorphie und Interfaces.' },
-    ],
-    entry_count: 5,
-    exams: ['Klausur am ' + fmt(new Date(now.getTime() + 28 * 86400000)).slice(0, 10) + ': Datenstrukturen'],
-    attendance_summary: { anwesend: '14', entschuldigt: '0', unentschuldigt: '0' },
-  },
-};
 
 const mockAttendanceOverview = {
   success: true,
   source: 'schulportal',
   available: true,
-  totals: { anwesend: 101, entschuldigt: 5, unentschuldigt: 1 },
+  totals: { anwesend: 111, entschuldigt: 3, unentschuldigt: 0 },
   courses: [
-    { course_id: 'b1', course_name: 'Mathematik GK', teacher_short: 'Wb', teacher_full: 'Dr. Heinrich Weber', attendance_summary: { anwesend: 18, entschuldigt: 1, unentschuldigt: 0 } },
-    { course_id: 'b2', course_name: 'Deutsch LK', teacher_short: 'Re', teacher_full: 'Prof. Anna Reinhardt', attendance_summary: { anwesend: 15, entschuldigt: 0, unentschuldigt: 0 } },
-    { course_id: 'b3', course_name: 'Englisch GK', teacher_short: "O'C", teacher_full: "James O'Connor", attendance_summary: { anwesend: 20, entschuldigt: 2, unentschuldigt: 0 } },
-    { course_id: 'b4', course_name: 'Physik LK', teacher_short: 'Kl', teacher_full: 'Dr. Sabine Keller', attendance_summary: { anwesend: 12, entschuldigt: 0, unentschuldigt: 1 } },
-    { course_id: 'b5', course_name: 'Geschichte GK', teacher_short: 'Bg', teacher_full: 'Herr Thomas Bergmann', attendance_summary: { anwesend: 22, entschuldigt: 1, unentschuldigt: 0 } },
-    { course_id: 'b6', course_name: 'Informatik LK', teacher_short: 'Ch', teacher_full: 'Frau Dr. Laura Chen', attendance_summary: { anwesend: 14, entschuldigt: 1, unentschuldigt: 0 } },
+    { course_id: 'b1', course_name: 'Deutsch 9c', teacher_short: 'CN', teacher_full: 'Clara Neumann', attendance_summary: { anwesend: 18, entschuldigt: 1, unentschuldigt: 0 } },
+    { course_id: 'b2', course_name: 'Mathematik 9c', teacher_short: 'MV', teacher_full: 'Martin Vogel', attendance_summary: { anwesend: 19, entschuldigt: 0, unentschuldigt: 0 } },
+    { course_id: 'b3', course_name: 'Englisch 9c', teacher_short: 'AO', teacher_full: 'Aylin Özdemir', attendance_summary: { anwesend: 20, entschuldigt: 0, unentschuldigt: 0 } },
+    { course_id: 'b4', course_name: 'Biologie 9c', teacher_short: 'FB', teacher_full: 'Felix Brandt', attendance_summary: { anwesend: 21, entschuldigt: 1, unentschuldigt: 0 } },
+    { course_id: 'b5', course_name: 'Geschichte 9c', teacher_short: 'MS', teacher_full: 'Marie Seidel', attendance_summary: { anwesend: 17, entschuldigt: 0, unentschuldigt: 0 } },
+    { course_id: 'b6', course_name: 'Informatik 9c', teacher_short: 'LR', teacher_full: 'Leonie Roth', attendance_summary: { anwesend: 16, entschuldigt: 1, unentschuldigt: 0 } },
   ],
   course_count: 6,
   attendance_course_count: 6,
   failed_course_count: 0,
 };
 
+// The overview and detail views intentionally tell the same story. The old
+// portal data is noisy and often stale, so the demo keeps a small, current
+// slice of a fictional 9C school week that can be understood at a glance.
+const mockCourseDetails: Record<string, any> = {
+  b1: {
+    course_id: 'b1', course_name: 'Deutsch 9c', semester: '1. Halbjahr 2026/2027', teacher_short: 'CN', teacher_full: 'Clara Neumann',
+    entries: [
+      { entry_id: 'b1e1', date: daysAgo(1), hours: '3–4', thema: 'Gedichtvergleich: Stadt und Natur', homework: 'Vergleichstabelle zu den beiden Gedichten vervollständigen', homework_done: false, attendance: 'anwesend', files: [{ name: 'Gedichtvergleich-Leitfaden.pdf', url: '/files/gedichtvergleich-leitfaden.pdf' }], content: 'Wir vergleichen Bildsprache, Rhythmus und die Perspektive der beiden Gedichte. Zum Schluss begründen wir, wie die Sprache die jeweilige Stimmung erzeugt.' },
+      { entry_id: 'b1e2', date: daysAgo(5), hours: '1–2', thema: 'Sprachliche Bilder und Wirkung', homework: 'Drei Metaphern aus dem Text erklären', homework_done: true, attendance: 'anwesend', files: [], content: 'Wir unterscheiden Metapher, Vergleich und Personifikation und untersuchen ihre Wirkung im Gedicht.' },
+      { entry_id: 'b1e3', date: daysAgo(9), hours: '3–4', thema: 'Eine Textdeutung strukturieren', homework: '', homework_done: true, attendance: 'anwesend', files: [], content: 'Wir haben eine Deutungshypothese formuliert und die passenden Belege im Text geordnet.' },
+    ],
+    entry_count: 3,
+    marks: [
+      { name: 'Gedichtvergleich', date: '02.09.2026', mark: '2+', comment: 'Klarer Vergleich und gut gewählte Textbelege.' },
+      { name: 'Textdeutung', date: '21.08.2026', mark: '1−' },
+    ],
+    exams: [`${relDate(10)} Arbeit, 3., 4. Std.`],
+    attendance_summary: { anwesend: '18', entschuldigt: '1', unentschuldigt: '0' },
+  },
+  b2: {
+    course_id: 'b2', course_name: 'Mathematik 9c', semester: '1. Halbjahr 2026/2027', teacher_short: 'MV', teacher_full: 'Martin Vogel',
+    entries: [
+      { entry_id: 'b2e1', date: daysAgo(2), hours: '1–2', thema: 'Lineare Funktionen und Steigung', homework: 'Arbeitsblatt „Funktionsgraphen“: Nr. 4–7', homework_done: false, attendance: 'anwesend', files: [{ name: 'Funktionsgraphen-Arbeitsblatt.pdf', url: '/files/funktionsgraphen-arbeitsblatt.pdf' }], content: 'Wir lesen Steigung und y-Achsenabschnitt aus verschiedenen Darstellungen ab und zeichnen den passenden Graphen.' },
+      { entry_id: 'b2e2', date: daysAgo(6), hours: '3–4', thema: 'Tabellen, Graphen und Terme', homework: 'Drei Darstellungen derselben Funktion zuordnen', homework_done: true, attendance: 'anwesend', files: [], content: 'Wir übertragen Werte aus einer Tabelle in ein Koordinatensystem und prüfen unsere Ergebnisse mit dem Funktionsterm.' },
+      { entry_id: 'b2e3', date: daysAgo(10), hours: '1–2', thema: 'Koordinatensysteme sicher nutzen', homework: '', homework_done: true, attendance: 'anwesend', files: [], content: 'Wiederholung von Punkten, Achsenbeschriftung und sinnvollen Maßstäben.' },
+    ],
+    entry_count: 3,
+    exams: [`${relDate(12)} Arbeit, 1., 2. Std. (60 Min.)`],
+    attendance_summary: { anwesend: '19', entschuldigt: '0', unentschuldigt: '0' },
+  },
+  b3: {
+    course_id: 'b3', course_name: 'Englisch 9c', semester: '1. Halbjahr 2026/2027', teacher_short: 'AO', teacher_full: 'Aylin Özdemir',
+    entries: [
+      { entry_id: 'b3e1', date: daysAgo(3), hours: '3–4', thema: 'Writing a persuasive speech', homework: 'Write an opening paragraph for your speech', homework_done: true, attendance: 'anwesend', files: [{ name: 'Speech-planner.pdf', url: '/files/speech-planner.pdf' }], content: 'We organise a short persuasive speech with a clear claim, a supporting example and a closing appeal to the audience.' },
+      { entry_id: 'b3e2', date: daysAgo(7), hours: '1–2', thema: 'Linking ideas clearly', homework: 'Use five linking words in your draft', homework_done: true, attendance: 'anwesend', files: [], content: 'We practise linking words for contrast, cause and consequence so that an argument is easy to follow.' },
+      { entry_id: 'b3e3', date: daysAgo(11), hours: '3–4', thema: 'Audience and purpose', homework: '', homework_done: true, attendance: 'anwesend', files: [], content: 'We compare how the target audience changes vocabulary, examples and tone.' },
+    ],
+    entry_count: 3,
+    exams: [`${relDate(24)} Arbeit, 3., 4. Std. (90 Min.)`],
+    attendance_summary: { anwesend: '20', entschuldigt: '0', unentschuldigt: '0' },
+  },
+  b4: {
+    course_id: 'b4', course_name: 'Biologie 9c', semester: '1. Halbjahr 2026/2027', teacher_short: 'FB', teacher_full: 'Felix Brandt',
+    entries: [
+      { entry_id: 'b4e1', date: daysAgo(1), hours: '3–4', thema: 'Ökosystem See', homework: 'Versuchsprotokoll um die Auswertung ergänzen', homework_done: false, attendance: 'anwesend', files: [{ name: 'See-Experiment-Protokoll.pdf', url: '/files/see-experiment-protokoll.pdf' }], content: 'Wir untersuchen die Bedingungen für Algenwachstum und unterscheiden Beobachtung, Vermutung und Auswertung im Versuchsprotokoll.' },
+      { entry_id: 'b4e2', date: daysAgo(5), hours: '1–2', thema: 'Nahrungsnetze und Energiefluss', homework: 'Nahrungsnetz mit Pfeilen ergänzen', homework_done: true, attendance: 'anwesend', files: [], content: 'Wir ordnen Produzenten, Konsumenten und Destruenten in einem Nahrungsnetz und verfolgen den Energiefluss.' },
+      { entry_id: 'b4e3', date: daysAgo(9), hours: '3–4', thema: 'Anpassung an den Lebensraum', homework: '', homework_done: true, attendance: 'anwesend', files: [], content: 'Wir erklären, wie Körperbau und Verhalten verschiedener Arten zu ihrem Lebensraum passen.' },
+    ],
+    entry_count: 3,
+    exams: [`${relDate(34)} Lernkontrolle, 3., 4. Std. (45 Min.)`],
+    attendance_summary: { anwesend: '21', entschuldigt: '1', unentschuldigt: '0' },
+  },
+  b5: {
+    course_id: 'b5', course_name: 'Geschichte 9c', semester: '1. Halbjahr 2026/2027', teacher_short: 'MS', teacher_full: 'Marie Seidel',
+    entries: [
+      { entry_id: 'b5e1', date: daysAgo(4), hours: '1–2', thema: 'Industrialisierung und soziale Frage', homework: 'Quelle zur Fabrikarbeit mit drei Stichpunkten auswerten', homework_done: true, attendance: 'anwesend', files: [{ name: 'Quellenblatt-Fabrikarbeit.pdf', url: '/files/quellenblatt-fabrikarbeit.pdf' }], content: 'Wir untersuchen, wie Fabrikarbeit den Alltag veränderte, und vergleichen zeitgenössische Perspektiven auf die Arbeitsbedingungen.' },
+      { entry_id: 'b5e2', date: daysAgo(8), hours: '3–4', thema: 'Leben in der wachsenden Stadt', homework: 'Zwei Veränderungen für Familien notieren', homework_done: true, attendance: 'anwesend', files: [], content: 'Wir lesen eine historische Statistik und leiten daraus Veränderungen für Wohnen, Arbeit und Mobilität ab.' },
+    ],
+    entry_count: 2,
+    exams: [`${relDate(42)} Arbeit, 1., 2. Std. (60 Min.)`],
+    attendance_summary: { anwesend: '17', entschuldigt: '0', unentschuldigt: '0' },
+  },
+  b6: {
+    course_id: 'b6', course_name: 'Informatik 9c', semester: '1. Halbjahr 2026/2027', teacher_short: 'LR', teacher_full: 'Leonie Roth',
+    entries: [
+      { entry_id: 'b6e1', date: daysAgo(2), hours: '3–4', thema: 'Barrierefreie Website', homework: 'Alt-Texte für die Bilder im HTML-Dokument ergänzen', homework_done: false, attendance: 'anwesend', files: [{ name: 'HTML-Checkliste.pdf', url: '/files/html-checkliste.pdf' }], content: 'Wir prüfen eine kleine Website mit einer Checkliste: Überschriften, Alternativtexte, Kontraste und verständliche Linktexte.' },
+      { entry_id: 'b6e2', date: daysAgo(6), hours: '1–2', thema: 'HTML-Struktur und semantische Elemente', homework: 'Navigation mit einer ungeordneten Liste auszeichnen', homework_done: true, attendance: 'anwesend', files: [], content: 'Wir strukturieren Inhalte mit passenden HTML-Elementen und besprechen, warum Semantik die Orientierung verbessert.' },
+    ],
+    entry_count: 2,
+    exams: [`${relDate(19)} Projektabgabe`],
+    attendance_summary: { anwesend: '16', entschuldigt: '1', unentschuldigt: '0' },
+  },
+};
+
 const mockEntryDetails: Record<string, any> = {
-  'b1e1': {
-    id: 'b1e1',
-    title: 'Analysis: Kurvendiskussion und Extremwertprobleme',
-    content: '<p>Heute haben wir die Kurvendiskussion fortgesetzt. Schwerpunkte:</p><ul><li>Bestimmung von Extremwerten (Hoch- und Tiefpunkte)</li><li>Wendepunkte und Krümmungsverhalten</li><li>Verhalten im Unendlichen (Grenzwerte)</li><li>Symmetrieeigenschaften von Funktionen</li></ul><p>Beispielfunktion: f(x) = x³ - 3x² + 2x</p><p>Hausaufgabe: Aufgaben 1–5 auf Seite 142</p>',
-    date: daysAgo(0),
-    attachments: [],
-  },
-  'b1e2': {
-    id: 'b1e2',
-    title: 'Analysis: Ableitungen höherer Ordnung',
-    content: '<p>Einführung in Ableitungen höherer Ordnung:</p><ul><li>f\'(x): erste Ableitung (Steigung)</li><li>f\'\'(x): zweite Ableitung (Krümmung)</li><li>f\'\'\'(x): dritte Ableitung</li></ul><p>Anwendung bei der Kurvendiskussion zur Bestimmung von Wendepunkten.</p>',
-    date: daysAgo(2),
-    attachments: [{ name: 'Arbeitsblatt_3.pdf', url: '/files/ab3.pdf' }],
-  },
-  'b1e3': {
-    id: 'b1e3',
-    title: 'Analysis: Nullstellenberechnung',
-    content: '<p>Wiederholung der Nullstellenberechnung mit verschiedenen Verfahren:</p><ul><li>Quadratische Ergänzung</li><li>Mitternachtsformel</li><li>Polynomdivision</li><li>Substitutionsverfahren</li></ul><p>Anwendung auf Funktionen dritten und vierten Grades.</p>',
-    date: daysAgo(4),
-    attachments: [],
-  },
-  'b1e5': {
-    id: 'b1e5',
-    title: 'Analysis: Grenzwerte und Stetigkeit',
-    content: '<p>Einführung in die Grenzwertberechnung:</p><ul><li>Grenzwerte für x → ±∞</li><li>Rechts- und linksseitige Grenzwerte</li><li>Stetigkeit von Funktionen</li><li>Zwischenwertsatz</li></ul><p>Beispiele und Übungsaufgaben zur Vertiefung.</p>',
-    date: daysAgo(10),
-    attachments: [{ name: 'Grenzwerte.pdf', url: '/files/grenzwerte.pdf' }, { name: 'Übungen_Stetigkeit.pdf', url: '/files/stetigkeit.pdf' }],
-  },
-  'b2e1': {
-    id: 'b2e1',
-    title: 'Faust I: Analyse des Osterspaziergangs',
-    content: '<p>Ausführliche Analyse des Osterspaziergangs als Schlüsselszene (Vers 808–1177).</p><p>Schwerpunkte:</p><ul><li>Fausts Monolog und seine Weltsicht</li><li>Die Bedeutung des Osterfestes</li><li>Sprachliche Gestaltung und Metrik</li><li>Übergang zur Osterszene</li></ul><p>Der Osterspaziergang zeigt Fausts innere Zerrissenheit zwischen Verzweiflung und Lebensbejahung.</p>',
-    date: daysAgo(1),
-    attachments: [],
-  },
-  'b2e2': {
-    id: 'b2e2',
-    title: 'Faust I: Der Pakt mit Mephisto',
-    content: '<p>Analyse der Paktszene (Studierzimmer II, Verse 1770–1867).</p><ul><li>Die Wettbedingungen</li><li>Fausts und Mephistos Motive</li><li>Sprachliche Analyse des Paktes</li><li>Bezug zur heutigen Rezeption</li></ul>',
-    date: daysAgo(3),
-    attachments: [],
-  },
-  'b2e4': {
-    id: 'b2e4',
-    title: 'Faust I: Studierzimmer-Szene',
-    content: '<p>Analyse der Studierzimmer-Szene.</p><p>Im Mittelpunkt steht Fausts berühmter Monolog "Habe nun, ach! Philosophie, Juristerei und Medizin..." (Verse 354–385).</p><ul><li>Fausts intellektuelle Krise</li><li>Die berühmten "zwei Seelen" in Fausts Brust</li><li>Der Entschluss zum Selbstmord und die Rettung durch die Osterglocken</li></ul>',
-    date: daysAgo(8),
-    attachments: [],
-  },
-  'b3e1': {
-    id: 'b3e1',
-    title: 'Shakespeare: Hamlet Act III — To be or not to be',
-    content: '<p>Analyse des berühmten "To be or not to be"-Monologs (Act III, Scene 1).</p><ul><li>Existenzielle Fragen und Selbstreflexion</li><li>Der Konflikt zwischen Handeln und Zögern</li><li>Sprachliche Mittel: Metaphern, Antithesen</li><li>Bedeutung für die Charakterentwicklung Hamlets</li></ul>',
-    date: daysAgo(2),
-    attachments: [],
-  },
-  'b3e3': {
-    id: 'b3e3',
-    title: 'Shakespeare: Hamlet Act I — Characters',
-    content: '<p>Introduction to the main characters of Hamlet Act I.</p><ul><li>Claudius — the usurping king</li><li>Gertrude — Hamlet\'s mother</li><li>Polonius — the lord chamberlain</li><li>Ophelia and Laertes</li><li>King Hamlet\'s ghost</li></ul><p>Key themes: appearance vs. reality, grief, corruption.</p>',
-    date: daysAgo(8),
-    attachments: [],
-  },
-  'b4e1': {
-    id: 'b4e1',
-    title: 'Quantenmechanik: Doppelspaltexperiment',
-    content: '<p>Durchführung und Analyse des Doppelspaltexperiments.</p><p>Zentrale Erkenntnisse:</p><ul><li>Interferenzmuster bei Licht und Elektronen</li><li>Wellen-Teilchen-Dualismus</li><li>Die Rolle der Messung und Kollaps der Wellenfunktion</li><li>Bedeutung für das Verständnis der Quantenmechanik</li></ul>',
-    date: daysAgo(3),
-    attachments: [],
-  },
-  'b4e3': {
-    id: 'b4e3',
-    title: 'Quantenmechanik: Heisenbergsche Unschärferelation',
-    content: '<p>Einführung in die Heisenbergsche Unschärferelation.</p><ul><li>Δx · Δp ≥ ℏ/2</li><li>Orts-Impuls-Unschärfe</li><li>Energie-Zeit-Unschärfe</li><li>Philosophische und experimentelle Bedeutung</li></ul><p>Diskussion der Grenzen der Messbarkeit in der Quantenwelt.</p>',
-    date: daysAgo(9),
-    attachments: [],
-  },
-  'b5e1': {
-    id: 'b5e1',
-    title: 'Weimarer Republik: Die Goldenen Zwanziger',
-    content: '<p>Besprechung der wirtschaftlichen und kulturellen Blütezeit der Weimarer Republik (1924–1929).</p><ul><li>Wirtschaftliche Stabilisierung durch den Dawes-Plan</li><li>Kulturelle Entwicklungen: Bauhaus, Neue Sachlichkeit, expressionistischer Film</li><li>Gesellschaftlicher Wandel und die "Neue Frau"</li><li>Politische Radikalisierung am Ende der 1920er Jahre</li></ul>',
-    date: daysAgo(4),
-    attachments: [],
-  },
-  'b5e2': {
-    id: 'b5e2',
-    title: 'Weimarer Republik: Inflation 1923',
-    content: '<p>Analyse der Hyperinflation von 1923 und ihrer sozialen Auswirkungen.</p><ul><li>Ursachen der Inflation: Reparationen, Ruhrbesetzung, Geldmengenausweitung</li><li>Soziale Folgen: Verarmung der Mittelschicht, Spekulation</li><li>Die Währungsreform und die Einführung der Rentenmark</li></ul>',
-    date: daysAgo(6),
-    attachments: [{ name: 'Inflation_1923.pdf', url: '/files/inflation.pdf' }],
-  },
-  'b5e3': {
-    id: 'b5e3',
-    title: 'Weimarer Republik: Versailler Vertrag',
-    content: '<p>Diskussion der Folgen des Versailler Vertrags für die Weimarer Republik.</p><ul><li>Die Kriegsschuldthese (Artikel 231)</li><li>Gebietsabtretungen und Reparationen</li><li>Die Dolchstoßlegende</li><li>Auswirkungen auf die politische Stabilität der Weimarer Republik</li></ul>',
-    date: daysAgo(9),
-    attachments: [],
-  },
-  'b6e1': {
-    id: 'b6e1',
-    title: 'Datenstrukturen: Binäre Suchbäume',
-    content: '<p>Einführung in binäre Suchbäume (Binary Search Trees, BST).</p><p>Wichtige Operationen:</p><ul><li>Einfügen (insert): O(log n) im Durchschnitt</li><li>Suchen (search): O(log n) im Durchschnitt</li><li>Löschen (delete): O(log n) im Durchschnitt</li><li>Traversierung: In-Order, Pre-Order, Post-Order</li></ul><p>Implementierung in Java mit generischen Typen.</p>',
-    date: daysAgo(5),
-    attachments: [],
-  },
-  'b6e2': {
-    id: 'b6e2',
-    title: 'Datenstrukturen: Bäume und Graphen',
-    content: '<p>Grundlagen der Graphentheorie:</p><ul><li>Gerichtete vs. ungerichtete Graphen</li><li>Adjazenzmatrix und Adjazenzliste</li><li>Gewichtete und ungewichtete Graphen</li><li>Bäume als spezielle Graphen</li><li>Anwendungen: Routenplanung, soziale Netzwerke</li></ul>',
-    date: daysAgo(7),
-    attachments: [{ name: 'Graphen_Einführung.pdf', url: '/files/graphen.pdf' }],
-  },
-  'b6e3': {
-    id: 'b6e3',
-    title: 'Algorithmen: Sortierverfahren',
-    content: '<p>Vergleich von Sortierverfahren:</p><table><tr><th>Verfahren</th><th>Best-Case</th><th>Worst-Case</th></tr><tr><td>Bubble Sort</td><td>O(n)</td><td>O(n²)</td></tr><tr><td>Selection Sort</td><td>O(n²)</td><td>O(n²)</td></tr><tr><td>Merge Sort</td><td>O(n log n)</td><td>O(n log n)</td></tr><tr><td>Quick Sort</td><td>O(n log n)</td><td>O(n²)</td></tr></table><p>Implementierung von Merge-Sort als Hausaufgabe.</p>',
-    date: daysAgo(10),
-    attachments: [{ name: 'Sortierverfahren.pdf', url: '/files/sorting.pdf' }],
-  },
+  b1e1: { id: 'b1e1', title: 'Gedichtvergleich: Stadt und Natur', content: '<p>Vergleiche Bildsprache und Stimmung der beiden Gedichte.</p><p><strong>Arbeitsauftrag:</strong> Belege deine Aussage mit je einer Textstelle und einem Fachbegriff.</p>', date: daysAgo(1), attachments: [{ name: 'Gedichtvergleich-Leitfaden.pdf', url: '/files/gedichtvergleich-leitfaden.pdf' }] },
+  b2e1: { id: 'b2e1', title: 'Lineare Funktionen und Steigung', content: '<p>Lies Steigung und y-Achsenabschnitt aus dem Graphen ab und zeichne die Funktion.</p><p><strong>Arbeitsauftrag:</strong> Notiere jeden Rechenschritt und prüfe einen Punkt durch Einsetzen.</p>', date: daysAgo(2), attachments: [{ name: 'Funktionsgraphen-Arbeitsblatt.pdf', url: '/files/funktionsgraphen-arbeitsblatt.pdf' }] },
+  b3e1: { id: 'b3e1', title: 'Writing a persuasive speech', content: '<p>Write an opening paragraph with a clear claim and a concrete example.</p><p><strong>Remember:</strong> Address your audience directly and finish with a short appeal.</p>', date: daysAgo(3), attachments: [{ name: 'Speech-planner.pdf', url: '/files/speech-planner.pdf' }] },
+  b4e1: { id: 'b4e1', title: 'Ökosystem See', content: '<p>Ergänze dein Protokoll um eine begründete Auswertung des Algenwachstums.</p><p>Trenne dabei klar zwischen Beobachtung, Erklärung und Fazit.</p>', date: daysAgo(1), attachments: [{ name: 'See-Experiment-Protokoll.pdf', url: '/files/see-experiment-protokoll.pdf' }] },
+  b5e1: { id: 'b5e1', title: 'Industrialisierung und soziale Frage', content: '<p>Werte die Quelle zur Fabrikarbeit aus und ordne sie in ihren historischen Zusammenhang ein.</p><p><strong>Arbeitsauftrag:</strong> Formuliere drei Aussagen mit Quellenbeleg.</p>', date: daysAgo(4), attachments: [{ name: 'Quellenblatt-Fabrikarbeit.pdf', url: '/files/quellenblatt-fabrikarbeit.pdf' }] },
+  b6e1: { id: 'b6e1', title: 'Barrierefreie Website', content: '<p>Prüfe deine Website mit der Checkliste und verbessere die Stellen, die die Orientierung erschweren.</p><p>Beginne mit Überschriften, Alternativtexten, Kontrasten und Linktexten.</p>', date: daysAgo(2), attachments: [{ name: 'HTML-Checkliste.pdf', url: '/files/html-checkliste.pdf' }] },
 };
 
 const mockCalendarCategories = [
   { id: 1, name: 'Klausuren', color: '#dc2626', logo: 'fa-regular fa-file-lines' },
-  { id: 2, name: 'Veranstaltungen', color: '#2563eb', logo: 'fa-regular fa-calendar' },
-  { id: 3, name: 'Ferien', color: '#059669', logo: 'fa-regular fa-sun' },
+  { id: 2, name: 'Sonstige Termine', color: '#2563eb', logo: 'fa-regular fa-calendar' },
+  { id: 3, name: 'Ferien & freie Tage', color: '#059669', logo: 'fa-regular fa-sun' },
   { id: 4, name: 'Abgaben', color: '#d97706', logo: 'fa-regular fa-clock' },
-  { id: 5, name: 'Konferenzen', color: '#7c3aed', logo: 'fa-regular fa-users' },
+  { id: 5, name: 'Klassen & Schule', color: '#7c3aed', logo: 'fa-regular fa-users' },
+  { id: 6, name: 'Schulwochen', color: '#0f766e', logo: 'fa-regular fa-calendar' },
 ];
 
-const mockCalendarEvents = [
-  { id: 'ev1', title: 'Mathe-Klausur Q2', category: '1', category_name: 'Klausuren', category_color: '#dc2626', description: '<p>Klausur zum Thema <strong>Analysis: Kurvendiskussion und Extremwertprobleme</strong>.</p><p>Der Stoff umfasst:</p><ul><li>Bestimmung von Extremwerten</li><li>Wendepunkte und Krümmungsverhalten</li><li>Grenzwerte und Verhalten im Unendlichen</li><li>Symmetrieeigenschaften</li></ul><p>Erlaubte Hilfsmittel: Taschenrechner (nicht programmierbar), Formelsammlung</p>', start: relDateTime(7, '08:00:00'), end: relDateTime(7, '09:30:00'), all_day: false, new: '1', editable: false, properties: { 'Fach': 'Mathematik GK', 'Lehrer': 'Dr. Heinrich Weber', 'Raum': 'A12', 'Dauer': '90 Minuten', 'Hilfsmittel': 'Taschenrechner, Formelsammlung' }, raw: {} },
-  { id: 'ev2', title: 'Schulausflug Oberstufe', category: '2', category_name: 'Veranstaltungen', category_color: '#2563eb', description: '<p>Der jährliche Schulausflug der Oberstufe (Q1–Q4).</p><p><strong>Programm:</strong></p><ul><li>Goethe-Haus (Frankfurt) — Führung durch Goethes Geburtshaus</li><li>Senckenbergmuseum — Naturkundliche Ausstellung mit Fokus auf Evolution</li></ul><p><strong>Abfahrt:</strong> 8:00 Uhr am Schulhof<br><strong>Rückkehr:</strong> ca. 16:00 Uhr</p><p>Bitte an wetterfeste Kleidung und Verpflegung denken.</p>', start: relDateTime(10, '08:00:00'), end: relDateTime(10, '16:00:00'), all_day: true, new: '0', editable: false, properties: { 'Ziel': 'Goethe-Haus + Senckenbergmuseum', 'Abfahrt': '08:00 Uhr', 'Rückkehr': 'ca. 16:00 Uhr', 'Klasse': 'Q1–Q4', 'Kosten': '12,00 € (Eintritt)' }, raw: {} },
-  { id: 'ev3', title: 'Faust Essay Abgabe', category: '4', category_name: 'Abgaben', category_color: '#d97706', description: '<p>Abgabe des Essays zum Thema <strong>"Die Rolle des Erdgeists in Faust I"</strong>.</p><p><strong>Anforderungen:</strong></p><ul><li>Umfang: 3–5 Seiten</li><li>Format: PDF</li><li>Abgabe über das Schulportal</li></ul>', start: relDateTime(5, '23:59:00'), end: relDateTime(5, '23:59:00'), all_day: true, new: '0', editable: false, properties: { 'Fach': 'Deutsch LK', 'Lehrer': 'Prof. Anna Reinhardt', 'Format': 'PDF', 'Umfang': '3–5 Seiten', 'Abgabeweg': 'Schulportal' }, raw: {} },
-  { id: 'ev4', title: 'Sommerferien 2026', category: '3', category_name: 'Ferien', category_color: '#059669', description: '<p>Sommerferien in Hessen 2026.</p><p>Letzter Schultag vor den Ferien: 18.07.2026<br>Erster Schultag nach den Ferien: 31.08.2026</p><p>Wir wünschen allen Schülerinnen und Schülern erholsame Ferien!</p>', start: relDateTime(40, '00:00:00'), end: relDateTime(83, '23:59:00'), all_day: true, new: '0', editable: false, properties: { 'Bundesland': 'Hessen', 'Letzter Schultag': relDate(40), 'Erster Schultag': relDate(84), 'Dauer': '6 Wochen' }, raw: {} },
-  { id: 'ev5', title: 'Fachkonferenz Mathe', category: '5', category_name: 'Konferenzen', category_color: '#7c3aed', description: '<p>Fachkonferenz Mathematik im Lehrerzimmer.</p><p><strong>Tagesordnung:</strong></p><ul><li>Ergebnisse der letzten Klausur</li><li>Planung des nächsten Schuljahres</li><li>Wahl der Lehrbücher für die E-Phase</li><li>Verschiedenes</li></ul>', start: relDateTime(3, '14:00:00'), end: relDateTime(3, '16:00:00'), all_day: false, new: '1', editable: false, properties: { 'Ort': 'Lehrerzimmer', 'Teilnehmer': 'Fachschaft Mathematik', 'Leitung': 'Dr. Heinrich Weber' }, raw: {} },
-  { id: 'ev6', title: 'Zeugnisausgabe', category: '2', category_name: 'Veranstaltungen', category_color: '#2563eb', description: '<p>Zeugnisausgabe für das 2. Halbjahr 2025/2026.</p><p><strong>Hinweise:</strong></p><ul><li>Die Ausgabe findet in der Aula statt</li><li>Bitte pünktlich erscheinen</li><li>Eltern sind ebenfalls willkommen</li></ul>', start: relDateTime(30, '10:00:00'), end: relDateTime(30, '11:00:00'), all_day: false, new: '0', editable: false, properties: { 'Ort': 'Aula', 'Datum': relDate(30), 'Uhrzeit': '10:00–11:00 Uhr', 'Klasse': 'Q2' }, raw: {} },
-  { id: 'ev7', title: 'Physik LK Klausur', category: '1', category_name: 'Klausuren', category_color: '#dc2626', description: '<p>Klausur zum Thema <strong>Quantenmechanik</strong>.</p><p><strong>Stoffgebiete:</strong></p><ul><li>Doppelspaltexperiment</li><li>Photoeffekt</li><li>Heisenbergsche Unschärferelation</li><li>Bohrsches Atommodell</li></ul><p>Erlaubte Hilfsmittel: Taschenrechner, Formelsammlung, selbsterstellte einseitige Notiz</p>', start: relDateTime(14, '08:00:00'), end: relDateTime(14, '09:30:00'), all_day: false, new: '1', editable: false, properties: { 'Fach': 'Physik LK', 'Lehrer': 'Dr. Sabine Keller', 'Raum': 'D17', 'Dauer': '90 Minuten', 'Hilfsmittel': 'Taschenrechner, Formelsammlung, Notiz' }, raw: {} },
-  { id: 'ev8', title: 'Elternsprechtag Q2', category: '2', category_name: 'Veranstaltungen', category_color: '#2563eb', description: '<p>Elternsprechtag für die Qualifikationsphase (Q2).</p><p>Sie haben die Möglichkeit, mit allen Fachlehrkräften Ihrer Kinder zu sprechen.</p><p><strong>Zeitfenster:</strong> 16:00–19:00 Uhr</p><p>Anmeldung im Sekretariat oder online über das Schulportal.</p>', start: relDateTime(2, '16:00:00'), end: relDateTime(2, '19:00:00'), all_day: false, new: '0', editable: false, properties: { 'Zielgruppe': 'Q2', 'Uhrzeit': '16:00–19:00 Uhr', 'Anmeldung': 'Sekretariat / Online', 'Raum': 'Aula + Fachräume' }, raw: {} },
-  { id: 'ev9', title: 'Deutsch LK Klausur', category: '1', category_name: 'Klausuren', category_color: '#dc2626', description: '<p>Klausur zum Thema <strong>Faust I</strong>.</p><ul><li>Osterspaziergang</li><li>Der Pakt mit Mephisto</li><li>Studierzimmer-Szene</li><li>Gattung: Dramenanalyse mit Erörterung</li></ul>', start: relDateTime(12, '08:00:00'), end: relDateTime(12, '11:00:00'), all_day: false, new: '0', editable: false, properties: { 'Fach': 'Deutsch LK', 'Lehrer': 'Prof. Anna Reinhardt', 'Raum': 'B05', 'Dauer': '180 Minuten' }, raw: {} },
-  { id: 'ev10', title: 'Geschichte GK Klausur', category: '1', category_name: 'Klausuren', category_color: '#dc2626', description: '<p>Klausur zum Thema <strong>Weimarer Republik</strong>.</p><p>Stoff: Versailler Vertrag, Inflation 1923, Goldene Zwanziger, Ende der Republik.</p>', start: relDateTime(9, '08:00:00'), end: relDateTime(9, '09:30:00'), all_day: false, new: '0', editable: false, properties: { 'Fach': 'Geschichte GK', 'Lehrer': 'Herr Thomas Bergmann', 'Raum': 'C03', 'Dauer': '90 Minuten' }, raw: {} },
-  { id: 'ev11', title: 'Informatik Projektabgabe', category: '4', category_name: 'Abgaben', category_color: '#d97706', description: '<p>Abgabe des Projekts <strong>"Binärer Suchbaum in Java"</strong>.</p><p>Das Projekt umfasst:</p><ul><li>Vollständige Implementierung eines BST</li><li>Unit-Tests mit JUnit</li><li>Dokumentation (JavaDoc)</li></ul>', start: relDateTime(8, '23:59:00'), end: relDateTime(8, '23:59:00'), all_day: true, new: '0', editable: false, properties: { 'Fach': 'Informatik LK', 'Lehrer': 'Frau Dr. Laura Chen', 'Abgabeweg': 'Schulportal', 'Format': 'ZIP (Quellcode + Dokumentation)' }, raw: {} },
-  { id: 'ev12', title: 'SV-Sitzung', category: '5', category_name: 'Konferenzen', category_color: '#7c3aed', description: '<p>Schülervertretungs-Sitzung zur Planung des Sommerfestes.</p><p><strong>Themen:</strong></p><ul><li>Planung Sommerfest 2026</li><li>Rückblick Projekttage</li><li>Wünsche und Anregungen</li></ul>', start: relDateTime(4, '13:30:00'), end: relDateTime(4, '15:00:00'), all_day: false, new: '0', editable: false, properties: { 'Ort': 'Raum 215', 'Teilnehmer': 'SV Q2', 'Leitung': 'Max Mustermann' }, raw: {} },
-  { id: 'ev13', title: 'Studientag', category: '3', category_name: 'Ferien', category_color: '#059669', description: '<p>Studientag — kein regulärer Unterricht.</p><p>Die Lehrkräfte nehmen an Fortbildungen teil. Die Schülerinnen und Schüler arbeiten eigenständig an Projekten oder haben frei.</p>', start: relDateTime(-3, '00:00:00'), end: relDateTime(-3, '23:59:00'), all_day: true, new: '0', editable: false, properties: { 'Art': 'Studientag', 'Unterricht': 'entfällt' }, raw: {} },
-  { id: 'ev14', title: 'Mündliche Prüfung Englisch', category: '1', category_name: 'Klausuren', category_color: '#dc2626', description: '<p>Mündliche Prüfung in Englisch (Abiturvorbereitung).</p><p>Sie erhalten einen unbekannten Text, den Sie analysieren und diskutieren müssen. Anschließend folgt ein Gespräch über ein zweites Prüfungsthema.</p><p><strong>Dauer:</strong> ca. 20 Minuten + 20 Minuten Vorbereitung</p>', start: relDateTime(15, '09:00:00'), end: relDateTime(15, '12:00:00'), all_day: false, new: '0', editable: false, properties: { 'Fach': 'Englisch GK', 'Prüfer': "James O'Connor", 'Raum': 'B12', 'Dauer': '20 Min. + 20 Min. Vorbereitung' }, raw: {} },
-  { id: 'ev15', title: 'Sporttag Q2', category: '2', category_name: 'Veranstaltungen', category_color: '#2563eb', description: '<p>Sporttag der Q2 in der Sportanlage Nord.</p><p><strong>Angebotene Sportarten:</strong></p><ul><li>Fußball (Turnier)</li><li>Volleyball</li><li>Leichtathletik</li><li>Badminton</li></ul><p>Bitte Sportkleidung und Handtuch mitbringen.</p>', start: relDateTime(13, '08:00:00'), end: relDateTime(13, '15:00:00'), all_day: false, new: '0', editable: false, properties: { 'Ort': 'Sportanlage Nord', 'Klasse': 'Q2', 'Sportarten': 'Fußball, Volleyball, Leichtathletik, Badminton' }, raw: {} },
+const mockCalendarEvents: any[] = [
+  { id: 'ev1', title: 'A-Woche', category: '6', category_name: 'Schulwochen', category_color: '#0f766e', description: '<p>Diese Woche ist eine <strong>A-Woche</strong>.</p><p>Der Stundenplan folgt der A-Woche.</p>', start: weekDate(0), end: weekDate(5), all_day: true, new: '0', editable: false, properties: { 'Woche': 'A' }, raw: {} },
+  { id: 'ev2', title: 'Klassensprecher-Runde', category: '5', category_name: 'Klassen & Schule', category_color: '#7c3aed', description: '<p>Kurze Runde der Klassensprecherinnen und Klassensprecher.</p><p>Der reguläre Unterricht findet ansonsten statt.</p>', start: relDateTime(1, '08:35:00'), end: relDateTime(1, '09:20:00'), all_day: false, new: '1', editable: false, properties: { 'Ort': 'Raum B204' }, raw: {} },
+  { id: 'ev3', title: 'Klassenfahrt: Infoabend', category: '5', category_name: 'Klassen & Schule', category_color: '#7c3aed', description: '<p>Informationsabend für die geplante Klassenfahrt.</p><p>Bitte Fragen und die Einverständniserklärung mitbringen.</p>', start: relDateTime(6, '18:00:00'), end: relDateTime(6, '19:00:00'), all_day: false, new: '0', editable: false, properties: { 'Klasse': demoUser.klasse, 'Ort': 'Aula' }, raw: {} },
+  { id: 'ev4', title: 'Deutsch-Arbeit', category: '1', category_name: 'Klausuren', category_color: '#dc2626', description: '<p>Schriftlicher Gedichtvergleich.</p><p>Bitte Schreibmaterial und das Wörterbuch mitbringen.</p>', start: relDateTime(10, '09:40:00'), end: relDateTime(10, '11:10:00'), all_day: false, new: '1', editable: false, properties: { 'Fach': 'Deutsch 9c', 'Lehrkraft': 'CN', 'Raum': 'B204', 'Dauer': '90 Minuten' }, raw: {} },
+  { id: 'ev5', title: 'Mathematik-Arbeit', category: '1', category_name: 'Klausuren', category_color: '#dc2626', description: '<p>Leistungskontrolle zu linearen Funktionen und Graphen.</p>', start: relDateTime(12, '07:50:00'), end: relDateTime(12, '09:20:00'), all_day: false, new: '0', editable: false, properties: { 'Fach': 'Mathematik 9c', 'Lehrkraft': 'MV', 'Raum': 'B204', 'Dauer': '60 Minuten' }, raw: {} },
+  { id: 'ev6', title: 'Biologie-Protokoll', category: '4', category_name: 'Abgaben', category_color: '#d97706', description: '<p>Abgabe des Protokolls zum See-Experiment.</p><p>Beobachtung, Erklärung und Fazit bitte getrennt ausweisen.</p>', start: relDateTime(4, '23:59:00'), end: relDateTime(4, '23:59:00'), all_day: true, new: '0', editable: false, properties: { 'Fach': 'Biologie 9c', 'Lehrkraft': 'FB', 'Abgabeweg': 'Kursordner' }, raw: {} },
+  { id: 'ev7', title: 'SV-Treffen', category: '5', category_name: 'Klassen & Schule', category_color: '#7c3aed', description: '<p>Treffen der Schülervertretung zur Planung der nächsten Aktion.</p>', start: relDateTime(4, '13:30:00'), end: relDateTime(4, '15:00:00'), all_day: false, new: '0', editable: false, properties: { 'Ort': 'Raum 215' }, raw: {} },
+  { id: 'ev8', title: 'Herbstferien', category: '3', category_name: 'Ferien & freie Tage', category_color: '#059669', description: '<p>Unterrichtsfreie Zeit in Hessen.</p>', start: relDate(32), end: relDate(45), all_day: true, new: '0', editable: false, properties: { 'Bundesland': 'Hessen' }, raw: {} },
+  { id: 'ev9', title: 'Englisch-Präsentation', category: '4', category_name: 'Abgaben', category_color: '#d97706', description: '<p>Kurze persuasive speech im Englischkurs.</p><p>Bitte den Speech-planner und eure Stichpunkte mitbringen.</p>', start: relDateTime(8, '23:59:00'), end: relDateTime(8, '23:59:00'), all_day: true, new: '1', editable: false, properties: { 'Fach': 'Englisch 9c', 'Lehrkraft': 'AO', 'Abgabeweg': 'Kursordner' }, raw: {} },
+  { id: 'ev10', title: 'Elternabend 9C', category: '5', category_name: 'Klassen & Schule', category_color: '#7c3aed', description: '<p>Elternabend mit Informationen zum zweiten Halbjahr.</p>', start: relDateTime(9, '18:30:00'), end: relDateTime(9, '20:00:00'), all_day: false, new: '0', editable: false, properties: { 'Klasse': demoUser.klasse, 'Ort': 'Raum B204' }, raw: {} },
+  { id: 'ev11', title: 'Projektwoche', category: '2', category_name: 'Sonstige Termine', category_color: '#2563eb', description: '<p>Gemeinsame Projektwoche der Jahrgänge 9 und 10.</p><p>Der genaue Workshop-Plan folgt im Dateispeicher.</p>', start: relDate(17), end: relDate(19), all_day: true, new: '0', editable: false, properties: { 'Jahrgang': '9–10' }, raw: {} },
+  { id: 'ev12', title: 'Informatik-Projektabgabe', category: '4', category_name: 'Abgaben', category_color: '#d97706', description: '<p>Abgabe der barrierefreien Website und der kurzen Dokumentation.</p>', start: relDateTime(19, '23:59:00'), end: relDateTime(19, '23:59:00'), all_day: true, new: '0', editable: false, properties: { 'Fach': 'Informatik 9c', 'Lehrkraft': 'LR', 'Abgabeweg': 'Kursordner' }, raw: {} },
 ];
 
 const mockVertretungsplan = {
@@ -432,21 +332,28 @@ const mockVertretungsplan = {
   last_updated: new Date().toISOString(),
   days: [
     {
-      date: relDate(0),
+      date: weekDate(3),
       substitutions: [
-        { tag: relDate(0), tag_en: relDate(0), stunde: '1 - 2', fach: 'Mathematik', klasse: 'Q2', lehrer: 'Dr. Weber', vertreter: 'Frau Schmidt', raum: 'A12', art: 'Vertretung', hinweis: 'Raum A12 bleibt bestehen.' },
-        { tag: relDate(0), tag_en: relDate(0), stunde: '4', fach: 'Deutsch', klasse: 'Q2', lehrer: 'Frau Reinhardt', vertreter: null, raum: 'B05', art: 'Entfall', hinweis: 'Der Unterricht entfällt.' },
+        { tag: weekDate(3), tag_en: weekDate(3), stunde: '3 - 4', fach: 'Mathematik', klasse: demoUser.klasse, lehrer: 'MV', vertreter: '---', raum: 'B204', art: 'Raumänderung', hinweis: 'Der Unterricht findet in Raum B204 statt.' },
+        { tag: weekDate(3), tag_en: weekDate(3), stunde: '5 - 6', fach: 'Biologie', klasse: demoUser.klasse, lehrer: 'FB', vertreter: null, raum: 'C106', art: 'Entfall', hinweis: 'Der Unterricht entfällt.' },
       ],
       infos: [{ header: 'Hinweis', values: ['Bitte Änderungen bis zum Unterrichtsbeginn beachten.'] }],
     },
     {
-      date: relDate(1),
+      date: weekDate(4),
       substitutions: [
-        { tag: relDate(1), tag_en: relDate(1), stunde: '3', fach: 'Physik', klasse: 'Q2', lehrer: 'Frau Keller', vertreter: 'Herr Fischer', raum: 'D17', art: 'Vertretung' },
+        { tag: weekDate(4), tag_en: weekDate(4), stunde: '1 - 2', fach: 'Englisch', klasse: demoUser.klasse, lehrer: 'AO', vertreter: 'Frau Winter', raum: 'B204', art: 'Vertretung' },
+        { tag: weekDate(4), tag_en: weekDate(4), stunde: '5 - 6', fach: 'Kunst', klasse: demoUser.klasse, lehrer: 'KH', vertreter: '---', raum: 'K3', art: 'Raumänderung', hinweis: 'Bitte direkt in den Kunstraum gehen.' },
+      ],
+    },
+    {
+      date: weekDate(7),
+      substitutions: [
+        { tag: weekDate(7), tag_en: weekDate(7), stunde: '3 - 4', fach: 'Geschichte', klasse: demoUser.klasse, lehrer: 'MS', vertreter: 'Herr Yilmaz', raum: 'B204', art: 'Vertretung', hinweis: 'Arbeitsauftrag liegt im Kursordner.' },
       ],
     },
   ],
-  count: 3,
+  count: 5,
   raw_html: null,
 };
 
@@ -454,41 +361,67 @@ const mockDsbData = {
   menuItems: ['Heute', 'Morgen'],
   planUrls: ['/plan/heute', '/plan/morgen'],
   tables: [{
-    caption: 'Klasse Q2 — Vertretungsplan',
+    caption: `Klasse ${demoUser.klasse} — Vertretungsplan`,
     headers: ['Stunde', 'Fach', 'Lehrkraft', 'Vertretung', 'Raum', 'Info'],
     rows: [
-      { Stunde: '1–2', Fach: 'Mathe', Lehrkraft: 'Hr. Dr. Weber', Vertretung: '---', Raum: 'A12', Info: '' },
-      { Stunde: '3–4', Fach: 'Deutsch', Lehrkraft: 'Hr. Müller', Vertretung: 'Fr. Schmidt', Raum: 'B05', Info: 'Vertretung' },
-      { Stunde: '5', Fach: 'Englisch', Lehrkraft: "Hr. O'Connor", Vertretung: '---', Raum: 'C01', Info: '' },
-      { Stunde: '6–7', Fach: 'Physik', Lehrkraft: 'Fr. Dr. Keller', Vertretung: '---', Raum: 'D17', Info: 'Ausfall' },
-      { Stunde: '8–9', Fach: 'Sport', Lehrkraft: 'Hr. Wagner', Vertretung: 'Hr. Fischer', Raum: 'TH1', Info: 'Vertretung' },
+      { Stunde: '1–2', Fach: 'Mathematik', Lehrkraft: 'MV', Vertretung: '---', Raum: 'B204', Info: '' },
+      { Stunde: '3–4', Fach: 'Englisch', Lehrkraft: 'AO', Vertretung: 'Frau Winter', Raum: 'B204', Info: 'Vertretung' },
+      { Stunde: '5–6', Fach: 'Biologie', Lehrkraft: 'FB', Vertretung: '---', Raum: 'C106', Info: 'Entfall' },
+      { Stunde: '7–8', Fach: 'Informatik', Lehrkraft: 'LR', Vertretung: '---', Raum: 'C101', Info: 'Projektarbeit' },
+      { Stunde: '9–10', Fach: 'Kunst', Lehrkraft: 'KH', Vertretung: '---', Raum: 'K3', Info: 'Raumänderung' },
+      { Stunde: '11–12', Fach: 'Sport', Lehrkraft: 'SW', Vertretung: '---', Raum: 'TH1', Info: 'Bitte Sportsachen mitbringen' },
     ],
     date: relDate(0),
   }],
 };
 
-const mockTimetable = [
-  { date: relDate(0), name: 'Montag', lessons: [
-    { id: 'mo-1', period: '1–2', start_time: '08:00', end_time: '09:30', subject: 'Mathematik GK', teacher: 'Wb', room: 'A12', course_id: 'b1', course_name: 'Mathematik GK' },
-    { id: 'mo-2', period: '3–4', start_time: '09:50', end_time: '11:20', subject: 'Deutsch LK', teacher: 'Re', room: 'B05', course_id: 'b2', course_name: 'Deutsch LK', homework: [{ entry_id: 'e2', text: mockCourses[1].homework, done: true, assigned_date: mockCourses[1].datum.slice(0, 10) }] },
-    { id: 'mo-3', period: '5–6', start_time: '11:40', end_time: '13:10', subject: 'Englisch GK', teacher: "O'C", room: 'C01', course_id: 'b3', course_name: 'Englisch GK', homework: [{ entry_id: 'e3', text: mockCourses[2].homework, done: false, assigned_date: mockCourses[2].datum.slice(0, 10) }] },
+type DemoLesson = {
+  id: string;
+  period: string;
+  start_time: string;
+  end_time: string;
+  subject: string;
+  teacher: string;
+  room: string;
+  course_id?: string;
+  course_name: string;
+  homework?: Array<{ entry_id: string; text: string; done: boolean; assigned_date: string }>;
+  info?: string;
+};
+
+type DemoTimetableDay = {
+  date: string;
+  name: string;
+  lessons: DemoLesson[];
+};
+
+const mockTimetable: DemoTimetableDay[] = [
+  { date: weekDate(0), name: 'Montag', lessons: [
+    { id: 'mo-1', period: '1–2', start_time: '07:50', end_time: '09:20', subject: 'Deutsch', teacher: 'CN', room: 'B204', course_id: 'b1', course_name: 'Deutsch 9c', homework: [{ entry_id: 'e1', text: mockCourses[0].homework, done: false, assigned_date: mockCourses[0].datum.slice(0, 10) }] },
+    { id: 'mo-2', period: '3–4', start_time: '09:40', end_time: '11:10', subject: 'Mathematik', teacher: 'MV', room: 'B204', course_id: 'b2', course_name: 'Mathematik 9c', homework: [{ entry_id: 'e2', text: mockCourses[1].homework, done: false, assigned_date: mockCourses[1].datum.slice(0, 10) }] },
+    { id: 'mo-3', period: '5–6', start_time: '11:30', end_time: '13:00', subject: 'Englisch', teacher: 'AO', room: 'B204', course_id: 'b3', course_name: 'Englisch 9c' },
+    { id: 'mo-4', period: '7–8', start_time: '13:30', end_time: '15:00', subject: 'Informatik', teacher: 'LR', room: 'C101', course_id: 'b6', course_name: 'Informatik 9c', info: 'Projektarbeit' },
   ] },
-  { date: relDate(1), name: 'Dienstag', lessons: [
-    { id: 'di-1', period: '1–2', start_time: '08:00', end_time: '09:30', subject: 'Physik LK', teacher: 'Kl', room: 'D17', course_id: 'b4', course_name: 'Physik LK', homework: [{ entry_id: 'e4', text: mockCourses[3].homework, done: false, assigned_date: mockCourses[3].datum.slice(0, 10) }] },
-    { id: 'di-2', period: '3–4', start_time: '09:50', end_time: '11:20', subject: 'Geschichte GK', teacher: 'Bg', room: 'C03', course_id: 'b5', course_name: 'Geschichte GK', homework: [{ entry_id: 'e5', text: mockCourses[4].homework, done: true, assigned_date: mockCourses[4].datum.slice(0, 10) }] },
-    { id: 'di-3', period: '5–6', start_time: '11:40', end_time: '13:10', subject: 'Informatik LK', teacher: 'Ch', room: 'R204', course_id: 'b6', course_name: 'Informatik LK', homework: [{ entry_id: 'e6', text: mockCourses[5].homework, done: false, assigned_date: mockCourses[5].datum.slice(0, 10) }] },
+  { date: weekDate(1), name: 'Dienstag', lessons: [
+    { id: 'di-1', period: '1–2', start_time: '07:50', end_time: '09:20', subject: 'Biologie', teacher: 'FB', room: 'C106', course_id: 'b4', course_name: 'Biologie 9c', homework: [{ entry_id: 'e4', text: mockCourses[3].homework, done: false, assigned_date: mockCourses[3].datum.slice(0, 10) }] },
+    { id: 'di-2', period: '3–4', start_time: '09:40', end_time: '11:10', subject: 'Geschichte', teacher: 'MS', room: 'B204', course_id: 'b5', course_name: 'Geschichte 9c', homework: [{ entry_id: 'e5', text: mockCourses[4].homework, done: true, assigned_date: mockCourses[4].datum.slice(0, 10) }] },
+    { id: 'di-3', period: '5–6', start_time: '11:30', end_time: '13:00', subject: 'Mathematik', teacher: 'MV', room: 'B204', course_id: 'b2', course_name: 'Mathematik 9c' },
   ] },
-  { date: relDate(2), name: 'Mittwoch', lessons: [
-    { id: 'mi-1', period: '1–2', start_time: '08:00', end_time: '09:30', subject: 'Deutsch LK', teacher: 'Re', room: 'B05', course_id: 'b2', course_name: 'Deutsch LK' },
-    { id: 'mi-2', period: '3–4', start_time: '09:50', end_time: '11:20', subject: 'Mathematik GK', teacher: 'Wb', room: 'A12', course_id: 'b1', course_name: 'Mathematik GK', homework: [{ entry_id: 'e1', text: mockCourses[0].homework, done: false, assigned_date: mockCourses[0].datum.slice(0, 10) }] },
+  { date: weekDate(2), name: 'Mittwoch', lessons: [
+    { id: 'mi-1', period: '1–2', start_time: '07:50', end_time: '09:20', subject: 'Englisch', teacher: 'AO', room: 'B204', course_id: 'b3', course_name: 'Englisch 9c', homework: [{ entry_id: 'e3', text: mockCourses[2].homework, done: true, assigned_date: mockCourses[2].datum.slice(0, 10) }] },
+    { id: 'mi-2', period: '3–4', start_time: '09:40', end_time: '11:10', subject: 'Deutsch', teacher: 'CN', room: 'B204', course_id: 'b1', course_name: 'Deutsch 9c' },
+    { id: 'mi-3', period: '5–6', start_time: '11:30', end_time: '13:00', subject: 'Biologie', teacher: 'FB', room: 'C106', course_id: 'b4', course_name: 'Biologie 9c' },
+    { id: 'mi-4', period: '7–8', start_time: '13:30', end_time: '15:00', subject: 'Sport', teacher: 'SW', room: 'TH1', course_name: 'Sport 9c' },
   ] },
-  { date: relDate(3), name: 'Donnerstag', lessons: [
-    { id: 'do-1', period: '1–2', start_time: '08:00', end_time: '09:30', subject: 'Englisch GK', teacher: "O'C", room: 'C01', course_id: 'b3', course_name: 'Englisch GK' },
-    { id: 'do-2', period: '3–4', start_time: '09:50', end_time: '11:20', subject: 'Physik LK', teacher: 'Kl', room: 'D17', info: 'Experiment mitbringen', course_id: 'b4', course_name: 'Physik LK' },
+  { date: weekDate(3), name: 'Donnerstag', lessons: [
+    { id: 'do-1', period: '1–2', start_time: '07:50', end_time: '09:20', subject: 'Geschichte', teacher: 'MS', room: 'B204', course_id: 'b5', course_name: 'Geschichte 9c' },
+    { id: 'do-2', period: '3–4', start_time: '09:40', end_time: '11:10', subject: 'Informatik', teacher: 'LR', room: 'C101', course_id: 'b6', course_name: 'Informatik 9c', info: 'Projektarbeit' },
+    { id: 'do-3', period: '5–6', start_time: '11:30', end_time: '13:00', subject: 'Kunst', teacher: 'KH', room: 'K3', course_name: 'Kunst 9c' },
   ] },
-  { date: relDate(4), name: 'Freitag', lessons: [
-    { id: 'fr-1', period: '1–2', start_time: '08:00', end_time: '09:30', subject: 'Informatik LK', teacher: 'Ch', room: 'R204', course_id: 'b6', course_name: 'Informatik LK' },
-    { id: 'fr-2', period: '3–4', start_time: '09:50', end_time: '11:20', subject: 'Geschichte GK', teacher: 'Bg', room: 'C03', course_id: 'b5', course_name: 'Geschichte GK' },
+  { date: weekDate(4), name: 'Freitag', lessons: [
+    { id: 'fr-1', period: '1–2', start_time: '07:50', end_time: '09:20', subject: 'Mathematik', teacher: 'MV', room: 'B204', course_id: 'b2', course_name: 'Mathematik 9c' },
+    { id: 'fr-2', period: '3–4', start_time: '09:40', end_time: '11:10', subject: 'Deutsch', teacher: 'CN', room: 'B204', course_id: 'b1', course_name: 'Deutsch 9c' },
+    { id: 'fr-3', period: '5–6', start_time: '11:30', end_time: '13:00', subject: 'Biologie', teacher: 'FB', room: 'C106', course_id: 'b4', course_name: 'Biologie 9c' },
   ] },
 ];
 
@@ -523,14 +456,21 @@ function getMockTimetable() {
 }
 
 const mockStudyGroupExams = [
-  { id: 'exam-1', course_id: 'group-1', course_name: 'Mathematik GK', course_sys_id: 'Q2-M-GK1', date: relDate(7), type: 'Klausur', duration_label: '90 Minuten', hours: '1.–2. Stunde' },
-  { id: 'exam-2', course_id: 'group-2', course_name: 'Deutsch LK', course_sys_id: 'Q2-D-LK1', date: relDate(12), type: 'Klausur', duration_label: '180 Minuten', hours: '1.–4. Stunde' },
+  { id: 'exam-1', course_id: 'group-1', course_name: 'Deutsch 9c', course_sys_id: '9C-DEU', date: relDate(10), type: 'Arbeit', duration_label: '90 Min.', hours: '3.–4. Stunde' },
+  { id: 'exam-2', course_id: 'group-2', course_name: 'Mathematik 9c', course_sys_id: '9C-MAT', date: relDate(12), type: 'Arbeit', duration_label: '60 Min.', hours: '1.–2. Stunde' },
+  { id: 'exam-3', course_id: 'group-3', course_name: 'Englisch 9c', course_sys_id: '9C-ENG', date: relDate(24), type: 'Arbeit', duration_label: '90 Min.', hours: '3.–4. Stunde' },
+  { id: 'exam-4', course_id: 'group-4', course_name: 'Biologie 9c', course_sys_id: '9C-BIO', date: relDate(34), type: 'Lernkontrolle', duration_label: '45 Min.', hours: '3.–4. Stunde' },
+  { id: 'exam-5', course_id: 'group-5', course_name: 'Geschichte 9c', course_sys_id: '9C-GES', date: relDate(42), type: 'Arbeit', duration_label: '60 Min.', hours: '1.–2. Stunde' },
+  { id: 'exam-6', course_id: 'group-6', course_name: 'Informatik 9c', course_sys_id: '9C-INF', date: relDate(19), type: 'Projektabgabe', duration_label: '—', hours: 'Abgabe bis 23:59 Uhr' },
 ];
 
 const mockStudyGroups = [
-  { id: 'group-1', semester: '2026/27 · 1. Halbjahr', course_name: 'Mathematik GK', course_sys_id: 'Q2-M-GK1', teachers: [{ krz: 'Wb', first_name: 'Heinrich', last_name: 'Weber', email: 'h.weber@schule.example', recipient_id: 'l-1001' }], exams: [mockStudyGroupExams[0]] },
-  { id: 'group-2', semester: '2026/27 · 1. Halbjahr', course_name: 'Deutsch LK', course_sys_id: 'Q2-D-LK1', teachers: [{ krz: 'Re', first_name: 'Anna', last_name: 'Reinhardt', email: 'a.reinhardt@schule.example', recipient_id: 'l-1002' }], exams: [mockStudyGroupExams[1]] },
-  { id: 'group-3', semester: '2026/27 · 1. Halbjahr', course_name: 'Physik LK', course_sys_id: 'Q2-PH-LK1', teachers: [{ krz: 'Kl', first_name: 'Sabine', last_name: 'Keller', email: null, recipient_id: 'l-1003' }], exams: [] },
+  { id: 'group-1', semester: '1. Halbjahr 2026/2027', course_name: 'Deutsch 9c', course_sys_id: '9C-DEU', teachers: [{ krz: 'CN', first_name: 'Clara', last_name: 'Neumann', email: null, recipient_id: 'l-1001' }], exams: [mockStudyGroupExams[0]] },
+  { id: 'group-2', semester: '1. Halbjahr 2026/2027', course_name: 'Mathematik 9c', course_sys_id: '9C-MAT', teachers: [{ krz: 'MV', first_name: 'Martin', last_name: 'Vogel', email: null, recipient_id: 'l-1002' }], exams: [mockStudyGroupExams[1]] },
+  { id: 'group-3', semester: '1. Halbjahr 2026/2027', course_name: 'Englisch 9c', course_sys_id: '9C-ENG', teachers: [{ krz: 'AO', first_name: 'Aylin', last_name: 'Özdemir', email: null, recipient_id: 'l-1003' }], exams: [mockStudyGroupExams[2]] },
+  { id: 'group-4', semester: '1. Halbjahr 2026/2027', course_name: 'Biologie 9c', course_sys_id: '9C-BIO', teachers: [{ krz: 'FB', first_name: 'Felix', last_name: 'Brandt', email: null, recipient_id: 'l-1004' }], exams: [mockStudyGroupExams[3]] },
+  { id: 'group-5', semester: '1. Halbjahr 2026/2027', course_name: 'Geschichte 9c', course_sys_id: '9C-GES', teachers: [{ krz: 'MS', first_name: 'Marie', last_name: 'Seidel', email: null, recipient_id: 'l-1005' }], exams: [mockStudyGroupExams[4]] },
+  { id: 'group-6', semester: '1. Halbjahr 2026/2027', course_name: 'Informatik 9c', course_sys_id: '9C-INF', teachers: [{ krz: 'LR', first_name: 'Leonie', last_name: 'Roth', email: null, recipient_id: 'l-1006' }], exams: [mockStudyGroupExams[5]] },
 ];
 
 function urlMatches(pattern: string, url: string): boolean {
@@ -542,11 +482,11 @@ export function getMockResponse(url: string, method: string, config: any): { dat
   const u = (url || '').replace(config?.baseURL || '', '').split('?')[0];
 
   // Auth
-  if (u === '/benutzer' && method === 'get') { return { status: 200, data: { success: true, data: mockUser } }; }
+  if (u === '/benutzer' && method === 'get') { return { status: 200, data: { success: true, data: demoUser } }; }
   if (u === '/health' && method === 'get') { return { status: 200, data: { status: 'ok' } }; }
 
   // Modules
-  if (u === '/modules' && method === 'get') { return { status: 200, data: { success: true, modules: mockModules } }; }
+  if (u === '/modules' && method === 'get') { return { status: 200, data: { success: true, modules: demoModules } }; }
 
   // Messages
   if (u === '/nachrichten/headers' && method === 'get') { return { status: 200, data: { success: true, total: mockMessageHeaders.length, conversations: mockMessageHeaders } }; }
@@ -560,10 +500,12 @@ export function getMockResponse(url: string, method: string, config: any): { dat
   }
   if (u.startsWith('/nachrichten/search') && method === 'get') {
     return { status: 200, data: { success: true, results: [
-      { id: 'r1', name: 'Herr Müller', username: 'mueller', type: 'Lehrer' },
-      { id: 'r2', name: 'Frau Schmidt', username: 'schmidt', type: 'Lehrer' },
-      { id: 'r3', name: 'Max Mustermann', username: 'max.mustermann', type: 'Schüler' },
-      { id: 'r4', name: 'Anna Becker', username: 'anna.becker', type: 'Schüler' },
+      { id: 'r1', name: 'Clara Neumann', username: 'cn', type: 'Lehrkraft' },
+      { id: 'r2', name: 'Martin Vogel', username: 'mv', type: 'Lehrkraft' },
+      { id: 'r3', name: 'Aylin Özdemir', username: 'ao', type: 'Lehrkraft' },
+      { id: 'r5', name: 'Felix Brandt', username: 'fb', type: 'Lehrkraft' },
+      { id: 'r6', name: 'Frau Winter', username: 'sw', type: 'Lehrkraft' },
+      { id: 'r4', name: 'Mia Keller', username: demoUser.username, type: 'Schüler/in' },
     ] } };
   }
   if (u === '/nachrichten/send' && method === 'post') { return { status: 200, data: { success: true, message_id: 'new-msg-' + Date.now(), sent_at: fmt(new Date()) } }; }
@@ -587,8 +529,8 @@ export function getMockResponse(url: string, method: string, config: any): { dat
       status: 200,
       data: {
         success: true,
-        own_class: mockUser.klasse,
-        available_classes: ['Q1', 'Q2'],
+        own_class: demoUser.klasse,
+        available_classes: ['9A', '9B', '9C'],
       },
     };
   }
@@ -597,8 +539,8 @@ export function getMockResponse(url: string, method: string, config: any): { dat
       status: 200,
       data: {
         success: true,
-        own_class: mockUser.klasse,
-        available_classes: ['Q1', 'Q2'],
+        own_class: demoUser.klasse,
+        available_classes: ['9A', '9B', '9C'],
       },
     };
   }
@@ -651,13 +593,13 @@ export function getMockResponse(url: string, method: string, config: any): { dat
     return { status: 200, data: { success: true, entry: { id: 'unknown', title: 'Eintrag', content: '<p>Keine Details verfügbar.</p>', date: fmt(new Date()), attachments: [] } } };
   }
   if (u === '/meinunterricht/weekly' && method === 'get') {
-    return { status: 200, data: { success: true, week: { start_date: relDate(-3), entries: [
-      { date: relDate(-3), course: 'Mathematik GK', entry: 'Kurvendiskussion', url: '' },
-      { date: relDate(-2), course: 'Deutsch LK', entry: 'Faust I', url: '' },
-      { date: relDate(-2), course: 'Englisch GK', entry: 'Hamlet Act III', url: '' },
-      { date: relDate(-1), course: 'Physik LK', entry: 'Doppelspaltexperiment', url: '' },
-      { date: relDate(0), course: 'Geschichte GK', entry: 'Weimarer Republik', url: '' },
-      { date: relDate(0), course: 'Mathematik GK', entry: 'Klausur', url: '' },
+    return { status: 200, data: { success: true, week: { start_date: weekDate(0), entries: [
+      { date: weekDate(0), course: 'Deutsch 9c', entry: 'Gedichtvergleich: Stadt und Natur', url: '' },
+      { date: weekDate(0), course: 'Mathematik 9c', entry: 'Lineare Funktionen und Steigung', url: '' },
+      { date: weekDate(1), course: 'Biologie 9c', entry: 'Ökosystem See', url: '' },
+      { date: weekDate(2), course: 'Englisch 9c', entry: 'Writing a persuasive speech', url: '' },
+      { date: weekDate(3), course: 'Geschichte 9c', entry: 'Industrialisierung und soziale Frage', url: '' },
+      { date: weekDate(4), course: 'Informatik 9c', entry: 'Barrierefreie Website', url: '' },
     ] } } };
   }
   if (u === '/meinunterricht/submissions' && method === 'get') { return { status: 200, data: { success: true, submissions: mockSubmissions } }; }
@@ -668,9 +610,9 @@ export function getMockResponse(url: string, method: string, config: any): { dat
     return { status: 200, data: {
       success: true,
       page_title: 'Kalender',
-      calendar: { first_id: '0', new_events_count: '2', can_write: false, key: '', public_view: false, institution: 'Goethe-Gymnasium', is_admin: false },
+      calendar: { first_id: '0', new_events_count: '2', can_write: false, key: '', public_view: false, institution: 'Elisabeth-Selbert-Schule', is_admin: false },
       categories: mockCalendarCategories,
-      groups: [{ id: 1, name: 'Q2' }],
+      groups: [{ id: 1, name: demoUser.klasse }],
       export_links: [],
     } };
   }
@@ -680,8 +622,8 @@ export function getMockResponse(url: string, method: string, config: any): { dat
       events: mockCalendarEvents,
       count: mockCalendarEvents.length,
       categories: mockCalendarCategories,
-      groups: [{ id: 1, name: 'Q2' }],
-      filters: { year: 2025, start: 'year', category: '', search: '', target: '', view_id: '' },
+      groups: [{ id: 1, name: demoUser.klasse }],
+      filters: { year: now.getFullYear(), start: 'year', category: '', search: '', target: '', view_id: '' },
       raw: {},
     } };
   }

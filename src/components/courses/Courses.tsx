@@ -40,6 +40,7 @@ import {
 import { format, parseISO } from 'date-fns';
 import { de } from 'date-fns/locale';
 import clsx from 'clsx';
+import { isDemoRoute } from '../../utils/demoMode';
 
 type ViewMode = 'overview' | 'course-detail' | 'weekly' | 'submissions' | 'entry-detail';
 type CourseDetailTab = 'history' | 'performance' | 'exams';
@@ -257,7 +258,7 @@ const Courses: React.FC = () => {
   const [viewMode, setViewMode] = useState<ViewMode>('overview');
   // Cached courses state
   const [courses, setCourses] = useState<CourseEntry[]>(() => {
-    const cached = localStorage.getItem('courses_cache');
+    const cached = isDemoRoute() ? null : localStorage.getItem('courses_cache');
     return cached ? JSON.parse(cached) : [];
   });
   const [isUpdating, setIsUpdating] = useState(false);

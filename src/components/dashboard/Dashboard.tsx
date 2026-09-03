@@ -15,6 +15,8 @@ import {
   ListBulletIcon,
   PencilIcon,
   StarIcon,
+  InformationCircleIcon,
+  XMarkIcon,
 } from '@heroicons/react/24/outline';
 import { API_BASE_URL } from '../../services/api';
 import clsx from 'clsx';
@@ -33,6 +35,7 @@ const Dashboard: React.FC = () => {
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFolder, setSelectedFolder] = useState<string>('all');
+  const [externalModule, setExternalModule] = useState<Module | null>(null);
   const viewMode = preferences.dashboard.view_mode;
   const [isEditMode, setIsEditMode] = useState(false);
   const pinnedModules = preferences.dashboard.pinned_modules;
@@ -129,6 +132,10 @@ const Dashboard: React.FC = () => {
       navigate(`${basePath}/dsb`);
       return;
     }
+    if (basePath === '/demo') {
+      setExternalModule(module);
+      return;
+    }
     if (module.proxy_app) {
       const proxyUrl = `${API_BASE_URL}/app/${encodeURIComponent(module.name)}?token=${encodeURIComponent(token)}`;
       window.open(proxyUrl, '_blank', 'noopener,noreferrer');
@@ -136,6 +143,21 @@ const Dashboard: React.FC = () => {
     }
     window.open(module.direct_url || module.url, '_blank', 'noopener,noreferrer');
   };
+
+  useEffect(() => {
+    if (!externalModule) return;
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setExternalModule(null);
+    };
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [externalModule]);
+
+  const externalDestination = externalModule
+    ? externalModule.proxy_app
+      ? `${API_BASE_URL}/app/${encodeURIComponent(externalModule.name)}`
+      : externalModule.direct_url || externalModule.url
+    : '';
 
   const togglePin = (moduleName: string) => {
     const newPinned = pinnedModules.includes(moduleName)
@@ -366,6 +388,57 @@ const Dashboard: React.FC = () => {
               )}
             </div>
           ))}
+        </div>
+      )}
+
+      {externalModule && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-surface-950/50 p-4 backdrop-blur-sm"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setExternalModule(null);
+          }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="external-module-title"
+            className="w-full max-w-md rounded-2xl border border-surface-200 bg-white p-6 shadow-soft-lg dark:border-surface-700 dark:bg-surface-900"
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex items-start gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary-100 text-primary-600 dark:bg-primary-900/40 dark:text-primary-300">
+                  <InformationCircleIcon className="h-5 w-5" />
+                </div>
+                <div>
+                  <h2 id="external-module-title" className="text-base font-semibold text-surface-900 dark:text-surface-100">
+                    Externes Modul
+                  </h2>
+                  <p className="mt-1 text-sm leading-5 text-surface-600 dark:text-surface-300">
+                    „{externalModule.name}“ würde eine externe Seite öffnen. In der Demo bleibt diese Seite geschlossen.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                aria-label="Hinweis schließen"
+                className="rounded-lg p-1.5 text-surface-400 transition-colors hover:bg-surface-100 hover:text-surface-700 dark:hover:bg-surface-800 dark:hover:text-surface-200"
+                onClick={() => setExternalModule(null)}
+              >
+                <XMarkIcon className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="mt-5 rounded-xl bg-surface-50 px-3 py-2.5 text-xs leading-5 text-surface-500 dark:bg-surface-800 dark:text-surface-300">
+              <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-surface-400 dark:text-surface-500">
+                Zieladresse
+              </span>
+              <span className="break-all">{externalDestination}</span>
+            </div>
+            <div className="mt-6 flex justify-end">
+              <button type="button" className="btn btn-primary" onClick={() => setExternalModule(null)}>
+                Schließen
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
