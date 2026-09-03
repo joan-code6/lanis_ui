@@ -9,12 +9,18 @@ import { Module } from '../../types';
 import SEO from '../seo/SEO';
 import {
   FolderIcon,
-  ArrowTopRightOnSquareIcon,
   MagnifyingGlassIcon,
   Squares2X2Icon,
   ListBulletIcon,
   PencilIcon,
   StarIcon,
+  EyeIcon,
+  EyeSlashIcon,
+  Bars3Icon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  ChevronUpIcon,
+  ChevronDownIcon,
   InformationCircleIcon,
   XMarkIcon,
 } from '@heroicons/react/24/outline';
@@ -22,6 +28,11 @@ import { API_BASE_URL } from '../../services/api';
 import clsx from 'clsx';
 import ModuleIcon from './ModuleIcon';
 import { readModulesCache, writeModulesCache } from '../../utils/moduleCache';
+
+type DropTarget = {
+  moduleName: string;
+  placement: 'before' | 'after';
+};
 
 const Dashboard: React.FC = () => {
   const { token, user } = useAuth();
@@ -39,6 +50,9 @@ const Dashboard: React.FC = () => {
   const viewMode = preferences.dashboard.view_mode;
   const [isEditMode, setIsEditMode] = useState(false);
   const pinnedModules = preferences.dashboard.pinned_modules;
+  const hiddenModules = preferences.dashboard.hidden_modules;
+  const [draggedModule, setDraggedModule] = useState<string | null>(null);
+  const [dropTarget, setDropTarget] = useState<DropTarget | null>(null);
 
   if (!token) {
     return (
@@ -165,13 +179,69 @@ const Dashboard: React.FC = () => {
     : '';
 
   const togglePin = (moduleName: string) => {
-    const newPinned = pinnedModules.includes(moduleName)
+    const isPinned = pinnedModules.includes(moduleName);
+    if (hiddenModules.includes(moduleName) && !isPinned) return;
+
+    const newPinned = isPinned
       ? pinnedModules.filter(name => name !== moduleName)
       : [...pinnedModules, moduleName];
     void updatePreferences({ dashboard: { pinned_modules: newPinned } });
   };
 
+  const movePinned = (moduleName: string, direction: -1 | 1) => {
+    const fromIndex = pinnedModules.indexOf(moduleName);
+    const toIndex = fromIndex + direction;
+    if (fromIndex < 0 || toIndex < 0 || toIndex >= pinnedModules.length) return;
+
+    const newPinned = [...pinnedModules];
+    [newPinned[fromIndex], newPinned[toIndex]] = [newPinned[toIndex], newPinned[fromIndex]];
+    void updatePreferences({ dashboard: { pinned_modules: newPinned } });
+  };
+
+  const toggleHidden = (moduleName: string) => {
+    const newHidden = hiddenModules.includes(moduleName)
+      ? hiddenModules.filter(name => name !== moduleName)
+      : [...hiddenModules, moduleName];
+    const newPinned = newHidden.includes(moduleName)
+      ? pinnedModules.filter(name => name !== moduleName)
+      : pinnedModules;
+    void updatePreferences({ dashboard: { hidden_modules: newHidden, pinned_modules: newPinned } });
+  };
+
+  const handleDragStart = (event: React.DragEvent, moduleName: string) => {
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', moduleName);
+    setDraggedModule(moduleName);
+  };
+
+  const handleDragOver = (event: React.DragEvent<HTMLDivElement>, targetName: string) => {
+    if (!draggedModule || draggedModule === targetName || !pinnedModules.includes(targetName)) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const placement = viewMode === 'list'
+      ? event.clientY < bounds.top + bounds.height / 2 ? 'before' : 'after'
+      : event.clientX < bounds.left + bounds.width / 2 ? 'before' : 'after';
+    setDropTarget({ moduleName: targetName, placement });
+  };
+
+  const handleDrop = (event: React.DragEvent, targetName: string) => {
+    event.preventDefault();
+    const sourceName = draggedModule || event.dataTransfer.getData('text/plain');
+    const placement = dropTarget?.moduleName === targetName ? dropTarget.placement : 'before';
+    if (!sourceName || sourceName === targetName) return;
+
+    const newPinned = pinnedModules.filter(name => name !== sourceName);
+    const targetIndex = newPinned.indexOf(targetName);
+    if (targetIndex < 0) return;
+    newPinned.splice(targetIndex + (placement === 'after' ? 1 : 0), 0, sourceName);
+    void updatePreferences({ dashboard: { pinned_modules: newPinned } });
+    setDraggedModule(null);
+    setDropTarget(null);
+  };
+
   const filteredModules = modules.filter((module) => {
+    if (!isEditMode && hiddenModules.includes(module.name)) return false;
     const matchesSearch = module.name.toLowerCase().includes(searchTerm.toLowerCase());
     const moduleFolders = module.folders.map(f => f.trim());
     const matchesFolder = selectedFolder === 'all' || moduleFolders.includes(selectedFolder);
@@ -179,10 +249,16 @@ const Dashboard: React.FC = () => {
   });
 
   const sortedModules = [...filteredModules].sort((a, b) => {
+    const aHidden = hiddenModules.includes(a.name);
+    const bHidden = hiddenModules.includes(b.name);
+    if (isEditMode && aHidden !== bHidden) return aHidden ? 1 : -1;
     const aPinned = pinnedModules.includes(a.name);
     const bPinned = pinnedModules.includes(b.name);
     if (aPinned && !bPinned) return -1;
     if (!aPinned && bPinned) return 1;
+    if (aPinned && bPinned) {
+      return pinnedModules.indexOf(a.name) - pinnedModules.indexOf(b.name);
+    }
     return 0;
   });
 
@@ -249,7 +325,10 @@ const Dashboard: React.FC = () => {
 
           <div className="flex bg-surface-100 dark:bg-surface-800 rounded-lg p-0.5 flex-shrink-0">
             <button
+              type="button"
               onClick={() => void updatePreferences({ dashboard: { view_mode: 'grid' } })}
+              aria-label="Kartenansicht"
+              aria-pressed={viewMode === 'grid'}
               className={clsx(
                 'p-2 rounded-md transition-all duration-200',
                 viewMode === 'grid'
@@ -260,7 +339,10 @@ const Dashboard: React.FC = () => {
               <Squares2X2Icon className="h-4 w-4" />
             </button>
             <button
+              type="button"
               onClick={() => void updatePreferences({ dashboard: { view_mode: 'list' } })}
+              aria-label="Listenansicht"
+              aria-pressed={viewMode === 'list'}
               className={clsx(
                 'p-2 rounded-md transition-all duration-200',
                 viewMode === 'list'
@@ -273,23 +355,33 @@ const Dashboard: React.FC = () => {
           </div>
 
           <button
+            type="button"
             onClick={() => setIsEditMode(!isEditMode)}
             className={clsx(
-              'p-2 rounded-lg transition-all duration-200 flex-shrink-0',
+              'h-9 px-3 rounded-lg transition-all duration-200 flex flex-shrink-0 items-center gap-2 text-sm font-medium',
               isEditMode
                 ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400'
                 : 'bg-surface-100 dark:bg-surface-800 text-surface-400 hover:text-surface-600 dark:hover:text-surface-200'
             )}
-            title="Pinnen bearbeiten"
+            aria-pressed={isEditMode}
           >
             <PencilIcon className="h-4 w-4" />
+            <span className="hidden sm:inline">{isEditMode ? 'Fertig' : 'Anpassen'}</span>
           </button>
         </div>
       </div>
 
       {isEditMode && (
-        <div className="mb-6 bg-primary-50 dark:bg-primary-950/30 border border-primary-200 dark:border-primary-800 rounded-xl p-4">
-          <p className="text-sm text-primary-700 dark:text-primary-300 font-medium">Bearbeitungsmodus aktiv — Klicken Sie auf einen Stern um Module zu pinnen</p>
+        <div className="mb-6 flex items-start gap-3 rounded-xl border border-primary-200 bg-primary-50 px-4 py-3 dark:border-primary-800 dark:bg-primary-950/30">
+          <StarIcon className="mt-0.5 h-4 w-4 shrink-0 fill-current text-primary-500" />
+          <div>
+            <p className="text-sm font-medium text-primary-800 dark:text-primary-200">
+              {pinnedModules.length} {pinnedModules.length === 1 ? 'Favorit' : 'Favoriten'} zuerst
+            </p>
+            <p className="mt-0.5 text-xs leading-5 text-primary-700/80 dark:text-primary-300/80">
+              Favoriten lassen sich am Griff ziehen. Die Pfeile funktionieren auch auf Touch-Geräten und mit der Tastatur.
+            </p>
+          </div>
         </div>
       )}
 
@@ -308,91 +400,249 @@ const Dashboard: React.FC = () => {
               : 'grid-cols-1'
           )}
         >
-          {sortedModules.map((module, index) => (
-            <div
-              key={index}
-              className={clsx(
-                'card card-hover group relative',
-                viewMode === 'list' && 'flex items-center gap-4 p-4'
-              )}
-              onClick={() => handleModuleClick(module)}
-            >
-              {viewMode === 'grid' ? (
-                <div className="flex flex-col items-center text-center">
-                  <div className="relative">
-                    <ModuleIcon name={module.name} logo={module.logo} color={module.color} size="grid" />
-                    <div className="absolute -top-1 -right-1 w-4 h-4 bg-white dark:bg-surface-800 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-soft">
-                      <ArrowTopRightOnSquareIcon className="w-2.5 h-2.5 text-surface-400" />
-                    </div>
-                    {isEditMode && (
+          {sortedModules.map((module) => {
+            const isPinned = pinnedModules.includes(module.name);
+            const isHidden = hiddenModules.includes(module.name);
+            const pinnedIndex = pinnedModules.indexOf(module.name);
+            const activeDropTarget = dropTarget?.moduleName === module.name && draggedModule !== module.name;
+
+            return (
+              <div
+                key={module.name}
+                className={clsx(
+                  'card group relative transition-[opacity,transform,box-shadow] duration-150',
+                  !isEditMode && 'card-hover',
+                  viewMode === 'grid' ? 'p-5' : 'flex items-center gap-3 p-3 sm:gap-4 sm:p-4',
+                  isEditMode && isHidden && 'opacity-50',
+                  draggedModule === module.name && 'scale-[0.98] opacity-40'
+                )}
+                onDragOver={(event) => handleDragOver(event, module.name)}
+                onDragLeave={(event) => {
+                  if (!event.currentTarget.contains(event.relatedTarget as Node)) setDropTarget(null);
+                }}
+                onDrop={(event) => handleDrop(event, module.name)}
+                onClick={() => handleModuleClick(module)}
+              >
+                {activeDropTarget && (
+                  <span
+                    aria-hidden="true"
+                    className={clsx(
+                      'pointer-events-none absolute z-10 rounded-full bg-primary-500 shadow-[0_0_0_3px_rgba(14,165,233,0.15)]',
+                      viewMode === 'list'
+                        ? 'left-3 right-3 h-0.5'
+                        : 'bottom-3 top-3 w-0.5',
+                      viewMode === 'list' && dropTarget?.placement === 'before' && '-top-2',
+                      viewMode === 'list' && dropTarget?.placement === 'after' && '-bottom-2',
+                      viewMode === 'grid' && dropTarget?.placement === 'before' && '-left-2',
+                      viewMode === 'grid' && dropTarget?.placement === 'after' && '-right-2'
+                    )}
+                  />
+                )}
+
+                {viewMode === 'grid' ? (
+                  <div className="flex min-h-[168px] flex-col items-center text-center">
+                    {isPinned && (
+                      <span className="absolute left-3 top-3 flex items-center gap-1 rounded-full bg-primary-50 px-2 py-1 text-[10px] font-semibold text-primary-700 dark:bg-primary-950/50 dark:text-primary-300">
+                        <StarIcon className="h-3 w-3 fill-current" />
+                        Favorit
+                      </span>
+                    )}
+                    {isEditMode && isPinned && (
                       <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          togglePin(module.name);
+                        type="button"
+                        draggable
+                        onDragStart={(event) => handleDragStart(event, module.name)}
+                        onDragEnd={() => {
+                          setDraggedModule(null);
+                          setDropTarget(null);
                         }}
-                        className={clsx(
-                          'absolute -top-1 -left-1 w-6 h-6 rounded-full flex items-center justify-center transition-all shadow-soft',
-                          pinnedModules.includes(module.name)
-                            ? 'bg-primary-500 text-white'
-                            : 'bg-surface-200 dark:bg-surface-700 text-surface-500 hover:bg-primary-100 hover:text-primary-500'
-                        )}
+                        onClick={(event) => event.stopPropagation()}
+                        className="absolute right-3 top-3 rounded-lg p-1.5 text-surface-400 transition-colors hover:bg-surface-100 hover:text-primary-600 active:cursor-grabbing dark:hover:bg-surface-800 dark:hover:text-primary-400"
+                        aria-label={`${module.name} ziehen, um die Reihenfolge zu ändern`}
+                        title="Zum Sortieren ziehen"
                       >
-                        <StarIcon className={clsx('w-3.5 h-3.5', pinnedModules.includes(module.name) && 'fill-current')} />
+                        <Bars3Icon className="h-5 w-5 cursor-grab" />
                       </button>
                     )}
-                  </div>
-                  <h3 className="mt-4 font-medium text-surface-900 dark:text-surface-100 group-hover:text-primary-600 transition-colors text-sm">
-                    {module.name}
-                  </h3>
-                  {module.folders.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mt-2 justify-center">
-                      {module.folders.map((folder) => (
-                        <span key={folder} className="badge badge-surface text-[11px]">
-                          {folder}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                  <span className="mt-2 text-[11px] text-surface-400 font-medium">Modul</span>
-                </div>
-                  ) : (
-                <>
-                  <ModuleIcon name={module.name} logo={module.logo} color={module.color} size="list" />
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-medium text-surface-900 dark:text-surface-100 group-hover:text-primary-600 transition-colors text-sm">
+
+                    <ModuleIcon name={module.name} logo={module.logo} color={module.color} size="grid" />
+                    <h3 className="mt-4 text-sm font-medium text-surface-900 transition-colors group-hover:text-primary-600 dark:text-surface-100">
                       {module.name}
                     </h3>
                     {module.folders.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-1">
+                      <div className="mt-2 flex flex-wrap justify-center gap-1">
                         {module.folders.map((folder) => (
-                          <span key={folder} className="badge badge-surface text-[11px]">
-                            {folder}
-                          </span>
+                          <span key={folder} className="badge badge-surface text-[11px]">{folder}</span>
                         ))}
                       </div>
                     )}
+                    <span className="mt-2 text-[11px] font-medium text-surface-400">Modul</span>
+
+                    {isEditMode && (
+                      <div className="mt-auto flex w-full items-center gap-1 border-t border-surface-100 pt-3 dark:border-surface-800">
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            togglePin(module.name);
+                          }}
+                          disabled={isHidden && !isPinned}
+                          className={clsx(
+                            'flex h-8 items-center gap-1.5 rounded-lg px-2 text-xs font-medium transition-colors',
+                            isPinned
+                              ? 'bg-primary-50 text-primary-700 dark:bg-primary-950/40 dark:text-primary-300'
+                              : 'text-surface-500 hover:bg-surface-100 hover:text-primary-600 disabled:opacity-30 dark:text-surface-400 dark:hover:bg-surface-800'
+                          )}
+                          aria-label={isPinned ? `${module.name} aus Favoriten entfernen` : `${module.name} zu Favoriten hinzufügen`}
+                        >
+                          <StarIcon className={clsx('h-4 w-4', isPinned && 'fill-current')} />
+                          Favorit
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            toggleHidden(module.name);
+                          }}
+                          className="flex h-8 items-center gap-1.5 rounded-lg px-2 text-xs font-medium text-surface-500 transition-colors hover:bg-surface-100 hover:text-red-600 dark:text-surface-400 dark:hover:bg-surface-800 dark:hover:text-red-400"
+                          aria-label={isHidden ? `${module.name} einblenden` : `${module.name} ausblenden`}
+                        >
+                          {isHidden ? <EyeIcon className="h-4 w-4" /> : <EyeSlashIcon className="h-4 w-4" />}
+                          {isHidden ? 'Zeigen' : 'Ausblenden'}
+                        </button>
+                        {isPinned && (
+                          <div className="ml-auto flex items-center rounded-lg bg-surface-100 p-0.5 dark:bg-surface-800">
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                movePinned(module.name, -1);
+                              }}
+                              disabled={pinnedIndex === 0}
+                              className="rounded-md p-1 text-surface-500 hover:bg-white hover:text-primary-600 disabled:opacity-25 dark:hover:bg-surface-700"
+                              aria-label={`${module.name} nach vorne verschieben`}
+                            >
+                              <ChevronLeftIcon className="h-4 w-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                movePinned(module.name, 1);
+                              }}
+                              disabled={pinnedIndex === pinnedModules.length - 1}
+                              className="rounded-md p-1 text-surface-500 hover:bg-white hover:text-primary-600 disabled:opacity-25 dark:hover:bg-surface-700"
+                              aria-label={`${module.name} nach hinten verschieben`}
+                            >
+                              <ChevronRightIcon className="h-4 w-4" />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
-                  {isEditMode && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        togglePin(module.name);
-                      }}
-                      className={clsx(
-                        'p-1.5 rounded-full transition-all',
-                        pinnedModules.includes(module.name)
-                          ? 'text-primary-500'
-                          : 'text-surface-300 hover:text-primary-500'
+                ) : (
+                  <>
+                    {isEditMode && isPinned && (
+                      <button
+                        type="button"
+                        draggable
+                        onDragStart={(event) => handleDragStart(event, module.name)}
+                        onDragEnd={() => {
+                          setDraggedModule(null);
+                          setDropTarget(null);
+                        }}
+                        onClick={(event) => event.stopPropagation()}
+                        className="shrink-0 rounded-lg p-1.5 text-surface-400 transition-colors hover:bg-surface-100 hover:text-primary-600 active:cursor-grabbing dark:hover:bg-surface-800"
+                        aria-label={`${module.name} ziehen, um die Reihenfolge zu ändern`}
+                        title="Zum Sortieren ziehen"
+                      >
+                        <Bars3Icon className="h-5 w-5 cursor-grab" />
+                      </button>
+                    )}
+                    <ModuleIcon name={module.name} logo={module.logo} color={module.color} size="list" />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <h3 className="truncate text-sm font-medium text-surface-900 transition-colors group-hover:text-primary-600 dark:text-surface-100">
+                          {module.name}
+                        </h3>
+                        {isPinned && (
+                          <StarIcon className="h-3.5 w-3.5 shrink-0 fill-current text-primary-500" aria-label="Favorit" />
+                        )}
+                      </div>
+                      {module.folders.length > 0 && (
+                        <div className="mt-1 flex flex-wrap gap-1">
+                          {module.folders.map((folder) => (
+                            <span key={folder} className="badge badge-surface text-[11px]">{folder}</span>
+                          ))}
+                        </div>
                       )}
-                    >
-                      <StarIcon className={clsx('w-4 h-4', pinnedModules.includes(module.name) && 'fill-current')} />
-                    </button>
-                  )}
-                  <ArrowTopRightOnSquareIcon className="w-4 h-4 text-surface-300 group-hover:text-primary-500 transition-colors flex-shrink-0" />
-                </>
-              )}
-            </div>
-          ))}
+                    </div>
+                    {isEditMode && (
+                      <div className="flex shrink-0 items-center gap-0.5">
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            togglePin(module.name);
+                          }}
+                          disabled={isHidden && !isPinned}
+                          className={clsx(
+                            'rounded-lg p-2 transition-colors',
+                            isPinned
+                              ? 'bg-primary-50 text-primary-600 dark:bg-primary-950/40 dark:text-primary-300'
+                              : 'text-surface-400 hover:bg-surface-100 hover:text-primary-600 disabled:opacity-30 dark:hover:bg-surface-800'
+                          )}
+                          aria-label={isPinned ? `${module.name} aus Favoriten entfernen` : `${module.name} zu Favoriten hinzufügen`}
+                        >
+                          <StarIcon className={clsx('h-4 w-4', isPinned && 'fill-current')} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            toggleHidden(module.name);
+                          }}
+                          className="rounded-lg p-2 text-surface-400 transition-colors hover:bg-surface-100 hover:text-red-600 dark:hover:bg-surface-800 dark:hover:text-red-400"
+                          aria-label={isHidden ? `${module.name} einblenden` : `${module.name} ausblenden`}
+                        >
+                          {isHidden ? <EyeIcon className="h-4 w-4" /> : <EyeSlashIcon className="h-4 w-4" />}
+                        </button>
+                        {isPinned && (
+                          <div className="ml-1 flex items-center rounded-lg bg-surface-100 p-0.5 dark:bg-surface-800">
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                movePinned(module.name, -1);
+                              }}
+                              disabled={pinnedIndex === 0}
+                              className="rounded-md p-1 text-surface-500 hover:bg-white hover:text-primary-600 disabled:opacity-25 dark:hover:bg-surface-700"
+                              aria-label={`${module.name} nach oben verschieben`}
+                            >
+                              <ChevronUpIcon className="h-4 w-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                movePinned(module.name, 1);
+                              }}
+                              disabled={pinnedIndex === pinnedModules.length - 1}
+                              className="rounded-md p-1 text-surface-500 hover:bg-white hover:text-primary-600 disabled:opacity-25 dark:hover:bg-surface-700"
+                              aria-label={`${module.name} nach unten verschieben`}
+                            >
+                              <ChevronDownIcon className="h-4 w-4" />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
 
