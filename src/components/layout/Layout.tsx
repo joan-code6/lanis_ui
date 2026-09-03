@@ -19,6 +19,7 @@ import {
   Bars3Icon,
   XMarkIcon,
   ClipboardDocumentListIcon,
+  ClipboardDocumentCheckIcon,
   FolderIcon,
   MagnifyingGlassIcon,
 } from '@heroicons/react/24/outline';
@@ -46,6 +47,7 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
   const [hasNativeDateispeicher, setHasNativeDateispeicher] = React.useState(false);
   const [hasNativeSubstitutionPlan, setHasNativeSubstitutionPlan] = React.useState(false);
   const [hasDsbModule, setHasDsbModule] = React.useState(false);
+  const [hasWahlenModule, setHasWahlenModule] = React.useState(false);
   const mainRef = React.useRef<HTMLElement>(null);
   const pwaRef = React.useRef<any>(null);
 
@@ -81,6 +83,7 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
       setHasNativeDateispeicher(availability.hasNativeDateispeicher);
       setHasNativeSubstitutionPlan(availability.hasNativeSubstitutionPlan);
       setHasDsbModule(availability.hasDsbModule);
+      setHasWahlenModule(availability.hasWahlenModule);
     };
     const cachedModules = readModulesCache(user);
     applyModuleAvailability(cachedModules);
@@ -121,6 +124,7 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
     vertretungsplan: { name: 'Vertretungsplan', href: `${basePath}/vertretungsplan`, icon: ClipboardDocumentListIcon },
     dsb: { name: 'DSBmobile', href: `${basePath}/dsb`, icon: ClipboardDocumentListIcon },
     courses: { name: 'Mein Unterricht', href: `${basePath}/courses`, icon: AcademicCapIcon },
+    wahlen: { name: 'Wahlen', href: `${basePath}/wahlen`, icon: ClipboardDocumentCheckIcon },
     timetable: { name: 'Stundenplan', href: `${basePath}/timetable`, icon: ClockIcon },
     'study-groups': { name: 'Lerngruppen', href: `${basePath}/study-groups`, icon: UserGroupIcon },
     calendar: { name: 'Kalender', href: `${basePath}/calendar`, icon: CalendarDaysIcon },
@@ -132,6 +136,7 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
     ...(hasNativeDateispeicher ? ['dateispeicher' as const] : []),
     ...(hasNativeSubstitutionPlan ? ['vertretungsplan' as const] : []),
     ...(hasDsbModule ? ['dsb' as const] : []),
+    ...(hasWahlenModule ? ['wahlen' as const] : []),
   ]);
   const navigation = normalizeSidebarOrder(preferences.sidebar.order)
     .filter(id => availableItems.has(id))

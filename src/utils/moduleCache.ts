@@ -6,12 +6,14 @@ export interface ModuleAvailability {
   hasDsbModule: boolean;
   hasNativeDateispeicher: boolean;
   hasNativeSubstitutionPlan: boolean;
+  hasWahlenModule: boolean;
 }
 
 export function getModuleAvailability(modules: CachedModule[]): ModuleAvailability {
   let hasDsbModule = false;
   let hasNativeDateispeicher = false;
   let hasNativeSubstitutionPlan = false;
+  let hasWahlenModule = false;
 
   for (const module of modules) {
     const links = `${module.url} ${module.direct_url || ''}`.toLowerCase();
@@ -23,9 +25,10 @@ export function getModuleAvailability(modules: CachedModule[]): ModuleAvailabili
     hasNativeSubstitutionPlan ||= !isDsb && (
       links.includes('/vertretungsplan.php') || name.includes('vertretungsplan')
     );
+    hasWahlenModule ||= links.includes('/oberstufenwahl.php') || name.includes('wahlen');
   }
 
-  return { hasDsbModule, hasNativeDateispeicher, hasNativeSubstitutionPlan };
+  return { hasDsbModule, hasNativeDateispeicher, hasNativeSubstitutionPlan, hasWahlenModule };
 }
 
 interface ModuleCacheOwner {
