@@ -336,13 +336,6 @@ const Wahlen: React.FC = () => {
                     </span>
                     <ChevronRightIcon className="h-5 w-5 shrink-0 text-surface-400" />
                   </button>
-                  {election.info_url && (
-                    <div className="border-t border-surface-100 px-5 py-3 dark:border-surface-800 sm:px-6">
-                      <a className="inline-flex items-center gap-1 text-sm font-medium text-primary-600 hover:underline dark:text-primary-400" href={election.info_url} target="_blank" rel="noreferrer">
-                        Informationen zur Wahl <LinkIcon className="h-3.5 w-3.5" />
-                      </a>
-                    </div>
-                  )}
                 </article>
               ))}
             </div>
