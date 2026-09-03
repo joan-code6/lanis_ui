@@ -60,6 +60,7 @@ function moduleInAppHref(
   const moduleLinks = `${module.url || ''} ${module.direct_url || ''}`.toLowerCase();
   const moduleName = String(module.name || '').toLowerCase();
   const isDateispeicher = moduleName.includes('dateispeicher') || moduleLinks.includes('/dateispeicher.php');
+  const isWahlen = moduleName.includes('wahlen') || moduleLinks.includes('/oberstufenwahl.php');
   const isDsbModule = moduleName.includes('dsb') || moduleLinks.includes('dsb');
   const isNativeSubstitutionPlan = !isDsbModule && (
     moduleLinks.includes('/vertretungsplan.php') || moduleName.includes('vertretungsplan')
@@ -67,7 +68,9 @@ function moduleInAppHref(
   const nativePlanHref = planNavigation.find(item => item.href.endsWith('/vertretungsplan'))?.href;
   const dsbHref = planNavigation.find(item => item.href.endsWith('/dsb'))?.href;
   const dateispeicherHref = planNavigation.find(item => item.href.endsWith('/dateispeicher'))?.href;
+  const wahlenHref = `${basePath}/wahlen`;
   return (isDateispeicher && (dateispeicherHref || `${basePath}/dateispeicher`))
+    || (isWahlen && wahlenHref)
     || (isNativeSubstitutionPlan && (nativePlanHref || `${basePath}/vertretungsplan`))
     || (isDsbModule && (dsbHref || `${basePath}/dsb`))
     || undefined;

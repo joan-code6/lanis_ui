@@ -114,6 +114,11 @@ const Dashboard: React.FC = () => {
       navigate(`${basePath}/study-groups`);
       return;
     }
+    if (module.url.toLowerCase().includes('/oberstufenwahl.php') ||
+        module.name.toLowerCase().includes('wahlen')) {
+      navigate(`${basePath}/wahlen`);
+      return;
+    }
     const moduleLinks = `${module.url} ${module.direct_url || ''}`.toLowerCase();
     if (moduleLinks.includes('/dateispeicher.php') || module.name.toLowerCase().includes('dateispeicher')) {
       navigate(`${basePath}/dateispeicher`);

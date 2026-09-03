@@ -24,6 +24,7 @@ import Dateispeicher from './components/dateispeicher/Dateispeicher';
 import Vertretungsplan from './components/vertretungsplan/Vertretungsplan';
 import CustomBackend from './components/settings/CustomBackend';
 import Onboarding from './components/onboarding/Onboarding';
+import Wahlen from './components/wahlen/Wahlen';
 
 const LandingRoot: React.FC = () => {
   const { isAuthenticated } = useAuth();
@@ -123,6 +124,7 @@ const AppRoutes: React.FC = () => {
                     <Route path="/dateispeicher" element={<Dateispeicher />} />
                     <Route path="/vertretungsplan" element={<Vertretungsplan />} />
                     <Route path="/dsb" element={<Dsbmobile />} />
+                    <Route path="/wahlen" element={<Wahlen />} />
                     <Route path="/profile" element={<Profile />} />
                     <Route path="/settings/*" element={<Settings />} />
                     <Route path="*" element={<Navigate to="/dashboard" replace />} />
