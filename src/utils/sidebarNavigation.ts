@@ -5,6 +5,7 @@ export const SIDEBAR_ITEM_IDS = [
   'vertretungsplan',
   'dsb',
   'courses',
+  'wahlen',
   'timetable',
   'study-groups',
   'calendar',
@@ -21,6 +22,7 @@ export const DEFAULT_SIDEBAR_ORDER: SidebarItemId[] = [
   'vertretungsplan',
   'dsb',
   'courses',
+  'wahlen',
   'timetable',
   'study-groups',
   'calendar',
@@ -35,6 +37,7 @@ export const SIDEBAR_ITEM_LABELS: Record<SidebarItemId, string> = {
   vertretungsplan: 'Vertretungsplan',
   dsb: 'DSBmobile',
   courses: 'Mein Unterricht',
+  wahlen: 'Wahlen',
   timetable: 'Stundenplan',
   'study-groups': 'Lerngruppen',
   calendar: 'Kalender',
@@ -43,6 +46,20 @@ export const SIDEBAR_ITEM_LABELS: Record<SidebarItemId, string> = {
 };
 
 export const normalizeSidebarOrder = (order: string[]): SidebarItemId[] => {
-  const valid = order.filter((id): id is SidebarItemId => SIDEBAR_ITEM_IDS.includes(id as SidebarItemId));
-  return [...new Set([...valid, ...DEFAULT_SIDEBAR_ORDER])];
+  const normalized = [...new Set(
+    order.filter((id): id is SidebarItemId => SIDEBAR_ITEM_IDS.includes(id as SidebarItemId)),
+  )];
+
+  for (const missingItem of DEFAULT_SIDEBAR_ORDER) {
+    if (normalized.includes(missingItem)) continue;
+    const defaultIndex = DEFAULT_SIDEBAR_ORDER.indexOf(missingItem);
+    const previousItem = DEFAULT_SIDEBAR_ORDER
+      .slice(0, defaultIndex)
+      .reverse()
+      .find(item => normalized.includes(item));
+    const insertAt = previousItem ? normalized.indexOf(previousItem) + 1 : 0;
+    normalized.splice(insertAt, 0, missingItem);
+  }
+
+  return normalized;
 };
