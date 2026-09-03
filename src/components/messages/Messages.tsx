@@ -19,6 +19,7 @@ import {
 import { format, parseISO } from 'date-fns';
 import { de } from 'date-fns/locale';
 import clsx from 'clsx';
+import { isDemoRoute } from '../../utils/demoMode';
 
 const htmlToText = (value: unknown): string => {
   if (typeof value !== 'string') return '';
@@ -40,7 +41,7 @@ const Messages: React.FC = () => {
   const { token } = useAuth();
   const [searchParams] = useSearchParams();
   const [messages, setMessages] = useState<MessageHeader[]>(() => {
-    const cached = localStorage.getItem('messages_cache');
+    const cached = isDemoRoute() ? null : localStorage.getItem('messages_cache');
     return cached ? JSON.parse(cached) : [];
   });
   const [isUpdating, setIsUpdating] = useState(false);
@@ -82,6 +83,7 @@ const Messages: React.FC = () => {
   const USERNAME_CACHE_TTL = 365 * 24 * 60 * 60 * 1000;
 
   const loadUsernameCache = (): Record<string, string> => {
+    if (isDemoRoute()) return {};
     try {
       const raw = localStorage.getItem(USERNAME_CACHE_KEY);
       if (!raw) return {};

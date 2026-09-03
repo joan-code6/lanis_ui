@@ -1,5 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { InformationCircleIcon } from '@heroicons/react/24/outline';
 
 const DemoBar: React.FC = () => {
   const navigate = useNavigate();
@@ -10,21 +11,19 @@ const DemoBar: React.FC = () => {
   };
 
   return (
-    <div className="flex-shrink-0 bg-amber-50 dark:bg-amber-950 border-b border-amber-200 dark:border-amber-800">
-      <div className="px-4 sm:px-6 h-10 flex items-center justify-between">
+    <div className="box-border flex h-10 min-h-10 flex-shrink-0 bg-primary-50 dark:bg-primary-950/70 border-b border-primary-200 dark:border-primary-900">
+      <div className="w-full px-4 sm:px-6 h-10 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2 min-w-0">
-          <span className="text-xs font-medium text-amber-700 dark:text-amber-300 whitespace-nowrap">
-            Demo-Modus
-          </span>
-          <span className="text-[11px] text-amber-500 dark:text-amber-400 truncate hidden sm:inline">
-            Alle Daten sind Platzhalter und nicht echt
+          <InformationCircleIcon className="h-4 w-4 shrink-0 text-primary-600 dark:text-primary-400" />
+          <span className="text-xs font-semibold text-primary-800 dark:text-primary-200 whitespace-nowrap">
+            Interaktive Vorschau
           </span>
         </div>
         <button
           onClick={handleExit}
-          className="flex-shrink-0 text-xs font-medium text-amber-700 dark:text-amber-300 bg-amber-200/60 dark:bg-amber-800/60 hover:bg-amber-200 dark:hover:bg-amber-800 px-3 py-1 rounded-lg transition-colors"
+          className="flex-shrink-0 rounded-lg bg-primary-100 px-3 py-1 text-xs font-semibold text-primary-800 transition-colors hover:bg-primary-200 dark:bg-primary-900 dark:text-primary-100 dark:hover:bg-primary-800"
         >
-          Demo beenden
+          Zur Startseite
         </button>
       </div>
     </div>
