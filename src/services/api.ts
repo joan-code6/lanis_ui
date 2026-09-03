@@ -3,6 +3,10 @@ import {
   DistrictSchoolsResponse,
   SchoolSearchResponse,
   SchoolSearchResult,
+  WahlenFormResponse,
+  WahlenOverviewResponse,
+  WahlenSubmitResponse,
+  WahlenSubmission,
 } from '../types';
 import { getMockResponse } from '../components/demo/mockApi';
 import { getApiBaseUrl } from '../utils/backendConfig';
@@ -303,6 +307,34 @@ export const appsAPI = {
       headers: { 'X-Session-Token': token },
       signal,
     });
+    return response.data;
+  },
+};
+
+// Oberstufenwahl / Wahlen API
+export const wahlenAPI = {
+  async getElections(token: string, signal?: AbortSignal): Promise<WahlenOverviewResponse> {
+    const response = await apiClient.get<WahlenOverviewResponse>('/wahlen', {
+      headers: { 'X-Session-Token': token },
+      signal,
+    });
+    return response.data;
+  },
+
+  async getForm(token: string, electionId: string, signal?: AbortSignal): Promise<WahlenFormResponse> {
+    const response = await apiClient.get<WahlenFormResponse>(`/wahlen/${encodeURIComponent(electionId)}`, {
+      headers: { 'X-Session-Token': token },
+      signal,
+    });
+    return response.data;
+  },
+
+  async submit(token: string, electionId: string, submission: WahlenSubmission, signal?: AbortSignal): Promise<WahlenSubmitResponse> {
+    const response = await apiClient.post<WahlenSubmitResponse>(
+      `/wahlen/${encodeURIComponent(electionId)}/submit`,
+      { ...submission, confirm: true },
+      { headers: { 'X-Session-Token': token }, signal },
+    );
     return response.data;
   },
 };

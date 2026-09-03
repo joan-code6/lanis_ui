@@ -153,6 +153,99 @@ export interface AppsResponse {
   };
 }
 
+// Oberstufenwahl / Wahlen types
+export interface WahlenElection {
+  id: string;
+  title: string;
+  url?: string;
+  info_url?: string;
+  participation_text?: string;
+  starts_on?: string | null;
+  ends_on?: string | null;
+}
+
+export interface WahlenOption {
+  value: string;
+  label: string;
+  disabled?: boolean;
+  excludes?: string[];
+  course?: string;
+}
+
+export interface WahlenField {
+  id: string;
+  kind: string;
+  label: string;
+  required?: boolean;
+  options?: WahlenOption[];
+}
+
+export interface WahlenControl {
+  id: string;
+  kind: 'select' | 'checkbox';
+  label: string;
+  name?: string;
+  block: string;
+  group?: string;
+  required?: boolean;
+  order?: number;
+  min?: number;
+  max?: number;
+  not_blocks?: string[];
+  teacher_options?: string[];
+  options?: WahlenOption[];
+}
+
+export interface WahlenGroup {
+  name: string;
+  min: number;
+  max: number;
+  controls: WahlenControl[];
+}
+
+export interface WahlenBlock {
+  name: string;
+  min: number;
+  max: number;
+  first_only?: boolean;
+  multi_type?: string;
+  description?: string;
+  fields?: WahlenField[];
+  controls: WahlenControl[];
+  groups: WahlenGroup[];
+}
+
+export interface WahlenOverviewResponse {
+  success: boolean;
+  elections: WahlenElection[];
+  election_count: number;
+  error?: string;
+}
+
+export interface WahlenFormResponse {
+  success: boolean;
+  election: WahlenElection & { source_url?: string };
+  personal_fields: WahlenField[];
+  blocks: WahlenBlock[];
+  error?: string;
+}
+
+export type WahlenSelection = string | boolean | { teacher?: string };
+
+export interface WahlenSubmission {
+  fields: Record<string, string>;
+  selections: Record<string, WahlenSelection>;
+  confirm?: boolean;
+}
+
+export interface WahlenSubmitResponse {
+  success: boolean;
+  submitted?: boolean;
+  message?: string;
+  error?: string;
+  validation_errors?: string[];
+}
+
 // Message types
 export interface MessageHeader {
   Id: string;
