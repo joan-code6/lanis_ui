@@ -11,7 +11,7 @@ const LEGACY_PREFERENCES_OWNER_KEY = 'lanis_preferences_legacy_owner';
 export const DEFAULT_USER_PREFERENCES: UserPreferences = {
   appearance: { theme_mode: 'system', theme_color: 'cyan' },
   sidebar: { order: DEFAULT_SIDEBAR_ORDER },
-  dashboard: { pinned_modules: [], view_mode: 'grid' },
+  dashboard: { pinned_modules: [], hidden_modules: [], view_mode: 'grid' },
   timetable: { view_mode: 'rolling' },
   homework: { completed_display: 'green' },
   vertretungsplan: { class_override: '' },
@@ -178,6 +178,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode; sync?: b
           sidebar: response.preferences.sidebar
             || cached?.preferences.sidebar
             || localFallback.sidebar,
+          dashboard: { ...localFallback.dashboard, ...response.preferences.dashboard },
         });
         if (!response.stored || cached?.dirty) {
           next = cached?.preferences || localFallback;
@@ -233,6 +234,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode; sync?: b
         const saved = normalizePreferences({
           ...response.preferences,
           sidebar: response.preferences.sidebar || next.sidebar,
+          dashboard: { ...next.dashboard, ...response.preferences.dashboard },
         });
         if (JSON.stringify(preferencesRef.current) === JSON.stringify(next)) {
           applyPreferences(saved);

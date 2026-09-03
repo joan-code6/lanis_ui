@@ -82,6 +82,7 @@ export interface UserPreferences {
   };
   dashboard: {
     pinned_modules: string[];
+    hidden_modules: string[];
     view_mode: DashboardViewMode;
   };
   timetable: {

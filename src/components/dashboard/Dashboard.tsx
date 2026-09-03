@@ -9,12 +9,14 @@ import { Module } from '../../types';
 import SEO from '../seo/SEO';
 import {
   FolderIcon,
-  ArrowTopRightOnSquareIcon,
   MagnifyingGlassIcon,
   Squares2X2Icon,
   ListBulletIcon,
   PencilIcon,
   StarIcon,
+  EyeIcon,
+  EyeSlashIcon,
+  Bars3Icon,
 } from '@heroicons/react/24/outline';
 import { API_BASE_URL } from '../../services/api';
 import clsx from 'clsx';
@@ -36,6 +38,9 @@ const Dashboard: React.FC = () => {
   const viewMode = preferences.dashboard.view_mode;
   const [isEditMode, setIsEditMode] = useState(false);
   const pinnedModules = preferences.dashboard.pinned_modules;
+  const hiddenModules = preferences.dashboard.hidden_modules;
+  const [draggedModule, setDraggedModule] = useState<string | null>(null);
+  const [dragOverModule, setDragOverModule] = useState<string | null>(null);
 
   if (!token) {
     return (
@@ -144,7 +149,32 @@ const Dashboard: React.FC = () => {
     void updatePreferences({ dashboard: { pinned_modules: newPinned } });
   };
 
+  const toggleHidden = (moduleName: string) => {
+    const newHidden = hiddenModules.includes(moduleName)
+      ? hiddenModules.filter(name => name !== moduleName)
+      : [...hiddenModules, moduleName];
+    const newPinned = newHidden.includes(moduleName)
+      ? pinnedModules.filter(name => name !== moduleName)
+      : pinnedModules;
+    void updatePreferences({ dashboard: { hidden_modules: newHidden, pinned_modules: newPinned } });
+  };
+
+  const handleDrop = (targetName: string) => {
+    if (!draggedModule || draggedModule === targetName) return;
+    const fromIndex = pinnedModules.indexOf(draggedModule);
+    const toIndex = pinnedModules.indexOf(targetName);
+    if (fromIndex < 0 || toIndex < 0) return;
+
+    const newPinned = [...pinnedModules];
+    newPinned.splice(fromIndex, 1);
+    newPinned.splice(toIndex, 0, draggedModule);
+    void updatePreferences({ dashboard: { pinned_modules: newPinned } });
+    setDraggedModule(null);
+    setDragOverModule(null);
+  };
+
   const filteredModules = modules.filter((module) => {
+    if (!isEditMode && hiddenModules.includes(module.name)) return false;
     const matchesSearch = module.name.toLowerCase().includes(searchTerm.toLowerCase());
     const moduleFolders = module.folders.map(f => f.trim());
     const matchesFolder = selectedFolder === 'all' || moduleFolders.includes(selectedFolder);
@@ -152,10 +182,16 @@ const Dashboard: React.FC = () => {
   });
 
   const sortedModules = [...filteredModules].sort((a, b) => {
+    const aHidden = hiddenModules.includes(a.name);
+    const bHidden = hiddenModules.includes(b.name);
+    if (isEditMode && aHidden !== bHidden) return aHidden ? 1 : -1;
     const aPinned = pinnedModules.includes(a.name);
     const bPinned = pinnedModules.includes(b.name);
     if (aPinned && !bPinned) return -1;
     if (!aPinned && bPinned) return 1;
+    if (aPinned && bPinned) {
+      return pinnedModules.indexOf(a.name) - pinnedModules.indexOf(b.name);
+    }
     return 0;
   });
 
@@ -262,7 +298,7 @@ const Dashboard: React.FC = () => {
 
       {isEditMode && (
         <div className="mb-6 bg-primary-50 dark:bg-primary-950/30 border border-primary-200 dark:border-primary-800 rounded-xl p-4">
-          <p className="text-sm text-primary-700 dark:text-primary-300 font-medium">Bearbeitungsmodus aktiv — Klicken Sie auf einen Stern um Module zu pinnen</p>
+          <p className="text-sm text-primary-700 dark:text-primary-300 font-medium">Bearbeitungsmodus aktiv — Module können gepinnt, ausgeblendet und per Ziehen sortiert werden.</p>
         </div>
       )}
 
@@ -281,22 +317,55 @@ const Dashboard: React.FC = () => {
               : 'grid-cols-1'
           )}
         >
-          {sortedModules.map((module, index) => (
-            <div
-              key={index}
-              className={clsx(
-                'card card-hover group relative',
-                viewMode === 'list' && 'flex items-center gap-4 p-4'
+          {sortedModules.map((module) => (
+            <React.Fragment key={module.name}>
+              {isEditMode && dragOverModule === module.name && draggedModule !== module.name && (
+                <div
+                  className={clsx(
+                    'rounded-xl border-2 border-dashed border-primary-400 bg-primary-50/60 dark:bg-primary-950/30',
+                    viewMode === 'grid' ? 'min-h-[170px]' : 'min-h-[72px]'
+                  )}
+                >
+                  <div className="h-full min-h-inherit flex items-center justify-center text-xs font-medium text-primary-600 dark:text-primary-300">
+                    Hier ablegen
+                  </div>
+                </div>
               )}
-              onClick={() => handleModuleClick(module)}
-            >
+              <div
+                className={clsx(
+                  'card card-hover group relative',
+                  viewMode === 'list' && 'flex items-center gap-4 p-4',
+                  viewMode === 'list' && isEditMode && 'pr-3',
+                  isEditMode && hiddenModules.includes(module.name) && 'opacity-50',
+                  isEditMode && pinnedModules.includes(module.name) && 'cursor-grab',
+                  isEditMode && dragOverModule === module.name && draggedModule !== module.name
+                    && 'ring-2 ring-primary-500 ring-offset-2 dark:ring-offset-surface-900'
+                )}
+                draggable={isEditMode && pinnedModules.includes(module.name)}
+                onDragStart={() => setDraggedModule(module.name)}
+                onDragEnd={() => {
+                  setDraggedModule(null);
+                  setDragOverModule(null);
+                }}
+                onDragOver={(e) => {
+                  if (isEditMode && pinnedModules.includes(module.name) && draggedModule !== module.name) {
+                    e.preventDefault();
+                    setDragOverModule(module.name);
+                  }
+                }}
+                onDrop={() => handleDrop(module.name)}
+                onClick={() => handleModuleClick(module)}
+              >
               {viewMode === 'grid' ? (
                 <div className="flex flex-col items-center text-center">
+                  {isEditMode && pinnedModules.includes(module.name) && (
+                    <Bars3Icon
+                      className="absolute right-3 top-1/2 w-5 h-5 -translate-y-1/2 text-surface-400 cursor-grab"
+                      title="Zum Sortieren ziehen"
+                    />
+                  )}
                   <div className="relative">
                     <ModuleIcon name={module.name} logo={module.logo} color={module.color} size="grid" />
-                    <div className="absolute -top-1 -right-1 w-4 h-4 bg-white dark:bg-surface-800 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-soft">
-                      <ArrowTopRightOnSquareIcon className="w-2.5 h-2.5 text-surface-400" />
-                    </div>
                     {isEditMode && (
                       <button
                         onClick={(e) => {
@@ -311,6 +380,19 @@ const Dashboard: React.FC = () => {
                         )}
                       >
                         <StarIcon className={clsx('w-3.5 h-3.5', pinnedModules.includes(module.name) && 'fill-current')} />
+                      </button>
+                    )}
+                    {isEditMode && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleHidden(module.name);
+                        }}
+                        className="absolute -top-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center bg-surface-200 dark:bg-surface-700 text-surface-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors shadow-soft"
+                        title={hiddenModules.includes(module.name) ? 'Modul einblenden' : 'Modul ausblenden'}
+                        aria-label={hiddenModules.includes(module.name) ? 'Modul einblenden' : 'Modul ausblenden'}
+                      >
+                        {hiddenModules.includes(module.name) ? <EyeIcon className="w-3.5 h-3.5" /> : <EyeSlashIcon className="w-3.5 h-3.5" />}
                       </button>
                     )}
                   </div>
@@ -346,25 +428,41 @@ const Dashboard: React.FC = () => {
                     )}
                   </div>
                   {isEditMode && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        togglePin(module.name);
-                      }}
-                      className={clsx(
-                        'p-1.5 rounded-full transition-all',
-                        pinnedModules.includes(module.name)
-                          ? 'text-primary-500'
-                          : 'text-surface-300 hover:text-primary-500'
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          togglePin(module.name);
+                        }}
+                        className={clsx(
+                          'p-1.5 rounded-full transition-all',
+                          pinnedModules.includes(module.name)
+                            ? 'text-primary-500'
+                            : 'text-surface-300 hover:text-primary-500'
+                        )}
+                      >
+                        <StarIcon className={clsx('w-4 h-4', pinnedModules.includes(module.name) && 'fill-current')} />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleHidden(module.name);
+                        }}
+                        className="p-1.5 rounded-full text-surface-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+                        title={hiddenModules.includes(module.name) ? 'Modul einblenden' : 'Modul ausblenden'}
+                        aria-label={hiddenModules.includes(module.name) ? 'Modul einblenden' : 'Modul ausblenden'}
+                      >
+                        {hiddenModules.includes(module.name) ? <EyeIcon className="w-4 h-4" /> : <EyeSlashIcon className="w-4 h-4" />}
+                      </button>
+                      {pinnedModules.includes(module.name) && (
+                        <Bars3Icon className="w-5 h-5 text-surface-400 cursor-grab" title="Zum Sortieren ziehen" />
                       )}
-                    >
-                      <StarIcon className={clsx('w-4 h-4', pinnedModules.includes(module.name) && 'fill-current')} />
-                    </button>
+                    </div>
                   )}
-                  <ArrowTopRightOnSquareIcon className="w-4 h-4 text-surface-300 group-hover:text-primary-500 transition-colors flex-shrink-0" />
                 </>
               )}
-            </div>
+              </div>
+            </React.Fragment>
           ))}
         </div>
       )}
