@@ -167,7 +167,7 @@ const Dashboard: React.FC = () => {
 
     const newPinned = [...pinnedModules];
     newPinned.splice(fromIndex, 1);
-    newPinned.splice(toIndex, 0, draggedModule);
+    newPinned.splice(toIndex > fromIndex ? toIndex - 1 : toIndex, 0, draggedModule);
     void updatePreferences({ dashboard: { pinned_modules: newPinned } });
     setDraggedModule(null);
     setDragOverModule(null);
