@@ -17,6 +17,8 @@ import {
   EyeIcon,
   EyeSlashIcon,
   Bars3Icon,
+  ChevronUpIcon,
+  ChevronDownIcon,
 } from '@heroicons/react/24/outline';
 import { API_BASE_URL } from '../../services/api';
 import clsx from 'clsx';
@@ -143,9 +145,22 @@ const Dashboard: React.FC = () => {
   };
 
   const togglePin = (moduleName: string) => {
-    const newPinned = pinnedModules.includes(moduleName)
+    const isPinned = pinnedModules.includes(moduleName);
+    if (hiddenModules.includes(moduleName) && !isPinned) return;
+
+    const newPinned = isPinned
       ? pinnedModules.filter(name => name !== moduleName)
       : [...pinnedModules, moduleName];
+    void updatePreferences({ dashboard: { pinned_modules: newPinned } });
+  };
+
+  const movePinned = (moduleName: string, direction: -1 | 1) => {
+    const fromIndex = pinnedModules.indexOf(moduleName);
+    const toIndex = fromIndex + direction;
+    if (fromIndex < 0 || toIndex < 0 || toIndex >= pinnedModules.length) return;
+
+    const newPinned = [...pinnedModules];
+    [newPinned[fromIndex], newPinned[toIndex]] = [newPinned[toIndex], newPinned[fromIndex]];
     void updatePreferences({ dashboard: { pinned_modules: newPinned } });
   };
 
@@ -359,24 +374,50 @@ const Dashboard: React.FC = () => {
               {viewMode === 'grid' ? (
                 <div className="flex flex-col items-center text-center">
                   {isEditMode && pinnedModules.includes(module.name) && (
-                    <Bars3Icon
-                      className="absolute right-3 top-1/2 w-5 h-5 -translate-y-1/2 text-surface-400 cursor-grab"
-                      title="Zum Sortieren ziehen"
-                    />
+                    <div className="absolute right-2 top-1/2 -translate-y-1/2 flex flex-col items-center">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          movePinned(module.name, -1);
+                        }}
+                        disabled={pinnedModules.indexOf(module.name) === 0}
+                        className="p-0.5 text-surface-400 hover:text-primary-500 disabled:opacity-25 disabled:hover:text-surface-400"
+                        aria-label={`${module.name} nach oben verschieben`}
+                      >
+                        <ChevronUpIcon className="w-4 h-4" />
+                      </button>
+                      <Bars3Icon className="w-4 h-4 text-surface-400 cursor-grab" title="Zum Sortieren ziehen" />
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          movePinned(module.name, 1);
+                        }}
+                        disabled={pinnedModules.indexOf(module.name) === pinnedModules.length - 1}
+                        className="p-0.5 text-surface-400 hover:text-primary-500 disabled:opacity-25 disabled:hover:text-surface-400"
+                        aria-label={`${module.name} nach unten verschieben`}
+                      >
+                        <ChevronDownIcon className="w-4 h-4" />
+                      </button>
+                    </div>
                   )}
                   <div className="relative">
                     <ModuleIcon name={module.name} logo={module.logo} color={module.color} size="grid" />
                     {isEditMode && (
                       <button
+                        type="button"
                         onClick={(e) => {
                           e.stopPropagation();
                           togglePin(module.name);
                         }}
+                        disabled={hiddenModules.includes(module.name) && !pinnedModules.includes(module.name)}
+                        aria-label={pinnedModules.includes(module.name) ? `${module.name} entpinnen` : `${module.name} pinnen`}
                         className={clsx(
                           'absolute -top-1 -left-1 w-6 h-6 rounded-full flex items-center justify-center transition-all shadow-soft',
                           pinnedModules.includes(module.name)
                             ? 'bg-primary-500 text-white'
-                            : 'bg-surface-200 dark:bg-surface-700 text-surface-500 hover:bg-primary-100 hover:text-primary-500'
+                            : 'bg-surface-200 dark:bg-surface-700 text-surface-500 hover:bg-primary-100 hover:text-primary-500 disabled:opacity-30 disabled:hover:bg-surface-200 disabled:hover:text-surface-500'
                         )}
                       >
                         <StarIcon className={clsx('w-3.5 h-3.5', pinnedModules.includes(module.name) && 'fill-current')} />
@@ -430,15 +471,18 @@ const Dashboard: React.FC = () => {
                   {isEditMode && (
                     <div className="flex items-center gap-1 flex-shrink-0">
                       <button
+                        type="button"
                         onClick={(e) => {
                           e.stopPropagation();
                           togglePin(module.name);
                         }}
+                        disabled={hiddenModules.includes(module.name) && !pinnedModules.includes(module.name)}
+                        aria-label={pinnedModules.includes(module.name) ? `${module.name} entpinnen` : `${module.name} pinnen`}
                         className={clsx(
                           'p-1.5 rounded-full transition-all',
                           pinnedModules.includes(module.name)
                             ? 'text-primary-500'
-                            : 'text-surface-300 hover:text-primary-500'
+                            : 'text-surface-300 hover:text-primary-500 disabled:opacity-30 disabled:hover:text-surface-300'
                         )}
                       >
                         <StarIcon className={clsx('w-4 h-4', pinnedModules.includes(module.name) && 'fill-current')} />
@@ -455,7 +499,33 @@ const Dashboard: React.FC = () => {
                         {hiddenModules.includes(module.name) ? <EyeIcon className="w-4 h-4" /> : <EyeSlashIcon className="w-4 h-4" />}
                       </button>
                       {pinnedModules.includes(module.name) && (
-                        <Bars3Icon className="w-5 h-5 text-surface-400 cursor-grab" title="Zum Sortieren ziehen" />
+                        <>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              movePinned(module.name, -1);
+                            }}
+                            disabled={pinnedModules.indexOf(module.name) === 0}
+                            className="p-1 text-surface-400 hover:text-primary-500 disabled:opacity-25 disabled:hover:text-surface-400"
+                            aria-label={`${module.name} nach oben verschieben`}
+                          >
+                            <ChevronUpIcon className="w-4 h-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              movePinned(module.name, 1);
+                            }}
+                            disabled={pinnedModules.indexOf(module.name) === pinnedModules.length - 1}
+                            className="p-1 text-surface-400 hover:text-primary-500 disabled:opacity-25 disabled:hover:text-surface-400"
+                            aria-label={`${module.name} nach unten verschieben`}
+                          >
+                            <ChevronDownIcon className="w-4 h-4" />
+                          </button>
+                          <Bars3Icon className="w-5 h-5 text-surface-400 cursor-grab" title="Zum Sortieren ziehen" />
+                        </>
                       )}
                     </div>
                   )}

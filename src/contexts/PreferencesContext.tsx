@@ -48,6 +48,11 @@ const mergePreferences = (
 
 const normalizePreferences = (value?: Partial<UserPreferences>): UserPreferences => {
   const homework = value?.homework as (Partial<UserPreferences['homework']> & { hide_completed_in_overview?: boolean }) | undefined;
+  const dashboard = value?.dashboard;
+  const hiddenModules = dashboard?.hidden_modules || [];
+  const pinnedModules = (dashboard?.pinned_modules || []).filter(
+    moduleName => !hiddenModules.includes(moduleName),
+  );
   const migratedHomework = homework?.completed_display
     ? { completed_display: homework.completed_display }
     : typeof homework?.hide_completed_in_overview === 'boolean'
@@ -57,7 +62,11 @@ const normalizePreferences = (value?: Partial<UserPreferences>): UserPreferences
   return mergePreferences(DEFAULT_USER_PREFERENCES, {
     appearance: value?.appearance,
     sidebar: value?.sidebar,
-    dashboard: value?.dashboard,
+    dashboard: {
+      ...dashboard,
+      pinned_modules: pinnedModules,
+      hidden_modules: hiddenModules,
+    },
     timetable: value?.timetable,
     homework: migratedHomework,
     vertretungsplan: value?.vertretungsplan,
@@ -187,6 +196,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode; sync?: b
           next = normalizePreferences({
             ...migrated.preferences,
             sidebar: migrated.preferences.sidebar || next.sidebar,
+            dashboard: { ...next.dashboard, ...migrated.preferences.dashboard },
           });
         }
         applyPreferences(next);
