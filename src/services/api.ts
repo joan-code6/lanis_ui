@@ -10,6 +10,7 @@ import {
 } from '../types';
 import { getMockResponse } from '../components/demo/mockApi';
 import { getApiBaseUrl } from '../utils/backendConfig';
+import { createAppwriteJWT, deleteAppwriteSession, exchangeAppwriteToken } from './appwrite';
 // School List API
 const SCHOOL_CACHE_KEY = 'school_cache';
 const SCHOOL_CACHE_TTL = 24 * 60 * 60 * 1000;
@@ -230,6 +231,12 @@ async function refreshAccessToken(): Promise<boolean> {
   if (!refreshTokenValue) return false;
 
   try {
+    if (refreshTokenValue === 'appwrite') {
+      const jwt = await createAppwriteJWT();
+      localStorage.setItem(ACCESS_TOKEN_KEY, jwt);
+      localStorage.setItem(TOKEN_EXPIRES_KEY, (Date.now() + 15 * 60 * 1000).toString());
+      return true;
+    }
     const response = await apiClient.post<TokenRefreshResponse>('/auth/refresh', {
       refresh_token: refreshTokenValue,
     } as TokenRefreshRequest);
@@ -261,10 +268,21 @@ async function ensureValidToken(): Promise<string | null> {
 export const authAPI = {
   async login(credentials: LoginRequest): Promise<LoginResponse> {
     const response = await apiClient.post<LoginResponse>('/login', credentials);
+    if (response.data.appwrite_user_id && response.data.appwrite_token) {
+      response.data.access_token = await exchangeAppwriteToken(
+        response.data.appwrite_user_id,
+        response.data.appwrite_token,
+      );
+      response.data.refresh_token = 'appwrite';
+      response.data.expires_in = 15 * 60;
+    }
     return response.data;
   },
 
   async refreshToken(refreshToken: string): Promise<TokenRefreshResponse> {
+    if (refreshToken === 'appwrite') {
+      return { access_token: await createAppwriteJWT(), expires_in: 15 * 60 };
+    }
     const response = await apiClient.post<TokenRefreshResponse>('/auth/refresh', {
       refresh_token: refreshToken,
     } as TokenRefreshRequest);
@@ -272,10 +290,14 @@ export const authAPI = {
   },
 
   async logout(token: string): Promise<{ status: string }> {
-    const response = await apiClient.post<{ status: string }>('/logout', {}, {
-      headers: { 'X-Session-Token': token },
-    });
-    return response.data;
+    try {
+      const response = await apiClient.post<{ status: string }>('/logout', {}, {
+        headers: { 'X-Session-Token': token },
+      });
+      return response.data;
+    } finally {
+      if (getRefreshToken() === 'appwrite') await deleteAppwriteSession();
+    }
   },
 
   async getUserProfile(token: string, signal?: AbortSignal): Promise<{ success: boolean; data: User }> {
@@ -927,9 +949,11 @@ apiClient.interceptors.response.use(
         const refreshTokenValue = getRefreshToken();
         if (refreshTokenValue) {
           try {
-            const refreshResponse = await apiClient.post<TokenRefreshResponse>('/auth/refresh', {
-              refresh_token: refreshTokenValue,
-            } as TokenRefreshRequest);
+            const refreshResponse = refreshTokenValue === 'appwrite'
+              ? { data: { access_token: await createAppwriteJWT(), expires_in: 15 * 60 } }
+              : await apiClient.post<TokenRefreshResponse>('/auth/refresh', {
+                  refresh_token: refreshTokenValue,
+                } as TokenRefreshRequest);
 
             const expiresAt = Date.now() + refreshResponse.data.expires_in * 1000;
             localStorage.setItem(ACCESS_TOKEN_KEY, refreshResponse.data.access_token);

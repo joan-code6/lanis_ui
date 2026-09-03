@@ -43,12 +43,15 @@ export interface LoginRequest {
 }
 
 export interface LoginResponse {
-  access_token: string;
-  refresh_token: string;
+  access_token?: string;
+  refresh_token?: string;
   school_id: string;
   username: string;
   encryption_ready: boolean;
   expires_in: number;
+  appwrite_user_id?: string;
+  appwrite_token?: string;
+  appwrite_token_expire?: string;
 }
 
 export interface TokenRefreshRequest {

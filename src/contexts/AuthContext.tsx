@@ -43,6 +43,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const login = async (credentials: LoginRequest): Promise<boolean> => {
     try {
       const response = await authAPI.login(credentials);
+      if (!response.access_token || !response.refresh_token) {
+        throw new Error('The backend returned no usable authentication session.');
+      }
+      const accessToken = response.access_token;
+      const refreshToken = response.refresh_token;
 
       const expiresAt = Date.now() + response.expires_in * 1000;
 
@@ -51,17 +56,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         school_id: response.school_id,
         encryption_ready: response.encryption_ready.toString(),
       };
-      setToken(response.access_token);
+      setToken(accessToken);
       setUser(basicUser);
       setIsAuthenticated(true);
 
-      localStorage.setItem(ACCESS_TOKEN_KEY, response.access_token);
-      localStorage.setItem(REFRESH_TOKEN_KEY, response.refresh_token);
+      localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
+      localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
       localStorage.setItem(TOKEN_EXPIRES_KEY, expiresAt.toString());
       localStorage.setItem(USER_KEY, JSON.stringify(basicUser));
 
       try {
-        const userResponse = await authAPI.getUserProfile(response.access_token);
+        const userResponse = await authAPI.getUserProfile(accessToken);
         if (userResponse.success) {
           const accountUser = {
             ...userResponse.data,
