@@ -144,7 +144,7 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
   const isDemo = basePath === '/demo';
 
   return (
-    <div className={'flex flex-col overflow-hidden bg-surface-50 dark:bg-surface-950 ' + (isDemo ? 'h-[calc(100dvh-40px)]' : 'h-[100dvh]')}>
+    <div className="flex h-[100dvh] flex-col overflow-hidden bg-surface-50 dark:bg-surface-950">
       {isDemo && <DemoBar />}
       {isSidebarOpen && (
         <div className={'fixed inset-x-0 bottom-0 flex z-40 md:hidden ' + (isDemo ? 'top-10' : 'inset-0')}>

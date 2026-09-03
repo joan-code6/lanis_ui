@@ -12,12 +12,13 @@ import {
   ShieldCheckIcon,
   InformationCircleIcon,
 } from '@heroicons/react/24/outline';
+import { isDemoRoute } from '../../utils/demoMode';
 
 const Profile: React.FC = () => {
   const { user, token } = useAuth();
   // Cached user profile state
   const [userDetails, setUserDetails] = useState<User | null>(() => {
-    const cached = localStorage.getItem('profile_cache');
+    const cached = isDemoRoute() ? null : localStorage.getItem('profile_cache');
     return cached ? JSON.parse(cached) : user;
   });
   const [isUpdating, setIsUpdating] = useState(false);

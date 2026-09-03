@@ -7,6 +7,7 @@ import SEO from '../seo/SEO';
 import {
   CalendarDaysIcon,
 } from '@heroicons/react/24/outline';
+import { isDemoRoute } from '../../utils/demoMode';
 
 const DSB_CACHE_KEY = 'dsb_plan_cache_v2';
 const DSB_CACHE_TTL = 6 * 60 * 60 * 1000;
@@ -21,6 +22,7 @@ interface CachedDSBData {
 }
 
 function getCachedDSBData(): CachedDSBData | null {
+  if (isDemoRoute()) return null;
   const cached = localStorage.getItem(DSB_CACHE_KEY);
   if (!cached) return null;
   try {
