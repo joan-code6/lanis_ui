@@ -300,11 +300,7 @@ const Wahlen: React.FC = () => {
             </button>
           )}
           <h1 className="page-title">{selectedElection?.title || 'Wahlen'}</h1>
-          <p className="page-subtitle">
-            {selectedElectionId
-              ? 'Fülle deine Angaben aus und prüfe sie vor der einmaligen Übermittlung.'
-              : 'Wähle eine verfügbare Wahl aus, um das Formular zu öffnen.'}
-          </p>
+          {!selectedElectionId && <p className="page-subtitle">Wähle eine verfügbare Wahl aus, um das Formular zu öffnen.</p>}
           {selectedElection && (
             <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-surface-500 dark:text-surface-400">
               {selectedElection.participation_text && <span>{selectedElection.participation_text}</span>}
