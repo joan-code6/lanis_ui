@@ -44,6 +44,7 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
   const location = useLocation();
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
   const [isSearchOpen, setIsSearchOpen] = React.useState(false);
+  const [showLogoutConfirmation, setShowLogoutConfirmation] = React.useState(false);
   const [hasNativeDateispeicher, setHasNativeDateispeicher] = React.useState(false);
   const [hasNativeSubstitutionPlan, setHasNativeSubstitutionPlan] = React.useState(false);
   const [hasDsbModule, setHasDsbModule] = React.useState(false);
@@ -139,11 +140,13 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
     ...(hasWahlenModule ? ['wahlen' as const] : []),
   ]);
   const navigation = normalizeSidebarOrder(preferences.sidebar.order)
+    .filter(id => !preferences.sidebar.hidden_items.includes(id))
     .filter(id => availableItems.has(id))
     .map(id => navigationItems[id]);
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    setShowLogoutConfirmation(false);
+    await logout();
   };
 
   const isDemo = basePath === '/demo';
@@ -277,14 +280,42 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
             })}
           </nav>
           <div className="mt-auto pt-4 border-t border-surface-100 dark:border-surface-800">
-            <button
-              onClick={handleLogout}
-              className="nav-link w-full text-surface-500 dark:text-surface-400 hover:text-surface-700 dark:hover:text-surface-300"
-              title="Abmelden"
-            >
-              <ArrowRightOnRectangleIcon className="nav-link-icon text-surface-400 dark:text-surface-500" />
-              Abmelden
-            </button>
+            <div className="relative">
+              {showLogoutConfirmation && (
+                <div
+                  className="absolute bottom-full left-0 right-0 z-20 mb-2 rounded-xl border border-surface-200 bg-white p-3 shadow-soft-lg dark:border-surface-700 dark:bg-surface-900"
+                  role="dialog"
+                  aria-label="Abmelden bestätigen"
+                >
+                  <p className="text-xs font-medium text-surface-800 dark:text-surface-200">Wirklich abmelden?</p>
+                  <div className="mt-3 flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowLogoutConfirmation(false)}
+                      className="btn btn-secondary h-8 flex-1 px-2 py-1 text-xs"
+                    >
+                      Abbrechen
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void handleLogout()}
+                      className="btn h-8 flex-1 bg-red-600 px-2 py-1 text-xs text-white hover:bg-red-700"
+                    >
+                      Abmelden
+                    </button>
+                  </div>
+                </div>
+              )}
+              <button
+                onClick={() => setShowLogoutConfirmation(current => !current)}
+                className="nav-link w-full text-surface-500 dark:text-surface-400 hover:text-surface-700 dark:hover:text-surface-300"
+                title="Abmelden"
+                aria-expanded={showLogoutConfirmation}
+              >
+                <ArrowRightOnRectangleIcon className="nav-link-icon text-surface-400 dark:text-surface-500" />
+                Abmelden
+              </button>
+            </div>
           </div>
         </div>
       </>

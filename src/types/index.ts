@@ -79,6 +79,7 @@ export interface UserPreferences {
   };
   sidebar: {
     order: string[];
+    hidden_items: string[];
   };
   dashboard: {
     pinned_modules: string[];

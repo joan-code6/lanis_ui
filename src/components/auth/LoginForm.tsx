@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
-import { EyeIcon, EyeSlashIcon, SunIcon, MoonIcon } from '@heroicons/react/24/outline';
+import { EyeIcon, EyeSlashIcon, SunIcon, MoonIcon, ServerStackIcon } from '@heroicons/react/24/outline';
 import SEO from '../seo/SEO';
 import AppIcon from '../AppIcon';
 
@@ -83,7 +83,7 @@ function fuzzyScore(query: string, target: string): number {
 
 const LoginForm: React.FC = () => {
   const { login } = useAuth();
-  const { isDark, isOled, toggleDark } = useTheme();
+  const { isDark, isOled, themeMode, setThemeMode } = useTheme();
   const [formData, setFormData] = useState({
     school_id: '',
     username: '',
@@ -199,6 +199,15 @@ const LoginForm: React.FC = () => {
     setIsLoading(false);
   };
 
+  const cycleTheme = () => {
+    const nextMode = themeMode === 'light'
+      ? 'dark'
+      : themeMode === 'dark'
+        ? 'oled'
+        : 'light';
+    setThemeMode(nextMode);
+  };
+
   return (
     <div className="min-h-[100dvh] bg-surface-50 dark:bg-surface-950 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 relative">
       <SEO
@@ -207,13 +216,21 @@ const LoginForm: React.FC = () => {
         path="/login"
       />
       <button
-        onClick={toggleDark}
+        onClick={cycleTheme}
         className="absolute top-4 right-4 flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-surface-500 dark:text-surface-400 hover:text-surface-700 dark:hover:text-surface-300 hover:bg-surface-100 dark:hover:bg-surface-800 rounded-xl transition-all duration-200 active:scale-95"
-        title={isDark ? 'Helles Design' : 'Dunkles Design'}
+        title="Design wechseln"
       >
-        {isDark ? <SunIcon className="h-4 w-4" /> : <MoonIcon className="h-4 w-4" />}
-        {isOled ? 'OLED' : isDark ? 'Hell' : 'Dunkel'}
+        {isOled ? <MoonIcon className="h-4 w-4" /> : isDark ? <SunIcon className="h-4 w-4" /> : <MoonIcon className="h-4 w-4" />}
+        {isOled ? 'OLED' : isDark ? 'Dunkel' : 'Hell'}
       </button>
+      <Link
+        to="/set-custom-backend"
+        className="absolute bottom-4 right-4 inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11px] font-medium text-surface-500 transition-colors hover:bg-surface-100 hover:text-surface-700 dark:text-surface-400 dark:hover:bg-surface-800 dark:hover:text-surface-200"
+        title="Server auswählen"
+      >
+        <ServerStackIcon className="h-3.5 w-3.5" aria-hidden="true" />
+        Server auswählen
+      </Link>
       <div className="w-full max-w-sm">
         <div className="text-center mb-10">
             <AppIcon alt="Schulportal" className="mx-auto h-14 w-14 rounded-2xl mb-6 shadow-soft-md" />
