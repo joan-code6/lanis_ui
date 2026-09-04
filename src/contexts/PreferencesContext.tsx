@@ -10,7 +10,7 @@ const LEGACY_PREFERENCES_OWNER_KEY = 'lanis_preferences_legacy_owner';
 
 export const DEFAULT_USER_PREFERENCES: UserPreferences = {
   appearance: { theme_mode: 'system', theme_color: 'cyan' },
-  sidebar: { order: DEFAULT_SIDEBAR_ORDER },
+  sidebar: { order: DEFAULT_SIDEBAR_ORDER, hidden_items: [] },
   dashboard: { pinned_modules: [], hidden_modules: [], view_mode: 'grid' },
   timetable: { view_mode: 'rolling' },
   homework: { completed_display: 'green' },
@@ -49,6 +49,10 @@ const mergePreferences = (
 const normalizePreferences = (value?: Partial<UserPreferences>): UserPreferences => {
   const homework = value?.homework as (Partial<UserPreferences['homework']> & { hide_completed_in_overview?: boolean }) | undefined;
   const dashboard = value?.dashboard;
+  const sidebar = value?.sidebar;
+  const hiddenSidebarItems = Array.isArray(sidebar?.hidden_items)
+    ? sidebar.hidden_items.filter(item => typeof item === 'string')
+    : [];
   const hiddenModules = dashboard?.hidden_modules || [];
   const pinnedModules = (dashboard?.pinned_modules || []).filter(
     moduleName => !hiddenModules.includes(moduleName),
@@ -61,7 +65,7 @@ const normalizePreferences = (value?: Partial<UserPreferences>): UserPreferences
 
   return mergePreferences(DEFAULT_USER_PREFERENCES, {
     appearance: value?.appearance,
-    sidebar: value?.sidebar,
+    sidebar: { ...sidebar, hidden_items: hiddenSidebarItems },
     dashboard: {
       ...dashboard,
       pinned_modules: pinnedModules,
@@ -184,9 +188,11 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode; sync?: b
         if (controller.signal.aborted) return;
         let next = normalizePreferences({
           ...response.preferences,
-          sidebar: response.preferences.sidebar
-            || cached?.preferences.sidebar
-            || localFallback.sidebar,
+          sidebar: {
+            ...localFallback.sidebar,
+            ...cached?.preferences.sidebar,
+            ...response.preferences.sidebar,
+          },
           dashboard: { ...localFallback.dashboard, ...response.preferences.dashboard },
         });
         if (!response.stored || cached?.dirty) {
@@ -195,7 +201,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode; sync?: b
           if (controller.signal.aborted) return;
           next = normalizePreferences({
             ...migrated.preferences,
-            sidebar: migrated.preferences.sidebar || next.sidebar,
+            sidebar: { ...next.sidebar, ...migrated.preferences.sidebar },
             dashboard: { ...next.dashboard, ...migrated.preferences.dashboard },
           });
         }
@@ -243,7 +249,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode; sync?: b
         }
         const saved = normalizePreferences({
           ...response.preferences,
-          sidebar: response.preferences.sidebar || next.sidebar,
+          sidebar: { ...next.sidebar, ...response.preferences.sidebar },
           dashboard: { ...next.dashboard, ...response.preferences.dashboard },
         });
         if (JSON.stringify(preferencesRef.current) === JSON.stringify(next)) {

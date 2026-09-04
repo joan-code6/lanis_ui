@@ -24,6 +24,8 @@ import {
   ClockIcon,
   ClipboardDocumentListIcon,
   DevicePhoneMobileIcon,
+  EyeIcon,
+  EyeSlashIcon,
   InboxIcon,
   MoonIcon,
   PaintBrushIcon,
@@ -167,17 +169,25 @@ type SidebarSaveState = 'idle' | 'saved' | 'error';
 const SidebarSettings: React.FC = () => {
   const { preferences, updatePreferences, isSaving } = usePreferences();
   const [order, setOrder] = useState(() => normalizeSidebarOrder(preferences.sidebar.order));
+  const [hiddenItems, setHiddenItems] = useState<string[]>(() => preferences.sidebar.hidden_items);
   const [draggedId, setDraggedId] = useState<SidebarItemId | null>(null);
   const [saveState, setSaveState] = useState<SidebarSaveState>('idle');
 
   useEffect(() => {
     setOrder(normalizeSidebarOrder(preferences.sidebar.order));
+    setHiddenItems(preferences.sidebar.hidden_items);
   }, [preferences.sidebar.order]);
 
-  const moveItem = (index: number, direction: -1 | 1) => {
+  const visibleOrder = order.filter(id => !hiddenItems.includes(id));
+  const hiddenOrder = order.filter(id => hiddenItems.includes(id));
+  const displayOrder = [...visibleOrder, ...hiddenOrder];
+
+  const moveItem = (itemId: SidebarItemId, direction: -1 | 1) => {
+    const index = displayOrder.indexOf(itemId);
     const nextIndex = index + direction;
-    if (nextIndex < 0 || nextIndex >= order.length) return;
-    const next = [...order];
+    if (index < 0 || nextIndex < 0 || nextIndex >= displayOrder.length) return;
+    if (hiddenItems.includes(itemId) !== hiddenItems.includes(displayOrder[nextIndex])) return;
+    const next = [...displayOrder];
     [next[index], next[nextIndex]] = [next[nextIndex], next[index]];
     setOrder(next);
     setSaveState('idle');
@@ -185,10 +195,15 @@ const SidebarSettings: React.FC = () => {
 
   const moveItemTo = (itemId: SidebarItemId, targetId: SidebarItemId) => {
     setOrder(current => {
-      const fromIndex = current.indexOf(itemId);
-      const toIndex = current.indexOf(targetId);
+      const currentDisplayOrder = [
+        ...current.filter(id => !hiddenItems.includes(id)),
+        ...current.filter(id => hiddenItems.includes(id)),
+      ];
+      if (hiddenItems.includes(itemId) !== hiddenItems.includes(targetId)) return current;
+      const fromIndex = currentDisplayOrder.indexOf(itemId);
+      const toIndex = currentDisplayOrder.indexOf(targetId);
       if (fromIndex === -1 || toIndex === -1 || fromIndex === toIndex) return current;
-      const next = [...current];
+      const next = [...currentDisplayOrder];
       const [movedItem] = next.splice(fromIndex, 1);
       next.splice(toIndex, 0, movedItem);
       return next;
@@ -197,20 +212,30 @@ const SidebarSettings: React.FC = () => {
   };
 
   const hasChanges = JSON.stringify(order) !== JSON.stringify(normalizeSidebarOrder(preferences.sidebar.order));
+  const hasVisibilityChanges = JSON.stringify(hiddenItems) !== JSON.stringify(preferences.sidebar.hidden_items);
 
   const applyOrder = async () => {
     setSaveState('idle');
-    const saved = await updatePreferences({ sidebar: { order } });
+    const saved = await updatePreferences({ sidebar: { order, hidden_items: hiddenItems } });
     setSaveState(saved ? 'saved' : 'error');
   };
 
   const cancelChanges = () => {
     setOrder(normalizeSidebarOrder(preferences.sidebar.order));
+    setHiddenItems(preferences.sidebar.hidden_items);
     setSaveState('idle');
   };
 
   const resetOrder = () => {
     setOrder([...DEFAULT_SIDEBAR_ORDER]);
+    setHiddenItems([]);
+    setSaveState('idle');
+  };
+
+  const toggleVisibility = (id: SidebarItemId) => {
+    setHiddenItems(current => current.includes(id)
+      ? current.filter(item => item !== id)
+      : [...current, id]);
     setSaveState('idle');
   };
 
@@ -221,28 +246,30 @@ const SidebarSettings: React.FC = () => {
           <div>
             <h3 className="text-base font-semibold text-surface-900 dark:text-surface-100">Deine Navigation</h3>
             <p className="mt-1 max-w-xl text-sm leading-6 text-surface-500 dark:text-surface-400">
-              Ziehe Einträge am Griff an ihre neue Position oder nutze die Pfeile. Die Reihenfolge gilt auf all deinen Geräten.
+              Ziehe Einträge am Griff an ihre neue Position oder nutze die Pfeile. Blende Einträge aus, die du nicht brauchst.
             </p>
           </div>
-          {hasChanges && (
+          {(hasChanges || hasVisibilityChanges) && (
             <span className="badge badge-primary shrink-0">Nicht gespeichert</span>
           )}
         </div>
       </div>
 
       <ol className="space-y-2 bg-surface-50/70 p-3 dark:bg-surface-950/30 sm:p-4" aria-label="Reihenfolge der Seitenleiste">
-        {order.map((id, index) => (
+        {displayOrder.map((id, index) => (
           <li
             key={id}
             onDragOver={(event) => event.preventDefault()}
             onDragEnter={() => {
-              if (draggedId) moveItemTo(draggedId, id);
+              if (draggedId && hiddenItems.includes(draggedId) === hiddenItems.includes(id)) moveItemTo(draggedId, id);
             }}
             onDrop={() => setDraggedId(null)}
-            className={`flex min-h-14 items-center gap-3 rounded-xl border bg-white px-3 py-2 shadow-sm transition-[transform,background-color,border-color,box-shadow] duration-150 dark:bg-surface-900 sm:px-4 ${
+            className={`group flex min-h-16 items-center gap-3 rounded-2xl border bg-white px-3 py-2 shadow-sm transition-[transform,background-color,border-color,box-shadow] duration-150 dark:bg-surface-900 sm:px-4 ${
               draggedId === id
                 ? 'scale-[1.015] border-primary-300 bg-primary-50 shadow-soft-md dark:border-primary-700 dark:bg-primary-950/30'
-                : 'border-surface-200 dark:border-surface-700'
+                : hiddenItems.includes(id)
+                  ? 'border-surface-200 opacity-50 dark:border-surface-700'
+                  : 'border-surface-200 dark:border-surface-700'
             }`}
           >
             <span className="w-6 shrink-0 text-center text-xs font-semibold tabular-nums text-surface-400 dark:text-surface-500" aria-hidden="true">
@@ -261,14 +288,24 @@ const SidebarSettings: React.FC = () => {
             >
               <Bars3Icon className="h-5 w-5" aria-hidden="true" />
             </span>
-            <span className="min-w-0 flex-1 text-sm font-medium text-surface-800 dark:text-surface-200">
-              {SIDEBAR_ITEM_LABELS[id]}
-            </span>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium text-surface-800 dark:text-surface-200">{SIDEBAR_ITEM_LABELS[id]}</p>
+              <p className="mt-0.5 text-xs text-surface-400">{hiddenItems.includes(id) ? 'Ausgeblendet' : 'In der Seitenleiste sichtbar'}</p>
+            </div>
             <span className="sr-only">Position {index + 1} von {order.length}</span>
             <button
               type="button"
-              onClick={() => moveItem(index, -1)}
-              disabled={index === 0}
+              onClick={() => toggleVisibility(id)}
+              aria-label={hiddenItems.includes(id) ? `${SIDEBAR_ITEM_LABELS[id]} einblenden` : `${SIDEBAR_ITEM_LABELS[id]} ausblenden`}
+              className="flex h-10 items-center gap-1.5 rounded-lg px-2 text-xs font-medium text-surface-500 transition-colors hover:bg-surface-100 hover:text-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500/40 dark:hover:bg-surface-800 dark:hover:text-primary-400"
+            >
+              {hiddenItems.includes(id) ? <EyeIcon className="h-4 w-4" aria-hidden="true" /> : <EyeSlashIcon className="h-4 w-4" aria-hidden="true" />}
+              <span className="hidden sm:inline">{hiddenItems.includes(id) ? 'Zeigen' : 'Ausblenden'}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => moveItem(id, -1)}
+              disabled={index === 0 || hiddenItems.includes(id) !== hiddenItems.includes(displayOrder[index - 1])}
               aria-label={`${SIDEBAR_ITEM_LABELS[id]} nach oben verschieben`}
               className="flex h-10 w-10 items-center justify-center rounded-lg text-surface-500 transition-colors hover:bg-surface-100 hover:text-surface-800 focus:outline-none focus:ring-2 focus:ring-primary-500/40 disabled:cursor-not-allowed disabled:opacity-25 dark:hover:bg-surface-800 dark:hover:text-surface-100"
             >
@@ -276,8 +313,8 @@ const SidebarSettings: React.FC = () => {
             </button>
             <button
               type="button"
-              onClick={() => moveItem(index, 1)}
-              disabled={index === order.length - 1}
+              onClick={() => moveItem(id, 1)}
+              disabled={index === displayOrder.length - 1 || hiddenItems.includes(id) !== hiddenItems.includes(displayOrder[index + 1])}
               aria-label={`${SIDEBAR_ITEM_LABELS[id]} nach unten verschieben`}
               className="flex h-10 w-10 items-center justify-center rounded-lg text-surface-500 transition-colors hover:bg-surface-100 hover:text-surface-800 focus:outline-none focus:ring-2 focus:ring-primary-500/40 disabled:cursor-not-allowed disabled:opacity-25 dark:hover:bg-surface-800 dark:hover:text-surface-100"
             >
@@ -300,7 +337,7 @@ const SidebarSettings: React.FC = () => {
             <button
               type="button"
               onClick={() => void applyOrder()}
-              disabled={(!hasChanges && saveState !== 'error') || isSaving}
+              disabled={(!hasChanges && !hasVisibilityChanges && saveState !== 'error') || isSaving}
               className="btn btn-primary flex-1 disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none"
             >
               {isSaving ? 'Wird gespeichert…' : 'Reihenfolge speichern'}
