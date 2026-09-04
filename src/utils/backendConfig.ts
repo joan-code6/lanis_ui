@@ -1,8 +1,8 @@
+import uiConfig from '../../config.json';
+
 export const CUSTOM_BACKEND_STORAGE_KEY = 'lanis_custom_backend_url';
 
-export const DEFAULT_API_BASE_URL = (
-  import.meta.env.VITE_API_URL || 'http://localhost:8000'
-).replace(/\/+$/, '');
+export const DEFAULT_API_BASE_URL = uiConfig.apiUrl.replace(/\/+$/, '');
 
 const BACKEND_SCOPED_STORAGE_KEYS = [
   'auth_access_token',
