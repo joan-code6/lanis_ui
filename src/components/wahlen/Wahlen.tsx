@@ -7,7 +7,6 @@ import {
   ChevronRightIcon,
   ClipboardDocumentCheckIcon,
   ExclamationTriangleIcon,
-  LinkIcon,
 } from '@heroicons/react/24/outline';
 import { useAuth } from '../../contexts/AuthContext';
 import { wahlenAPI } from '../../services/api';
@@ -301,15 +300,8 @@ const Wahlen: React.FC = () => {
           )}
           <h1 className="page-title">{selectedElection?.title || 'Wahlen'}</h1>
           {!selectedElectionId && <p className="page-subtitle">Wähle eine verfügbare Wahl aus, um das Formular zu öffnen.</p>}
-          {selectedElection && (
-            <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-surface-500 dark:text-surface-400">
-              {selectedElection.participation_text && <span>{selectedElection.participation_text}</span>}
-              {selectedElection.info_url && (
-                <a className="inline-flex items-center gap-1 font-medium text-primary-600 hover:underline dark:text-primary-400" href={selectedElection.info_url} target="_blank" rel="noreferrer">
-                  Weitere Informationen <LinkIcon className="h-3.5 w-3.5" />
-                </a>
-              )}
-            </div>
+          {selectedElection?.participation_text && (
+            <p className="mt-3 text-sm text-surface-500 dark:text-surface-400">{selectedElection.participation_text}</p>
           )}
         </header>
 
