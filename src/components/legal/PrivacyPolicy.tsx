@@ -117,35 +117,55 @@ const PrivacyPolicy: React.FC = () => {
           </div>
 
           <div>
-            <h2 className="text-base font-semibold text-[#111] mb-3">6. Zwecke und Rechtsgrundlagen</h2>
+            <h2 className="text-base font-semibold text-[#111] mb-3">6. WhatsApp-Assistent</h2>
             <p>
-              Soweit ein Nutzungsverhältnis besteht, erfolgt die für die angeforderten Funktionen
-              erforderliche Verarbeitung auf Grundlage von Art. 6 Abs. 1 lit. b DSGVO. Im Übrigen stützt
-              sie sich auf Art. 6 Abs. 1 lit. f DSGVO; das berechtigte Interesse liegt in der sicheren und
-              funktionsfähigen Bereitstellung der Anwendung. Freiwillige Push-Benachrichtigungen werden nur
-              nach deiner ausdrücklichen Aktivierung eingerichtet; soweit eine Einwilligung erforderlich
-              ist, gilt Art. 6 Abs. 1 lit. a DSGVO.
+              Wenn du den optionalen WhatsApp-Assistenten aktiv mit deinem Konto verbindest, verarbeitet
+              das Backend eine abgeleitete Kennung deiner WhatsApp-Nummer, die letzten vier Ziffern zur
+              Anzeige, den Zeitpunkt der Verknüpfung und deine Einstellung zu Nachrichtenvorschauen. Ein
+              kurzzeitig gültiger Einmalcode stellt die Verbindung her. Dein Schulportal-Passwort wird
+              dabei nicht an WhatsApp übermittelt.
+            </p>
+            <p className="mt-2">
+              Nachrichten, die du an den Assistenten sendest, und seine Antworten werden über die
+              WhatsApp Business Platform von Meta verarbeitet. Antworten können von dir angeforderte
+              schulische Angaben enthalten, etwa Stundenplan, Vertretungen, Aufgaben, Termine oder – nur
+              nach gesonderter Aktivierung – Absender und Betreff ungelesener Nachrichten. Du kannst die
+              Verbindung jederzeit in den Einstellungen oder mit dem Befehl „STOP“ trennen.
             </p>
           </div>
 
           <div>
-            <h2 className="text-base font-semibold text-[#111] mb-3">7. Empfänger und Speicherdauer</h2>
+            <h2 className="text-base font-semibold text-[#111] mb-3">7. Zwecke und Rechtsgrundlagen</h2>
+            <p>
+              Soweit ein Nutzungsverhältnis besteht, erfolgt die für die angeforderten Funktionen
+              erforderliche Verarbeitung auf Grundlage von Art. 6 Abs. 1 lit. b DSGVO. Im Übrigen stützt
+              sie sich auf Art. 6 Abs. 1 lit. f DSGVO; das berechtigte Interesse liegt in der sicheren und
+              funktionsfähigen Bereitstellung der Anwendung. Freiwillige Push-Benachrichtigungen und die
+              WhatsApp-Verknüpfung werden nur nach deiner ausdrücklichen Aktivierung eingerichtet; soweit
+              eine Einwilligung erforderlich ist, gilt Art. 6 Abs. 1 lit. a DSGVO.
+            </p>
+          </div>
+
+          <div>
+            <h2 className="text-base font-semibold text-[#111] mb-3">8. Empfänger und Speicherdauer</h2>
             <p>
               {usesCustomBackend
                 ? 'Das oben angezeigte Backend ist ein getrennt betriebenes System des von dir ausgewählten Betreibers.'
                 : 'Das oben angezeigte Backend ist ein getrennt betriebenes System desselben Verantwortlichen.'}{' '}
               Zur Bereitstellung der angeforderten schulischen Funktionen kommuniziert es mit dem
               Schulportal Hessen. Bei Nutzung von Push-Benachrichtigungen wird außerdem der Push-Dienst des
-              Browsers oder Betriebssystems einbezogen. Lokal gespeicherte Daten bleiben grundsätzlich
-              erhalten, bis du dich abmeldest, sie durch die Anwendung ersetzt werden, eine vorgesehene
-              Cache-Frist abläuft oder du die Website-Daten im Browser löschst. Die Speicherfristen des
-              technisch getrennten Backends ergeben sich aus dessen jeweiliger Implementierung und
-              Konfiguration; sie lassen sich nicht aus dieser Benutzeroberfläche auslesen.
+              Browsers oder Betriebssystems einbezogen. Beim freiwilligen WhatsApp-Assistenten wird
+              außerdem die WhatsApp Business Platform von Meta einbezogen. Lokal gespeicherte Daten bleiben
+              grundsätzlich erhalten, bis du dich abmeldest, sie durch die Anwendung ersetzt werden, eine
+              vorgesehene Cache-Frist abläuft oder du die Website-Daten im Browser löschst. Die
+              Speicherfristen des technisch getrennten Backends ergeben sich aus dessen jeweiliger
+              Implementierung und Konfiguration; sie lassen sich nicht aus dieser Benutzeroberfläche
+              auslesen.
             </p>
           </div>
 
           <div>
-            <h2 className="text-base font-semibold text-[#111] mb-3">8. Deine Rechte</h2>
+            <h2 className="text-base font-semibold text-[#111] mb-3">9. Deine Rechte</h2>
             <p>
               Du hast im Rahmen der gesetzlichen Voraussetzungen insbesondere das Recht auf Auskunft,
               Berichtigung, Löschung, Einschränkung der Verarbeitung, Datenübertragbarkeit und Widerspruch.
@@ -155,7 +175,7 @@ const PrivacyPolicy: React.FC = () => {
           </div>
 
           <div>
-            <h2 className="text-base font-semibold text-[#111] mb-3">9. Sicherheit und Änderungen</h2>
+            <h2 className="text-base font-semibold text-[#111] mb-3">10. Sicherheit und Änderungen</h2>
             <p>
               Die Anwendung soll nur über eine verschlüsselte HTTPS-Verbindung bereitgestellt werden.
               Eine Datenübertragung im Internet kann dennoch nie vollständig gegen alle Risiken abgesichert
@@ -167,7 +187,7 @@ const PrivacyPolicy: React.FC = () => {
           <hr className="border-black/[0.06]" />
 
           <p className="text-xs text-[#bbb] pt-2">
-            Stand: August 2026
+            Stand: September 2026
           </p>
         </section>
       </div>

@@ -371,6 +371,22 @@ export interface PushSubscriptionPayload {
   };
 }
 
+export interface WhatsAppStatusResponse {
+  success: boolean;
+  configured: boolean;
+  linked: boolean;
+  phone_suffix: string;
+  linked_at: string | null;
+  show_message_previews: boolean;
+}
+
+export interface WhatsAppPairingResponse {
+  success: boolean;
+  code: string;
+  expires_at: string;
+  link_url: string;
+}
+
 // Course types
 export interface CourseEntry {
   entry_id: string | null;

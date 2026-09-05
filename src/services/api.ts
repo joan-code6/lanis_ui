@@ -190,6 +190,8 @@ import {
   PushSubscriptionPayload,
   UserPreferencesPatch,
   UserPreferencesResponse,
+  WhatsAppPairingResponse,
+  WhatsAppStatusResponse,
 } from '../types';
 
 // Configuration
@@ -461,6 +463,39 @@ export const notificationsAPI = {
 
   async sendTest(token: string): Promise<{ success: boolean }> {
     const response = await apiClient.post<{ success: boolean }>('/notifications/test', {}, {
+      headers: { 'X-Session-Token': token },
+    });
+    return response.data;
+  },
+};
+
+export const whatsappAPI = {
+  async getStatus(token: string, signal?: AbortSignal): Promise<WhatsAppStatusResponse> {
+    const response = await apiClient.get<WhatsAppStatusResponse>('/whatsapp/status', {
+      headers: { 'X-Session-Token': token },
+      signal,
+    });
+    return response.data;
+  },
+
+  async createPairing(token: string): Promise<WhatsAppPairingResponse> {
+    const response = await apiClient.post<WhatsAppPairingResponse>('/whatsapp/pairing', { consent: true }, {
+      headers: { 'X-Session-Token': token },
+    });
+    return response.data;
+  },
+
+  async updatePreferences(token: string, showMessagePreviews: boolean): Promise<{ success: boolean; show_message_previews: boolean }> {
+    const response = await apiClient.put<{ success: boolean; show_message_previews: boolean }>(
+      '/whatsapp/preferences',
+      { show_message_previews: showMessagePreviews },
+      { headers: { 'X-Session-Token': token } },
+    );
+    return response.data;
+  },
+
+  async unlink(token: string): Promise<{ success: boolean }> {
+    const response = await apiClient.delete<{ success: boolean }>('/whatsapp/link', {
       headers: { 'X-Session-Token': token },
     });
     return response.data;

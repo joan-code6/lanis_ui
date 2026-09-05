@@ -17,6 +17,7 @@ import {
   BellIcon,
   BookOpenIcon,
   CalendarDaysIcon,
+  ChatBubbleLeftRightIcon,
   CheckIcon,
   ChevronRightIcon,
   ChevronDownIcon,
@@ -36,6 +37,7 @@ import { getDeferredPrompt } from '../pwa/InstallPrompt';
 import TimetableSettings from './TimetableSettings';
 import VertretungsplanSettings from './VertretungsplanSettings';
 import HomeworkSettings from './HomeworkSettings';
+import WhatsAppSettings from './WhatsAppSettings';
 import {
   DEFAULT_SIDEBAR_ORDER,
   normalizeSidebarOrder,
@@ -99,7 +101,7 @@ const pushSubscriptionToPayload = (subscription: PushSubscription): PushSubscrip
   };
 };
 
-type SettingsSection = 'home' | 'appearance' | 'timetable' | 'homework' | 'vertretungsplan' | 'notifications' | 'app' | 'sidebar';
+type SettingsSection = 'home' | 'appearance' | 'timetable' | 'homework' | 'vertretungsplan' | 'notifications' | 'whatsapp' | 'app' | 'sidebar';
 
 const settingsSections: Array<{
   id: Exclude<SettingsSection, 'home'>;
@@ -138,6 +140,12 @@ const settingsSections: Array<{
     icon: BellAlertIcon,
   },
   {
+    id: 'whatsapp',
+    title: 'WhatsApp-Assistent',
+    description: 'Stundenplan, Vertretungen und Aufgaben direkt im Chat abrufen.',
+    icon: ChatBubbleLeftRightIcon,
+  },
+  {
     id: 'app',
     title: 'App & Installation',
     description: 'Lanis installieren und Geräteoptionen ansehen.',
@@ -158,6 +166,7 @@ const sectionMeta: Record<SettingsSection, { title: string; subtitle: string }> 
   homework: { title: 'Hausaufgaben', subtitle: 'Lege fest, ob erledigte Aufgaben in „Mein Unterricht“ erscheinen.' },
   vertretungsplan: { title: 'Vertretungsplan', subtitle: 'Die passende Klasse automatisch auswählen oder selbst festlegen.' },
   notifications: { title: 'Benachrichtigungen', subtitle: 'Nachrichten und neue Vertretungsplan-Einträge per Web-Push mitbekommen.' },
+  whatsapp: { title: 'WhatsApp-Assistent', subtitle: 'Dein LANIS-Konto sicher mit dem WhatsApp-Chat verbinden.' },
   app: { title: 'App & Installation', subtitle: 'Lanis auf deinem Gerät griffbereit halten.' },
   sidebar: { title: 'Seitenleiste', subtitle: 'Ordne die Einträge in der Seitenleiste nach deinen Wünschen.' },
 };
@@ -874,6 +883,7 @@ const Settings: React.FC = () => {
       {section === 'timetable' && <TimetableSettings />}
       {section === 'homework' && <HomeworkSettings />}
       {section === 'vertretungsplan' && <VertretungsplanSettings />}
+      {section === 'whatsapp' && <WhatsAppSettings />}
       {section === 'sidebar' && <SidebarSettings />}
 
       <div className="space-y-6">
