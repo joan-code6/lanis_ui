@@ -30,16 +30,20 @@ const WhatsAppSettings: React.FC = () => {
   const [pairing, setPairing] = useState<WhatsAppPairingResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState(false);
+  const [savingPreviews, setSavingPreviews] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [confirmUnlink, setConfirmUnlink] = useState(false);
   const [copied, setCopied] = useState(false);
   const [consentAccepted, setConsentAccepted] = useState(false);
   const latestStatusRequest = useRef(0);
+  const statusRequestInFlight = useRef<number | null>(null);
+  const preferenceRequestInFlight = useRef(false);
 
   const loadStatus = useCallback(async (signal?: AbortSignal) => {
-    if (!token) return;
+    if (!token || statusRequestInFlight.current !== null) return;
     const requestId = ++latestStatusRequest.current;
+    statusRequestInFlight.current = requestId;
     try {
       const next = await whatsappAPI.getStatus(token, signal);
       if (requestId !== latestStatusRequest.current) return;
@@ -54,6 +58,9 @@ const WhatsAppSettings: React.FC = () => {
       if (signal?.aborted || requestId !== latestStatusRequest.current) return;
       setError(statusError instanceof Error ? statusError.message : 'Der WhatsApp-Status konnte nicht geladen werden.');
     } finally {
+      if (statusRequestInFlight.current === requestId) {
+        statusRequestInFlight.current = null;
+      }
       if (!signal?.aborted && requestId === latestStatusRequest.current) setLoading(false);
     }
   }, [token]);
@@ -61,7 +68,11 @@ const WhatsAppSettings: React.FC = () => {
   useEffect(() => {
     const controller = new AbortController();
     void loadStatus(controller.signal);
-    return () => controller.abort();
+    return () => {
+      controller.abort();
+      latestStatusRequest.current += 1;
+      statusRequestInFlight.current = null;
+    };
   }, [loadStatus]);
 
   useEffect(() => {
@@ -96,7 +107,9 @@ const WhatsAppSettings: React.FC = () => {
     setError('');
     setMessage('');
     try {
-      setPairing(await whatsappAPI.createPairing(token));
+      const response = await whatsappAPI.createPairing(token);
+      if (!response.success) throw new Error('Der Server hat den Verbindungscode abgelehnt.');
+      setPairing(response);
     } catch (pairingError) {
       setError(pairingError instanceof Error ? pairingError.message : 'Der Verbindungscode konnte nicht erzeugt werden.');
     } finally {
@@ -105,17 +118,23 @@ const WhatsAppSettings: React.FC = () => {
   };
 
   const savePreviews = async (enabled: boolean) => {
-    if (!token) return;
+    if (!token || preferenceRequestInFlight.current) return;
     const previous = status.show_message_previews;
+    preferenceRequestInFlight.current = true;
+    setSavingPreviews(true);
     setStatus(current => ({ ...current, show_message_previews: enabled }));
     setError('');
     setMessage('');
     try {
-      await whatsappAPI.updatePreferences(token, enabled);
+      const response = await whatsappAPI.updatePreferences(token, enabled);
+      if (!response.success) throw new Error('Der Server hat die Einstellung abgelehnt.');
       setMessage(enabled ? 'Nachrichtenvorschauen sind aktiviert.' : 'Nachrichtenvorschauen sind deaktiviert.');
     } catch (preferencesError) {
       setStatus(current => ({ ...current, show_message_previews: previous }));
       setError(preferencesError instanceof Error ? preferencesError.message : 'Die Einstellung konnte nicht gespeichert werden.');
+    } finally {
+      preferenceRequestInFlight.current = false;
+      setSavingPreviews(false);
     }
   };
 
@@ -124,7 +143,9 @@ const WhatsAppSettings: React.FC = () => {
     setWorking(true);
     setError('');
     try {
-      await whatsappAPI.unlink(token);
+      const response = await whatsappAPI.unlink(token);
+      if (!response.success) throw new Error('Der Server hat das Trennen der Verbindung abgelehnt.');
+      latestStatusRequest.current += 1;
       setStatus(current => ({ ...current, linked: false, phone_suffix: '', linked_at: null, show_message_previews: false }));
       setPairing(null);
       setConfirmUnlink(false);
@@ -298,6 +319,7 @@ const WhatsAppSettings: React.FC = () => {
                 type="checkbox"
                 className="mt-1 h-5 w-5 rounded border-surface-300 text-primary-600 focus:ring-primary-500"
                 checked={status.show_message_previews}
+                disabled={savingPreviews}
                 onChange={event => void savePreviews(event.target.checked)}
               />
             </label>
