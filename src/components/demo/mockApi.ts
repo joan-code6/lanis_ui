@@ -534,6 +534,19 @@ export function getMockResponse(url: string, method: string, config: any): { dat
       },
     };
   }
+  if (u === '/whatsapp/status' && method === 'get') {
+    return {
+      status: 200,
+      data: {
+        success: true,
+        configured: false,
+        linked: false,
+        phone_suffix: '',
+        linked_at: null,
+        show_message_previews: false,
+      },
+    };
+  }
   if (u === '/vertretungsplan/options' && method === 'get') {
     return {
       status: 200,

@@ -1,9 +1,5 @@
 export const CUSTOM_BACKEND_STORAGE_KEY = 'lanis_custom_backend_url';
 
-export const DEFAULT_API_BASE_URL = (
-  import.meta.env.VITE_API_URL || 'http://localhost:8000'
-).replace(/\/+$/, '');
-
 const BACKEND_SCOPED_STORAGE_KEYS = [
   'auth_access_token',
   'auth_refresh_token',
@@ -42,6 +38,14 @@ export function normalizeBackendUrl(value: string): string {
   if (url.protocol !== 'http:' && url.protocol !== 'https:') {
     throw new Error('Die Adresse muss mit http:// oder https:// beginnen.');
   }
+  const hostname = url.hostname.toLowerCase();
+  const isLocalhost = hostname === 'localhost'
+    || hostname.endsWith('.localhost')
+    || hostname === '[::1]'
+    || /^127(?:\.\d{1,3}){3}$/.test(hostname);
+  if (url.protocol === 'http:' && !isLocalhost) {
+    throw new Error('Externe Backend-Adressen müssen HTTPS verwenden.');
+  }
   if (url.username || url.password) {
     throw new Error('Die Backend-Adresse darf keine Zugangsdaten enthalten.');
   }
@@ -52,6 +56,10 @@ export function normalizeBackendUrl(value: string): string {
   url.pathname = url.pathname.replace(/\/+$/, '');
   return url.toString().replace(/\/+$/, '');
 }
+
+export const DEFAULT_API_BASE_URL = normalizeBackendUrl(
+  import.meta.env.VITE_API_URL || 'http://localhost:8000',
+);
 
 export function getCustomBackendUrl(): string | null {
   if (typeof window === 'undefined') return null;
