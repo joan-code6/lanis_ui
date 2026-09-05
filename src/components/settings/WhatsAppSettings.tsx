@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ArrowPathIcon,
@@ -26,6 +26,7 @@ const emptyStatus: WhatsAppStatusResponse = {
 const WhatsAppSettings: React.FC = () => {
   const { token } = useAuth();
   const [status, setStatus] = useState<WhatsAppStatusResponse>(emptyStatus);
+  const [statusLoaded, setStatusLoaded] = useState(false);
   const [pairing, setPairing] = useState<WhatsAppPairingResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState(false);
@@ -34,22 +35,26 @@ const WhatsAppSettings: React.FC = () => {
   const [confirmUnlink, setConfirmUnlink] = useState(false);
   const [copied, setCopied] = useState(false);
   const [consentAccepted, setConsentAccepted] = useState(false);
+  const latestStatusRequest = useRef(0);
 
   const loadStatus = useCallback(async (signal?: AbortSignal) => {
     if (!token) return;
+    const requestId = ++latestStatusRequest.current;
     try {
       const next = await whatsappAPI.getStatus(token, signal);
+      if (requestId !== latestStatusRequest.current) return;
       setError('');
       setStatus(next);
+      setStatusLoaded(true);
       if (next.linked) {
         setPairing(null);
         setMessage('WhatsApp wurde erfolgreich verbunden.');
       }
     } catch (statusError) {
-      if (signal?.aborted) return;
+      if (signal?.aborted || requestId !== latestStatusRequest.current) return;
       setError(statusError instanceof Error ? statusError.message : 'Der WhatsApp-Status konnte nicht geladen werden.');
     } finally {
-      if (!signal?.aborted) setLoading(false);
+      if (!signal?.aborted && requestId === latestStatusRequest.current) setLoading(false);
     }
   }, [token]);
 
@@ -147,6 +152,36 @@ const WhatsAppSettings: React.FC = () => {
       <div className="card flex items-center gap-3 text-sm text-surface-500">
         <ArrowPathIcon className="h-5 w-5 animate-spin" />
         WhatsApp-Status wird geladen…
+      </div>
+    );
+  }
+
+  if (!statusLoaded) {
+    return (
+      <div className="card">
+        <div className="flex items-start gap-3">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300">
+            <ExclamationTriangleIcon className="h-5 w-5" />
+          </div>
+          <div>
+            <h2 className="font-semibold text-surface-900 dark:text-surface-100">Status nicht erreichbar</h2>
+            <p className="mt-1 text-sm leading-6 text-surface-500 dark:text-surface-400">
+              Die WhatsApp-Einstellungen konnten nicht geladen werden. Prüfe deine Verbindung und versuche es erneut.
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                setLoading(true);
+                setError('');
+                void loadStatus();
+              }}
+              className="btn btn-secondary mt-4"
+            >
+              <ArrowPathIcon className="mr-2 h-4 w-4" />
+              Erneut versuchen
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
