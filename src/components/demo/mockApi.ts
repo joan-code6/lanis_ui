@@ -1,3 +1,4 @@
+import { projectTimetableDays } from '../../utils/timetableView';
 import { demoModules, demoUser } from './demoData';
 
 const now = new Date();
@@ -670,6 +671,19 @@ export function getMockResponse(url: string, method: string, config: any): { dat
   }
 
   // Timetable
+  if (u === '/stundenplan/view' && method === 'get') {
+    const template = getMockTimetable();
+    const days = projectTimetableDays(template, 'A', template[0].date, config?.params?.view_mode || 'rolling', mockCustomLessons, new Date(), config?.params?.week_type);
+    // Fictional resolved response; production matching belongs to lanis_api.
+    const firstDay = days.find(day => day.lessons.length);
+    if (firstDay && !config?.params?.week_type) {
+      const lesson = firstDay.lessons[firstDay.lessons.length - 1];
+      lesson.original_lesson = { subject: lesson.subject, teacher: lesson.teacher, room: lesson.room };
+      lesson.substitution = { source: 'Schulportal', date: firstDay.date, periods: [], classes: '9C', subject: lesson.subject, oldSubject: lesson.subject, teacher: lesson.teacher || '', oldTeacher: lesson.teacher || '', room: 'B105', kind: 'Raumwechsel', info: '', group: '', cancelled: false };
+      lesson.room = 'B105';
+    }
+    return { status: 200, data: { success: true, days, week_start: template[0].date, active_week: 'A', has_alternating_weeks: true, exams: mockStudyGroupExams, substitution_sources: [{ name: 'Schulportal', error: false, updated: now.toISOString() }, { name: 'DSB', error: false, updated: now.toISOString() }] } };
+  }
   if (u === '/stundenplan' && method === 'get') {
     const days = getMockTimetable();
     return { status: 200, data: { success: true, week_start: days[0].date, week_end: days[4].date, active_week: 'A', days, exams: mockStudyGroupExams, custom_lessons: mockCustomLessons } };
@@ -697,6 +711,7 @@ export function getMockResponse(url: string, method: string, config: any): { dat
   }
 
   // DSB
+  if (u === '/dsb/school-plan' && method === 'get') { return { status: 200, data: { success: true, tables: mockDsbData.tables, last_updated: now.toISOString() } }; }
   if (u === '/dsb/login' && method === 'post') { return { status: 200, data: { success: true, session_cookie: 'mock-session', session_id: 'mock-sid' } }; }
   if (u === '/dsb/plan-urls' && method === 'post') {
     return { status: 200, data: { success: true, plan_urls: ['/plan/heute', '/plan/morgen'], menu_items: ['Heute', 'Morgen'], count: 2 } };

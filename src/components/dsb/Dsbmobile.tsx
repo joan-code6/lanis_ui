@@ -1,181 +1,45 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { dsbSchoolCredentials } from '../../services/timetableSubstitutions';
 import { dsbAPI } from '../../services/api';
 import axios from 'axios';
 import { DSBPlanTable } from '../../types';
 import SEO from '../seo/SEO';
-import {
-  CalendarDaysIcon,
-} from '@heroicons/react/24/outline';
-import { isDemoRoute } from '../../utils/demoMode';
-
-const DSB_CACHE_KEY = 'dsb_plan_cache_v2';
-const DSB_CACHE_TTL = 6 * 60 * 60 * 1000;
-
-interface CachedDSBData {
-  menuItems: string[];
-  planUrls: string[];
-  tables: DSBPlanTable[];
-  selectedPlanIndex: number;
-  lastUpdated: string | null;
-  timestamp: number;
-}
-
-function getCachedDSBData(): CachedDSBData | null {
-  if (isDemoRoute()) return null;
-  const cached = localStorage.getItem(DSB_CACHE_KEY);
-  if (!cached) return null;
-  try {
-    const parsed: CachedDSBData = JSON.parse(cached);
-    if (Date.now() - parsed.timestamp > DSB_CACHE_TTL) {
-      localStorage.removeItem(DSB_CACHE_KEY);
-      return null;
-    }
-    return parsed;
-  } catch {
-    return null;
-  }
-}
-
-function setCachedDSBData(data: Omit<CachedDSBData, 'timestamp'>): void {
-  const cached: CachedDSBData = { ...data, timestamp: Date.now() };
-  localStorage.setItem(DSB_CACHE_KEY, JSON.stringify(cached));
-}
+import { CalendarDaysIcon } from '@heroicons/react/24/outline';
 
 function formatLastUpdated(value: string): string {
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-
-  const dateLabel = date.toLocaleDateString('de-DE');
-  const timeLabel = date.toLocaleTimeString('de-DE', {
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-  return `${dateLabel}, ${timeLabel} Uhr`;
+  return Number.isNaN(date.getTime()) ? value : `${date.toLocaleDateString('de-DE')}, ${date.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} Uhr`;
 }
 
 const Dsbmobile: React.FC = () => {
   const { token, user } = useAuth();
-  const [menuItems, setMenuItems] = useState<string[]>(() => {
-    const cached = getCachedDSBData();
-    return cached?.menuItems || [];
-  });
-  const [planUrls, setPlanUrls] = useState<string[]>(() => {
-    const cached = getCachedDSBData();
-    return cached?.planUrls || [];
-  });
-  const [selectedPlanIndex, setSelectedPlanIndex] = useState(() => {
-    const cached = getCachedDSBData();
-    return cached?.selectedPlanIndex ?? 0;
-  });
-  const [tables, setTables] = useState<DSBPlanTable[]>(() => {
-    const cached = getCachedDSBData();
-    return cached?.tables || [];
-  });
-  const [lastUpdated, setLastUpdated] = useState<string | null>(() => {
-    const cached = getCachedDSBData();
-    return cached?.lastUpdated ?? null;
-  });
+  const [tables, setTables] = useState<DSBPlanTable[]>([]);
+  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [isLoadingPlan, setIsLoadingPlan] = useState(false);
   const [error, setError] = useState('');
   const [showAllClasses, setShowAllClasses] = useState(false);
-
-  const credentials = dsbSchoolCredentials;
   const userClass = user?.klasse || user?.class || user?.Klasse || '';
-  const cachedData = getCachedDSBData();
-  const hasCache = !!cachedData && cachedData.tables.length > 0;
 
   useEffect(() => {
     if (!token) return;
-    const abortController = new AbortController();
-    const { signal } = abortController;
-    loginAndFetchPlans(signal);
-    return () => abortController.abort();
+    const controller = new AbortController();
+    setIsLoading(true);
+    setTables([]);
+    setLastUpdated(null);
+    setError('');
+    dsbAPI.getSchoolPlan(token, controller.signal)
+      .then(response => {
+        if (controller.signal.aborted) return;
+        if (!response.success) throw new Error(response.error || 'Vertretungsplan konnte nicht geladen werden.');
+        setTables(response.tables || []);
+        setLastUpdated(response.last_updated || null);
+      })
+      .catch(error => {
+        if (!axios.isCancel(error) && !controller.signal.aborted) setError(error.message || 'Vertretungsplan konnte nicht geladen werden.');
+      })
+      .finally(() => { if (!controller.signal.aborted) setIsLoading(false); });
+    return () => controller.abort();
   }, [token]);
-
-  const loginAndFetchPlans = async (signal?: AbortSignal) => {
-    if (!token) return;
-    const initialHasCache = hasCache;
-    if (!initialHasCache) {
-      setIsLoading(true);
-    }
-    setError('');
-
-    try {
-      const loginResponse = await dsbAPI.login(token, credentials, signal);
-      if (signal?.aborted) return;
-      if (!loginResponse.success) {
-        setError(loginResponse.error || 'Anmeldung bei DSBmobile fehlgeschlagen.');
-        if (!initialHasCache) setIsLoading(false);
-        return;
-      }
-
-      const urlsResponse = await dsbAPI.getPlanUrls(token, credentials, signal);
-      if (signal?.aborted) return;
-      if (!urlsResponse.success) {
-        setError(urlsResponse.error || 'Abrufen der Plan-URLs fehlgeschlagen.');
-        if (!initialHasCache) setIsLoading(false);
-        return;
-      }
-
-      setPlanUrls(urlsResponse.plan_urls);
-      setMenuItems(urlsResponse.menu_items);
-
-      if (urlsResponse.html_plan_url) {
-        await fetchPlan(urlsResponse.html_plan_url, undefined, signal);
-      } else if (urlsResponse.plan_urls.length > 0) {
-        await fetchPlan(urlsResponse.plan_urls[0], undefined, signal);
-      }
-    } catch (err) {
-      if (axios.isCancel(err)) return;
-      console.error('DSB login error:', err);
-      setError('Verbindung zu DSBmobile fehlgeschlagen.');
-    } finally {
-      if (!initialHasCache) setIsLoading(false);
-    }
-  };
-
-  const fetchPlan = async (planUrl: string, planIndex?: number, signal?: AbortSignal) => {
-    if (!token) return;
-    const isManualChange = planIndex !== undefined;
-    if (isManualChange || !hasCache) {
-      setIsLoadingPlan(true);
-      setTables([]);
-    }
-    setError('');
-
-    try {
-      const response = await dsbAPI.getPlan(token, credentials, {
-        plan_url: planUrl,
-        include_raw: false,
-      }, signal);
-
-      if (signal?.aborted) return;
-      if (!response.success) {
-        setError(response.error || 'Abrufen des Plans fehlgeschlagen.');
-        if (isManualChange || !hasCache) setIsLoadingPlan(false);
-        return;
-      }
-
-      setTables(response.tables || []);
-      setLastUpdated(response.last_updated ?? null);
-      setCachedDSBData({
-        menuItems,
-        planUrls,
-        tables: response.tables || [],
-        selectedPlanIndex: planIndex ?? selectedPlanIndex,
-        lastUpdated: response.last_updated ?? null,
-      });
-    } catch (err) {
-      if (axios.isCancel(err)) return;
-      console.error('DSB plan fetch error:', err);
-      if (!hasCache) setError('Abrufen des Vertretungsplans fehlgeschlagen.');
-    } finally {
-      if (isManualChange || !hasCache) setIsLoadingPlan(false);
-    }
-  };
 
   const getCellValue = (row: Record<string, string> | string[], headerIndex: number, headers: string[]): string => {
     if (Array.isArray(row)) {
@@ -273,15 +137,7 @@ const Dsbmobile: React.FC = () => {
         </div>
       )}
 
-      {isLoadingPlan && (
-        <div className="space-y-4">
-          <div className="skeleton h-6 w-48 mb-4" />
-          <div className="skeleton h-48 w-full" />
-          <div className="skeleton h-48 w-full" />
-        </div>
-      )}
-
-      {!isLoading && !isLoadingPlan && tables.length === 0 && !error && (
+      {!isLoading && tables.length === 0 && !error && (
         <div className="card text-center py-12">
           <CalendarDaysIcon className="mx-auto h-12 w-12 text-surface-400 dark:text-surface-500" />
           <h3 className="mt-2 text-sm font-medium text-surface-900 dark:text-surface-100">Keine Vertretungen</h3>
@@ -291,7 +147,7 @@ const Dsbmobile: React.FC = () => {
         </div>
       )}
 
-      {!isLoading && !isLoadingPlan && tables.length > 0 && visibleTables.length === 0 && !error && (
+      {!isLoading && tables.length > 0 && visibleTables.length === 0 && !error && (
         <div className="card text-center py-12">
           <CalendarDaysIcon className="mx-auto h-12 w-12 text-surface-400 dark:text-surface-500" />
           <h3 className="mt-2 text-sm font-medium text-surface-900 dark:text-surface-100">
@@ -307,13 +163,13 @@ const Dsbmobile: React.FC = () => {
         </div>
       )}
 
-      {!isLoading && !isLoadingPlan && visibleTables.length > 0 && (
+      {!isLoading && visibleTables.length > 0 && (
         <div className="space-y-6">
           {visibleTables
             .map(({ table, tableIdx, filteredRows }) => {
               const dateLabel = table.date
                 ? new Date(table.date).toLocaleDateString('de-DE', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
-                : (menuItems[selectedPlanIndex] || 'Vertretungen');
+                : 'Vertretungen';
               
               return (
                 <div key={tableIdx} className="card overflow-hidden">

@@ -625,6 +625,12 @@ export const calendarAPI = {
 
 // Timetable API
 export const timetableAPI = {
+  async getResolvedTimetable(token: string, options: { view_mode: string; plan_mode: string; week_type?: 'A' | 'B'; refresh?: boolean }, signal?: AbortSignal): Promise<TimetableResponse> {
+    const response = await apiClient.get<TimetableResponse>('/stundenplan/view', {
+      headers: { 'X-Session-Token': token }, params: options, signal,
+    });
+    return response.data;
+  },
   async getTimetable(token: string, signal?: AbortSignal): Promise<TimetableResponse> {
     const response = await apiClient.get<any>('/stundenplan', {
       headers: { 'X-Session-Token': token },
@@ -850,6 +856,12 @@ export const studyGroupsAPI = {
 
 // DSB Mobile API
 export const dsbAPI = {
+  async getSchoolPlan(token: string, signal?: AbortSignal): Promise<DSBPlanResponse> {
+    const response = await apiClient.get<DSBPlanResponse>('/dsb/school-plan', {
+      headers: { 'X-Session-Token': token }, signal,
+    });
+    return response.data;
+  },
   async login(token: string, credentials: DSBLoginRequest, signal?: AbortSignal): Promise<DSBLoginResponse> {
     const response = await apiClient.post<DSBLoginResponse>('/dsb/login', credentials, {
       headers: { 'X-Session-Token': token },

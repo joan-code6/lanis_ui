@@ -19,22 +19,19 @@ import { useBasePath } from '../../contexts/BasePathContext';
 import { usePreferences } from '../../contexts/PreferencesContext';
 import { timetableAPI } from '../../services/api';
 import { StudyGroupExam, TimetableDay, TimetableLesson, TimetableResponse } from '../../types';
-import { projectTimetableDays, weekTypeForDate } from '../../utils/timetableView';
+import { weekTypeForDate } from '../../utils/timetableView';
 import SEO from '../seo/SEO';
 import { timetableEntries } from '../../utils/timetableExams';
-import { applySubstitutions, Substitution } from '../../utils/timetableSubstitutions';
-import { loadTimetableSubstitutions } from '../../services/timetableSubstitutions';
 
 const Timetable: React.FC = () => {
-  const { token, user } = useAuth();
+  const { token } = useAuth();
   const { preferences } = usePreferences();
   const navigate = useNavigate();
   const basePath = useBasePath();
-  const [personalDays, setPersonalDays] = useState<TimetableDay[]>([]);
-  const [allDays, setAllDays] = useState<TimetableDay[]>([]);
+  const [visibleDays, setVisibleDays] = useState<TimetableDay[]>([]);
+  const [hasAlternatingWeeks, setHasAlternatingWeeks] = useState(false);
   const [activeWeek, setActiveWeek] = useState<'A' | 'B' | undefined>();
   const [referenceWeekStart, setReferenceWeekStart] = useState<string>();
-  const [customLessons, setCustomLessons] = useState<NonNullable<TimetableResponse['custom_lessons']>>([]);
   const timetableViewMode = preferences.timetable.view_mode;
   const [planMode, setPlanMode] = useState<'personal' | 'all'>('personal');
   const [selectedWeek, setSelectedWeek] = useState<'A' | 'B' | undefined>();
@@ -44,10 +41,8 @@ const Timetable: React.FC = () => {
   const [exams, setExams] = useState<StudyGroupExam[]>([]);
   const [timeSlots, setTimeSlots] = useState<NonNullable<TimetableResponse['time_slots']>>([]);
   const [examsError, setExamsError] = useState(false);
-  const [substitutions, setSubstitutions] = useState<Substitution[]>([]);
   const [substitutionSources, setSubstitutionSources] = useState<{ name: string; error: boolean; updated?: string | null }[]>([]);
-  const [substitutionsLoading, setSubstitutionsLoading] = useState(false);
-  const ownClass = String(user?.klasse || user?.class || user?.Klasse || '');
+  const lastRefreshKey = useRef(0);
   const dayScrollerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -58,14 +53,17 @@ const Timetable: React.FC = () => {
     setExams([]);
     setExamsError(false);
 
-    timetableAPI.getTimetable(token, controller.signal)
+    const refresh = reloadKey !== lastRefreshKey.current;
+    lastRefreshKey.current = reloadKey;
+    timetableAPI.getResolvedTimetable(token, { view_mode: timetableViewMode, plan_mode: planMode, week_type: selectedWeek, refresh }, controller.signal)
       .then(response => {
+        if (controller.signal.aborted) return;
         if (!response.success) throw new Error(response.message || 'Der Stundenplan konnte nicht geladen werden.');
-        setPersonalDays(response.personal_days || response.days || []);
-        setAllDays(response.all_days || response.days || []);
+        setVisibleDays(response.days || []);
+        setHasAlternatingWeeks(Boolean(response.has_alternating_weeks));
+        setSubstitutionSources(response.substitution_sources || []);
         setActiveWeek(response.active_week);
         setReferenceWeekStart(response.week_start);
-        setCustomLessons(response.custom_lessons || []);
         setExams(response.exams || []);
         setTimeSlots(response.time_slots || []);
         setExamsError(Boolean(response.exams_error));
@@ -79,57 +77,12 @@ const Timetable: React.FC = () => {
       });
 
     return () => controller.abort();
-  }, [token, reloadKey]);
+  }, [token, reloadKey, timetableViewMode, planMode, selectedWeek]);
 
-  useEffect(() => {
-    if (!token) return;
-    const controller = new AbortController();
-    setSubstitutions([]);
-    setSubstitutionSources([]);
-    setSubstitutionsLoading(true);
-    loadTimetableSubstitutions(token, String(user?.school_id || ''), controller.signal, reloadKey > 0)
-      .then(result => {
-        if (controller.signal.aborted) return;
-        setSubstitutions(result.changes);
-        setSubstitutionSources(result.sources);
-      })
-      .catch(() => {
-        if (!controller.signal.aborted) setSubstitutionSources([{ name: 'Vertretungspläne', error: true }]);
-      })
-      .finally(() => { if (!controller.signal.aborted) setSubstitutionsLoading(false); });
-    return () => controller.abort();
-  }, [token, user?.school_id, reloadKey]);
-
-  const selectedDays = planMode === 'all' ? allDays : personalDays;
-  const hasAlternatingWeeks = useMemo(() => {
-    const weekTypes = new Set([
-      ...selectedDays.flatMap(day => day.lessons.map(lesson => lesson.week_type)),
-      ...customLessons.map(lesson => lesson.week_type),
-    ]);
-    return weekTypes.has('A') && weekTypes.has('B');
-  }, [customLessons, selectedDays]);
-  const weekOverride = timetableViewMode === 'week' && hasAlternatingWeeks
-    ? selectedWeek || (activeWeek ? undefined : 'A')
-    : undefined;
-  const visibleDays = useMemo(() => {
-    const projected = projectTimetableDays(
-      selectedDays,
-      activeWeek,
-      referenceWeekStart,
-      timetableViewMode,
-      customLessons,
-      new Date(),
-      weekOverride,
-    );
-    // A manually selected alternate week is a template preview, not that date's lessons.
-    const dated = projected.filter(day => !weekOverride || !activeWeek || !referenceWeekStart ||
-      weekTypeForDate(new Date(`${day.date}T12:00:00`), new Date(`${referenceWeekStart}T12:00:00`), activeWeek) === weekOverride);
-    const enriched = applySubstitutions(dated, substitutions, ownClass, timeSlots);
-    return projected.map(day => enriched.find(item => item.date === day.date) || { ...day, substitutionNotices: [] });
-  }, [activeWeek, customLessons, referenceWeekStart, selectedDays, timetableViewMode, weekOverride, substitutions, ownClass, timeSlots]);
+  const weekOverride = timetableViewMode === 'week' && hasAlternatingWeeks ? selectedWeek : undefined;
   const displayedExams = preferences.timetable.show_exams ? exams : [];
   const visibleExamCount = visibleDays.reduce((total, day) => total + displayedExams.filter(exam => exam.date === day.date).length, 0);
-  const noticeCount = visibleDays.reduce((total, day) => total + day.substitutionNotices.length, 0);
+  const noticeCount = visibleDays.reduce((total, day) => total + (day.substitutionNotices || []).length, 0);
   const lessonCount = useMemo(() => visibleDays.reduce((total, day) => total + day.lessons.length, 0), [visibleDays]);
   const firstVisibleDate = visibleDays[0]?.date ? new Date(`${visibleDays[0].date}T12:00:00`) : undefined;
   const lastVisibleDay = visibleDays[visibleDays.length - 1];
@@ -190,11 +143,10 @@ const Timetable: React.FC = () => {
         </div>
 
         <div role="status" className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-surface-500 dark:text-surface-400">
-          {substitutionsLoading && <span>Vertretungspläne werden abgeglichen …</span>}
           {substitutionSources.map(source => <span key={source.name} className={source.error ? 'text-amber-700 dark:text-amber-300' : ''}>
             {source.name}: {source.error ? 'nicht geladen – Änderungen können fehlen' : source.updated ? `Stand ${formatSourceDate(source.updated)}` : 'abgeglichen'}
           </span>)}
-          <button type="button" disabled={loading || substitutionsLoading} onClick={() => setReloadKey(value => value + 1)} className="font-medium text-primary-600 disabled:opacity-50 dark:text-primary-400">Aktualisieren</button>
+          <button type="button" disabled={loading} onClick={() => setReloadKey(value => value + 1)} className="font-medium text-primary-600 disabled:opacity-50 dark:text-primary-400">Aktualisieren</button>
         </div>
 
         {preferences.timetable.show_exams && examsError && (
@@ -236,8 +188,8 @@ const Timetable: React.FC = () => {
                     <p className="mt-0.5 text-xs text-surface-500">{format(date, 'd. MMMM', { locale: de })}</p>
                   </div>
                   <div className="space-y-2 p-3">
-                    {day.lessons.length === 0 && day.substitutionNotices.length === 0 && !displayedExams.some(exam => exam.date === day.date) && <p className="py-8 text-center text-sm text-surface-400">Unterrichtsfrei</p>}
-                    {day.substitutionNotices.map((item, index) => <div key={`notice-${index}`} className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs dark:border-amber-800 dark:bg-amber-950/30">
+                    {day.lessons.length === 0 && (day.substitutionNotices || []).length === 0 && !displayedExams.some(exam => exam.date === day.date) && <p className="py-8 text-center text-sm text-surface-400">Unterrichtsfrei</p>}
+                    {(day.substitutionNotices || []).map((item, index) => <div key={`notice-${index}`} className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs dark:border-amber-800 dark:bg-amber-950/30">
                       <p className="font-semibold text-amber-800 dark:text-amber-200">{item.kind || 'Vertretung'} · {item.periods.length ? `${item.periods.join(', ')}. Std.` : 'Stunde offen'}</p>
                       <p className="mt-1">{[item.classes, item.subject, item.teacher, item.room, item.info].filter(Boolean).join(' · ')}</p>
                       <p className="mt-1 text-surface-500">Nicht eindeutig zugeordnet · {item.source}</p>
