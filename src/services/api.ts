@@ -856,9 +856,9 @@ export const studyGroupsAPI = {
 
 // DSB Mobile API
 export const dsbAPI = {
-  async getSchoolPlan(token: string, signal?: AbortSignal): Promise<DSBPlanResponse> {
+  async getSchoolPlan(token: string, refresh = false, signal?: AbortSignal): Promise<DSBPlanResponse> {
     const response = await apiClient.get<DSBPlanResponse>('/dsb/school-plan', {
-      headers: { 'X-Session-Token': token }, signal,
+      headers: { 'X-Session-Token': token }, params: { refresh }, signal,
     });
     return response.data;
   },

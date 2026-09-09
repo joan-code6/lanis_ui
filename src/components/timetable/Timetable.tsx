@@ -52,6 +52,7 @@ const Timetable: React.FC = () => {
     setError('');
     setExams([]);
     setExamsError(false);
+    setSubstitutionSources([]);
 
     const refresh = reloadKey !== lastRefreshKey.current;
     lastRefreshKey.current = reloadKey;
@@ -69,7 +70,7 @@ const Timetable: React.FC = () => {
         setExamsError(Boolean(response.exams_error));
       })
       .catch(err => {
-        if (axios.isCancel(err)) return;
+        if (controller.signal.aborted || axios.isCancel(err)) return;
         setError(err.response?.data?.detail || err.message || 'Der Stundenplan konnte nicht geladen werden.');
       })
       .finally(() => {
@@ -77,7 +78,7 @@ const Timetable: React.FC = () => {
       });
 
     return () => controller.abort();
-  }, [token, reloadKey, timetableViewMode, planMode, selectedWeek]);
+  }, [token, reloadKey, timetableViewMode, planMode, selectedWeek, preferences.vertretungsplan.class_override]);
 
   const weekOverride = timetableViewMode === 'week' && hasAlternatingWeeks ? selectedWeek : undefined;
   const displayedExams = preferences.timetable.show_exams ? exams : [];

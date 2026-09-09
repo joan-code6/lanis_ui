@@ -674,6 +674,11 @@ export function getMockResponse(url: string, method: string, config: any): { dat
   if (u === '/stundenplan/view' && method === 'get') {
     const template = getMockTimetable();
     const days = projectTimetableDays(template, 'A', template[0].date, config?.params?.view_mode || 'rolling', mockCustomLessons, new Date(), config?.params?.week_type);
+    const weekTypes = new Set([
+      ...template.flatMap(day => day.lessons.map(lesson => (lesson as DemoLesson & { week_type?: string }).week_type)),
+      ...mockCustomLessons.map(lesson => lesson.week_type),
+    ]);
+    const hasAlternatingWeeks = weekTypes.has('A') && weekTypes.has('B');
     // Fictional resolved response; production matching belongs to lanis_api.
     const firstDay = days.find(day => day.lessons.length);
     if (firstDay && !config?.params?.week_type) {
@@ -682,7 +687,7 @@ export function getMockResponse(url: string, method: string, config: any): { dat
       lesson.substitution = { source: 'Schulportal', date: firstDay.date, periods: [], classes: '9C', subject: lesson.subject, oldSubject: lesson.subject, teacher: lesson.teacher || '', oldTeacher: lesson.teacher || '', room: 'B105', kind: 'Raumwechsel', info: '', group: '', cancelled: false };
       lesson.room = 'B105';
     }
-    return { status: 200, data: { success: true, days, week_start: template[0].date, active_week: 'A', has_alternating_weeks: true, exams: mockStudyGroupExams, substitution_sources: [{ name: 'Schulportal', error: false, updated: now.toISOString() }, { name: 'DSB', error: false, updated: now.toISOString() }] } };
+    return { status: 200, data: { success: true, days, week_start: template[0].date, active_week: 'A', has_alternating_weeks: hasAlternatingWeeks, exams: mockStudyGroupExams, substitution_sources: [{ name: 'Schulportal', error: false, updated: now.toISOString() }, { name: 'DSB', error: false, updated: now.toISOString() }] } };
   }
   if (u === '/stundenplan' && method === 'get') {
     const days = getMockTimetable();

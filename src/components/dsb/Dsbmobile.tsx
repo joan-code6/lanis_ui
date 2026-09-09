@@ -4,7 +4,7 @@ import { dsbAPI } from '../../services/api';
 import axios from 'axios';
 import { DSBPlanTable } from '../../types';
 import SEO from '../seo/SEO';
-import { CalendarDaysIcon } from '@heroicons/react/24/outline';
+import { ArrowPathIcon, CalendarDaysIcon } from '@heroicons/react/24/outline';
 
 function formatLastUpdated(value: string): string {
   const date = new Date(value);
@@ -18,6 +18,7 @@ const Dsbmobile: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [showAllClasses, setShowAllClasses] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
   const userClass = user?.klasse || user?.class || user?.Klasse || '';
 
   useEffect(() => {
@@ -27,7 +28,7 @@ const Dsbmobile: React.FC = () => {
     setTables([]);
     setLastUpdated(null);
     setError('');
-    dsbAPI.getSchoolPlan(token, controller.signal)
+    dsbAPI.getSchoolPlan(token, reloadKey > 0, controller.signal)
       .then(response => {
         if (controller.signal.aborted) return;
         if (!response.success) throw new Error(response.error || 'Vertretungsplan konnte nicht geladen werden.');
@@ -39,7 +40,7 @@ const Dsbmobile: React.FC = () => {
       })
       .finally(() => { if (!controller.signal.aborted) setIsLoading(false); });
     return () => controller.abort();
-  }, [token]);
+  }, [token, reloadKey]);
 
   const getCellValue = (row: Record<string, string> | string[], headerIndex: number, headers: string[]): string => {
     if (Array.isArray(row)) {
@@ -109,7 +110,7 @@ const Dsbmobile: React.FC = () => {
         </p>
       </div>
 
-      <div className="flex items-center justify-between mb-6">
+      <div className="mb-6 flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           {userClass && (
             <button
@@ -121,6 +122,15 @@ const Dsbmobile: React.FC = () => {
             </button>
           )}
         </div>
+        <button
+          type="button"
+          onClick={() => setReloadKey(value => value + 1)}
+          disabled={isLoading}
+          className="btn btn-secondary shrink-0"
+        >
+          <ArrowPathIcon className={`mr-1.5 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} aria-hidden="true" />
+          Aktualisieren
+        </button>
       </div>
 
       {error && (
