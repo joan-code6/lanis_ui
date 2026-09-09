@@ -22,9 +22,11 @@ import { StudyGroupExam, TimetableDay, TimetableLesson, TimetableResponse } from
 import { projectTimetableDays, weekTypeForDate } from '../../utils/timetableView';
 import SEO from '../seo/SEO';
 import { timetableEntries } from '../../utils/timetableExams';
+import { applySubstitutions, Substitution } from '../../utils/timetableSubstitutions';
+import { loadTimetableSubstitutions } from '../../services/timetableSubstitutions';
 
 const Timetable: React.FC = () => {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const { preferences } = usePreferences();
   const navigate = useNavigate();
   const basePath = useBasePath();
@@ -42,6 +44,10 @@ const Timetable: React.FC = () => {
   const [exams, setExams] = useState<StudyGroupExam[]>([]);
   const [timeSlots, setTimeSlots] = useState<NonNullable<TimetableResponse['time_slots']>>([]);
   const [examsError, setExamsError] = useState(false);
+  const [substitutions, setSubstitutions] = useState<Substitution[]>([]);
+  const [substitutionSources, setSubstitutionSources] = useState<{ name: string; error: boolean; updated?: string | null }[]>([]);
+  const [substitutionsLoading, setSubstitutionsLoading] = useState(false);
+  const ownClass = String(user?.klasse || user?.class || user?.Klasse || '');
   const dayScrollerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -75,6 +81,25 @@ const Timetable: React.FC = () => {
     return () => controller.abort();
   }, [token, reloadKey]);
 
+  useEffect(() => {
+    if (!token) return;
+    const controller = new AbortController();
+    setSubstitutions([]);
+    setSubstitutionSources([]);
+    setSubstitutionsLoading(true);
+    loadTimetableSubstitutions(token, String(user?.school_id || ''), controller.signal, reloadKey > 0)
+      .then(result => {
+        if (controller.signal.aborted) return;
+        setSubstitutions(result.changes);
+        setSubstitutionSources(result.sources);
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setSubstitutionSources([{ name: 'Vertretungspläne', error: true }]);
+      })
+      .finally(() => { if (!controller.signal.aborted) setSubstitutionsLoading(false); });
+    return () => controller.abort();
+  }, [token, user?.school_id, reloadKey]);
+
   const selectedDays = planMode === 'all' ? allDays : personalDays;
   const hasAlternatingWeeks = useMemo(() => {
     const weekTypes = new Set([
@@ -87,7 +112,7 @@ const Timetable: React.FC = () => {
     ? selectedWeek || (activeWeek ? undefined : 'A')
     : undefined;
   const visibleDays = useMemo(() => {
-    return projectTimetableDays(
+    const projected = projectTimetableDays(
       selectedDays,
       activeWeek,
       referenceWeekStart,
@@ -96,9 +121,15 @@ const Timetable: React.FC = () => {
       new Date(),
       weekOverride,
     );
-  }, [activeWeek, customLessons, referenceWeekStart, selectedDays, timetableViewMode, weekOverride]);
+    // A manually selected alternate week is a template preview, not that date's lessons.
+    const dated = projected.filter(day => !weekOverride || !activeWeek || !referenceWeekStart ||
+      weekTypeForDate(new Date(`${day.date}T12:00:00`), new Date(`${referenceWeekStart}T12:00:00`), activeWeek) === weekOverride);
+    const enriched = applySubstitutions(dated, substitutions, ownClass, timeSlots);
+    return projected.map(day => enriched.find(item => item.date === day.date) || { ...day, substitutionNotices: [] });
+  }, [activeWeek, customLessons, referenceWeekStart, selectedDays, timetableViewMode, weekOverride, substitutions, ownClass, timeSlots]);
   const displayedExams = preferences.timetable.show_exams ? exams : [];
   const visibleExamCount = visibleDays.reduce((total, day) => total + displayedExams.filter(exam => exam.date === day.date).length, 0);
+  const noticeCount = visibleDays.reduce((total, day) => total + day.substitutionNotices.length, 0);
   const lessonCount = useMemo(() => visibleDays.reduce((total, day) => total + day.lessons.length, 0), [visibleDays]);
   const firstVisibleDate = visibleDays[0]?.date ? new Date(`${visibleDays[0].date}T12:00:00`) : undefined;
   const lastVisibleDay = visibleDays[visibleDays.length - 1];
@@ -114,8 +145,12 @@ const Timetable: React.FC = () => {
 
   useLayoutEffect(() => {
     if (loading || !window.matchMedia('(max-width: 639px)').matches) return;
-    const today = dayScrollerRef.current?.querySelector<HTMLElement>('[data-today="true"]');
-    today?.scrollIntoView({ behavior: 'auto', block: 'nearest', inline: 'start' });
+    const scroller = dayScrollerRef.current;
+    const today = scroller?.querySelector<HTMLElement>('[data-today="true"]');
+    if (scroller && today) scroller.scrollTo({
+      left: scroller.scrollLeft + today.getBoundingClientRect().left - scroller.getBoundingClientRect().left,
+      behavior: 'auto',
+    });
   }, [loading, planMode, visibleDays]);
 
   const openCourse = (lesson: TimetableLesson) => {
@@ -154,6 +189,14 @@ const Timetable: React.FC = () => {
           )}
         </div>
 
+        <div role="status" className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-surface-500 dark:text-surface-400">
+          {substitutionsLoading && <span>Vertretungspläne werden abgeglichen …</span>}
+          {substitutionSources.map(source => <span key={source.name} className={source.error ? 'text-amber-700 dark:text-amber-300' : ''}>
+            {source.name}: {source.error ? 'nicht geladen – Änderungen können fehlen' : source.updated ? `Stand ${formatSourceDate(source.updated)}` : 'abgeglichen'}
+          </span>)}
+          <button type="button" disabled={loading || substitutionsLoading} onClick={() => setReloadKey(value => value + 1)} className="font-medium text-primary-600 disabled:opacity-50 dark:text-primary-400">Aktualisieren</button>
+        </div>
+
         {preferences.timetable.show_exams && examsError && (
           <div role="status" className="mb-4 flex flex-wrap items-center gap-2 text-sm text-surface-500 dark:text-surface-400">
             <span>Klausurtermine aus Lerngruppen konnten nicht geladen werden.</span>
@@ -172,7 +215,7 @@ const Timetable: React.FC = () => {
             <p className="mt-1 max-w-md text-sm text-surface-500">{error}</p>
             <button className="btn btn-secondary mt-4" onClick={() => setReloadKey(value => value + 1)}>Erneut versuchen</button>
           </div>
-        ) : lessonCount === 0 && visibleExamCount === 0 ? (
+        ) : lessonCount === 0 && visibleExamCount === 0 && noticeCount === 0 ? (
           <div className="card flex min-h-64 flex-col items-center justify-center text-center">
             <CalendarDaysIcon className="mb-3 h-10 w-10 text-surface-300" />
             <h2 className="font-semibold text-surface-900 dark:text-white">Keine Stunden eingetragen</h2>
@@ -193,7 +236,13 @@ const Timetable: React.FC = () => {
                     <p className="mt-0.5 text-xs text-surface-500">{format(date, 'd. MMMM', { locale: de })}</p>
                   </div>
                   <div className="space-y-2 p-3">
-                    {day.lessons.length === 0 && !displayedExams.some(exam => exam.date === day.date) && <p className="py-8 text-center text-sm text-surface-400">Unterrichtsfrei</p>}
+                    {day.lessons.length === 0 && day.substitutionNotices.length === 0 && !displayedExams.some(exam => exam.date === day.date) && <p className="py-8 text-center text-sm text-surface-400">Unterrichtsfrei</p>}
+                    {day.substitutionNotices.map((item, index) => <div key={`notice-${index}`} className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs dark:border-amber-800 dark:bg-amber-950/30">
+                      <p className="font-semibold text-amber-800 dark:text-amber-200">{item.kind || 'Vertretung'} · {item.periods.length ? `${item.periods.join(', ')}. Std.` : 'Stunde offen'}</p>
+                      <p className="mt-1">{[item.classes, item.subject, item.teacher, item.room, item.info].filter(Boolean).join(' · ')}</p>
+                      <p className="mt-1 text-surface-500">Nicht eindeutig zugeordnet · {item.source}</p>
+                      <Link className="mt-1 inline-block font-medium text-primary-600 dark:text-primary-400" to={`${basePath}/${item.source === 'DSB' ? 'dsb' : 'vertretungsplan'}`}>Plan ansehen →</Link>
+                    </div>)}
                     {timetableEntries(day.lessons, displayedExams.filter(exam => exam.date === day.date), timeSlots).map(({ lesson, exam, replaced }, index) => exam ? (
                       <article key={`exam-${exam.id}-${index}`} className="rounded-xl border border-violet-200 bg-violet-50 p-3 dark:border-violet-800 dark:bg-violet-950/40">
                         <div className="mb-2 flex items-start justify-between gap-2">
@@ -218,7 +267,7 @@ const Timetable: React.FC = () => {
                     ) : (
                       <article
                         key={lesson.id || `${day.date}-${index}`}
-                        className={`rounded-xl border p-3 transition-all ${lesson.cancelled ? 'border-red-200 bg-red-50/70 opacity-75 dark:border-red-900 dark:bg-red-950/30' : 'bg-white dark:bg-surface-900'} ${lesson.course_id ? 'cursor-pointer hover:-translate-y-0.5 hover:border-primary-300 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 dark:hover:border-primary-700 dark:focus-visible:ring-offset-surface-900' : ''}`}
+                        className={`rounded-xl border p-3 transition-all ${lesson.cancelled ? 'border-red-200 bg-red-50/70 opacity-75 dark:border-red-900 dark:bg-red-950/30' : lesson.substitution ? 'border-amber-200 bg-amber-50/60 dark:border-amber-800 dark:bg-amber-950/20' : 'bg-white dark:bg-surface-900'} ${lesson.course_id ? 'cursor-pointer hover:-translate-y-0.5 hover:border-primary-300 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 dark:hover:border-primary-700 dark:focus-visible:ring-offset-surface-900' : ''}`}
                         role={lesson.course_id ? 'link' : undefined}
                         tabIndex={lesson.course_id ? 0 : undefined}
                         aria-label={lesson.course_id ? `${lesson.subject} in Mein Unterricht öffnen` : undefined}
@@ -246,6 +295,10 @@ const Timetable: React.FC = () => {
                           {lesson.teacher && <p className="flex items-center gap-1.5"><UserIcon className="h-3.5 w-3.5" />{lesson.teacher}</p>}
                           {lesson.room && <p className="flex items-center gap-1.5"><MapPinIcon className="h-3.5 w-3.5" />{lesson.room}</p>}
                         </div>
+                        {lesson.substitution && <div className="mt-2 border-t pt-2 text-xs text-amber-800 dark:text-amber-200">
+                          <p className="font-semibold">{lesson.substitution.kind || (lesson.cancelled ? 'Entfall' : 'Vertretung')} · {lesson.substitution.source}</p>
+                          {lesson.original_lesson && <p className="mt-1 text-surface-500">Geplant: {[lesson.original_lesson.subject, lesson.original_lesson.teacher, lesson.original_lesson.room].filter(Boolean).join(' · ')}</p>}
+                        </div>}
                         {lesson.info && <p className="mt-2 border-t pt-2 text-xs text-primary-700 dark:text-primary-300">{lesson.info}</p>}
                         <HomeworkPreview homework={lesson.homework} />
                       </article>
@@ -259,6 +312,11 @@ const Timetable: React.FC = () => {
       </div>
     </div>
   );
+};
+
+const formatSourceDate = (value: string): string => {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value : format(date, 'dd.MM. HH:mm');
 };
 
 const SegmentedControl: React.FC<{

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { dsbSchoolCredentials } from '../../services/timetableSubstitutions';
 import { dsbAPI } from '../../services/api';
 import axios from 'axios';
 import { DSBPlanTable } from '../../types';
@@ -81,7 +82,7 @@ const Dsbmobile: React.FC = () => {
   const [error, setError] = useState('');
   const [showAllClasses, setShowAllClasses] = useState(false);
 
-  const credentials = { username: '282822', password: 'berlin' };
+  const credentials = dsbSchoolCredentials;
   const userClass = user?.klasse || user?.class || user?.Klasse || '';
   const cachedData = getCachedDSBData();
   const hasCache = !!cachedData && cachedData.tables.length > 0;

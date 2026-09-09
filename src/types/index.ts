@@ -631,6 +631,8 @@ export interface TimetableHomework {
 }
 
 export interface TimetableLesson {
+  substitution?: import('../utils/timetableSubstitutions').Substitution;
+  original_lesson?: { subject: string; teacher?: string; room?: string };
   id?: string;
   period?: string | number;
   start_time?: string;

@@ -23,7 +23,7 @@ export const examPeriods = (value: string | null): number[] => {
   return [...periods].sort((a, b) => a - b);
 };
 
-const lessonPeriods = (lesson: TimetableLesson): number[] => {
+export const lessonPeriods = (lesson: TimetableLesson): number[] => {
   const parsed = examPeriods(String(lesson.period ?? ''));
   if (parsed.length !== 1) return parsed;
   return Array.from({ length: Math.max(1, lesson.duration || 1) }, (_, index) => parsed[0] + index);
@@ -35,7 +35,7 @@ const runs = (periods: number[]): number[][] => periods.reduce<number[][]>((resu
   else result.push([period]);
   return result;
 }, []);
-const atPeriods = (lesson: TimetableLesson, periods: number[], slots: TimeSlots): TimetableLesson => {
+export const atPeriods = (lesson: TimetableLesson, periods: number[], slots: TimeSlots): TimetableLesson => {
   const original = lessonPeriods(lesson);
   const first = periods[0];
   const last = periods[periods.length - 1];
