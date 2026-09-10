@@ -623,6 +623,22 @@ export interface SingleCalendarEventResponse {
 }
 
 // Timetable types
+export interface TimetableSubstitution {
+  source: 'DSB' | 'Schulportal';
+  date: string;
+  periods: number[];
+  classes: string;
+  subject: string;
+  oldSubject: string;
+  teacher: string;
+  oldTeacher: string;
+  room: string;
+  kind: string;
+  info: string;
+  group: string;
+  cancelled: boolean;
+}
+
 export interface TimetableHomework {
   entry_id: string | null;
   text: string;
@@ -631,6 +647,8 @@ export interface TimetableHomework {
 }
 
 export interface TimetableLesson {
+  substitution?: TimetableSubstitution;
+  original_lesson?: { subject: string; teacher?: string; room?: string };
   id?: string;
   period?: string | number;
   start_time?: string;
@@ -651,12 +669,15 @@ export interface TimetableLesson {
 }
 
 export interface TimetableDay {
+  substitutionNotices?: TimetableSubstitution[];
   date: string;
   name?: string;
   lessons: TimetableLesson[];
 }
 
 export interface TimetableResponse {
+  has_alternating_weeks?: boolean;
+  substitution_sources?: Array<{ name: string; error: boolean; updated?: string | null }>;
   exams?: StudyGroupExam[];
   exams_error?: string;
   success: boolean;
