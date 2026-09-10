@@ -22,6 +22,7 @@ import { StudyGroupExam, TimetableDay, TimetableLesson, TimetableResponse } from
 import { weekTypeForDate } from '../../utils/timetableView';
 import SEO from '../seo/SEO';
 import { timetableEntries } from '../../utils/timetableExams';
+import { createTimetableRefreshTracker } from '../../utils/timetableRefresh';
 
 const Timetable: React.FC = () => {
   const { token } = useAuth();
@@ -42,7 +43,7 @@ const Timetable: React.FC = () => {
   const [timeSlots, setTimeSlots] = useState<NonNullable<TimetableResponse['time_slots']>>([]);
   const [examsError, setExamsError] = useState(false);
   const [substitutionSources, setSubstitutionSources] = useState<{ name: string; error: boolean; updated?: string | null }[]>([]);
-  const lastRefreshKey = useRef(0);
+  const refreshTracker = useRef(createTimetableRefreshTracker());
   const dayScrollerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -54,12 +55,12 @@ const Timetable: React.FC = () => {
     setExamsError(false);
     setSubstitutionSources([]);
 
-    const refresh = reloadKey !== lastRefreshKey.current;
-    lastRefreshKey.current = reloadKey;
+    const refresh = refreshTracker.current.shouldRefresh(reloadKey);
     timetableAPI.getResolvedTimetable(token, { view_mode: timetableViewMode, plan_mode: planMode, week_type: selectedWeek, refresh }, controller.signal)
       .then(response => {
         if (controller.signal.aborted) return;
         if (!response.success) throw new Error(response.message || 'Der Stundenplan konnte nicht geladen werden.');
+        refreshTracker.current.markSuccessful(reloadKey);
         setVisibleDays(response.days || []);
         setHasAlternatingWeeks(Boolean(response.has_alternating_weeks));
         setSubstitutionSources(response.substitution_sources || []);

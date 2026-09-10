@@ -678,7 +678,7 @@ export function getMockResponse(url: string, method: string, config: any): { dat
       ...template.flatMap(day => day.lessons.map(lesson => (lesson as DemoLesson & { week_type?: string }).week_type)),
       ...mockCustomLessons.map(lesson => lesson.week_type),
     ]);
-    const hasAlternatingWeeks = weekTypes.has('A') && weekTypes.has('B');
+    const hasAlternatingWeeks = weekTypes.has('A') || weekTypes.has('B');
     // Fictional resolved response; production matching belongs to lanis_api.
     const firstDay = days.find(day => day.lessons.length);
     if (firstDay && !config?.params?.week_type) {
