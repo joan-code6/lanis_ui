@@ -1,7 +1,11 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import * as L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import SEO from '../seo/SEO';
 import AppIcon from '../AppIcon';
+import { homepageAPI } from '../../services/api';
+import type { HomepageSchoolMapEntry, HomepageUserMapResponse } from '../../types';
 import {
   BookOpenIcon,
   ChatBubbleLeftRightIcon,
@@ -10,6 +14,7 @@ import {
   UserIcon,
   MapPinIcon,
 } from '@heroicons/react/24/outline';
+
 
 /* ─── Scroll-Reveal Helper ─── */
 
@@ -41,14 +46,14 @@ const Reveal: React.FC<{ delay?: number; children: React.ReactNode; className?: 
 /* ─── Feature Row ─── */
 
 const FeatureRow: React.FC<{
-  label: string; title: string; desc: string; reversed?: boolean; delay?: number; imagePath?: string; children?: React.ReactNode;
+  label: string; title: string; desc: React.ReactNode; reversed?: boolean; delay?: number; imagePath?: string; children?: React.ReactNode;
 }> = ({ label, title, desc, reversed, delay = 0, imagePath, children }) => (
   <Reveal delay={delay}>
     <div className={`flex flex-col ${reversed ? 'md:flex-row-reverse' : 'md:flex-row'} items-center gap-12 md:gap-20`}>
       <div className="flex-1">
         <div className="text-[10px] text-primary-600 dark:text-primary-400 tracking-[0.2em] uppercase mb-3 font-medium">{label}</div>
         <h3 className="text-2xl md:text-3xl font-bold text-[#111] dark:text-surface-100 tracking-tight mb-3">{title}</h3>
-        <p className="text-[15px] text-[#666] dark:text-surface-400 leading-relaxed max-w-md">{desc}</p>
+        <div className="text-[15px] text-[#666] dark:text-surface-400 leading-relaxed max-w-md">{desc}</div>
       </div>
       <div className="flex-1 w-full">
         <div className="w-full aspect-[4/3] rounded-3xl bg-[#f5f5f2] dark:bg-surface-900 border border-black/[0.03] dark:border-white/[0.07] flex items-center justify-center overflow-hidden">
@@ -148,6 +153,132 @@ const NotificationsMock: React.FC = () => (
   </div>
 );
 
+/* ─── Live map: Schulen, die Lanis nutzen ─── */
+
+const isMappableSchool = (school: HomepageSchoolMapEntry) => {
+  const latitude = Number(school.latitude);
+  const longitude = Number(school.longitude);
+  return Number.isFinite(latitude)
+    && Number.isFinite(longitude);
+};
+
+const OpenStreetSchoolMap: React.FC<{ schools: HomepageSchoolMapEntry[] }> = ({ schools }) => {
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<L.Map | null>(null);
+  const markerLayerRef = useRef<L.LayerGroup | null>(null);
+
+  useEffect(() => {
+    if (!mapContainerRef.current || mapRef.current) return;
+
+    const map = L.map(mapContainerRef.current, {
+      center: [50.5, 8.9],
+      zoom: 7,
+      zoomControl: false,
+      dragging: false,
+      scrollWheelZoom: false,
+      doubleClickZoom: false,
+      boxZoom: false,
+      keyboard: false,
+      touchZoom: false,
+      attributionControl: true,
+    });
+
+    map.attributionControl.setPrefix(false);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+      maxZoom: 19,
+    }).addTo(map);
+
+    markerLayerRef.current = L.layerGroup().addTo(map);
+    mapRef.current = map;
+
+    const resizeObserver = new ResizeObserver(() => map.invalidateSize({ animate: false }));
+    resizeObserver.observe(mapContainerRef.current);
+
+    return () => {
+      resizeObserver.disconnect();
+      map.remove();
+      mapRef.current = null;
+      markerLayerRef.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    const markerLayer = markerLayerRef.current;
+    if (!map || !markerLayer) return;
+
+    markerLayer.clearLayers();
+    const coordinates = schools
+      .filter(isMappableSchool)
+      .map(school => L.latLng(Number(school.latitude), Number(school.longitude)));
+
+    coordinates.forEach(coordinate => {
+      L.circleMarker(coordinate, {
+        radius: 6,
+        stroke: false,
+        fill: true,
+        fillColor: '#06b6d4',
+        fillOpacity: 1,
+        interactive: false,
+        className: 'school-map-point',
+      }).addTo(markerLayer);
+    });
+
+    if (coordinates.length === 1) {
+      map.setView(coordinates[0], 11, { animate: false });
+    } else if (coordinates.length > 1) {
+      map.fitBounds(L.latLngBounds(coordinates), {
+        padding: [32, 32],
+        maxZoom: 11,
+        animate: false,
+      });
+    } else {
+      map.setView([50.5, 8.9], 7, { animate: false });
+    }
+  }, [schools]);
+
+  const mappedSchoolCount = schools.filter(isMappableSchool).length;
+  const mappedSchoolLabel = mappedSchoolCount === 1 ? 'Schulstandort' : 'Schulstandorte';
+
+  return (
+    <div
+      ref={mapContainerRef}
+      className="h-full w-full [&_.leaflet-control-attribution]:!bg-white/75 [&_.leaflet-control-attribution]:!text-[8px] [&_.school-map-point]:!fill-[rgb(var(--color-primary-500))]"
+      role="img"
+      aria-label={`${mappedSchoolCount} ${mappedSchoolLabel} auf einer OpenStreetMap-Karte`}
+    />
+  );
+};
+
+const growthDescription = (data: HomepageUserMapResponse | null) => {
+  if (!data) return 'Die Karte zeigt live, an welchen Schulen Lanis bereits im Schulalltag genutzt wird.';
+
+  const schoolCount = data.summary.schools;
+  const userCount = data.summary.known_users;
+  const schoolText = schoolCount === 1 ? 'einer Schule' : `${schoolCount} Schulen`;
+  const userVerb = userCount === 1 ? 'nutzt' : 'nutzen';
+  const userNoun = userCount === 1 ? 'Person' : 'Schülerinnen, Schüler und Lehrkräfte';
+
+  return `Seit 2026 ist Lanis bereits an ${schoolText} im Einsatz. Aktuell ${userVerb} ${userCount} ${userNoun} die Plattform im Schulalltag. `;
+};
+
+const userCount = (data: HomepageUserMapResponse | null) => {
+  if (!data) return 'Die Karte zeigt live, an welchen Schulen Lanis bereits im Schulalltag genutzt wird.';
+
+  const userCount = data.summary.known_users;
+
+  return userCount;
+};
+
+const schoolCount = (data: HomepageUserMapResponse | null) => {
+  if (!data) return 'Die Karte zeigt live, an welchen Schulen Lanis bereits im Schulalltag genutzt wird.';
+
+  const schoolCount = data.summary.schools;
+
+  return schoolCount;
+};
+
 /* ─── Landingpage ─── */
 
 const Landingpage: React.FC = () => {
@@ -156,8 +287,22 @@ const Landingpage: React.FC = () => {
   const [isDragging, setIsDragging] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const [heroVisible, setHeroVisible] = useState(false);
+  const [schoolMap, setSchoolMap] = useState<HomepageUserMapResponse | null>(null);
 
   useEffect(() => { setHeroVisible(true); }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    homepageAPI.getUserMap(controller.signal)
+      .then((response) => {
+        if (!response.success) throw new Error('The homepage user map request was not successful.');
+        setSchoolMap(response);
+      })
+      .catch(() => undefined);
+
+    return () => controller.abort();
+  }, []);
 
   const handleMove = useCallback((clientX: number) => {
     if (!containerRef.current) return;
@@ -278,20 +423,32 @@ const Landingpage: React.FC = () => {
 
         {/* ═══ Stats bar ═══ */}
         <section className="max-w-6xl mx-auto px-6 pb-24">
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+            <Stat value={userCount(schoolMap).toString()} label="Nutzer" />
+            <Stat value={schoolCount(schoolMap).toString()} label="Schulen"/>
             <Stat value="47 ms" label="Ladezeit aus dem Cache" delay={100} />
             <Stat value="6" label="Farbthemen" delay={200} />
             <Stat value="3" label="Klicks bis zu jedem Modul" delay={300} />
+
+
           </div>
         </section>
-
         {/* ═══ Feature Rows ═══ */}
         <section className="max-w-6xl mx-auto px-6 pb-32 space-y-32">
+          <FeatureRow
+            label="Statistiken"
+            title="Lanis wächst"
+            desc={growthDescription(schoolMap)}
+
+          >
+            <OpenStreetSchoolMap schools={schoolMap?.schools ?? []} />
+          </FeatureRow>
           <FeatureRow
             label="Hausaufgaben"
             title="Steht direkt im Stundenplan"
             desc="An jeder Stunde siehst du auf einen Blick, welche Aufgaben anstehen. Erledigtes häkst du direkt ab, ein umständlicher Blick in „Mein Unterricht“ ist nicht mehr nötig."
             delay={200}
+            reversed
           >
             <TimetableMock />
           </FeatureRow>
@@ -299,7 +456,6 @@ const Landingpage: React.FC = () => {
             label="Benachrichtigungen"
             title="Nichts mehr verpassen"
             desc="Neue Nachricht oder geänderter Vertretungsplan? Lanis schickt dir eine Web-Push-Benachrichtigung, sobald etwas Wichtiges passiert, auch wenn du die Seite gerade nicht offen hast. Einmal in den Einstellungen aktivieren, fertig."
-            reversed
             delay={300}
           >
             <NotificationsMock />
@@ -310,13 +466,13 @@ const Landingpage: React.FC = () => {
             title="Sofort da"
             desc="Besuchte Seiten sind dank intelligentem Caching in unter 50 Millisekunden wieder da. Kein Warten, keine Ladeanzeigen. Einfach weitermachen."
             delay={400}
+            reversed
           />
           <FeatureRow
             imagePath="/landing/themes.png"
             label="Design"
             title="Modern statt Behörde"
             desc="Dark Mode, sechs sorgfältig abgestimmte Farbthemen und klare Typografie: Lanis fühlt sich an wie moderne Software und nicht wie ein Formular der Verwaltung."
-            reversed
             delay={500}
           />
           <FeatureRow
@@ -325,6 +481,7 @@ const Landingpage: React.FC = () => {
             title="Alles griffbereit"
             desc="Direkte Sidebar statt verschachtelter Menüs, globale Suche und anpinnbare Module: Du kommst in höchstens drei Klicks zu jedem Modul, ganz ohne Suchen."
             delay={600}
+            reversed
           />
         </section>
 

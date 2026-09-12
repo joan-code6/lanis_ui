@@ -3,6 +3,7 @@ import {
   DistrictSchoolsResponse,
   SchoolSearchResponse,
   SchoolSearchResult,
+  HomepageUserMapResponse,
   WahlenFormResponse,
   WahlenOverviewResponse,
   WahlenSubmitResponse,
@@ -205,6 +206,13 @@ const apiClient: AxiosInstance = axios.create({
     'Content-Type': 'application/json',
   },
 });
+
+export const homepageAPI = {
+  async getUserMap(signal?: AbortSignal): Promise<HomepageUserMapResponse> {
+    const response = await apiClient.get<HomepageUserMapResponse>('/homepage/user-map', { signal });
+    return response.data;
+  },
+};
 
 // Auth API
 const ACCESS_TOKEN_KEY = 'auth_access_token';
