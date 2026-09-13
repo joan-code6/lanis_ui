@@ -12,7 +12,7 @@ export default function UptimePreview() {
       aria-label="Öffentlichen Status ansehen"
       className="flex h-full w-full items-center justify-center p-6 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-4px] focus-visible:outline-primary-500 sm:p-9"
     >
-      <div className="w-full max-w-sm rounded-2xl border border-black/[0.05] bg-white p-5 shadow-soft-md dark:border-white/[0.08] dark:bg-surface-900 sm:p-6">
+      <div className="w-full max-w-sm">
         <div className="flex items-center justify-between gap-4">
           <div>
             <p className="text-xs text-surface-500">Schulportal Hessen</p>
