@@ -521,8 +521,17 @@ const Landingpage: React.FC = () => {
         {/* ═══ Feature Rows ═══ */}
         <section className="max-w-6xl mx-auto px-6 pb-32 space-y-32">
           <FeatureRow
+            label="Verfügbarkeit"
+            title="Deine Daten bleiben verfügbar"
+            desc="Bereits geladene Inhalte bleiben bei Schulportal-Störungen bis zu 24 Stunden verfügbar."
+            delay={500}
+          >
+            <UptimePreview />
+          </FeatureRow>
+          <FeatureRow
             label="Statistiken"
             title="Lanis wächst"
+            reversed
             desc={schoolMap.status === 'ready' ? (
               <p>{growthDescription(schoolMap.data)}</p>
             ) : (
@@ -540,7 +549,7 @@ const Landingpage: React.FC = () => {
             title="Steht direkt im Stundenplan"
             desc="An jeder Stunde siehst du auf einen Blick, welche Aufgaben anstehen. Erledigtes häkst du direkt ab, ein umständlicher Blick in „Mein Unterricht“ ist nicht mehr nötig."
             delay={200}
-            reversed
+            
           >
             <TimetableMock />
           </FeatureRow>
@@ -549,6 +558,7 @@ const Landingpage: React.FC = () => {
             title="Nichts mehr verpassen"
             desc="Neue Nachricht oder geänderter Vertretungsplan? Lanis schickt dir eine Web-Push-Benachrichtigung, sobald etwas Wichtiges passiert, auch wenn du die Seite gerade nicht offen hast. Einmal in den Einstellungen aktivieren, fertig."
             delay={300}
+            reversed
           >
             <NotificationsMock />
           </FeatureRow>
@@ -558,16 +568,8 @@ const Landingpage: React.FC = () => {
             title="Sofort da"
             desc="Besuchte Seiten sind dank intelligentem Caching in unter 50 Millisekunden wieder da. Kein Warten, keine Ladeanzeigen. Einfach weitermachen."
             delay={400}
-            reversed
+
           />
-          <FeatureRow
-            label="Verfügbarkeit"
-            title="Schulportal down? Deine Daten bleiben da."
-            desc="Bereits geladene Inhalte bleiben bei Schulportal-Störungen bis zu 24 Stunden verfügbar."
-            delay={500}
-          >
-            <UptimePreview />
-          </FeatureRow>
           <FeatureRow
             imagePath="/landing/themes.png"
             label="Design"
@@ -575,6 +577,7 @@ const Landingpage: React.FC = () => {
             desc="Dark Mode, sechs sorgfältig abgestimmte Farbthemen und klare Typografie: Lanis fühlt sich an wie moderne Software und nicht wie ein Formular der Verwaltung."
             reversed
             delay={600}
+            reversed
           />
           <FeatureRow
             imagePath="/landing/navigation.png"
