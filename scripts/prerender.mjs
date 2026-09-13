@@ -76,6 +76,7 @@ const server = createServer((req, res) => {
 
 const routes = [
   { path: '/', file: 'index.html' },
+  { path: '/status', file: 'status/index.html' },
   { path: '/impressum', file: 'impressum/index.html' },
   { path: '/login', file: 'login/index.html' },
 ];
@@ -136,7 +137,24 @@ async function prerender() {
       await page.setRequestInterception(true);
       page.on('request', (req) => {
         const url = req.url();
-        if (url.includes('/api/school-list')) {
+        if (req.resourceType() === 'fetch' && new URL(url).pathname === '/status') {
+          const now = new Date().toISOString();
+          const empty = { checks: 0, available_checks: 0, failed_checks: 0, unknown_checks: 0, uptime_percent: null, coverage_percent: 0 };
+          req.respond({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({
+              success: true,
+              service: 'Schulportal Hessen',
+              generated_at: now,
+              current: { status: 'unknown', checked_at: null, stale: true, features: [] },
+              summary: { ...empty, period_days: 90 },
+              daily: Array.from({ length: 90 }, (_, index) => ({ ...empty, day: String(index), status: 'unknown' })),
+              incidents: [],
+              measurement: { interval_seconds: 300, stale_after_seconds: 600, period_start: now, period_end: now, description: 'Regelmäßige Prüfungen von Anmeldung und Modulen.' },
+            }),
+          });
+        } else if (url.includes('/api/school-list')) {
           req.respond({
             status: 200,
             contentType: 'application/json',
@@ -170,6 +188,7 @@ async function prerender() {
 
     console.log('\nPrerendering complete!');
     console.log('  dist/index.html              — Landing page');
+    console.log('  dist/status/index.html       — Public status');
     console.log('  dist/impressum/index.html    — Impressum');
     console.log('  dist/login/index.html        — Login');
   } finally {

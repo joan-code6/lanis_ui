@@ -1067,3 +1067,23 @@ apiClient.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+// Optional snapshot metadata must never turn a missing/unsupported endpoint into logout.
+export const cacheStatusAPI = {
+  async get(token: string, signal?: AbortSignal): Promise<{ available: boolean; last_successful_fetch_at: string | null; snapshot_count: number; retention_seconds: number }> {
+    const response = await apiClient.get('/cache/status', {
+      headers: { 'X-Session-Token': token }, signal, validateStatus: () => true,
+    });
+    if (response.status !== 200) throw new Error('Cache status unavailable');
+    const value: unknown = response.data;
+    if (!value || typeof value !== 'object') throw new Error('Invalid cache status');
+    const status = value as Record<string, unknown>;
+    if (typeof status.available !== 'boolean'
+      || (status.last_successful_fetch_at !== null && typeof status.last_successful_fetch_at !== 'string')
+      || !Number.isInteger(status.snapshot_count) || Number(status.snapshot_count) < 0
+      || !Number.isFinite(status.retention_seconds) || Number(status.retention_seconds) < 0) {
+      throw new Error('Invalid cache status');
+    }
+    return status as { available: boolean; last_successful_fetch_at: string | null; snapshot_count: number; retention_seconds: number };
+  },
+};
