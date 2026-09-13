@@ -155,7 +155,6 @@ const NotificationsMock: React.FC = () => (
 /* ─── Live map: Schulen, die Lanis nutzen ─── */
 
 const HESSEN_CENTER: L.LatLngExpression = [50.5, 8.9];
-const MINIMUM_ACCOUNTS_PER_MAP_PIN = 5;
 const formatCount = new Intl.NumberFormat('de-DE');
 
 const getSchoolCoordinate = (school: HomepageSchoolMapEntry): L.LatLng | null => {
@@ -283,7 +282,7 @@ const OpenStreetSchoolMap: React.FC<{ schools: HomepageSchoolMapEntry[] }> = ({ 
       ref={mapContainerRef}
       className="h-full w-full [&_.leaflet-control-attribution]:!bg-white/85 [&_.school-map-point]:!fill-[rgb(var(--color-primary-500))] [&_.school-map-count]:!border-0 [&_.school-map-count]:!bg-primary-500 [&_.school-map-count]:!px-1.5 [&_.school-map-count]:!py-0.5 [&_.school-map-count]:!text-[10px] [&_.school-map-count]:!font-bold [&_.school-map-count]:!leading-none [&_.school-map-count]:!text-white [&_.school-map-count]:!shadow-sm [&_.school-map-count]:before:!hidden"
       role="img"
-      aria-label={`${mappedSchoolCount} ${mappedSchoolLabel} auf einer OpenStreetMap-Karte. Schulen am gleichen Kartenpunkt sind in einer Markierung zusammengefasst. Angezeigt werden nur Schulen mit mindestens ${MINIMUM_ACCOUNTS_PER_MAP_PIN} bekannten Konten.`}
+      aria-label={`${mappedSchoolCount} ${mappedSchoolLabel} auf einer OpenStreetMap-Karte. Schulen am gleichen Kartenpunkt sind in einer Markierung zusammengefasst. Angezeigt werden alle Schulen mit bekannten Kartenkoordinaten.`}
     />
   );
 };
@@ -328,7 +327,7 @@ const SchoolMapPanel: React.FC<{ state: SchoolMapState }> = ({ state }) => {
         <MapPinIcon className="h-8 w-8 text-primary-500/70" aria-hidden="true" />
         <p className="mt-3 text-sm font-semibold text-[#444] dark:text-surface-200">Keine Standorte verfügbar</p>
         <p className="mt-1 max-w-xs text-xs leading-relaxed text-[#888] dark:text-surface-500">
-          Derzeit liegen für keine Schule mit mindestens {MINIMUM_ACCOUNTS_PER_MAP_PIN} bekannten Konten Kartenkoordinaten vor.
+          Derzeit liegen für keine bekannte Schule Kartenkoordinaten vor.
         </p>
       </div>
     );
@@ -527,7 +526,7 @@ const Landingpage: React.FC = () => {
               <>
                 <p>{growthDescription(schoolMap.data)}</p>
                 <p className="mt-3 text-xs text-[#888] dark:text-surface-500">
-                  Zum Schutz kleiner Nutzergruppen zeigt die Karte nur Schulen, an denen mindestens {MINIMUM_ACCOUNTS_PER_MAP_PIN} Konten bekannt sind.
+                  Die Karte zeigt alle Schulen mit bekannten Kartenkoordinaten. Einzelne Konten oder Nutzerstandorte werden nicht dargestellt.
                 </p>
               </>
             ) : (
@@ -538,7 +537,7 @@ const Landingpage: React.FC = () => {
                     : 'Die aktuellen Konto- und Schulzahlen sind gerade nicht verfügbar.'}
                 </p>
                 <p className="mt-3 text-xs text-[#888] dark:text-surface-500">
-                  Zum Schutz kleiner Nutzergruppen zeigt die Karte nur Schulen, an denen mindestens {MINIMUM_ACCOUNTS_PER_MAP_PIN} Konten bekannt sind.
+                  Die Karte zeigt alle Schulen mit bekannten Kartenkoordinaten. Einzelne Konten oder Nutzerstandorte werden nicht dargestellt.
                 </p>
               </>
             )}
