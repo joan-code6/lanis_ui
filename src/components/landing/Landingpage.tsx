@@ -1,7 +1,11 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import * as L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import SEO from '../seo/SEO';
 import AppIcon from '../AppIcon';
+import { homepageAPI } from '../../services/api';
+import type { HomepageSchoolMapEntry, HomepageUserMapResponse } from '../../types';
 import {
   BookOpenIcon,
   ChatBubbleLeftRightIcon,
@@ -41,14 +45,14 @@ const Reveal: React.FC<{ delay?: number; children: React.ReactNode; className?: 
 /* ─── Feature Row ─── */
 
 const FeatureRow: React.FC<{
-  label: string; title: string; desc: string; reversed?: boolean; delay?: number; imagePath?: string; children?: React.ReactNode;
+  label: string; title: string; desc: React.ReactNode; reversed?: boolean; delay?: number; imagePath?: string; children?: React.ReactNode;
 }> = ({ label, title, desc, reversed, delay = 0, imagePath, children }) => (
   <Reveal delay={delay}>
     <div className={`flex flex-col ${reversed ? 'md:flex-row-reverse' : 'md:flex-row'} items-center gap-12 md:gap-20`}>
       <div className="flex-1">
         <div className="text-[10px] text-primary-600 dark:text-primary-400 tracking-[0.2em] uppercase mb-3 font-medium">{label}</div>
         <h3 className="text-2xl md:text-3xl font-bold text-[#111] dark:text-surface-100 tracking-tight mb-3">{title}</h3>
-        <p className="text-[15px] text-[#666] dark:text-surface-400 leading-relaxed max-w-md">{desc}</p>
+        <div className="text-[15px] text-[#666] dark:text-surface-400 leading-relaxed max-w-md">{desc}</div>
       </div>
       <div className="flex-1 w-full">
         <div className="w-full aspect-[4/3] rounded-3xl bg-[#f5f5f2] dark:bg-surface-900 border border-black/[0.03] dark:border-white/[0.07] flex items-center justify-center overflow-hidden">
@@ -148,6 +152,213 @@ const NotificationsMock: React.FC = () => (
   </div>
 );
 
+/* ─── Live map: Schulen, die Lanis nutzen ─── */
+
+const HESSEN_CENTER: L.LatLngExpression = [50.5, 8.9];
+const MINIMUM_ACCOUNTS_PER_MAP_PIN = 5;
+const formatCount = new Intl.NumberFormat('de-DE');
+
+const getSchoolCoordinate = (school: HomepageSchoolMapEntry): L.LatLng | null => {
+  if (
+    school.latitude === null
+    || school.longitude === null
+    || !Number.isFinite(school.latitude)
+    || !Number.isFinite(school.longitude)
+    || school.latitude < 49.2
+    || school.latitude > 51.8
+    || school.longitude < 7.4
+    || school.longitude > 10.2
+  ) {
+    return null;
+  }
+
+  return L.latLng(school.latitude, school.longitude);
+};
+
+const OpenStreetSchoolMap: React.FC<{ schools: HomepageSchoolMapEntry[] }> = ({ schools }) => {
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<L.Map | null>(null);
+  const schoolLocations = useMemo(() => {
+    const locations = new Map<string, { coordinate: L.LatLng; schoolCount: number }>();
+
+    schools.forEach((school) => {
+      const coordinate = getSchoolCoordinate(school);
+      if (!coordinate) return;
+
+      const key = `${coordinate.lat.toFixed(6)},${coordinate.lng.toFixed(6)}`;
+      const existingLocation = locations.get(key);
+      if (existingLocation) {
+        existingLocation.schoolCount += 1;
+      } else {
+        locations.set(key, { coordinate, schoolCount: 1 });
+      }
+    });
+
+    return Array.from(locations.values());
+  }, [schools]);
+
+  useEffect(() => {
+    if (!mapContainerRef.current || mapRef.current) return;
+
+    const map = L.map(mapContainerRef.current, {
+      center: HESSEN_CENTER,
+      zoom: 7,
+      zoomControl: false,
+      dragging: false,
+      scrollWheelZoom: false,
+      doubleClickZoom: false,
+      boxZoom: false,
+      keyboard: false,
+      touchZoom: false,
+      attributionControl: true,
+    });
+
+    map.attributionControl.setPrefix(false);
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>',
+      maxZoom: 19,
+    }).addTo(map);
+
+    mapRef.current = map;
+
+    const resizeObserver = new ResizeObserver(() => map.invalidateSize({ animate: false }));
+    resizeObserver.observe(mapContainerRef.current);
+
+    return () => {
+      resizeObserver.disconnect();
+      map.remove();
+      mapRef.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    const markerLayer = L.layerGroup().addTo(map);
+
+    schoolLocations.forEach(({ coordinate, schoolCount }) => {
+      const marker = L.circleMarker(coordinate, {
+        radius: schoolCount > 1 ? 10 : 6,
+        stroke: false,
+        fill: true,
+        fillColor: '#06b6d4',
+        fillOpacity: 1,
+        interactive: false,
+        className: 'school-map-point',
+      }).addTo(markerLayer);
+
+      if (schoolCount > 1) {
+        marker.bindTooltip(String(schoolCount), {
+          permanent: true,
+          direction: 'center',
+          className: 'school-map-count',
+        });
+      }
+    });
+
+    const coordinates = schoolLocations.map(location => location.coordinate);
+    if (coordinates.length === 1) {
+      map.setView(coordinates[0], 11, { animate: false });
+    } else if (coordinates.length > 1) {
+      map.fitBounds(L.latLngBounds(coordinates), {
+        padding: [32, 32],
+        maxZoom: 11,
+        animate: false,
+      });
+    } else {
+      map.setView(HESSEN_CENTER, 7, { animate: false });
+    }
+
+    return () => {
+      markerLayer.remove();
+    };
+  }, [schoolLocations]);
+
+  const mappedSchoolCount = schoolLocations.reduce((count, location) => count + location.schoolCount, 0);
+  const mappedSchoolLabel = mappedSchoolCount === 1 ? 'Schulstandort' : 'Schulstandorte';
+
+  return (
+    <div
+      ref={mapContainerRef}
+      className="h-full w-full [&_.leaflet-control-attribution]:!bg-white/85 [&_.school-map-point]:!fill-[rgb(var(--color-primary-500))] [&_.school-map-count]:!border-0 [&_.school-map-count]:!bg-primary-500 [&_.school-map-count]:!px-1.5 [&_.school-map-count]:!py-0.5 [&_.school-map-count]:!text-[10px] [&_.school-map-count]:!font-bold [&_.school-map-count]:!leading-none [&_.school-map-count]:!text-white [&_.school-map-count]:!shadow-sm [&_.school-map-count]:before:!hidden"
+      role="img"
+      aria-label={`${mappedSchoolCount} ${mappedSchoolLabel} auf einer OpenStreetMap-Karte. Schulen am gleichen Kartenpunkt sind in einer Markierung zusammengefasst. Angezeigt werden nur Schulen mit mindestens ${MINIMUM_ACCOUNTS_PER_MAP_PIN} bekannten Konten.`}
+    />
+  );
+};
+
+const growthDescription = (data: HomepageUserMapResponse) => {
+  const schoolCount = data.known_schools;
+  const userCount = data.known_users;
+  const schoolText = schoolCount === 1 ? 'einer Schule' : `${schoolCount} Schulen`;
+  const accountText = userCount === 1 ? 'ein Konto' : `${formatCount.format(userCount)} Konten`;
+
+  return `Aktuell sind bei Lanis ${accountText} aus ${schoolText} bekannt.`;
+};
+
+type SchoolMapState =
+  | { status: 'loading' }
+  | { status: 'ready'; data: HomepageUserMapResponse }
+  | { status: 'error' };
+
+const SchoolMapPanel: React.FC<{ state: SchoolMapState }> = ({ state }) => {
+  const [mapAllowed, setMapAllowed] = useState(false);
+
+  if (state.status !== 'ready') {
+    return (
+      <div className="h-full w-full p-8 flex flex-col items-center justify-center text-center" role="status" aria-live="polite">
+        <MapPinIcon className="h-8 w-8 text-primary-500/70" aria-hidden="true" />
+        <p className="mt-3 text-sm font-semibold text-[#444] dark:text-surface-200">
+          {state.status === 'loading' ? 'Schulkarte wird geladen' : 'Schulkarte ist gerade nicht verfügbar'}
+        </p>
+        <p className="mt-1 max-w-xs text-xs leading-relaxed text-[#888] dark:text-surface-500">
+          {state.status === 'loading'
+            ? 'Die aktuellen Schulstandorte werden abgerufen.'
+            : 'Die Live-Daten konnten nicht geladen werden. Bitte versuche es später erneut.'}
+        </p>
+      </div>
+    );
+  }
+
+  const hasMappableSchool = state.data.schools.some(school => getSchoolCoordinate(school) !== null);
+  if (!hasMappableSchool) {
+    return (
+      <div className="h-full w-full p-8 flex flex-col items-center justify-center text-center" role="status">
+        <MapPinIcon className="h-8 w-8 text-primary-500/70" aria-hidden="true" />
+        <p className="mt-3 text-sm font-semibold text-[#444] dark:text-surface-200">Keine Standorte verfügbar</p>
+        <p className="mt-1 max-w-xs text-xs leading-relaxed text-[#888] dark:text-surface-500">
+          Derzeit liegen für keine Schule mit mindestens {MINIMUM_ACCOUNTS_PER_MAP_PIN} bekannten Konten Kartenkoordinaten vor.
+        </p>
+      </div>
+    );
+  }
+
+  if (!mapAllowed) {
+    return (
+      <div className="h-full w-full p-8 flex flex-col items-center justify-center text-center">
+        <MapPinIcon className="h-8 w-8 text-primary-500/70" aria-hidden="true" />
+        <p className="mt-3 text-sm font-semibold text-[#444] dark:text-surface-200">Schulstandorte auf OpenStreetMap</p>
+        <p className="mt-1 max-w-sm text-xs leading-relaxed text-[#888] dark:text-surface-500">
+          Beim Laden stellt dein Browser eine Verbindung zu OpenStreetMap her. Dabei werden technische Verbindungsdaten und die Adresse dieser Seite übermittelt.
+        </p>
+        <button
+          type="button"
+          className="mt-4 rounded-xl bg-primary-500 px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-primary-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
+          onClick={() => setMapAllowed(true)}
+        >
+          Karte laden
+        </button>
+        <Link to="/privacy-policy" className="mt-3 text-[11px] text-[#999] underline underline-offset-2 hover:text-[#666] dark:text-surface-500 dark:hover:text-surface-300">
+          Hinweise zum Datenschutz
+        </Link>
+      </div>
+    );
+  }
+
+  return <OpenStreetSchoolMap schools={state.data.schools} />;
+};
+
 /* ─── Landingpage ─── */
 
 const Landingpage: React.FC = () => {
@@ -156,8 +367,24 @@ const Landingpage: React.FC = () => {
   const [isDragging, setIsDragging] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const [heroVisible, setHeroVisible] = useState(false);
+  const [schoolMap, setSchoolMap] = useState<SchoolMapState>({ status: 'loading' });
 
   useEffect(() => { setHeroVisible(true); }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    homepageAPI.getUserMap(controller.signal)
+      .then((response) => {
+        if (!response.success) throw new Error('The homepage user map request was not successful.');
+        setSchoolMap({ status: 'ready', data: response });
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setSchoolMap({ status: 'error' });
+      });
+
+    return () => controller.abort();
+  }, []);
 
   const handleMove = useCallback((clientX: number) => {
     if (!containerRef.current) return;
@@ -278,7 +505,13 @@ const Landingpage: React.FC = () => {
 
         {/* ═══ Stats bar ═══ */}
         <section className="max-w-6xl mx-auto px-6 pb-24">
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          <div className={`grid grid-cols-2 gap-3 ${schoolMap.status === 'ready' ? 'md:grid-cols-5' : 'md:grid-cols-3'}`}>
+            {schoolMap.status === 'ready' ? (
+              <>
+                <Stat value={formatCount.format(schoolMap.data.known_users)} label="Konten" />
+                <Stat value={formatCount.format(schoolMap.data.known_schools)} label="Schulen" />
+              </>
+            ) : null}
             <Stat value="47 ms" label="Ladezeit aus dem Cache" delay={100} />
             <Stat value="6" label="Farbthemen" delay={200} />
             <Stat value="3" label="Klicks bis zu jedem Modul" delay={300} />
@@ -288,10 +521,36 @@ const Landingpage: React.FC = () => {
         {/* ═══ Feature Rows ═══ */}
         <section className="max-w-6xl mx-auto px-6 pb-32 space-y-32">
           <FeatureRow
+            label="Statistiken"
+            title="Lanis wächst"
+            desc={schoolMap.status === 'ready' ? (
+              <>
+                <p>{growthDescription(schoolMap.data)}</p>
+                <p className="mt-3 text-xs text-[#888] dark:text-surface-500">
+                  Zum Schutz kleiner Nutzergruppen zeigt die Karte nur Schulen, an denen mindestens {MINIMUM_ACCOUNTS_PER_MAP_PIN} Konten bekannt sind.
+                </p>
+              </>
+            ) : (
+              <>
+                <p>
+                  {schoolMap.status === 'loading'
+                    ? 'Die aktuellen Konto- und Schulzahlen werden geladen.'
+                    : 'Die aktuellen Konto- und Schulzahlen sind gerade nicht verfügbar.'}
+                </p>
+                <p className="mt-3 text-xs text-[#888] dark:text-surface-500">
+                  Zum Schutz kleiner Nutzergruppen zeigt die Karte nur Schulen, an denen mindestens {MINIMUM_ACCOUNTS_PER_MAP_PIN} Konten bekannt sind.
+                </p>
+              </>
+            )}
+          >
+            <SchoolMapPanel state={schoolMap} />
+          </FeatureRow>
+          <FeatureRow
             label="Hausaufgaben"
             title="Steht direkt im Stundenplan"
             desc="An jeder Stunde siehst du auf einen Blick, welche Aufgaben anstehen. Erledigtes häkst du direkt ab, ein umständlicher Blick in „Mein Unterricht“ ist nicht mehr nötig."
             delay={200}
+            reversed
           >
             <TimetableMock />
           </FeatureRow>
@@ -299,7 +558,6 @@ const Landingpage: React.FC = () => {
             label="Benachrichtigungen"
             title="Nichts mehr verpassen"
             desc="Neue Nachricht oder geänderter Vertretungsplan? Lanis schickt dir eine Web-Push-Benachrichtigung, sobald etwas Wichtiges passiert, auch wenn du die Seite gerade nicht offen hast. Einmal in den Einstellungen aktivieren, fertig."
-            reversed
             delay={300}
           >
             <NotificationsMock />
@@ -310,13 +568,13 @@ const Landingpage: React.FC = () => {
             title="Sofort da"
             desc="Besuchte Seiten sind dank intelligentem Caching in unter 50 Millisekunden wieder da. Kein Warten, keine Ladeanzeigen. Einfach weitermachen."
             delay={400}
+            reversed
           />
           <FeatureRow
             imagePath="/landing/themes.png"
             label="Design"
             title="Modern statt Behörde"
             desc="Dark Mode, sechs sorgfältig abgestimmte Farbthemen und klare Typografie: Lanis fühlt sich an wie moderne Software und nicht wie ein Formular der Verwaltung."
-            reversed
             delay={500}
           />
           <FeatureRow
@@ -325,6 +583,7 @@ const Landingpage: React.FC = () => {
             title="Alles griffbereit"
             desc="Direkte Sidebar statt verschachtelter Menüs, globale Suche und anpinnbare Module: Du kommst in höchstens drei Klicks zu jedem Modul, ganz ohne Suchen."
             delay={600}
+            reversed
           />
         </section>
 

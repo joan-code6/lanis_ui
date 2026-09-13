@@ -35,6 +35,23 @@ export interface SchoolSearchResponse {
   count: number;
   results: SchoolSearchResult[];
 }
+
+export interface HomepageSchoolMapEntry {
+  school_id: string;
+  name: string;
+  city: string;
+  latitude: number;
+  longitude: number;
+}
+
+export interface HomepageUserMapResponse {
+  success: true;
+  generated_at: string;
+  known_users: number;
+  known_schools: number;
+  mapped_schools: number;
+  schools: HomepageSchoolMapEntry[];
+}
 // Authentication types
 export interface LoginRequest {
   school_id: string;
