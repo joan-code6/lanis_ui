@@ -39,28 +39,17 @@ export interface SchoolSearchResponse {
 export interface HomepageSchoolMapEntry {
   school_id: string;
   name: string;
-  location: string;
-  district: string;
-  known_users: number;
-  active_users_24h: number;
-  active_users_7d: number;
-  active_users_range: number;
-  logins: number;
-  latitude: number | null;
-  longitude: number | null;
-  coordinate_source: string | null;
+  city: string;
+  latitude: number;
+  longitude: number;
 }
 
 export interface HomepageUserMapResponse {
-  success: boolean;
+  success: true;
   generated_at: string;
-  range_days: number;
-  coordinate_note: string;
-  summary: {
-    schools: number;
-    mapped_schools: number;
-    known_users: number;
-  };
+  known_users: number;
+  known_schools: number;
+  mapped_schools: number;
   schools: HomepageSchoolMapEntry[];
 }
 // Authentication types

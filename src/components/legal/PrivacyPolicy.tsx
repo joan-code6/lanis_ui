@@ -78,6 +78,15 @@ const PrivacyPolicy: React.FC = () => {
               gegenüber dem Schulportal Hessen auszuführen. Diese Beschreibung ist keine Aussage darüber,
               dass UI und Backend auf demselben Server laufen oder Daten gemeinsam speichern.
             </p>
+            <p className="mt-2">
+              Unabhängig von einem selbst eingestellten Backend ruft die Startseite beim Öffnen öffentliche,
+              zusammengefasste Konto- und Schulzahlen sowie datenschutzgefilterte Kartenpunkte vom
+              bereitgestellten Standard-Backend unter{' '}
+              <span className="text-[#333] break-all">{DEFAULT_API_BASE_URL}</span> ab. Diese Anfrage
+              enthält keine von Lanis UI gespeicherten Zugriffs- oder Aktualisierungstoken. Technisch
+              erforderliche Verbindungsdaten wie IP-Adresse, Zeitpunkt, Browserinformationen und die
+              Adresse der aufrufenden Seite werden dabei an das Standard-Backend übermittelt.
+            </p>
             {usesCustomBackend && (
               <p className="mt-2">
                 Auf diesem Gerät ist ein eigenes Backend eingestellt. Informiere dich vor der Anmeldung
@@ -106,7 +115,27 @@ const PrivacyPolicy: React.FC = () => {
           </div>
 
           <div>
-            <h2 className="text-base font-semibold text-[#111] mb-3">5. Push-Benachrichtigungen</h2>
+            <h2 className="text-base font-semibold text-[#111] mb-3">5. Schulkarte von OpenStreetMap</h2>
+            <p>
+              Die Startseite enthält eine Schulkarte, die erst nach einem Klick auf „Karte laden“
+              Kartenbilder direkt von OpenStreetMap abruft. Dabei stellt dein Browser eine Verbindung
+              zu Servern der OpenStreetMap Foundation her und übermittelt technisch erforderliche Daten,
+              insbesondere die IP-Adresse, Browserinformationen, den Zeitpunkt, den angeforderten
+              Kartenausschnitt und die Adresse der aufrufenden Seite. Weitere Informationen findest du in
+              der{' '}
+              <a
+                href="https://osmfoundation.org/wiki/Privacy_Policy"
+                target="_blank"
+                rel="noreferrer"
+                className="text-[#00a0c0] underline underline-offset-2 hover:text-[#00c0e0] transition-colors"
+              >
+                Datenschutzerklärung der OpenStreetMap Foundation
+              </a>.
+            </p>
+          </div>
+
+          <div>
+            <h2 className="text-base font-semibold text-[#111] mb-3">6. Push-Benachrichtigungen</h2>
             <p>
               Push-Benachrichtigungen sind freiwillig und werden erst nach deiner Aktivierung und der
               Berechtigung durch den Browser eingerichtet. Dabei werden eine gerätebezogene Push-Adresse
@@ -117,7 +146,7 @@ const PrivacyPolicy: React.FC = () => {
           </div>
 
           <div>
-            <h2 className="text-base font-semibold text-[#111] mb-3">6. WhatsApp-Assistent</h2>
+            <h2 className="text-base font-semibold text-[#111] mb-3">7. WhatsApp-Assistent</h2>
             <p>
               Wenn du den optionalen WhatsApp-Assistenten aktiv mit deinem Konto verbindest, verarbeitet
               das Backend eine abgeleitete Kennung deiner WhatsApp-Nummer, die letzten vier Ziffern zur
@@ -143,7 +172,7 @@ const PrivacyPolicy: React.FC = () => {
           </div>
 
           <div>
-            <h2 className="text-base font-semibold text-[#111] mb-3">7. Zwecke und Rechtsgrundlagen</h2>
+            <h2 className="text-base font-semibold text-[#111] mb-3">8. Zwecke und Rechtsgrundlagen</h2>
             <p>
               Soweit ein Nutzungsverhältnis besteht, erfolgt die für die angeforderten Funktionen
               erforderliche Verarbeitung auf Grundlage von Art. 6 Abs. 1 lit. b DSGVO. Im Übrigen stützt
@@ -155,13 +184,14 @@ const PrivacyPolicy: React.FC = () => {
           </div>
 
           <div>
-            <h2 className="text-base font-semibold text-[#111] mb-3">8. Empfänger und Speicherdauer</h2>
+            <h2 className="text-base font-semibold text-[#111] mb-3">9. Empfänger und Speicherdauer</h2>
             <p>
               {usesCustomBackend
                 ? 'Das oben angezeigte Backend ist ein getrennt betriebenes System des von dir ausgewählten Betreibers.'
                 : 'Das oben angezeigte Backend ist ein getrennt betriebenes System desselben Verantwortlichen.'}{' '}
               Zur Bereitstellung der angeforderten schulischen Funktionen kommuniziert es mit dem
-              Schulportal Hessen. Bei Nutzung von Push-Benachrichtigungen wird außerdem der Push-Dienst des
+              Schulportal Hessen. Nach dem Laden der Schulkarte empfängt die OpenStreetMap Foundation die
+              in Abschnitt 5 beschriebenen Verbindungsdaten. Bei Nutzung von Push-Benachrichtigungen wird außerdem der Push-Dienst des
               Browsers oder Betriebssystems einbezogen. Beim freiwilligen WhatsApp-Assistenten wird
               außerdem die WhatsApp Business Platform von Meta einbezogen. Lokal gespeicherte Daten bleiben
               grundsätzlich erhalten, bis du dich abmeldest, sie durch die Anwendung ersetzt werden, eine
@@ -173,7 +203,7 @@ const PrivacyPolicy: React.FC = () => {
           </div>
 
           <div>
-            <h2 className="text-base font-semibold text-[#111] mb-3">9. Deine Rechte</h2>
+            <h2 className="text-base font-semibold text-[#111] mb-3">10. Deine Rechte</h2>
             <p>
               Du hast im Rahmen der gesetzlichen Voraussetzungen insbesondere das Recht auf Auskunft,
               Berichtigung, Löschung, Einschränkung der Verarbeitung, Datenübertragbarkeit und Widerspruch.
@@ -183,7 +213,7 @@ const PrivacyPolicy: React.FC = () => {
           </div>
 
           <div>
-            <h2 className="text-base font-semibold text-[#111] mb-3">10. Sicherheit und Änderungen</h2>
+            <h2 className="text-base font-semibold text-[#111] mb-3">11. Sicherheit und Änderungen</h2>
             <p>
               Die Anwendung soll nur über eine verschlüsselte HTTPS-Verbindung bereitgestellt werden.
               Eine Datenübertragung im Internet kann dennoch nie vollständig gegen alle Risiken abgesichert

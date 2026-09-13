@@ -10,7 +10,7 @@ import {
   WahlenSubmission,
 } from '../types';
 import { getMockResponse } from '../components/demo/mockApi';
-import { getApiBaseUrl } from '../utils/backendConfig';
+import { DEFAULT_API_BASE_URL, getApiBaseUrl } from '../utils/backendConfig';
 // School List API
 const SCHOOL_CACHE_KEY = 'school_cache';
 const SCHOOL_CACHE_TTL = 24 * 60 * 60 * 1000;
@@ -207,9 +207,58 @@ const apiClient: AxiosInstance = axios.create({
   },
 });
 
+// Public homepage data must not pass through the authenticated client's
+// interceptors, especially when a custom backend token is stored locally.
+const homepageClient: AxiosInstance = axios.create({
+  baseURL: DEFAULT_API_BASE_URL,
+  timeout: 10000,
+  withCredentials: false,
+  headers: {
+    Accept: 'application/json',
+  },
+});
+
+const isNonNegativeInteger = (value: unknown): value is number => (
+  typeof value === 'number' && Number.isInteger(value) && value >= 0
+);
+
+const isHomepageUserMapResponse = (value: unknown): value is HomepageUserMapResponse => {
+  if (typeof value !== 'object' || value === null) return false;
+  const data = value as Record<string, unknown>;
+  if (
+    data.success !== true
+    || typeof data.generated_at !== 'string'
+    || !isNonNegativeInteger(data.known_users)
+    || !isNonNegativeInteger(data.known_schools)
+    || !isNonNegativeInteger(data.mapped_schools)
+    || !Array.isArray(data.schools)
+  ) {
+    return false;
+  }
+
+  return data.mapped_schools === data.schools.length
+    && data.mapped_schools <= data.known_schools
+    && data.schools.every((value) => {
+      if (typeof value !== 'object' || value === null) return false;
+      const school = value as Record<string, unknown>;
+      return typeof school.school_id === 'string'
+        && typeof school.name === 'string'
+        && typeof school.city === 'string'
+        && typeof school.latitude === 'number'
+        && Number.isFinite(school.latitude)
+        && typeof school.longitude === 'number'
+        && Number.isFinite(school.longitude);
+    });
+};
+
 export const homepageAPI = {
   async getUserMap(signal?: AbortSignal): Promise<HomepageUserMapResponse> {
-    const response = await apiClient.get<HomepageUserMapResponse>('/homepage/user-map', { signal });
+    const response = await homepageClient.get<unknown>('/homepage/user-map', { signal });
+
+    if (!isHomepageUserMapResponse(response.data)) {
+      throw new Error('The homepage user map response is invalid.');
+    }
+
     return response.data;
   },
 };

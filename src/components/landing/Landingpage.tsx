@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import * as L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -14,7 +14,6 @@ import {
   UserIcon,
   MapPinIcon,
 } from '@heroicons/react/24/outline';
-
 
 /* ─── Scroll-Reveal Helper ─── */
 
@@ -155,23 +154,54 @@ const NotificationsMock: React.FC = () => (
 
 /* ─── Live map: Schulen, die Lanis nutzen ─── */
 
-const isMappableSchool = (school: HomepageSchoolMapEntry) => {
-  const latitude = Number(school.latitude);
-  const longitude = Number(school.longitude);
-  return Number.isFinite(latitude)
-    && Number.isFinite(longitude);
+const HESSEN_CENTER: L.LatLngExpression = [50.5, 8.9];
+const MINIMUM_ACCOUNTS_PER_MAP_PIN = 5;
+const formatCount = new Intl.NumberFormat('de-DE');
+
+const getSchoolCoordinate = (school: HomepageSchoolMapEntry): L.LatLng | null => {
+  if (
+    school.latitude === null
+    || school.longitude === null
+    || !Number.isFinite(school.latitude)
+    || !Number.isFinite(school.longitude)
+    || school.latitude < 49.2
+    || school.latitude > 51.8
+    || school.longitude < 7.4
+    || school.longitude > 10.2
+  ) {
+    return null;
+  }
+
+  return L.latLng(school.latitude, school.longitude);
 };
 
 const OpenStreetSchoolMap: React.FC<{ schools: HomepageSchoolMapEntry[] }> = ({ schools }) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
-  const markerLayerRef = useRef<L.LayerGroup | null>(null);
+  const schoolLocations = useMemo(() => {
+    const locations = new Map<string, { coordinate: L.LatLng; schoolCount: number }>();
+
+    schools.forEach((school) => {
+      const coordinate = getSchoolCoordinate(school);
+      if (!coordinate) return;
+
+      const key = `${coordinate.lat.toFixed(6)},${coordinate.lng.toFixed(6)}`;
+      const existingLocation = locations.get(key);
+      if (existingLocation) {
+        existingLocation.schoolCount += 1;
+      } else {
+        locations.set(key, { coordinate, schoolCount: 1 });
+      }
+    });
+
+    return Array.from(locations.values());
+  }, [schools]);
 
   useEffect(() => {
     if (!mapContainerRef.current || mapRef.current) return;
 
     const map = L.map(mapContainerRef.current, {
-      center: [50.5, 8.9],
+      center: HESSEN_CENTER,
       zoom: 7,
       zoomControl: false,
       dragging: false,
@@ -184,12 +214,11 @@ const OpenStreetSchoolMap: React.FC<{ schools: HomepageSchoolMapEntry[] }> = ({ 
     });
 
     map.attributionControl.setPrefix(false);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>',
       maxZoom: 19,
     }).addTo(map);
 
-    markerLayerRef.current = L.layerGroup().addTo(map);
     mapRef.current = map;
 
     const resizeObserver = new ResizeObserver(() => map.invalidateSize({ animate: false }));
@@ -199,23 +228,18 @@ const OpenStreetSchoolMap: React.FC<{ schools: HomepageSchoolMapEntry[] }> = ({ 
       resizeObserver.disconnect();
       map.remove();
       mapRef.current = null;
-      markerLayerRef.current = null;
     };
   }, []);
 
   useEffect(() => {
     const map = mapRef.current;
-    const markerLayer = markerLayerRef.current;
-    if (!map || !markerLayer) return;
+    if (!map) return;
 
-    markerLayer.clearLayers();
-    const coordinates = schools
-      .filter(isMappableSchool)
-      .map(school => L.latLng(Number(school.latitude), Number(school.longitude)));
+    const markerLayer = L.layerGroup().addTo(map);
 
-    coordinates.forEach(coordinate => {
-      L.circleMarker(coordinate, {
-        radius: 6,
+    schoolLocations.forEach(({ coordinate, schoolCount }) => {
+      const marker = L.circleMarker(coordinate, {
+        radius: schoolCount > 1 ? 10 : 6,
         stroke: false,
         fill: true,
         fillColor: '#06b6d4',
@@ -223,8 +247,17 @@ const OpenStreetSchoolMap: React.FC<{ schools: HomepageSchoolMapEntry[] }> = ({ 
         interactive: false,
         className: 'school-map-point',
       }).addTo(markerLayer);
+
+      if (schoolCount > 1) {
+        marker.bindTooltip(String(schoolCount), {
+          permanent: true,
+          direction: 'center',
+          className: 'school-map-count',
+        });
+      }
     });
 
+    const coordinates = schoolLocations.map(location => location.coordinate);
     if (coordinates.length === 1) {
       map.setView(coordinates[0], 11, { animate: false });
     } else if (coordinates.length > 1) {
@@ -234,49 +267,96 @@ const OpenStreetSchoolMap: React.FC<{ schools: HomepageSchoolMapEntry[] }> = ({ 
         animate: false,
       });
     } else {
-      map.setView([50.5, 8.9], 7, { animate: false });
+      map.setView(HESSEN_CENTER, 7, { animate: false });
     }
-  }, [schools]);
 
-  const mappedSchoolCount = schools.filter(isMappableSchool).length;
+    return () => {
+      markerLayer.remove();
+    };
+  }, [schoolLocations]);
+
+  const mappedSchoolCount = schoolLocations.reduce((count, location) => count + location.schoolCount, 0);
   const mappedSchoolLabel = mappedSchoolCount === 1 ? 'Schulstandort' : 'Schulstandorte';
 
   return (
     <div
       ref={mapContainerRef}
-      className="h-full w-full [&_.leaflet-control-attribution]:!bg-white/75 [&_.leaflet-control-attribution]:!text-[8px] [&_.school-map-point]:!fill-[rgb(var(--color-primary-500))]"
+      className="h-full w-full [&_.leaflet-control-attribution]:!bg-white/85 [&_.school-map-point]:!fill-[rgb(var(--color-primary-500))] [&_.school-map-count]:!border-0 [&_.school-map-count]:!bg-primary-500 [&_.school-map-count]:!px-1.5 [&_.school-map-count]:!py-0.5 [&_.school-map-count]:!text-[10px] [&_.school-map-count]:!font-bold [&_.school-map-count]:!leading-none [&_.school-map-count]:!text-white [&_.school-map-count]:!shadow-sm [&_.school-map-count]:before:!hidden"
       role="img"
-      aria-label={`${mappedSchoolCount} ${mappedSchoolLabel} auf einer OpenStreetMap-Karte`}
+      aria-label={`${mappedSchoolCount} ${mappedSchoolLabel} auf einer OpenStreetMap-Karte. Schulen am gleichen Kartenpunkt sind in einer Markierung zusammengefasst. Angezeigt werden nur Schulen mit mindestens ${MINIMUM_ACCOUNTS_PER_MAP_PIN} bekannten Konten.`}
     />
   );
 };
 
-const growthDescription = (data: HomepageUserMapResponse | null) => {
-  if (!data) return 'Die Karte zeigt live, an welchen Schulen Lanis bereits im Schulalltag genutzt wird.';
-
-  const schoolCount = data.summary.schools;
-  const userCount = data.summary.known_users;
+const growthDescription = (data: HomepageUserMapResponse) => {
+  const schoolCount = data.known_schools;
+  const userCount = data.known_users;
   const schoolText = schoolCount === 1 ? 'einer Schule' : `${schoolCount} Schulen`;
-  const userVerb = userCount === 1 ? 'nutzt' : 'nutzen';
-  const userNoun = userCount === 1 ? 'Person' : 'Schülerinnen, Schüler und Lehrkräfte';
+  const accountText = userCount === 1 ? 'ein Konto' : `${formatCount.format(userCount)} Konten`;
 
-  return `Seit 2026 ist Lanis bereits an ${schoolText} im Einsatz. Aktuell ${userVerb} ${userCount} ${userNoun} die Plattform im Schulalltag. `;
+  return `Aktuell sind bei Lanis ${accountText} aus ${schoolText} bekannt.`;
 };
 
-const userCount = (data: HomepageUserMapResponse | null) => {
-  if (!data) return 'Die Karte zeigt live, an welchen Schulen Lanis bereits im Schulalltag genutzt wird.';
+type SchoolMapState =
+  | { status: 'loading' }
+  | { status: 'ready'; data: HomepageUserMapResponse }
+  | { status: 'error' };
 
-  const userCount = data.summary.known_users;
+const SchoolMapPanel: React.FC<{ state: SchoolMapState }> = ({ state }) => {
+  const [mapAllowed, setMapAllowed] = useState(false);
 
-  return userCount;
-};
+  if (state.status !== 'ready') {
+    return (
+      <div className="h-full w-full p-8 flex flex-col items-center justify-center text-center" role="status" aria-live="polite">
+        <MapPinIcon className="h-8 w-8 text-primary-500/70" aria-hidden="true" />
+        <p className="mt-3 text-sm font-semibold text-[#444] dark:text-surface-200">
+          {state.status === 'loading' ? 'Schulkarte wird geladen' : 'Schulkarte ist gerade nicht verfügbar'}
+        </p>
+        <p className="mt-1 max-w-xs text-xs leading-relaxed text-[#888] dark:text-surface-500">
+          {state.status === 'loading'
+            ? 'Die aktuellen Schulstandorte werden abgerufen.'
+            : 'Die Live-Daten konnten nicht geladen werden. Bitte versuche es später erneut.'}
+        </p>
+      </div>
+    );
+  }
 
-const schoolCount = (data: HomepageUserMapResponse | null) => {
-  if (!data) return 'Die Karte zeigt live, an welchen Schulen Lanis bereits im Schulalltag genutzt wird.';
+  const hasMappableSchool = state.data.schools.some(school => getSchoolCoordinate(school) !== null);
+  if (!hasMappableSchool) {
+    return (
+      <div className="h-full w-full p-8 flex flex-col items-center justify-center text-center" role="status">
+        <MapPinIcon className="h-8 w-8 text-primary-500/70" aria-hidden="true" />
+        <p className="mt-3 text-sm font-semibold text-[#444] dark:text-surface-200">Keine Standorte verfügbar</p>
+        <p className="mt-1 max-w-xs text-xs leading-relaxed text-[#888] dark:text-surface-500">
+          Derzeit liegen für keine Schule mit mindestens {MINIMUM_ACCOUNTS_PER_MAP_PIN} bekannten Konten Kartenkoordinaten vor.
+        </p>
+      </div>
+    );
+  }
 
-  const schoolCount = data.summary.schools;
+  if (!mapAllowed) {
+    return (
+      <div className="h-full w-full p-8 flex flex-col items-center justify-center text-center">
+        <MapPinIcon className="h-8 w-8 text-primary-500/70" aria-hidden="true" />
+        <p className="mt-3 text-sm font-semibold text-[#444] dark:text-surface-200">Schulstandorte auf OpenStreetMap</p>
+        <p className="mt-1 max-w-sm text-xs leading-relaxed text-[#888] dark:text-surface-500">
+          Beim Laden stellt dein Browser eine Verbindung zu OpenStreetMap her. Dabei werden technische Verbindungsdaten und die Adresse dieser Seite übermittelt.
+        </p>
+        <button
+          type="button"
+          className="mt-4 rounded-xl bg-primary-500 px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-primary-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
+          onClick={() => setMapAllowed(true)}
+        >
+          Karte laden
+        </button>
+        <Link to="/privacy-policy" className="mt-3 text-[11px] text-[#999] underline underline-offset-2 hover:text-[#666] dark:text-surface-500 dark:hover:text-surface-300">
+          Hinweise zum Datenschutz
+        </Link>
+      </div>
+    );
+  }
 
-  return schoolCount;
+  return <OpenStreetSchoolMap schools={state.data.schools} />;
 };
 
 /* ─── Landingpage ─── */
@@ -287,7 +367,7 @@ const Landingpage: React.FC = () => {
   const [isDragging, setIsDragging] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const [heroVisible, setHeroVisible] = useState(false);
-  const [schoolMap, setSchoolMap] = useState<HomepageUserMapResponse | null>(null);
+  const [schoolMap, setSchoolMap] = useState<SchoolMapState>({ status: 'loading' });
 
   useEffect(() => { setHeroVisible(true); }, []);
 
@@ -297,9 +377,11 @@ const Landingpage: React.FC = () => {
     homepageAPI.getUserMap(controller.signal)
       .then((response) => {
         if (!response.success) throw new Error('The homepage user map request was not successful.');
-        setSchoolMap(response);
+        setSchoolMap({ status: 'ready', data: response });
       })
-      .catch(() => undefined);
+      .catch(() => {
+        if (!controller.signal.aborted) setSchoolMap({ status: 'error' });
+      });
 
     return () => controller.abort();
   }, []);
@@ -423,25 +505,45 @@ const Landingpage: React.FC = () => {
 
         {/* ═══ Stats bar ═══ */}
         <section className="max-w-6xl mx-auto px-6 pb-24">
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-            <Stat value={userCount(schoolMap).toString()} label="Nutzer" />
-            <Stat value={schoolCount(schoolMap).toString()} label="Schulen"/>
+          <div className={`grid grid-cols-2 gap-3 ${schoolMap.status === 'ready' ? 'md:grid-cols-5' : 'md:grid-cols-3'}`}>
+            {schoolMap.status === 'ready' ? (
+              <>
+                <Stat value={formatCount.format(schoolMap.data.known_users)} label="Konten" />
+                <Stat value={formatCount.format(schoolMap.data.known_schools)} label="Schulen" />
+              </>
+            ) : null}
             <Stat value="47 ms" label="Ladezeit aus dem Cache" delay={100} />
             <Stat value="6" label="Farbthemen" delay={200} />
             <Stat value="3" label="Klicks bis zu jedem Modul" delay={300} />
-
-
           </div>
         </section>
+
         {/* ═══ Feature Rows ═══ */}
         <section className="max-w-6xl mx-auto px-6 pb-32 space-y-32">
           <FeatureRow
             label="Statistiken"
             title="Lanis wächst"
-            desc={growthDescription(schoolMap)}
-
+            desc={schoolMap.status === 'ready' ? (
+              <>
+                <p>{growthDescription(schoolMap.data)}</p>
+                <p className="mt-3 text-xs text-[#888] dark:text-surface-500">
+                  Zum Schutz kleiner Nutzergruppen zeigt die Karte nur Schulen, an denen mindestens {MINIMUM_ACCOUNTS_PER_MAP_PIN} Konten bekannt sind.
+                </p>
+              </>
+            ) : (
+              <>
+                <p>
+                  {schoolMap.status === 'loading'
+                    ? 'Die aktuellen Konto- und Schulzahlen werden geladen.'
+                    : 'Die aktuellen Konto- und Schulzahlen sind gerade nicht verfügbar.'}
+                </p>
+                <p className="mt-3 text-xs text-[#888] dark:text-surface-500">
+                  Zum Schutz kleiner Nutzergruppen zeigt die Karte nur Schulen, an denen mindestens {MINIMUM_ACCOUNTS_PER_MAP_PIN} Konten bekannt sind.
+                </p>
+              </>
+            )}
           >
-            <OpenStreetSchoolMap schools={schoolMap?.schools ?? []} />
+            <SchoolMapPanel state={schoolMap} />
           </FeatureRow>
           <FeatureRow
             label="Hausaufgaben"
