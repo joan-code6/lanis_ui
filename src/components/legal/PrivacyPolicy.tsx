@@ -80,7 +80,7 @@ const PrivacyPolicy: React.FC = () => {
             </p>
             <p className="mt-2">
               Unabhängig von einem selbst eingestellten Backend ruft die Startseite beim Öffnen öffentliche,
-              zusammengefasste Konto- und Schulzahlen sowie datenschutzgefilterte Kartenpunkte vom
+              zusammengefasste Konto- und Schulzahlen sowie bekannte Schulstandorte vom
               bereitgestellten Standard-Backend unter{' '}
               <span className="text-[#333] break-all">{DEFAULT_API_BASE_URL}</span> ab. Diese Anfrage
               enthält keine von Lanis UI gespeicherten Zugriffs- oder Aktualisierungstoken. Technisch
