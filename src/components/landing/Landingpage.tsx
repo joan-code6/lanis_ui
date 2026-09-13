@@ -523,23 +523,13 @@ const Landingpage: React.FC = () => {
             label="Statistiken"
             title="Lanis wächst"
             desc={schoolMap.status === 'ready' ? (
-              <>
-                <p>{growthDescription(schoolMap.data)}</p>
-                <p className="mt-3 text-xs text-[#888] dark:text-surface-500">
-                  Die Karte zeigt alle Schulen mit bekannten Kartenkoordinaten. Einzelne Konten oder Nutzerstandorte werden nicht dargestellt.
-                </p>
-              </>
+              <p>{growthDescription(schoolMap.data)}</p>
             ) : (
-              <>
-                <p>
-                  {schoolMap.status === 'loading'
-                    ? 'Die aktuellen Konto- und Schulzahlen werden geladen.'
-                    : 'Die aktuellen Konto- und Schulzahlen sind gerade nicht verfügbar.'}
-                </p>
-                <p className="mt-3 text-xs text-[#888] dark:text-surface-500">
-                  Die Karte zeigt alle Schulen mit bekannten Kartenkoordinaten. Einzelne Konten oder Nutzerstandorte werden nicht dargestellt.
-                </p>
-              </>
+              <p>
+                {schoolMap.status === 'loading'
+                  ? 'Die aktuellen Konto- und Schulzahlen werden geladen.'
+                  : 'Die aktuellen Konto- und Schulzahlen sind gerade nicht verfügbar.'}
+              </p>
             )}
           >
             <SchoolMapPanel state={schoolMap} />
