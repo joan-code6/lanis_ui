@@ -25,18 +25,17 @@ try {
   for (const width of [375, 1440]) {
     await page.setViewport({ width, height: 950 });
     await page.goto(`${origin}/status`, { waitUntil: 'networkidle0' });
-    await page.waitForSelector('select option:nth-child(2)');
+    await page.waitForSelector('[data-status-history]');
     assert.match(await page.$eval('main', el => el.textContent), /90 %/);
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
-    await page.select('select', await page.$eval('select option:nth-child(2)', el => el.value));
-    assert.match(await page.$eval('[role=status]', el => el.textContent), /Messabdeckung/);
+    assert.equal(await page.$$eval('[data-status-history] > span', dots => dots.length), 90);
     await page.screenshot({ path: `/tmp/lanis-status-${width}.png`, fullPage: true });
   }
   for (const state of ['down', 'stale', 'error']) {
     mode = state;
     await page.goto(`${origin}/status`, { waitUntil: 'networkidle0' });
     const text = await page.$eval('main', el => el.textContent);
-    assert.match(text, state === 'down' ? /Nicht erreichbar/ : state === 'stale' ? /keine ausreichend aktuelle/ : /kein Schulportal-Ausfall/);
+    assert.match(text, state === 'down' ? /Nicht erreichbar/ : state === 'stale' ? /Unbekannt/ : /Status nicht verfügbar/);
   }
   mode = 'up';
   await page.goto(origin, { waitUntil: 'networkidle0' });

@@ -561,19 +561,27 @@ const Landingpage: React.FC = () => {
             reversed
           />
           <FeatureRow
+            label="Verfügbarkeit"
+            title="Schulportal down? Deine Daten bleiben da."
+            desc="Bereits geladene Inhalte bleiben bei Schulportal-Störungen bis zu 24 Stunden verfügbar."
+            delay={500}
+          >
+            <UptimePreview />
+          </FeatureRow>
+          <FeatureRow
             imagePath="/landing/themes.png"
             label="Design"
             title="Modern statt Behörde"
             desc="Dark Mode, sechs sorgfältig abgestimmte Farbthemen und klare Typografie: Lanis fühlt sich an wie moderne Software und nicht wie ein Formular der Verwaltung."
-            delay={500}
+            reversed
+            delay={600}
           />
           <FeatureRow
             imagePath="/landing/navigation.png"
             label="Navigation"
             title="Alles griffbereit"
             desc="Direkte Sidebar statt verschachtelter Menüs, globale Suche und anpinnbare Module: Du kommst in höchstens drei Klicks zu jedem Modul, ganz ohne Suchen."
-            delay={600}
-            reversed
+            delay={700}
           />
         </section>
 
@@ -596,8 +604,6 @@ const Landingpage: React.FC = () => {
             </div>
           </Reveal>
         </section>
-
-        <ResilienceSection />
 
         {/* ═══ Footer ═══ */}
         <footer className="max-w-6xl mx-auto px-6 pb-12 text-center flex items-center justify-center gap-4">
