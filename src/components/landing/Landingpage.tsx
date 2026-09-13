@@ -6,6 +6,7 @@ import SEO from '../seo/SEO';
 import AppIcon from '../AppIcon';
 import { homepageAPI } from '../../services/api';
 import type { HomepageSchoolMapEntry, HomepageUserMapResponse } from '../../types';
+import UptimePreview from '../status/UptimePreview';
 import {
   BookOpenIcon,
   ChatBubbleLeftRightIcon,
@@ -424,12 +425,12 @@ const Landingpage: React.FC = () => {
             <AppIcon alt="Lanis" className="w-7 h-7 rounded-lg" />
             <span className="text-sm font-semibold text-[#555] dark:text-surface-300 tracking-tight">Lanis</span>
           </div>
-          <button
+          <div className="flex items-center gap-5"><Link to="/status" className="text-sm font-medium text-surface-600 dark:text-surface-300">Status</Link><button
             onClick={() => navigate('/login')}
             className="px-5 py-2.5 rounded-xl bg-[#1a1a1a] dark:bg-surface-100 hover:bg-[#333] dark:hover:bg-white text-white dark:text-surface-900 text-xs font-semibold transition-all duration-300 active:scale-[0.97]"
           >
             Login
-          </button>
+          </button></div>
         </nav>
 
         {/* ═══ Hero ═══ */}
@@ -596,8 +597,11 @@ const Landingpage: React.FC = () => {
           </Reveal>
         </section>
 
+        <ResilienceSection />
+
         {/* ═══ Footer ═══ */}
         <footer className="max-w-6xl mx-auto px-6 pb-12 text-center flex items-center justify-center gap-4">
+          <Link to="/status" className="text-xs text-surface-500 hover:text-surface-700 dark:hover:text-surface-300">Status</Link>
           <Link to="/impressum" className="text-[11px] text-[#bbb] dark:text-surface-500 hover:text-[#888] dark:hover:text-surface-300 transition-colors">
             Impressum
           </Link>
