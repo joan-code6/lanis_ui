@@ -577,7 +577,6 @@ const Landingpage: React.FC = () => {
             desc="Dark Mode, sechs sorgfältig abgestimmte Farbthemen und klare Typografie: Lanis fühlt sich an wie moderne Software und nicht wie ein Formular der Verwaltung."
             reversed
             delay={600}
-            reversed
           />
           <FeatureRow
             imagePath="/landing/navigation.png"
