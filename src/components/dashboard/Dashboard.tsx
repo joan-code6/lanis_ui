@@ -118,6 +118,11 @@ const Dashboard: React.FC = () => {
       navigate(`${basePath}/calendar`);
       return;
     }
+    if (module.url.toLowerCase().includes('/videokonferenz.php') ||
+        module.name.toLowerCase().includes('videokonferenz')) {
+      navigate(`${basePath}/videokonferenz`);
+      return;
+    }
     if (module.url.toLowerCase().includes('/stundenplan.php') ||
         module.name.toLowerCase().includes('stundenplan')) {
       navigate(`${basePath}/timetable`);

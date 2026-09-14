@@ -26,6 +26,7 @@ import CustomBackend from './components/settings/CustomBackend';
 import Onboarding from './components/onboarding/Onboarding';
 import Wahlen from './components/wahlen/Wahlen';
 import StatusPage from './components/status/StatusPage';
+import Videokonferenz from './components/videokonferenz/Videokonferenz';
 
 const LandingRoot: React.FC = () => {
   const { isAuthenticated } = useAuth();
@@ -88,6 +89,7 @@ const AppRoutes: React.FC = () => {
           <Route path="study-groups" element={<StudyGroups />} />
           <Route path="dateispeicher" element={<Dateispeicher />} />
           <Route path="vertretungsplan" element={<Vertretungsplan />} />
+          <Route path="videokonferenz" element={<Videokonferenz />} />
           <Route path="dsb" element={<Dsbmobile />} />
           <Route path="profile" element={<Profile />} />
           <Route path="settings/*" element={<Settings />} />
@@ -125,6 +127,7 @@ const AppRoutes: React.FC = () => {
                     <Route path="/study-groups" element={<StudyGroups />} />
                     <Route path="/dateispeicher" element={<Dateispeicher />} />
                     <Route path="/vertretungsplan" element={<Vertretungsplan />} />
+                    <Route path="/videokonferenz" element={<Videokonferenz />} />
                     <Route path="/dsb" element={<Dsbmobile />} />
                     <Route path="/wahlen" element={<Wahlen />} />
                     <Route path="/profile" element={<Profile />} />

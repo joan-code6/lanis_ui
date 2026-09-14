@@ -143,6 +143,29 @@ const mockDateispeicherNodes = {
   },
 };
 
+const mockVideoRooms = [
+  {
+    id: 'mathematik-9c',
+    name: 'Mathematik 9C',
+    teachers: ['Herr Vogel'],
+    status: 'open',
+    status_label: 'Raum betreten',
+    join_url: 'https://example.invalid/video/mathematik-9c',
+    can_join: true,
+    links: [{ label: 'Raumregeln', url: 'https://example.invalid/video/regeln' }],
+  },
+  {
+    id: 'klassenrat-9c',
+    name: 'Klassenrat 9C',
+    teachers: ['Frau Neumann'],
+    status: 'waiting',
+    status_label: 'Raum nicht offen',
+    join_url: 'https://example.invalid/video/klassenrat-9c',
+    can_join: false,
+    links: [],
+  },
+];
+
 const mockMessageHeaders = [
   { Id: 'dm-1', Uniquid: 'uq-1', Sender: 'Frau Neumann', Betreff: 'Deutsch: Gedichtvergleich für Montag', Papierkorb: '0', private: 0, WeitereEmpfaenger: '', empf: [demoUser.username], unread: true, date: hoursAgo(8) },
   { Id: 'dm-2', Uniquid: 'uq-2', Sender: 'Herr Vogel', Betreff: 'Mathematik: Abgabe zum Funktionsgraphen', Papierkorb: '0', private: 0, WeitereEmpfaenger: '', empf: [demoUser.username], unread: true, date: daysAgo(1) },
@@ -709,6 +732,9 @@ export function getMockResponse(url: string, method: string, config: any): { dat
   if (u.startsWith('/dateispeicher/file/') && method === 'get') {
     const fileId = u.split('/').pop();
     return { status: 200, data: new Blob([`Demo-Datei ${fileId}`], { type: 'text/plain' }) };
+  }
+  if (u === '/videokonferenz' && method === 'get') {
+    return { status: 200, data: { success: true, available: true, source: 'schulportal', status_live: true, rooms: mockVideoRooms, count: mockVideoRooms.length, open_count: 1, updated_label: 'vor wenigen Sekunden' } };
   }
   if (u === '/vertretungsplan' && method === 'get') { return { status: 200, data: mockVertretungsplan }; }
   if (u === '/lerngruppen' && method === 'get') {
