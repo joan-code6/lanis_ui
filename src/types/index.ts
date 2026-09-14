@@ -839,6 +839,39 @@ export interface DateispeicherSearchResponse {
   error?: string;
 }
 
+// Native Schulportal targeted file-distribution types
+export interface DateiverteilungFile {
+  id: string;
+  name: string;
+  size?: string;
+  download_url: string;
+}
+
+export interface DateiverteilungLink {
+  label: string;
+  url: string;
+}
+
+export interface DateiverteilungDistribution {
+  id: string;
+  title: string;
+  description?: string;
+  source: string;
+  created_at?: string;
+  unread: boolean;
+  files: DateiverteilungFile[];
+  links: DateiverteilungLink[];
+}
+
+export interface DateiverteilungResponse {
+  success: boolean;
+  distributions: DateiverteilungDistribution[];
+  distribution_count: number;
+  file_count: number;
+  unread_count: number;
+  error?: string;
+}
+
 // Study-group types
 export interface StudyGroupTeacher {
   krz: string;
