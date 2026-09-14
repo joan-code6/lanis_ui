@@ -18,6 +18,7 @@ import {
   ArrowPathIcon,
   ClockIcon,
   UserGroupIcon,
+  VideoCameraIcon,
 } from '@heroicons/react/24/outline';
 
 interface SearchItem {
@@ -37,6 +38,7 @@ interface GlobalSearchProps {
   hasNativeDateispeicher?: boolean;
   hasNativeSubstitutionPlan?: boolean;
   hasDsbModule?: boolean;
+  hasVideokonferenzModule?: boolean;
 }
 
 interface NavigationItem {
@@ -61,6 +63,7 @@ function moduleInAppHref(
   const moduleName = String(module.name || '').toLowerCase();
   const isDateispeicher = moduleName.includes('dateispeicher') || moduleLinks.includes('/dateispeicher.php');
   const isWahlen = moduleName.includes('wahlen') || moduleLinks.includes('/oberstufenwahl.php');
+  const isVideokonferenz = moduleName.includes('videokonferenz') || moduleLinks.includes('/videokonferenz.php');
   const isDsbModule = moduleName.includes('dsb') || moduleLinks.includes('dsb');
   const isNativeSubstitutionPlan = !isDsbModule && (
     moduleLinks.includes('/vertretungsplan.php') || moduleName.includes('vertretungsplan')
@@ -70,6 +73,7 @@ function moduleInAppHref(
   const dateispeicherHref = planNavigation.find(item => item.href.endsWith('/dateispeicher'))?.href;
   const wahlenHref = `${basePath}/wahlen`;
   return (isDateispeicher && (dateispeicherHref || `${basePath}/dateispeicher`))
+    || (isVideokonferenz && `${basePath}/videokonferenz`)
     || (isWahlen && wahlenHref)
     || (isNativeSubstitutionPlan && (nativePlanHref || `${basePath}/vertretungsplan`))
     || (isDsbModule && (dsbHref || `${basePath}/dsb`))
@@ -276,6 +280,7 @@ export default function GlobalSearch({
   hasNativeDateispeicher = false,
   hasNativeSubstitutionPlan = false,
   hasDsbModule = false,
+  hasVideokonferenzModule = false,
 }: GlobalSearchProps) {
   const { token, user } = useAuth();
   const navigate = useNavigate();
@@ -294,6 +299,9 @@ export default function GlobalSearch({
     const moduleItems: NavigationItem[] = hasNativeDateispeicher
       ? [{ name: 'Dateispeicher', href: `${basePath}/dateispeicher`, icon: FolderIcon, cat: 'Module' }]
       : [];
+    if (hasVideokonferenzModule) {
+      moduleItems.push({ name: 'Videokonferenz', href: `${basePath}/videokonferenz`, icon: VideoCameraIcon, cat: 'Module' });
+    }
     if (hasNativeSubstitutionPlan) {
       return [
         ...moduleItems,
@@ -304,7 +312,7 @@ export default function GlobalSearch({
     return hasDsbModule
       ? [...moduleItems, { name: 'Vertretungsplan', href: `${basePath}/dsb`, icon: ClipboardDocumentListIcon, cat: 'Vertretungsplan' }]
       : moduleItems;
-  }, [basePath, hasDsbModule, hasNativeDateispeicher, hasNativeSubstitutionPlan]);
+  }, [basePath, hasDsbModule, hasNativeDateispeicher, hasNativeSubstitutionPlan, hasVideokonferenzModule]);
 
   const cachedModules = readModulesCache(user);
   const cacheResults = useMemo(

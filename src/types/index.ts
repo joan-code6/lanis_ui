@@ -766,6 +766,36 @@ export interface VertretungsplanOptionsResponse {
   error?: string;
 }
 
+export type VideoRoomStatus = 'open' | 'waiting' | 'closed' | 'unknown';
+
+export interface VideoRoomLink {
+  label: string;
+  url: string;
+}
+
+export interface VideoRoom {
+  id: string;
+  name: string;
+  teachers: string[];
+  status: VideoRoomStatus;
+  status_label: string;
+  join_url: string | null;
+  can_join: boolean;
+  links: VideoRoomLink[];
+}
+
+export interface VideoRoomsResponse {
+  success: boolean;
+  available: boolean;
+  source: 'schulportal';
+  status_live: boolean;
+  rooms: VideoRoom[];
+  count: number;
+  open_count: number;
+  updated_label?: string | null;
+  error?: string;
+}
+
 export interface CustomLesson {
   /** Backwards-compatible ISO date whose weekday identifies the recurring day. */
   date: string;

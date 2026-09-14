@@ -23,6 +23,7 @@ import {
   FolderIcon,
   MagnifyingGlassIcon,
   MinusIcon,
+  VideoCameraIcon,
 } from '@heroicons/react/24/outline';
 import { Link, useLocation } from 'react-router-dom';
 import GlobalSearch from '../search/GlobalSearch';
@@ -63,6 +64,7 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
   const [hasNativeSubstitutionPlan, setHasNativeSubstitutionPlan] = React.useState(false);
   const [hasDsbModule, setHasDsbModule] = React.useState(false);
   const [hasWahlenModule, setHasWahlenModule] = React.useState(false);
+  const [hasVideokonferenzModule, setHasVideokonferenzModule] = React.useState(false);
   const mainRef = React.useRef<HTMLElement>(null);
   const pwaRef = React.useRef<any>(null);
 
@@ -103,6 +105,7 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
       setHasNativeSubstitutionPlan(availability.hasNativeSubstitutionPlan);
       setHasDsbModule(availability.hasDsbModule);
       setHasWahlenModule(availability.hasWahlenModule);
+      setHasVideokonferenzModule(availability.hasVideokonferenzModule);
     };
     const cachedModules = readModulesCache(user);
     applyModuleAvailability(cachedModules);
@@ -141,6 +144,7 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
     divider: { name: 'Trennlinie', href: '#divider', icon: MinusIcon },
     dashboard: { name: 'Dashboard', href: `${basePath}/dashboard`, icon: HomeIcon },
     messages: { name: 'Nachrichten', href: `${basePath}/messages`, icon: ChatBubbleLeftRightIcon },
+    videokonferenz: { name: 'Videokonferenz', href: `${basePath}/videokonferenz`, icon: VideoCameraIcon },
     dateispeicher: { name: 'Dateispeicher', href: `${basePath}/dateispeicher`, icon: FolderIcon },
     vertretungsplan: { name: 'Vertretungsplan', href: `${basePath}/vertretungsplan`, icon: ClipboardDocumentListIcon },
     dsb: { name: 'DSBmobile', href: `${basePath}/dsb`, icon: ClipboardDocumentListIcon },
@@ -158,6 +162,7 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
     ...(hasNativeSubstitutionPlan ? ['vertretungsplan' as const] : []),
     ...(hasDsbModule ? ['dsb' as const] : []),
     ...(hasWahlenModule ? ['wahlen' as const] : []),
+    ...(hasVideokonferenzModule ? ['videokonferenz' as const] : []),
   ]);
   const navigation = normalizeSidebarOrder(preferences.sidebar.order)
     .filter(id => !preferences.sidebar.hidden_items.includes(id))
@@ -237,6 +242,7 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
         hasNativeDateispeicher={hasNativeDateispeicher}
         hasNativeSubstitutionPlan={hasNativeSubstitutionPlan}
         hasDsbModule={hasDsbModule}
+        hasVideokonferenzModule={hasVideokonferenzModule}
       />
       <pwa-install
         ref={pwaRef}
