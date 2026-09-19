@@ -85,6 +85,7 @@ export type ThemeMode = 'system' | 'light' | 'dark' | 'oled';
 export type ThemeColor = 'emerald' | 'sapphire' | 'amethyst' | 'ruby' | 'amber' | 'cyan';
 export type DashboardViewMode = 'grid' | 'list';
 export type TimetableViewMode = 'rolling' | 'week';
+export type TimetableLayoutMode = 'cards' | 'compact';
 export type OnboardingStatus = 'not_started' | 'in_progress' | 'completed' | 'skipped';
 export type OnboardingStep = 'welcome' | 'appearance' | 'dashboard' | 'timetable' | 'homework' | 'guide' | 'complete';
 export type CompletedHomeworkDisplay = 'orange' | 'green' | 'hidden';
@@ -105,6 +106,7 @@ export interface UserPreferences {
   };
   timetable: {
     view_mode: TimetableViewMode;
+    layout_mode: TimetableLayoutMode;
     show_homework: boolean;
     show_exams: boolean;
   };
