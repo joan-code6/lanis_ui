@@ -517,6 +517,8 @@ const Courses: React.FC = () => {
   const goBack = () => {
     if (viewMode === 'entry-detail') {
       setViewMode('course-detail');
+    } else if (viewMode === 'submissions' || viewMode === 'weekly') {
+      setViewMode('overview');
     } else {
       navigate(`${basePath}/courses`);
     }
