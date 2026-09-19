@@ -180,7 +180,7 @@ const Timetable: React.FC = () => {
             {visibleDays.flatMap(day => (day.substitutionNotices || []).map((item, index) => (
               <div key={`${day.date}-notice-${index}`} className="flex flex-wrap items-center gap-x-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100">
                 <span className="font-semibold">{day.name} · {item.kind || 'Vertretung'}</span>
-                <span>{[item.periods.length ? `${item.periods.join(', ')}. Std.` : '', item.subject, item.teacher, item.room, item.info].filter(Boolean).join(' · ')}</span>
+                <span>{[item.periods.length ? `${item.periods.join(', ')}. Std.` : '', item.classes, item.subject, item.teacher, item.room, item.info].filter(Boolean).join(' · ')}</span>
                 <Link className="ml-auto font-medium text-primary-700 dark:text-primary-300" to={`${basePath}/${item.source === 'DSB' ? 'dsb' : 'vertretungsplan'}`}>Plan ansehen →</Link>
               </div>
             )))}
@@ -460,10 +460,11 @@ const CompactTimetableEntry: React.FC<{
     </div>
     <div className="mt-1 space-y-0.5 text-[8px] leading-tight text-white/90 sm:mt-2 sm:space-y-1 sm:text-xs sm:leading-normal">
       {exam && <p className="truncate font-semibold">{exam.type || 'Klausur'}</p>}
+      {lesson.class_name && <p>{lesson.class_name}</p>}
       {lesson.teacher && <p>{lesson.teacher}</p>}
       {lesson.room && <p>{lesson.room}</p>}
     </div>
-    {!exam && showHomework && Boolean(lesson.homework?.length) && <span className="mt-1 inline-flex items-center gap-0.5 text-[8px] font-semibold text-white/90 sm:text-[10px]" title="Hausaufgabe vorhanden"><BookOpenIcon className="h-2.5 w-2.5 sm:h-3 sm:w-3" /> HA</span>}
+    {showHomework && Boolean(lesson.homework?.length) && <span className="mt-1 inline-flex items-center gap-0.5 text-[8px] font-semibold text-white/90 sm:text-[10px]" title="Hausaufgabe vorhanden"><BookOpenIcon className="h-2.5 w-2.5 sm:h-3 sm:w-3" /> HA</span>}
   </div>
 );
 
