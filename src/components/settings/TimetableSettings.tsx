@@ -14,7 +14,7 @@ import {
 import { useAuth } from '../../contexts/AuthContext';
 import { usePreferences } from '../../contexts/PreferencesContext';
 import { settingsAPI, timetableAPI } from '../../services/api';
-import { ClassLink, CustomLesson, TimetableLesson, TimetableResponse } from '../../types';
+import { ClassLink, CustomLesson, TimetableLayoutMode, TimetableLesson, TimetableResponse } from '../../types';
 import { TimetableViewMode, weekdayForDate } from '../../utils/timetableView';
 
 interface EditableEntry {
@@ -372,6 +372,25 @@ const TimetableSettings: React.FC = () => {
         >
           <option value="rolling">Kommende 7 Tage</option>
           <option value="week">Schulwoche</option>
+        </select>
+      </section>
+
+      <section className="card flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 items-start gap-3">
+          <CalendarDaysIcon className="mt-0.5 h-5 w-5 shrink-0 text-primary-500" aria-hidden="true" />
+          <div>
+            <label className="font-medium text-surface-900 dark:text-white" htmlFor="timetable-layout-mode">Darstellung</label>
+            <p className="mt-0.5 text-xs text-surface-500">Die kompakte Ansicht zeigt alle Wochentage gleichzeitig und färbt Fächer ein.</p>
+          </div>
+        </div>
+        <select
+          id="timetable-layout-mode"
+          className="input w-full sm:w-52"
+          value={preferences.timetable.layout_mode}
+          onChange={event => void updatePreferences({ timetable: { layout_mode: event.target.value as TimetableLayoutMode } })}
+        >
+          <option value="cards">Karten</option>
+          <option value="compact">Kompakt &amp; farbig</option>
         </select>
       </section>
 

@@ -21,7 +21,7 @@ import { timetableAPI } from '../../services/api';
 import { StudyGroupExam, TimetableDay, TimetableLesson, TimetableResponse } from '../../types';
 import { weekTypeForDate } from '../../utils/timetableView';
 import SEO from '../seo/SEO';
-import { timetableEntries } from '../../utils/timetableExams';
+import { examPeriods, timetableEntries } from '../../utils/timetableExams';
 import { createTimetableRefreshTracker } from '../../utils/timetableRefresh';
 
 const Timetable: React.FC = () => {
@@ -175,6 +175,17 @@ const Timetable: React.FC = () => {
             <h2 className="font-semibold text-surface-900 dark:text-white">Keine Stunden eingetragen</h2>
             <p className="mt-1 text-sm text-surface-500">Für diese Woche wurden keine Unterrichtsstunden gefunden.</p>
           </div>
+        ) : preferences.timetable.layout_mode === 'compact' ? (
+          <div className="space-y-3">
+            {visibleDays.flatMap(day => (day.substitutionNotices || []).map((item, index) => (
+              <div key={`${day.date}-notice-${index}`} className="flex flex-wrap items-center gap-x-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100">
+                <span className="font-semibold">{day.name} · {item.kind || 'Vertretung'}</span>
+                <span>{[item.periods.length ? `${item.periods.join(', ')}. Std.` : '', item.subject, item.teacher, item.room, item.info].filter(Boolean).join(' · ')}</span>
+                <Link className="ml-auto font-medium text-primary-700 dark:text-primary-300" to={`${basePath}/${item.source === 'DSB' ? 'dsb' : 'vertretungsplan'}`}>Plan ansehen →</Link>
+              </div>
+            )))}
+            <TimelineView days={visibleDays} exams={displayedExams} timeSlots={timeSlots} onOpenCourse={openCourse} />
+          </div>
         ) : (
           <div ref={dayScrollerRef} className="scrollbar-hide -mx-3 flex snap-x snap-mandatory gap-3 overflow-x-auto px-3 pb-3 sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 sm:pb-0 md:gap-4 xl:grid-cols-5">
             {visibleDays.map(day => {
@@ -327,30 +338,67 @@ const HomeworkPreview: React.FC<{ homework?: TimetableLesson['homework']; compac
 
 const TimelineView: React.FC<{
   days: TimetableDay[];
+  exams: StudyGroupExam[];
   timeSlots: NonNullable<TimetableResponse['time_slots']>;
   onOpenCourse: (lesson: TimetableLesson) => void;
-}> = ({ days, timeSlots, onOpenCourse }) => {
-  const lessonsStartingAt = (day: TimetableDay, period: number): TimetableLesson[] =>
-    day.lessons.filter(lesson => Number(lesson.period?.toString().split('–')[0]) === period);
-  const isCovered = (day: TimetableDay, period: number): boolean => day.lessons.some(lesson => {
-    const start = Number(lesson.period?.toString().split('–')[0]);
-    return start < period && start + (lesson.duration || 1) > period;
+}> = ({ days, exams, timeSlots, onOpenCourse }) => {
+  const { preferences } = usePreferences();
+  const entriesByDate = useMemo(() => new Map(days.map(day => [
+    day.date,
+    timetableEntries(day.lessons, exams.filter(exam => exam.date === day.date), timeSlots),
+  ])), [days, exams, timeSlots]);
+  const entryPeriods = (lesson: TimetableLesson) => {
+    const parsed = examPeriods(String(lesson.period ?? ''));
+    if (parsed.length !== 1) return parsed;
+    return Array.from({ length: Math.max(1, lesson.duration || 1) }, (_, index) => parsed[0] + index);
+  };
+  const usedPeriods = [...new Set([...entriesByDate.values()].flatMap(entries => (
+    entries.flatMap(entry => entryPeriods(entry.lesson))
+  )))].sort((left, right) => left - right);
+  const firstPeriod = usedPeriods[0];
+  const lastPeriod = usedPeriods[usedPeriods.length - 1];
+  const slotsByPeriod = new Map(timeSlots.map(slot => [slot.period, { ...slot }]));
+  for (const entries of entriesByDate.values()) {
+    for (const { lesson } of entries) {
+      const periods = entryPeriods(lesson);
+      if (!periods.length) continue;
+      const first = periods[0];
+      const last = periods[periods.length - 1];
+      const firstSlot = slotsByPeriod.get(first) || { period: first, start_time: '', end_time: '' };
+      const lastSlot = slotsByPeriod.get(last) || { period: last, start_time: '', end_time: '' };
+      if (lesson.start_time && !firstSlot.start_time) firstSlot.start_time = lesson.start_time;
+      if (lesson.end_time && !lastSlot.end_time) lastSlot.end_time = lesson.end_time;
+      slotsByPeriod.set(first, firstSlot);
+      slotsByPeriod.set(last, lastSlot);
+    }
+  }
+  const usedTimeSlots = firstPeriod == null || lastPeriod == null
+    ? []
+    : Array.from({ length: lastPeriod - firstPeriod + 1 }, (_, index) => {
+      const period = firstPeriod + index;
+      return slotsByPeriod.get(period) || { period, start_time: '', end_time: '' };
+    });
+  const lessonsStartingAt = (date: string, period: number) => (
+    entriesByDate.get(date) || []
+  ).filter(entry => entryPeriods(entry.lesson)[0] === period);
+  const isCovered = (date: string, period: number) => (
+    entriesByDate.get(date) || []
+  ).some(entry => {
+    const periods = entryPeriods(entry.lesson);
+    return periods[0] < period && periods.includes(period);
   });
-  const usedTimeSlots = timeSlots.filter(slot => days.some(day => day.lessons.some(lesson => {
-    const start = Number(lesson.period?.toString().split('–')[0]);
-    return start <= slot.period && start + (lesson.duration || 1) > slot.period;
-  })));
 
   return (
-    <div className="overflow-hidden rounded-xl border border-surface-200 bg-white sm:overflow-x-auto sm:rounded-2xl dark:border-surface-800 dark:bg-surface-900">
-      <table className="w-full min-w-0 table-fixed border-collapse sm:min-w-[760px]">
+    <div className="overflow-hidden rounded-xl border border-surface-200 bg-white sm:rounded-2xl dark:border-surface-800 dark:bg-surface-900">
+      <table className="w-full table-fixed border-separate border-spacing-0" aria-label="Kompakter farbiger Stundenplan">
         <thead>
           <tr>
-            <th className="w-14 border-b border-r bg-surface-50 px-1 py-2 text-left text-[9px] font-medium text-surface-500 sm:w-28 sm:px-3 sm:py-3 sm:text-xs dark:bg-surface-800/60 dark:text-surface-400">Zeit</th>
+            <th className="w-11 border-b border-r bg-surface-50 px-0.5 py-2 text-center text-[8px] font-semibold uppercase tracking-wide text-surface-400 sm:w-24 sm:px-3 sm:py-3 sm:text-left sm:text-xs dark:bg-surface-800/60">Std.</th>
             {days.map(day => {
               const date = new Date(`${day.date}T12:00:00`);
-              return <th key={day.date} className="border-b px-1 py-2 text-center text-[10px] font-semibold sm:px-3 sm:py-3 sm:text-left sm:text-sm">
-                <span className="sm:hidden">{day.name?.slice(0, 2)}</span><span className="hidden sm:inline">{day.name}</span>
+              const today = isToday(date);
+              return <th key={day.date} className={`border-b px-0.5 py-2 text-center text-[10px] font-semibold sm:px-3 sm:py-3 sm:text-left sm:text-sm ${today ? 'bg-primary-50 text-primary-800 dark:bg-primary-950/50 dark:text-primary-200' : ''}`}>
+                <span className="sm:hidden">{day.name?.slice(0, 2) || format(date, 'EE', { locale: de })}</span><span className="hidden sm:inline">{day.name || format(date, 'EEEE', { locale: de })}</span>
                 <span className="mt-0.5 block text-[9px] font-normal text-surface-500 sm:text-xs"><span className="sm:hidden">{format(date, 'dd.MM.')}</span><span className="hidden sm:inline">{format(date, 'd. MMMM', { locale: de })}</span></span>
               </th>;
             })}
@@ -359,24 +407,24 @@ const TimelineView: React.FC<{
         <tbody>
           {usedTimeSlots.map(slot => (
             <tr key={slot.period}>
-              <th className="border-r border-t bg-surface-50 px-1 py-2 align-top text-center sm:px-3 sm:py-3 sm:text-left dark:bg-surface-800/40">
+              <th className="border-r border-t bg-surface-50 px-0.5 py-1.5 align-top text-center sm:px-3 sm:py-3 sm:text-left dark:bg-surface-800/40">
                 <span className="block text-[10px] font-semibold sm:text-sm">{slot.period}.</span>
-                <span className="mt-0.5 block text-[8px] font-normal leading-tight text-surface-500 sm:mt-1 sm:text-xs sm:leading-normal">{slot.start_time}<br />{slot.end_time}</span>
+                {(slot.start_time || slot.end_time) && <span className="mt-0.5 block text-[7px] font-normal leading-tight text-surface-500 sm:mt-1 sm:text-xs sm:leading-normal">{slot.start_time}<br />{slot.end_time}</span>}
               </th>
               {days.map(day => {
-                if (isCovered(day, slot.period)) return null;
-                const lessons = lessonsStartingAt(day, slot.period);
-                const span = Math.max(1, ...lessons.map(lesson => lesson.duration || 1));
+                if (isCovered(day.date, slot.period)) return null;
+                const entries = lessonsStartingAt(day.date, slot.period);
+                const span = Math.max(1, ...entries.map(entry => entryPeriods(entry.lesson).length));
                 return (
                   <td key={`${day.date}-${slot.period}`} rowSpan={span} className="border-t p-0.5 align-top sm:p-1.5">
                     <div
-                      className="grid h-full gap-0.5 sm:gap-1.5"
-                      style={lessons.length ? { gridTemplateColumns: `repeat(${Math.min(lessons.length, 2)}, minmax(0, 1fr))` } : undefined}
+                      className="grid h-full min-h-14 gap-0.5 sm:min-h-16 sm:gap-1.5"
+                      style={entries.length ? { gridTemplateColumns: `repeat(${Math.min(entries.length, 2)}, minmax(0, 1fr))` } : undefined}
                     >
-                      {lessons.map((lesson, index) => (
+                      {entries.map(({ lesson, exam }, index) => (
                         <div
-                          key={lesson.id || index}
-                          className={`relative flex min-w-0 flex-col justify-center rounded-md border border-surface-200 bg-surface-50 p-1 transition-colors sm:rounded-xl sm:p-2.5 dark:border-surface-700 dark:bg-surface-950 ${lesson.course_id ? 'cursor-pointer hover:border-primary-400 hover:bg-primary-50/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-500 dark:hover:border-primary-600 dark:hover:bg-primary-950/20' : ''}`}
+                          key={exam ? `exam-${exam.id}-${index}` : lesson.id || index}
+                          className={`relative flex min-w-0 flex-col justify-center overflow-hidden rounded-md border p-1 text-white shadow-sm transition sm:rounded-xl sm:p-2.5 ${exam ? 'border-violet-700 bg-violet-600 dark:bg-violet-700' : subjectColour(lesson)} ${lesson.cancelled ? '!border-red-700 !bg-red-600 opacity-70' : ''} ${lesson.substitution ? 'ring-2 ring-inset ring-amber-300' : ''} ${lesson.course_id ? 'cursor-pointer hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-surface-900' : ''}`}
                           role={lesson.course_id ? 'link' : undefined}
                           tabIndex={lesson.course_id ? 0 : undefined}
                           aria-label={lesson.course_id ? `${lesson.subject} in Mein Unterricht öffnen` : undefined}
@@ -389,17 +437,20 @@ const TimelineView: React.FC<{
                           }}
                         >
                           <div className="flex items-start justify-between gap-0.5 sm:gap-2">
-                            <span className="break-words text-[10px] font-semibold leading-tight sm:text-sm">{lesson.subject}</span>
-                            {lesson.week_type && <WeekBadge week={lesson.week_type} compact />}
+                            <span className={`min-w-0 break-words text-[10px] font-bold leading-tight sm:text-sm ${lesson.cancelled ? 'line-through' : ''}`} title={lesson.subject}>
+                              <span className="sm:hidden">{shortSubject(lesson.subject)}</span><span className="hidden sm:inline">{lesson.subject}</span>
+                            </span>
+                            {exam ? <AcademicCapIcon className="h-3 w-3 shrink-0 sm:h-4 sm:w-4" aria-label={exam.type || 'Klausur'} /> : lesson.week_type ? <span className="rounded bg-white/20 px-1 text-[8px] font-bold sm:text-[10px]">{lesson.week_type}</span> : null}
                           </div>
-                          <div className="mt-1 space-y-0.5 text-[9px] leading-tight text-surface-500 sm:mt-2 sm:space-y-1 sm:text-sm sm:leading-normal dark:text-surface-400">
+                          <div className="mt-1 space-y-0.5 text-[8px] leading-tight text-white/90 sm:mt-2 sm:space-y-1 sm:text-xs sm:leading-normal">
+                            {exam && <p className="truncate font-semibold">{exam.type || 'Klausur'}</p>}
                             {lesson.teacher && <p>{lesson.teacher}</p>}
                             {lesson.room && <p>{lesson.room}</p>}
                           </div>
-                          <HomeworkPreview homework={lesson.homework} compact />
+                          {!exam && preferences.timetable.show_homework && lesson.homework?.length && <span className="mt-1 inline-flex items-center gap-0.5 text-[8px] font-semibold text-white/90 sm:text-[10px]" title="Hausaufgabe vorhanden"><BookOpenIcon className="h-2.5 w-2.5 sm:h-3 sm:w-3" /> HA</span>}
                         </div>
                       ))}
-                      {!lessons.length && <div className="h-10 rounded bg-surface-50 sm:h-12 sm:rounded-lg dark:bg-surface-800/30" />}
+                      {!entries.length && <div className="h-full rounded bg-surface-50/70 dark:bg-surface-800/25" />}
                     </div>
                   </td>
                 );
@@ -410,6 +461,34 @@ const TimelineView: React.FC<{
       </table>
     </div>
   );
+};
+
+const SUBJECT_COLOURS = [
+  'border-blue-800 bg-blue-700 dark:bg-blue-700',
+  'border-emerald-800 bg-emerald-700 dark:bg-emerald-700',
+  'border-orange-800 bg-orange-700 dark:bg-orange-700',
+  'border-fuchsia-800 bg-fuchsia-700 dark:bg-fuchsia-700',
+  'border-cyan-800 bg-cyan-700 dark:bg-cyan-700',
+  'border-rose-800 bg-rose-700 dark:bg-rose-700',
+  'border-indigo-800 bg-indigo-700 dark:bg-indigo-700',
+  'border-lime-800 bg-lime-700 dark:bg-lime-700',
+] as const;
+
+const subjectColour = (lesson: TimetableLesson) => {
+  const key = String(lesson.course_id || lesson.course_name || lesson.subject).normalize('NFKC').toLocaleLowerCase('de');
+  const hash = [...key].reduce((value, character) => ((value * 31) + character.charCodeAt(0)) | 0, 0);
+  return SUBJECT_COLOURS[(hash >>> 0) % SUBJECT_COLOURS.length];
+};
+
+const SUBJECT_SHORT_NAMES: Record<string, string> = {
+  deutsch: 'D', mathematik: 'M', englisch: 'E', biologie: 'Bio', geschichte: 'G',
+  informatik: 'Inf', sport: 'Sp', kunst: 'Ku', musik: 'Mu', physik: 'Ph', chemie: 'Ch',
+  erdkunde: 'Ek', geografie: 'Geo', religion: 'Rel', ethik: 'Eth', politik: 'Po',
+};
+
+const shortSubject = (subject: string) => {
+  const normalized = subject.normalize('NFKC').trim().toLocaleLowerCase('de');
+  return SUBJECT_SHORT_NAMES[normalized] || subject.trim().split(/\s+/).map(part => part[0]).join('').slice(0, 4) || '–';
 };
 
 export default Timetable;
