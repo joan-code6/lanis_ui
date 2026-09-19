@@ -7,7 +7,7 @@ const compiled = ts.transpileModule(fs.readFileSync('src/utils/timetableExams.ts
 }).outputText;
 const loaded = { exports: {} };
 vm.runInNewContext(compiled, { module: loaded, exports: loaded.exports });
-const { timetableEntries, examPeriods } = loaded.exports;
+const { timetableEntries, examPeriods, layoutTimetableEntries } = loaded.exports;
 const lesson = { subject: 'D', course_name: 'D 10B', course_id: 'book-1', period: '3–4', teacher: 'RK', room: 'A208', start_time: '09:40', end_time: '11:10' };
 const exam = { id: 'exam-1', course_id: 'group-1', course_name: 'D 10B', hours: '3., 4.', type: 'Arbeit' };
 const slots = [{ period: 3, start_time: '09:40', end_time: '10:25' }, { period: 4, start_time: '10:25', end_time: '11:10' }];
@@ -70,4 +70,14 @@ rows = timetableEntries([lesson], [replacement], [
 ]);
 assert.equal(rows[0].lesson.start_time, '09:45');
 assert.equal(rows[0].lesson.end_time, '11:15');
+const compactLayout = layoutTimetableEntries([
+  { lesson: { subject: 'long', period: '1–2', duration: 2 } },
+  { lesson: { subject: 'short', period: 1 } },
+  { lesson: { subject: 'starts-later', period: 2 } },
+  { exam: { ...exam, id: 'unscheduled' }, lesson: { subject: 'Exam without period' } },
+]);
+assert.equal(compactLayout.scheduled.length, 3);
+assert.equal(compactLayout.unscheduled.length, 1);
+assert.ok(compactLayout.scheduled.some(item => item.entry.lesson.subject === 'starts-later'));
+assert.ok(compactLayout.scheduled.every(item => item.laneCount === 2));
 console.log('Timetable exam checks passed: merging, replacement, ordering, partial overlap, unknown periods, empty days, and concurrent exams.');

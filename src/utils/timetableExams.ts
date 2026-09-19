@@ -28,6 +28,54 @@ const lessonPeriods = (lesson: TimetableLesson): number[] => {
   if (parsed.length !== 1) return parsed;
   return Array.from({ length: Math.max(1, lesson.duration || 1) }, (_, index) => parsed[0] + index);
 };
+
+export interface PositionedTimetableEntry {
+  entry: TimetableEntry;
+  startPeriod: number;
+  endPeriod: number;
+  lane: number;
+  laneCount: number;
+}
+
+export const layoutTimetableEntries = (entries: TimetableEntry[]): {
+  scheduled: PositionedTimetableEntry[];
+  unscheduled: TimetableEntry[];
+} => {
+  const unscheduled: TimetableEntry[] = [];
+  const spans = entries.flatMap(entry => {
+    const periods = lessonPeriods(entry.lesson);
+    if (!periods.length) {
+      unscheduled.push(entry);
+      return [];
+    }
+    return [{ entry, startPeriod: periods[0], endPeriod: periods[periods.length - 1] }];
+  }).sort((left, right) => left.startPeriod - right.startPeriod || right.endPeriod - left.endPeriod);
+
+  const clusters: typeof spans[] = [];
+  let clusterEnd = -Infinity;
+  for (const span of spans) {
+    if (!clusters.length || span.startPeriod > clusterEnd) {
+      clusters.push([]);
+      clusterEnd = span.endPeriod;
+    } else {
+      clusterEnd = Math.max(clusterEnd, span.endPeriod);
+    }
+    clusters[clusters.length - 1].push(span);
+  }
+
+  const scheduled = clusters.flatMap(cluster => {
+    const laneEnds: number[] = [];
+    const placed = cluster.map(span => {
+      let lane = laneEnds.findIndex(endPeriod => endPeriod < span.startPeriod);
+      if (lane === -1) lane = laneEnds.length;
+      laneEnds[lane] = span.endPeriod;
+      return { ...span, lane };
+    });
+    return placed.map(item => ({ ...item, laneCount: laneEnds.length }));
+  });
+
+  return { scheduled, unscheduled };
+};
 const normalize = (name: string | null | undefined) => (name || '').normalize('NFKC').trim().replace(/\s+/g, ' ').toLocaleLowerCase('de');
 const runs = (periods: number[]): number[][] => periods.reduce<number[][]>((result, period) => {
   const last = result[result.length - 1];

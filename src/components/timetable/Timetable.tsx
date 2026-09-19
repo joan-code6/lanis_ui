@@ -21,7 +21,7 @@ import { timetableAPI } from '../../services/api';
 import { StudyGroupExam, TimetableDay, TimetableLesson, TimetableResponse } from '../../types';
 import { weekTypeForDate } from '../../utils/timetableView';
 import SEO from '../seo/SEO';
-import { examPeriods, timetableEntries } from '../../utils/timetableExams';
+import { layoutTimetableEntries, TimetableEntry, timetableEntries } from '../../utils/timetableExams';
 import { createTimetableRefreshTracker } from '../../utils/timetableRefresh';
 
 const Timetable: React.FC = () => {
@@ -343,27 +343,18 @@ const TimelineView: React.FC<{
   onOpenCourse: (lesson: TimetableLesson) => void;
 }> = ({ days, exams, timeSlots, onOpenCourse }) => {
   const { preferences } = usePreferences();
-  const entriesByDate = useMemo(() => new Map(days.map(day => [
+  const layoutsByDate = useMemo(() => new Map(days.map(day => [
     day.date,
-    timetableEntries(day.lessons, exams.filter(exam => exam.date === day.date), timeSlots),
+    layoutTimetableEntries(timetableEntries(day.lessons, exams.filter(exam => exam.date === day.date), timeSlots)),
   ])), [days, exams, timeSlots]);
-  const entryPeriods = (lesson: TimetableLesson) => {
-    const parsed = examPeriods(String(lesson.period ?? ''));
-    if (parsed.length !== 1) return parsed;
-    return Array.from({ length: Math.max(1, lesson.duration || 1) }, (_, index) => parsed[0] + index);
-  };
-  const usedPeriods = [...new Set([...entriesByDate.values()].flatMap(entries => (
-    entries.flatMap(entry => entryPeriods(entry.lesson))
+  const usedPeriods = [...new Set([...layoutsByDate.values()].flatMap(layout => (
+    layout.scheduled.flatMap(item => [item.startPeriod, item.endPeriod])
   )))].sort((left, right) => left - right);
   const firstPeriod = usedPeriods[0];
   const lastPeriod = usedPeriods[usedPeriods.length - 1];
   const slotsByPeriod = new Map(timeSlots.map(slot => [slot.period, { ...slot }]));
-  for (const entries of entriesByDate.values()) {
-    for (const { lesson } of entries) {
-      const periods = entryPeriods(lesson);
-      if (!periods.length) continue;
-      const first = periods[0];
-      const last = periods[periods.length - 1];
+  for (const layout of layoutsByDate.values()) {
+    for (const { entry: { lesson }, startPeriod: first, endPeriod: last } of layout.scheduled) {
       const firstSlot = slotsByPeriod.get(first) || { period: first, start_time: '', end_time: '' };
       const lastSlot = slotsByPeriod.get(last) || { period: last, start_time: '', end_time: '' };
       if (lesson.start_time && !firstSlot.start_time) firstSlot.start_time = lesson.start_time;
@@ -378,90 +369,101 @@ const TimelineView: React.FC<{
       const period = firstPeriod + index;
       return slotsByPeriod.get(period) || { period, start_time: '', end_time: '' };
     });
-  const lessonsStartingAt = (date: string, period: number) => (
-    entriesByDate.get(date) || []
-  ).filter(entry => entryPeriods(entry.lesson)[0] === period);
-  const isCovered = (date: string, period: number) => (
-    entriesByDate.get(date) || []
-  ).some(entry => {
-    const periods = entryPeriods(entry.lesson);
-    return periods[0] < period && periods.includes(period);
-  });
+  const slotCount = usedTimeSlots.length;
+  const scheduleHeight = `${slotCount * 4}rem`;
+  const columns = `clamp(2.75rem, 10vw, 6rem) repeat(${days.length}, minmax(0, 1fr))`;
+  const unscheduled = days.flatMap(day => (
+    layoutsByDate.get(day.date)?.unscheduled.map(entry => ({ day, entry })) || []
+  ));
 
   return (
-    <div className="overflow-hidden rounded-xl border border-surface-200 bg-white sm:rounded-2xl dark:border-surface-800 dark:bg-surface-900">
-      <table className="w-full table-fixed border-separate border-spacing-0" aria-label="Kompakter farbiger Stundenplan">
-        <thead>
-          <tr>
-            <th className="w-11 border-b border-r bg-surface-50 px-0.5 py-2 text-center text-[8px] font-semibold uppercase tracking-wide text-surface-400 sm:w-24 sm:px-3 sm:py-3 sm:text-left sm:text-xs dark:bg-surface-800/60">Std.</th>
-            {days.map(day => {
-              const date = new Date(`${day.date}T12:00:00`);
-              const today = isToday(date);
-              return <th key={day.date} className={`border-b px-0.5 py-2 text-center text-[10px] font-semibold sm:px-3 sm:py-3 sm:text-left sm:text-sm ${today ? 'bg-primary-50 text-primary-800 dark:bg-primary-950/50 dark:text-primary-200' : ''}`}>
-                <span className="sm:hidden">{day.name?.slice(0, 2) || format(date, 'EE', { locale: de })}</span><span className="hidden sm:inline">{day.name || format(date, 'EEEE', { locale: de })}</span>
-                <span className="mt-0.5 block text-[9px] font-normal text-surface-500 sm:text-xs"><span className="sm:hidden">{format(date, 'dd.MM.')}</span><span className="hidden sm:inline">{format(date, 'd. MMMM', { locale: de })}</span></span>
-              </th>;
-            })}
-          </tr>
-        </thead>
-        <tbody>
-          {usedTimeSlots.map(slot => (
-            <tr key={slot.period}>
-              <th className="border-r border-t bg-surface-50 px-0.5 py-1.5 align-top text-center sm:px-3 sm:py-3 sm:text-left dark:bg-surface-800/40">
-                <span className="block text-[10px] font-semibold sm:text-sm">{slot.period}.</span>
-                {(slot.start_time || slot.end_time) && <span className="mt-0.5 block text-[7px] font-normal leading-tight text-surface-500 sm:mt-1 sm:text-xs sm:leading-normal">{slot.start_time}<br />{slot.end_time}</span>}
-              </th>
-              {days.map(day => {
-                if (isCovered(day.date, slot.period)) return null;
-                const entries = lessonsStartingAt(day.date, slot.period);
-                const span = Math.max(1, ...entries.map(entry => entryPeriods(entry.lesson).length));
-                return (
-                  <td key={`${day.date}-${slot.period}`} rowSpan={span} className="border-t p-0.5 align-top sm:p-1.5">
-                    <div
-                      className="grid h-full min-h-14 gap-0.5 sm:min-h-16 sm:gap-1.5"
-                      style={entries.length ? { gridTemplateColumns: `repeat(${Math.min(entries.length, 2)}, minmax(0, 1fr))` } : undefined}
-                    >
-                      {entries.map(({ lesson, exam }, index) => (
-                        <div
-                          key={exam ? `exam-${exam.id}-${index}` : lesson.id || index}
-                          className={`relative flex min-w-0 flex-col justify-center overflow-hidden rounded-md border p-1 text-white shadow-sm transition sm:rounded-xl sm:p-2.5 ${exam ? 'border-violet-700 bg-violet-600 dark:bg-violet-700' : subjectColour(lesson)} ${lesson.cancelled ? '!border-red-700 !bg-red-600 opacity-70' : ''} ${lesson.substitution ? 'ring-2 ring-inset ring-amber-300' : ''} ${lesson.course_id ? 'cursor-pointer hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-surface-900' : ''}`}
-                          role={lesson.course_id ? 'link' : undefined}
-                          tabIndex={lesson.course_id ? 0 : undefined}
-                          aria-label={lesson.course_id ? `${lesson.subject} in Mein Unterricht öffnen` : undefined}
-                          onClick={() => onOpenCourse(lesson)}
-                          onKeyDown={event => {
-                            if (lesson.course_id && (event.key === 'Enter' || event.key === ' ')) {
-                              event.preventDefault();
-                              onOpenCourse(lesson);
-                            }
-                          }}
-                        >
-                          <div className="flex items-start justify-between gap-0.5 sm:gap-2">
-                            <span className={`min-w-0 break-words text-[10px] font-bold leading-tight sm:text-sm ${lesson.cancelled ? 'line-through' : ''}`} title={lesson.subject}>
-                              <span className="sm:hidden">{shortSubject(lesson.subject)}</span><span className="hidden sm:inline">{lesson.subject}</span>
-                            </span>
-                            {exam ? <AcademicCapIcon className="h-3 w-3 shrink-0 sm:h-4 sm:w-4" aria-label={exam.type || 'Klausur'} /> : lesson.week_type ? <span className="rounded bg-white/20 px-1 text-[8px] font-bold sm:text-[10px]">{lesson.week_type}</span> : null}
-                          </div>
-                          <div className="mt-1 space-y-0.5 text-[8px] leading-tight text-white/90 sm:mt-2 sm:space-y-1 sm:text-xs sm:leading-normal">
-                            {exam && <p className="truncate font-semibold">{exam.type || 'Klausur'}</p>}
-                            {lesson.teacher && <p>{lesson.teacher}</p>}
-                            {lesson.room && <p>{lesson.room}</p>}
-                          </div>
-                          {!exam && preferences.timetable.show_homework && lesson.homework?.length && <span className="mt-1 inline-flex items-center gap-0.5 text-[8px] font-semibold text-white/90 sm:text-[10px]" title="Hausaufgabe vorhanden"><BookOpenIcon className="h-2.5 w-2.5 sm:h-3 sm:w-3" /> HA</span>}
-                        </div>
-                      ))}
-                      {!entries.length && <div className="h-full rounded bg-surface-50/70 dark:bg-surface-800/25" />}
-                    </div>
-                  </td>
-                );
-              })}
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div className="overflow-hidden rounded-xl border border-surface-200 bg-white sm:rounded-2xl dark:border-surface-800 dark:bg-surface-900" role="table" aria-label="Kompakter farbiger Stundenplan">
+      <div className="grid border-b" style={{ gridTemplateColumns: columns }} role="row">
+        <div className="border-r bg-surface-50 px-0.5 py-2 text-center text-[8px] font-semibold uppercase tracking-wide text-surface-400 sm:px-3 sm:py-3 sm:text-left sm:text-xs dark:bg-surface-800/60" role="columnheader">Std.</div>
+        {days.map(day => {
+          const date = new Date(`${day.date}T12:00:00`);
+          const today = isToday(date);
+          return <div key={day.date} className={`px-0.5 py-2 text-center text-[10px] font-semibold sm:px-3 sm:py-3 sm:text-left sm:text-sm ${today ? 'bg-primary-50 text-primary-800 dark:bg-primary-950/50 dark:text-primary-200' : ''}`} role="columnheader">
+            <span className="sm:hidden">{day.name?.slice(0, 2) || format(date, 'EE', { locale: de })}</span><span className="hidden sm:inline">{day.name || format(date, 'EEEE', { locale: de })}</span>
+            <span className="mt-0.5 block text-[9px] font-normal text-surface-500 sm:text-xs"><span className="sm:hidden">{format(date, 'dd.MM.')}</span><span className="hidden sm:inline">{format(date, 'd. MMMM', { locale: de })}</span></span>
+          </div>;
+        })}
+      </div>
+
+      {slotCount > 0 && <div className="grid" style={{ gridTemplateColumns: columns }} role="row">
+        <div className="relative border-r bg-surface-50 dark:bg-surface-800/40" style={{ height: scheduleHeight }} role="rowheader">
+          {usedTimeSlots.map((slot, index) => <div key={slot.period} className="absolute inset-x-0 border-t px-0.5 py-1.5 text-center sm:px-3 sm:py-2 sm:text-left" style={{ top: `${(index / slotCount) * 100}%`, height: `${100 / slotCount}%` }}>
+            <span className="block text-[10px] font-semibold sm:text-sm">{slot.period}.</span>
+            {(slot.start_time || slot.end_time) && <span className="mt-0.5 block text-[7px] font-normal leading-tight text-surface-500 sm:mt-1 sm:text-xs sm:leading-normal">{slot.start_time}<br />{slot.end_time}</span>}
+          </div>)}
+        </div>
+        {days.map((day, dayIndex) => {
+          const layout = layoutsByDate.get(day.date);
+          return <div key={day.date} className={`relative ${dayIndex < days.length - 1 ? 'border-r' : ''}`} style={{ height: scheduleHeight }} role="cell">
+            {usedTimeSlots.map((slot, index) => <div key={slot.period} className="absolute inset-x-0 border-t bg-surface-50/40 dark:bg-surface-800/10" style={{ top: `${(index / slotCount) * 100}%`, height: `${100 / slotCount}%` }} aria-hidden="true" />)}
+            {layout?.scheduled.map(({ entry, startPeriod, endPeriod, lane, laneCount }, index) => (
+              <div
+                key={entry.exam ? `exam-${entry.exam.id}-${index}` : entry.lesson.id || index}
+                className="absolute min-w-0 p-0.5 sm:p-1"
+                style={{
+                  top: `${((startPeriod - firstPeriod) / slotCount) * 100}%`,
+                  height: `${((endPeriod - startPeriod + 1) / slotCount) * 100}%`,
+                  left: `${(lane / laneCount) * 100}%`,
+                  width: `${100 / laneCount}%`,
+                }}
+              >
+                <CompactTimetableEntry entry={entry} showHomework={preferences.timetable.show_homework} onOpenCourse={onOpenCourse} />
+              </div>
+            ))}
+          </div>;
+        })}
+      </div>}
+
+      {unscheduled.length > 0 && <section className="border-t p-3" aria-labelledby="unscheduled-timetable-entries">
+        <h3 id="unscheduled-timetable-entries" className="text-xs font-semibold text-surface-700 dark:text-surface-300">Ohne Stundenangabe</h3>
+        <div className="mt-2 grid gap-2 sm:grid-cols-2">
+          {unscheduled.map(({ day, entry }, index) => <div key={entry.exam ? `unscheduled-${entry.exam.id}` : `unscheduled-${day.date}-${index}`} className="rounded-lg bg-surface-50 p-1.5 dark:bg-surface-800/40">
+            <p className="mb-1 px-1 text-[10px] font-medium text-surface-500">{day.name || format(new Date(`${day.date}T12:00:00`), 'EEEE', { locale: de })} · Stunden nicht angegeben</p>
+            <CompactTimetableEntry entry={entry} showHomework={preferences.timetable.show_homework} onOpenCourse={onOpenCourse} />
+          </div>)}
+        </div>
+      </section>}
     </div>
   );
 };
+
+const CompactTimetableEntry: React.FC<{
+  entry: TimetableEntry;
+  showHomework: boolean;
+  onOpenCourse: (lesson: TimetableLesson) => void;
+}> = ({ entry: { lesson, exam }, showHomework, onOpenCourse }) => (
+  <div
+    className={`relative flex h-full min-w-0 flex-col justify-center overflow-hidden rounded-md border p-1 text-white shadow-sm transition sm:rounded-xl sm:p-2.5 ${exam ? 'border-violet-700 bg-violet-600 dark:bg-violet-700' : subjectColour(lesson)} ${lesson.cancelled ? '!border-red-700 !bg-red-600 opacity-70' : ''} ${lesson.substitution ? 'ring-2 ring-inset ring-amber-300' : ''} ${lesson.course_id ? 'cursor-pointer hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-surface-900' : ''}`}
+    role={lesson.course_id ? 'link' : undefined}
+    tabIndex={lesson.course_id ? 0 : undefined}
+    aria-label={lesson.course_id ? `${lesson.subject} in Mein Unterricht öffnen` : undefined}
+    onClick={() => onOpenCourse(lesson)}
+    onKeyDown={event => {
+      if (lesson.course_id && (event.key === 'Enter' || event.key === ' ')) {
+        event.preventDefault();
+        onOpenCourse(lesson);
+      }
+    }}
+  >
+    <div className="flex items-start justify-between gap-0.5 sm:gap-2">
+      <span className={`min-w-0 break-words text-[10px] font-bold leading-tight sm:text-sm ${lesson.cancelled ? 'line-through' : ''}`} title={lesson.subject}>
+        <span className="sm:hidden">{shortSubject(lesson.subject)}</span><span className="hidden sm:inline">{lesson.subject}</span>
+      </span>
+      {exam ? <AcademicCapIcon className="h-3 w-3 shrink-0 sm:h-4 sm:w-4" aria-label={exam.type || 'Klausur'} /> : lesson.week_type ? <span className="rounded bg-white/20 px-1 text-[8px] font-bold sm:text-[10px]">{lesson.week_type}</span> : null}
+    </div>
+    <div className="mt-1 space-y-0.5 text-[8px] leading-tight text-white/90 sm:mt-2 sm:space-y-1 sm:text-xs sm:leading-normal">
+      {exam && <p className="truncate font-semibold">{exam.type || 'Klausur'}</p>}
+      {lesson.teacher && <p>{lesson.teacher}</p>}
+      {lesson.room && <p>{lesson.room}</p>}
+    </div>
+    {!exam && showHomework && Boolean(lesson.homework?.length) && <span className="mt-1 inline-flex items-center gap-0.5 text-[8px] font-semibold text-white/90 sm:text-[10px]" title="Hausaufgabe vorhanden"><BookOpenIcon className="h-2.5 w-2.5 sm:h-3 sm:w-3" /> HA</span>}
+  </div>
+);
 
 const SUBJECT_COLOURS = [
   'border-blue-800 bg-blue-700 dark:bg-blue-700',
