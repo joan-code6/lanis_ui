@@ -403,7 +403,9 @@ const TimelineView: React.FC<{
             {usedTimeSlots.map((slot, index) => <div key={slot.period} className="absolute inset-x-0 border-t bg-surface-50/40 dark:bg-surface-800/10" style={{ top: `${(index / slotCount) * 100}%`, height: `${100 / slotCount}%` }} aria-hidden="true" />)}
             {layout?.scheduled.map(({ entry, startPeriod, endPeriod, lane, laneCount }, index) => (
               <div
-                key={entry.exam ? `exam-${entry.exam.id}-${index}` : entry.lesson.id || index}
+                key={entry.exam
+                  ? `exam-${entry.exam.id}-${startPeriod}-${endPeriod}`
+                  : `lesson-${entry.lesson.id || entry.lesson.course_id || entry.lesson.subject}-${startPeriod}-${endPeriod}`}
                 className="absolute min-w-0 p-0.5 sm:p-1"
                 style={{
                   top: `${((startPeriod - firstPeriod) / slotCount) * 100}%`,
