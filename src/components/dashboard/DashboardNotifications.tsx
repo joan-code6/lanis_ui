@@ -45,6 +45,10 @@ const SOURCE_DETAILS: Record<DashboardNotificationSource, {
 
 function formatTimestamp(value: string): string {
   if (!value) return '';
+  const portalDate = value.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})/);
+  if (portalDate) {
+    return `${portalDate[1].padStart(2, '0')}.${portalDate[2].padStart(2, '0')}`;
+  }
   const timestamp = new Date(value);
   if (Number.isNaN(timestamp.getTime())) return value;
   return timestamp.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' });
@@ -95,7 +99,9 @@ const DashboardNotifications: React.FC = () => {
         setUnreadCount(sourceNotifications.length === responseNotifications.length
           ? response.unread_count || 0
           : sourceNotifications.filter(item => !item.read).length);
-        setErrors(Object.values(response.errors || {}).filter(Boolean));
+        setErrors(Object.entries(response.errors || {})
+          .filter(([source, error]) => error && enabledSources.has(source as DashboardNotificationSource))
+          .map(([, error]) => error as string));
       })
       .catch(error => {
         if (axios.isCancel(error)) return;
@@ -141,7 +147,7 @@ const DashboardNotifications: React.FC = () => {
     const unreadIds = notifications.filter(item => !item.read).map(item => item.id);
     markReadLocally(unreadIds);
     setUnreadCount(0);
-    void dashboardAPI.markAllNotificationsRead(token).catch(error => {
+    void dashboardAPI.markAllNotificationsRead(token, Array.from(enabledSources)).catch(error => {
       console.error('Failed to mark dashboard notifications as read:', error);
       setReloadKey(value => value + 1);
     });

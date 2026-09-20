@@ -561,9 +561,12 @@ export function getMockResponse(url: string, method: string, config: any): { dat
     return { status: 200, data: { success: true, updated: ids.length } };
   }
   if (u === '/dashboard/notifications/read-all' && method === 'post') {
+    const body = typeof config?.data === 'string' ? JSON.parse(config.data) : config?.data;
+    const sources = Array.isArray(body?.sources) ? body.sources : ['messages', 'native', 'dsb'];
     const notifications = getMockDashboardNotifications();
-    notifications.forEach(item => mockDashboardReadIds.add(item.id));
-    return { status: 200, data: { success: true, updated: notifications.length } };
+    const selected = notifications.filter(item => sources.includes(item.source) && !item.read);
+    selected.forEach(item => mockDashboardReadIds.add(item.id));
+    return { status: 200, data: { success: true, updated: selected.length } };
   }
 
   // Messages

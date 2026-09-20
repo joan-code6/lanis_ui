@@ -186,6 +186,7 @@ import {
   StudyGroupsResponse,
   NotificationConfigResponse,
   DashboardNotificationsResponse,
+  DashboardNotificationSource,
   NotificationPreferences,
   NotificationPreferencesResponse,
   VertretungsplanNotificationOptionsResponse,
@@ -546,10 +547,13 @@ export const dashboardAPI = {
     return response.data;
   },
 
-  async markAllNotificationsRead(token: string): Promise<{ success: boolean; updated: number }> {
+  async markAllNotificationsRead(
+    token: string,
+    sources: DashboardNotificationSource[],
+  ): Promise<{ success: boolean; updated: number }> {
     const response = await apiClient.post<{ success: boolean; updated: number }>(
       '/dashboard/notifications/read-all',
-      {},
+      { sources },
       { headers: { 'X-Session-Token': token } },
     );
     return response.data;
