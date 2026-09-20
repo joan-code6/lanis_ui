@@ -525,7 +525,9 @@ function getMockDashboardNotifications() {
       read_at: mockDashboardReadIds.has(id) ? now.toISOString() : null,
     };
   }));
-  return [...messageItems, ...nativeItems, ...dsbItems];
+  return [...messageItems, ...nativeItems, ...dsbItems].sort(
+    (left, right) => new Date(right.created_at).getTime() - new Date(left.created_at).getTime(),
+  );
 }
 
 export function getMockResponse(url: string, method: string, config: any): { data: any; status: number } {
@@ -550,6 +552,11 @@ export function getMockResponse(url: string, method: string, config: any): { dat
         messages: notifications.filter(item => item.source === 'messages').length,
         native: notifications.filter(item => item.source === 'native').length,
         dsb: notifications.filter(item => item.source === 'dsb').length,
+      },
+      unread_source_counts: {
+        messages: notifications.filter(item => item.source === 'messages' && !item.read).length,
+        native: notifications.filter(item => item.source === 'native' && !item.read).length,
+        dsb: notifications.filter(item => item.source === 'dsb' && !item.read).length,
       },
       errors: {},
     } };

@@ -394,6 +394,7 @@ export interface DashboardNotificationsResponse {
   notifications: DashboardNotification[];
   unread_count: number;
   source_counts: Record<DashboardNotificationSource, number>;
+  unread_source_counts: Record<DashboardNotificationSource, number>;
   errors: Partial<Record<DashboardNotificationSource, string>>;
 }
 

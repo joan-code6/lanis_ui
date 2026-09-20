@@ -96,9 +96,10 @@ const DashboardNotifications: React.FC = () => {
           item => dashboardPreferences.notification_show_read || !item.read,
         );
         setNotifications(nextNotifications);
-        setUnreadCount(sourceNotifications.length === responseNotifications.length
-          ? response.unread_count || 0
-          : sourceNotifications.filter(item => !item.read).length);
+        setUnreadCount(Array.from(enabledSources).reduce(
+          (total, source) => total + (response.unread_source_counts?.[source] || 0),
+          0,
+        ));
         setErrors(Object.entries(response.errors || {})
           .filter(([source, error]) => error && enabledSources.has(source as DashboardNotificationSource))
           .map(([, error]) => error as string));
