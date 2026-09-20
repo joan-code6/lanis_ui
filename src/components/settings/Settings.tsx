@@ -478,9 +478,10 @@ const Settings: React.FC = () => {
   const location = useLocation();
   const basePath = useBasePath();
   const settingsRoot = `${basePath}/settings`;
-  const [hasNativeSubstitutionPlan, setHasNativeSubstitutionPlan] = useState(
-    () => getModuleAvailability(readModulesCache(user)).hasNativeSubstitutionPlan,
-  );
+  const [hasNativeSubstitutionPlan, setHasNativeSubstitutionPlan] = useState(() => {
+    const availability = getModuleAvailability(readModulesCache(user));
+    return availability.hasNativeSubstitutionPlan || availability.hasDsbModule;
+  });
   const visibleSettingsSections = settingsSections.filter(item => (
     item.id !== 'vertretungsplan' || hasNativeSubstitutionPlan
   ));
@@ -529,7 +530,8 @@ const Settings: React.FC = () => {
 
   useEffect(() => {
     const cachedModules = readModulesCache(user);
-    setHasNativeSubstitutionPlan(getModuleAvailability(cachedModules).hasNativeSubstitutionPlan);
+    const availability = getModuleAvailability(cachedModules);
+    setHasNativeSubstitutionPlan(availability.hasNativeSubstitutionPlan || availability.hasDsbModule);
     if (!token) return undefined;
 
     const controller = new AbortController();
@@ -537,9 +539,8 @@ const Settings: React.FC = () => {
       .then(response => {
         if (controller.signal.aborted || !response.success) return;
         writeModulesCache(user, response.modules);
-        setHasNativeSubstitutionPlan(
-          getModuleAvailability(response.modules).hasNativeSubstitutionPlan,
-        );
+        const availability = getModuleAvailability(response.modules);
+        setHasNativeSubstitutionPlan(availability.hasNativeSubstitutionPlan || availability.hasDsbModule);
       })
       .catch(error => {
         if (!axios.isCancel(error)) {
