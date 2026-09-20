@@ -292,7 +292,7 @@ const Dashboard: React.FC = () => {
         <p className="page-subtitle">Alle verfügbaren Apps und Module</p>
       </div>
 
-      <DashboardNotifications modules={modules} />
+      <DashboardNotifications />
 
       {error && (
         <div className="mb-6 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-900 text-red-600 dark:text-red-400 px-4 py-3 rounded-xl text-sm animate-scale-in">

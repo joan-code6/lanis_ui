@@ -481,6 +481,53 @@ function urlMatches(pattern: string, url: string): boolean {
   return regex.test(url);
 }
 
+const mockDashboardReadIds = new Set<string>();
+
+function getMockDashboardNotifications() {
+  const messageItems = mockMessageHeaders
+    .filter(message => message.unread)
+    .map(message => ({
+      id: `demo-message-${message.Uniquid}`,
+      source: 'messages',
+      title: message.Betreff,
+      detail: message.Sender,
+      meta: message.date,
+      path: '/messages',
+      created_at: message.date,
+      read: mockDashboardReadIds.has(`demo-message-${message.Uniquid}`),
+      read_at: mockDashboardReadIds.has(`demo-message-${message.Uniquid}`) ? now.toISOString() : null,
+    }));
+  const nativeItems = mockVertretungsplan.days.flatMap((day, dayIndex) => day.substitutions.map((entry, entryIndex) => {
+    const id = `demo-native-${dayIndex}-${entryIndex}`;
+    return {
+      id,
+      source: 'native',
+      title: `${entry.art || 'Änderung'} · ${entry.fach || ''}`,
+      detail: `${entry.klasse} · ${entry.stunde}. Std.${entry.raum ? ` · Raum ${entry.raum}` : ''}`,
+      meta: entry.tag || day.date,
+      path: '/vertretungsplan',
+      created_at: now.toISOString(),
+      read: mockDashboardReadIds.has(id),
+      read_at: mockDashboardReadIds.has(id) ? now.toISOString() : null,
+    };
+  }));
+  const dsbItems = mockDsbData.tables.flatMap((table, tableIndex) => table.rows.map((row, rowIndex) => {
+    const id = `demo-dsb-${tableIndex}-${rowIndex}`;
+    return {
+      id,
+      source: 'dsb',
+      title: `${row.Info || 'Änderung'} · ${row.Fach}`,
+      detail: `${demoUser.klasse} · ${row.Stunde}. Std. · Raum ${row.Raum}`,
+      meta: table.date || '',
+      path: '/dsb',
+      created_at: now.toISOString(),
+      read: mockDashboardReadIds.has(id),
+      read_at: mockDashboardReadIds.has(id) ? now.toISOString() : null,
+    };
+  }));
+  return [...messageItems, ...nativeItems, ...dsbItems].filter(item => !item.read);
+}
+
 export function getMockResponse(url: string, method: string, config: any): { data: any; status: number } {
   const u = (url || '').replace(config?.baseURL || '', '').split('?')[0];
 
@@ -490,6 +537,34 @@ export function getMockResponse(url: string, method: string, config: any): { dat
 
   // Modules
   if (u === '/modules' && method === 'get') { return { status: 200, data: { success: true, modules: demoModules } }; }
+
+  // Dashboard notification inbox
+  if (u === '/dashboard/notifications' && method === 'get') {
+    const notifications = getMockDashboardNotifications();
+    return { status: 200, data: {
+      success: true,
+      enabled: true,
+      notifications,
+      unread_count: notifications.length,
+      source_counts: {
+        messages: notifications.filter(item => item.source === 'messages').length,
+        native: notifications.filter(item => item.source === 'native').length,
+        dsb: notifications.filter(item => item.source === 'dsb').length,
+      },
+      errors: {},
+    } };
+  }
+  if (u === '/dashboard/notifications/read' && method === 'post') {
+    const body = typeof config?.data === 'string' ? JSON.parse(config.data) : config?.data;
+    const ids = Array.isArray(body?.notification_ids) ? body.notification_ids : [];
+    ids.forEach((id: string) => mockDashboardReadIds.add(id));
+    return { status: 200, data: { success: true, updated: ids.length } };
+  }
+  if (u === '/dashboard/notifications/read-all' && method === 'post') {
+    const notifications = getMockDashboardNotifications();
+    notifications.forEach(item => mockDashboardReadIds.add(item.id));
+    return { status: 200, data: { success: true, updated: notifications.length } };
+  }
 
   // Messages
   if (u === '/nachrichten/headers' && method === 'get') { return { status: 200, data: { success: true, total: mockMessageHeaders.length, conversations: mockMessageHeaders } }; }

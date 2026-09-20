@@ -31,6 +31,7 @@ import {
   MoonIcon,
   PaintBrushIcon,
   ServerStackIcon,
+  Squares2X2Icon,
   SunIcon,
   SparklesIcon,
   TrashIcon,
@@ -41,6 +42,7 @@ import TimetableSettings from './TimetableSettings';
 import VertretungsplanSettings from './VertretungsplanSettings';
 import HomeworkSettings from './HomeworkSettings';
 import WhatsAppSettings from './WhatsAppSettings';
+import DashboardSettings from './DashboardSettings';
 import {
   DEFAULT_SIDEBAR_ORDER,
   normalizeSidebarOrder,
@@ -106,7 +108,7 @@ const pushSubscriptionToPayload = (subscription: PushSubscription): PushSubscrip
   };
 };
 
-type SettingsSection = 'home' | 'appearance' | 'timetable' | 'homework' | 'vertretungsplan' | 'notifications' | 'whatsapp' | 'app' | 'sidebar';
+type SettingsSection = 'home' | 'appearance' | 'dashboard' | 'timetable' | 'homework' | 'vertretungsplan' | 'notifications' | 'whatsapp' | 'app' | 'sidebar';
 
 const settingsSections: Array<{
   id: Exclude<SettingsSection, 'home'>;
@@ -119,6 +121,12 @@ const settingsSections: Array<{
     title: 'Erscheinungsbild',
     description: 'Farben, Dark Mode und die Oberfläche von Lanis.',
     icon: PaintBrushIcon,
+  },
+  {
+    id: 'dashboard',
+    title: 'Dashboard',
+    description: 'Hinweisbanner, Quellen und gelesene Einträge verwalten.',
+    icon: Squares2X2Icon,
   },
   {
     id: 'timetable',
@@ -167,6 +175,7 @@ const settingsSections: Array<{
 const sectionMeta: Record<SettingsSection, { title: string; subtitle: string }> = {
   home: { title: 'Einstellungen', subtitle: 'Passe dein Schulportal an.' },
   appearance: { title: 'Erscheinungsbild', subtitle: 'Farben und Oberfläche an deine Gewohnheiten anpassen.' },
+  dashboard: { title: 'Dashboard', subtitle: 'Lege fest, welche Hinweise auf deinem Dashboard erscheinen.' },
   timetable: { title: 'Stundenplan', subtitle: 'Anzeige und eigene Stundenplanänderungen verwalten.' },
   homework: { title: 'Hausaufgaben', subtitle: 'Lege fest, ob erledigte Aufgaben in „Mein Unterricht“ erscheinen.' },
   vertretungsplan: { title: 'Vertretungsplan', subtitle: 'Die passende Klasse automatisch auswählen oder selbst festlegen.' },
@@ -957,6 +966,7 @@ const Settings: React.FC = () => {
       )}
 
       {section === 'timetable' && <TimetableSettings />}
+      {section === 'dashboard' && <DashboardSettings />}
       {section === 'homework' && <HomeworkSettings />}
       {section === 'vertretungsplan' && <VertretungsplanSettings />}
       {section === 'whatsapp' && <WhatsAppSettings />}
