@@ -525,7 +525,7 @@ function getMockDashboardNotifications() {
       read_at: mockDashboardReadIds.has(id) ? now.toISOString() : null,
     };
   }));
-  return [...messageItems, ...nativeItems, ...dsbItems].filter(item => !item.read);
+  return [...messageItems, ...nativeItems, ...dsbItems];
 }
 
 export function getMockResponse(url: string, method: string, config: any): { data: any; status: number } {
@@ -545,7 +545,7 @@ export function getMockResponse(url: string, method: string, config: any): { dat
       success: true,
       enabled: true,
       notifications,
-      unread_count: notifications.length,
+      unread_count: notifications.filter(item => !item.read).length,
       source_counts: {
         messages: notifications.filter(item => item.source === 'messages').length,
         native: notifications.filter(item => item.source === 'native').length,

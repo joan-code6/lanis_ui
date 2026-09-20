@@ -86,8 +86,15 @@ const DashboardNotifications: React.FC = () => {
       .then(response => {
         if (controller.signal.aborted) return;
         if (!response.success) throw new Error('Hinweise konnten nicht geladen werden.');
-        setNotifications((response.notifications || []).filter(item => enabledSources.has(item.source)));
-        setUnreadCount(response.unread_count || 0);
+        const responseNotifications = response.notifications || [];
+        const sourceNotifications = responseNotifications.filter(item => enabledSources.has(item.source));
+        const nextNotifications = sourceNotifications.filter(
+          item => dashboardPreferences.notification_show_read || !item.read,
+        );
+        setNotifications(nextNotifications);
+        setUnreadCount(sourceNotifications.length === responseNotifications.length
+          ? response.unread_count || 0
+          : sourceNotifications.filter(item => !item.read).length);
         setErrors(Object.values(response.errors || {}).filter(Boolean));
       })
       .catch(error => {
@@ -98,7 +105,13 @@ const DashboardNotifications: React.FC = () => {
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [dashboardPreferences.notifications_enabled, enabledSources, reloadKey, token]);
+  }, [
+    dashboardPreferences.notification_show_read,
+    dashboardPreferences.notifications_enabled,
+    enabledSources,
+    reloadKey,
+    token,
+  ]);
 
   const visibleNotifications = notifications.slice(0, dashboardPreferences.notification_limit);
 
