@@ -56,6 +56,7 @@ const DashboardNotifications: React.FC = () => {
   const basePath = useBasePath();
   const navigate = useNavigate();
   const [notifications, setNotifications] = useState<DashboardNotification[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
   const [errors, setErrors] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [reloadKey, setReloadKey] = useState(0);
@@ -74,6 +75,7 @@ const DashboardNotifications: React.FC = () => {
   useEffect(() => {
     if (!token || !dashboardPreferences.notifications_enabled) {
       setNotifications([]);
+      setUnreadCount(0);
       setErrors([]);
       setLoading(false);
       return undefined;
@@ -85,6 +87,7 @@ const DashboardNotifications: React.FC = () => {
         if (controller.signal.aborted) return;
         if (!response.success) throw new Error('Hinweise konnten nicht geladen werden.');
         setNotifications((response.notifications || []).filter(item => enabledSources.has(item.source)));
+        setUnreadCount(response.unread_count || 0);
         setErrors(Object.values(response.errors || {}).filter(Boolean));
       })
       .catch(error => {
@@ -98,7 +101,6 @@ const DashboardNotifications: React.FC = () => {
   }, [dashboardPreferences.notifications_enabled, enabledSources, reloadKey, token]);
 
   const visibleNotifications = notifications.slice(0, dashboardPreferences.notification_limit);
-  const unreadCount = visibleNotifications.filter(item => !item.read).length;
 
   const markReadLocally = (ids: string[]) => {
     if (dashboardPreferences.notification_show_read) {
@@ -113,6 +115,7 @@ const DashboardNotifications: React.FC = () => {
   const openNotification = (notification: DashboardNotification) => {
     if (!notification.read && token) {
       markReadLocally([notification.id]);
+      setUnreadCount(current => Math.max(0, current - 1));
       void dashboardAPI.markNotificationsRead(token, [notification.id]).catch(error => {
         console.error('Failed to mark dashboard notification as read:', error);
       });
@@ -122,8 +125,9 @@ const DashboardNotifications: React.FC = () => {
 
   const markAllRead = () => {
     if (!token || unreadCount === 0) return;
-    const unreadIds = visibleNotifications.filter(item => !item.read).map(item => item.id);
+    const unreadIds = notifications.filter(item => !item.read).map(item => item.id);
     markReadLocally(unreadIds);
+    setUnreadCount(0);
     void dashboardAPI.markAllNotificationsRead(token).catch(error => {
       console.error('Failed to mark dashboard notifications as read:', error);
       setReloadKey(value => value + 1);
