@@ -324,6 +324,7 @@ const Vertretungsplan: React.FC = () => {
       <SEO
         title="Vertretungsplan"
         description="Dein nativer Vertretungsplan aus dem Schulportal Hessen."
+        path="/vertretungsplan"
         noindex
       />
       <div className="mx-auto max-w-7xl">

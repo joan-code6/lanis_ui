@@ -119,7 +119,7 @@ const Timetable: React.FC = () => {
 
   return (
     <div className="min-h-full px-3 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
-      <SEO title="Stundenplan" description="Dein persönlicher Stundenplan im Schulportal Hessen." />
+      <SEO title="Stundenplan" description="Dein persönlicher Stundenplan im Schulportal Hessen." path="/timetable" noindex />
       <div className="mx-auto max-w-7xl">
         <header className="mb-4 sm:mb-6">
           <h1 className="text-2xl font-bold tracking-tight text-surface-900 dark:text-white sm:text-3xl">Stundenplan</h1>
