@@ -347,6 +347,22 @@ export const authAPI = {
     return response.data;
   },
 
+  async exportAccount(token: string): Promise<Blob> {
+    const response = await apiClient.get<Blob>('/account/export', {
+      headers: { 'X-Session-Token': token },
+      responseType: 'blob',
+    });
+    return response.data;
+  },
+
+  async deleteAccount(token: string): Promise<{ success: boolean; deleted: Record<string, number>; upstream_sph_data_deleted: boolean }> {
+    const response = await apiClient.delete('/account', {
+      headers: { 'X-Session-Token': token },
+      data: { confirmation: 'DELETE' },
+    });
+    return response.data;
+  },
+
   async checkHealth(signal?: AbortSignal): Promise<HealthResponse> {
     const response = await apiClient.get<HealthResponse>('/health', { signal });
     return response.data;
