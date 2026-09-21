@@ -13,12 +13,11 @@ import {
   CourseDetails,
   CourseMark,
   CourseDetailEntry,
+  EntryUpload,
   EntryDetailsResponse,
   EntryDetails,
   WeeklyViewResponse,
   WeeklyEntry,
-  SubmissionsResponse,
-  Submission 
 } from '../../types';
 import {
   AcademicCapIcon,
@@ -36,13 +35,14 @@ import {
   ChartBarIcon,
   ListBulletIcon,
   Squares2X2Icon,
+  ArrowUpTrayIcon,
 } from '@heroicons/react/24/outline';
 import { format, parseISO } from 'date-fns';
 import { de } from 'date-fns/locale';
 import clsx from 'clsx';
 import { isDemoRoute } from '../../utils/demoMode';
 
-type ViewMode = 'overview' | 'course-detail' | 'weekly' | 'submissions' | 'entry-detail';
+type ViewMode = 'overview' | 'course-detail' | 'weekly' | 'entry-detail';
 type CourseDetailTab = 'history' | 'performance' | 'exams';
 
 const courseDetailTabs: Array<{
@@ -66,6 +66,34 @@ const EmptyCourseTab: React.FC<{
     <p className="mt-1 text-sm text-surface-500 dark:text-surface-400">{description}</p>
   </div>
 );
+
+const UploadButtons: React.FC<{
+  uploads?: EntryUpload[];
+  onOpen: (upload: EntryUpload) => void;
+}> = ({ uploads = [], onOpen }) => {
+  if (uploads.length === 0) return null;
+  return (
+    <div className="mt-4 flex flex-wrap gap-2" aria-label="Abgaben">
+      {uploads.map((upload) => (
+        <button
+          key={upload.id}
+          type="button"
+          onClick={() => onOpen(upload)}
+          className={clsx(
+            'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500',
+            upload.status === 'open'
+              ? 'border-primary-200 bg-primary-50 text-primary-800 hover:bg-primary-100 dark:border-primary-900/70 dark:bg-primary-950/30 dark:text-primary-200 dark:hover:bg-primary-950/60'
+              : 'border-surface-200 bg-surface-100 text-surface-600 hover:bg-surface-200 dark:border-surface-700 dark:bg-surface-800 dark:text-surface-300 dark:hover:bg-surface-700',
+          )}
+        >
+          {upload.status === 'open' ? <ArrowUpTrayIcon className="h-3.5 w-3.5" /> : <DocumentTextIcon className="h-3.5 w-3.5" />}
+          {upload.title}
+          {upload.uploaded_count !== null && upload.uploaded_count !== undefined && <span className="opacity-70">· {upload.uploaded_count}</span>}
+        </button>
+      ))}
+    </div>
+  );
+};
 
 const CoursePerformance: React.FC<{ marks?: CourseMark[] }> = ({ marks = [] }) => {
   if (marks.length === 0) {
@@ -265,7 +293,6 @@ const Courses: React.FC = () => {
   const [selectedCourse, setSelectedCourse] = useState<CourseDetailsResponse | null>(null);
   const [selectedEntry, setSelectedEntry] = useState<EntryDetails | null>(null);
   const [weeklyEntries, setWeeklyEntries] = useState<WeeklyEntry[]>([]);
-  const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [filterAttendance, setFilterAttendance] = useState<string>('all');
@@ -429,28 +456,6 @@ const Courses: React.FC = () => {
     }
   };
 
-  const loadSubmissions = async () => {
-    if (!token) return;
-
-    try {
-      setIsLoading(true);
-      setError('');
-      const response = await coursesAPI.getSubmissions(token);
-      
-      if (response.success) {
-        setSubmissions(response.submissions);
-        setViewMode('submissions');
-      } else {
-        setError('Fehler beim Laden der Abgaben.');
-      }
-      setIsLoading(false);
-    } catch (error) {
-      console.error('Error loading submissions:', error);
-      setError('Fehler beim Laden der Abgaben.');
-      setIsLoading(false);
-    }
-  };
-
   const toggleHomework = async (courseId: string, entryId: string, currentDone: boolean) => {
     if (!token) return;
     const newDone = !currentDone;
@@ -517,27 +522,15 @@ const Courses: React.FC = () => {
   const goBack = () => {
     if (viewMode === 'entry-detail') {
       setViewMode('course-detail');
-    } else if (viewMode === 'submissions' || viewMode === 'weekly') {
+    } else if (viewMode === 'weekly') {
       setViewMode('overview');
     } else {
       navigate(`${basePath}/courses`);
     }
   };
 
-  const getSubmissionStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'submitted':
-      case 'abgegeben':
-        return 'text-green-600 bg-green-100';
-      case 'overdue':
-      case 'überfällig':
-        return 'text-red-600 bg-red-100';
-      case 'pending':
-      case 'ausstehend':
-        return 'text-yellow-600 bg-yellow-100';
-      default:
-        return 'text-surface-600 dark:text-surface-400 bg-surface-200 dark:bg-surface-700';
-    }
+  const openUpload = (upload: EntryUpload) => {
+    navigate(`${basePath}/courses/submissions/${encodeURIComponent(upload.detail_ref)}`);
   };
 
   // Show course detail skeleton when navigating to a course
@@ -618,7 +611,6 @@ const Courses: React.FC = () => {
                 {viewMode === 'overview' && 'Mein Unterricht'}
                 {viewMode === 'course-detail' && selectedCourseName}
                 {viewMode === 'weekly' && 'Wochenansicht'}
-                {viewMode === 'submissions' && 'Abgaben'}
                 {viewMode === 'entry-detail' && selectedEntry?.title}
               </h1>
               {viewMode === 'course-detail' && selectedCourse && (
@@ -630,7 +622,7 @@ const Courses: React.FC = () => {
           {viewMode === 'overview' && (
             <div className="flex w-full flex-col gap-3 sm:w-auto sm:shrink-0 sm:flex-row">
               <button
-                onClick={loadSubmissions}
+                onClick={() => navigate(`${basePath}/courses/submissions`)}
                 className="btn btn-secondary w-full sm:w-auto"
               >
                 <ClockIcon className="h-4 w-4 mr-2" />
@@ -1045,6 +1037,7 @@ const Courses: React.FC = () => {
                           </div>
                         </div>
                       )}
+                      <UploadButtons uploads={entry.uploads} onOpen={openUpload} />
                     </div>
                   ))}
                 </div>
@@ -1147,6 +1140,7 @@ const Courses: React.FC = () => {
                               ))}
                             </div>
                           )}
+                          <UploadButtons uploads={entry.uploads} onOpen={openUpload} />
                         </div>
                       </div>
                     ))}
@@ -1263,69 +1257,6 @@ const Courses: React.FC = () => {
         </div>
       )}
 
-      {viewMode === 'submissions' && isLoading && (
-        <div className="animate-pulse space-y-3">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="card">
-              <div className="flex items-center justify-between">
-                <div className="flex-1 space-y-2">
-                  <div className="h-4 bg-surface-300 dark:bg-surface-600 rounded w-1/3" />
-                  <div className="h-3 bg-surface-300 dark:bg-surface-600 rounded w-2/3" />
-                  <div className="h-3 bg-surface-300 dark:bg-surface-600 rounded w-1/4" />
-                </div>
-                <div className="h-8 w-16 bg-surface-300 dark:bg-surface-600 rounded-lg" />
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {viewMode === 'submissions' && !isLoading && (
-        <div className="space-y-4">
-          {!submissions || submissions.length === 0 ? (
-            <div className="text-center py-12">
-              <ClockIcon className="mx-auto h-12 w-12 text-surface-400" />
-              <h3 className="mt-2 text-sm font-medium text-surface-900 dark:text-surface-100">Keine Abgaben</h3>
-              <p className="mt-1 text-sm text-surface-500 dark:text-surface-400">
-                Derzeit sind keine Abgaben fällig.
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {submissions.map((submission) => (
-                <div key={submission.id} className="card">
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between mb-2">
-                        <h4 className="font-medium text-surface-900 dark:text-surface-100">{submission.title}</h4>
-                        <span className={clsx(
-                          'px-2 py-1 rounded-full text-xs font-medium',
-                          getSubmissionStatusColor(submission.status)
-                        )}>
-                          {submission.status}
-                        </span>
-                      </div>
-                      <p className="text-sm text-surface-600 dark:text-surface-400 mb-1">{submission.course}</p>
-                      <div className="flex items-center text-sm text-surface-600 dark:text-surface-400">
-                        <ClockIcon className="h-4 w-4 mr-1" />
-                        <span>Fällig: {formatDateTime(submission.due_date)}</span>
-                      </div>
-                    </div>
-                    <a
-                      href={submission.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="ml-4 btn btn-secondary"
-                    >
-                      Öffnen
-                    </a>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
     </div>
   );
 };
