@@ -17,6 +17,7 @@ import { settingsAPI, timetableAPI } from '../../services/api';
 import { ClassLink, CustomLesson, TimetableLayoutMode, TimetableLesson, TimetableResponse } from '../../types';
 import { applyTimetableOverrides, TimetableViewMode, weekdayForDate } from '../../utils/timetableView';
 import {
+  defaultTimetableClassColour,
   defaultTimetableClassColours,
   TimetableColourLesson,
   timetableClassKey,
@@ -203,11 +204,14 @@ const TimetableSettings: React.FC = () => {
   const entries = useMemo(() => buildEntries(timetable, customLessons), [customLessons, timetable]);
   const timetableClasses = useMemo(() => {
     const days = [...(timetable?.days || []), ...(timetable?.all_days || [])];
-    const lessons = days.flatMap(day => applyTimetableOverrides(
-      day.lessons,
-      customLessons.filter(override => weekdayForDate(override.date) === weekdayForDate(day.date)),
-      undefined,
-    ));
+    const lessons = days.flatMap(day => {
+      const overrides = customLessons.filter(override => weekdayForDate(override.date) === weekdayForDate(day.date));
+      return (['A', 'B'] as const).flatMap(activeWeek => applyTimetableOverrides(
+        day.lessons.filter(lesson => !lesson.week_type || lesson.week_type === activeWeek),
+        overrides,
+        activeWeek,
+      ));
+    });
     const unique = new Map<string, TimetableColourLesson>();
     lessons.forEach(lesson => {
       const key = timetableClassKey(lesson);
@@ -236,6 +240,15 @@ const TimetableSettings: React.FC = () => {
     () => classLinks.find(link => link.course_id === draft.course_id),
     [classLinks, draft.course_id],
   );
+  const selectedEntry = entries.find(entry => entry.key === selectedKey);
+  const colourLesson: TimetableColourLesson = {
+    subject: draft.subject || selectedEntry?.lesson?.subject || 'Unterricht',
+    class_name: draft.class_name || selectedEntry?.lesson?.class_name,
+    course_id: draft.course_id ?? selectedEntry?.lesson?.course_id,
+    course_name: selectedEntry?.lesson?.course_name,
+  };
+  const colourKey = timetableClassKey(colourLesson);
+  const defaultColour = defaultClassColours[colourKey] || defaultTimetableClassColour(colourKey);
 
   useEffect(() => {
     if (selectedKey || !entries.length) return;
@@ -487,47 +500,6 @@ const TimetableSettings: React.FC = () => {
       </section>
 
       <section className="card">
-        <h3 className="font-semibold text-surface-900 dark:text-white">Farben der Kurse</h3>
-        <p className="mt-1 text-sm text-surface-500">Passe die Farbe jedes Kurses in der kompakten Ansicht an. Die Auswahl wird mit deinem Lanis-Konto synchronisiert.</p>
-        {timetableClasses.length > 0 ? (
-          <div className="mt-4 grid gap-2 sm:grid-cols-2">
-            {timetableClasses.map(({ key, lesson }) => {
-              const defaultColour = defaultClassColours[key];
-              const colour = draftClassColour(key, defaultColour);
-              const detail = lesson.class_name || lesson.course_name;
-              return (
-                <div key={key} className="flex min-w-0 items-center gap-3 rounded-xl border border-surface-200 px-3 py-2.5 dark:border-surface-700">
-                  <input
-                    type="color"
-                    aria-label={`Farbe für ${lesson.subject}`}
-                    className="h-9 w-11 shrink-0 cursor-pointer rounded-lg border border-surface-300 bg-transparent p-0.5 dark:border-surface-600"
-                    value={colour}
-                    onChange={event => changeClassColour(key, event.target.value)}
-                    onBlur={saveClassColours}
-                  />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium text-surface-900 dark:text-white">{lesson.subject || 'Unterricht'}</p>
-                    {detail && <p className="truncate text-xs text-surface-500">{detail}</p>}
-                  </div>
-                  <button
-                    type="button"
-                    className="rounded-lg p-2 text-surface-400 transition-colors hover:bg-surface-100 hover:text-surface-700 dark:hover:bg-surface-800 dark:hover:text-surface-200"
-                    aria-label={`Farbe für ${lesson.subject} zurücksetzen`}
-                    title="Standardfarbe wiederherstellen"
-                    onClick={() => resetClassColour(key, defaultColour)}
-                  >
-                    <ArrowPathIcon className="h-4 w-4" />
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          <p className="mt-4 text-sm text-surface-500">Sobald Kurse im Stundenplan verfügbar sind, kannst du ihre Farben hier anpassen.</p>
-        )}
-      </section>
-
-      <section className="card">
         <h3 className="font-semibold text-surface-900 dark:text-white">Inhalte im Stundenplan</h3>
         <p className="mt-1 text-sm text-surface-500">Wähle, welche zusätzlichen Inhalte angezeigt werden. Wird mit deinem Lanis-Konto synchronisiert.</p>
         <div className="mt-4 space-y-4">
@@ -643,6 +615,35 @@ const TimetableSettings: React.FC = () => {
               <div>
                 <label className="label" htmlFor="custom-lesson-period">Stunde / Bereich</label>
                 <input id="custom-lesson-period" className="input" value={draft.period} onChange={event => updateDraft('period', event.target.value)} placeholder="z. B. 1 oder 1–2" required />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between gap-3 rounded-xl border border-surface-200 p-3 dark:border-surface-700">
+              <div className="min-w-0">
+                <label className="label" htmlFor="custom-lesson-colour">Farbe in der kompakten Ansicht</label>
+                <p className="mt-0.5 text-xs text-surface-500">Wird für diesen Kurs bzw. diese Klasse verwendet.</p>
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                <input
+                  id="custom-lesson-colour"
+                  type="color"
+                  aria-label={`Farbe für ${colourLesson.subject}`}
+                  className="h-9 w-11 cursor-pointer rounded-lg border border-surface-300 bg-transparent p-0.5 dark:border-surface-600"
+                  value={draftClassColour(colourKey, defaultColour)}
+                  onChange={event => changeClassColour(colourKey, event.target.value)}
+                  onBlur={saveClassColours}
+                  disabled={draft.removed}
+                />
+                <button
+                  type="button"
+                  className="rounded-lg p-2 text-surface-400 transition-colors hover:bg-surface-100 hover:text-surface-700 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-surface-800 dark:hover:text-surface-200"
+                  aria-label="Standardfarbe wiederherstellen"
+                  title="Standardfarbe wiederherstellen"
+                  onClick={() => resetClassColour(colourKey, defaultColour)}
+                  disabled={draft.removed}
+                >
+                  <ArrowPathIcon className="h-4 w-4" />
+                </button>
               </div>
             </div>
 

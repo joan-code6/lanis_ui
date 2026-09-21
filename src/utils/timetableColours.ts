@@ -15,6 +15,8 @@ export const timetableClassKey = (lesson: TimetableColourLesson): string => {
   if (courseId) return `course:${courseId}`;
   const courseName = normalize(lesson.course_name);
   if (courseName) return `course-name:${courseName}`;
+  const className = normalize(lesson.class_name);
+  if (className) return `class:${className}:${normalize(lesson.subject) || 'unterricht'}`;
   return `subject:${normalize(lesson.subject) || 'unterricht'}`;
 };
 

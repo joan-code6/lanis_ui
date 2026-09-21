@@ -35,6 +35,7 @@ assert.equal(new Set(Object.values(defaultTimetableClassColours(extendedLessons)
 assert.equal(timetableClassKey({ subject: ' Mathematik ' }), 'subject:mathematik');
 assert.equal(timetableClassKey({ subject: 'Mathematik', course_id: ' COURSE-1 ' }), 'course:course-1');
 assert.equal(timetableClassKey({ subject: 'Mathematik', course_name: ' LK Mathematik ' }), 'course-name:lk mathematik');
+assert.equal(timetableClassKey({ subject: 'Mathematik', class_name: ' 9A ' }), 'class:9a:mathematik');
 assert.equal(
   JSON.stringify(defaultTimetableClassColours(lessons.slice(0, 4))),
   JSON.stringify(Object.fromEntries(lessons.slice(0, 4).map(lesson => [timetableClassKey(lesson), defaults[timetableClassKey(lesson)]]))),
