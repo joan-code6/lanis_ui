@@ -135,6 +135,8 @@ const TimetableSettings: React.FC = () => {
   const [draftClassColours, setDraftClassColours] = useState<Record<string, string>>(
     () => preferences.timetable.class_colors,
   );
+  const draftClassColoursRef = useRef(draftClassColours);
+  const dirtyClassColoursRef = useRef(new Set<string>());
   const lessonListRef = useRef<HTMLElement>(null);
   const editorRef = useRef<HTMLElement>(null);
 
@@ -182,8 +184,21 @@ const TimetableSettings: React.FC = () => {
   }, [token]);
 
   useEffect(() => {
-    setDraftClassColours(preferences.timetable.class_colors);
+    const incoming = preferences.timetable.class_colors;
+    setDraftClassColours(current => {
+      const next = { ...current };
+      Object.entries(incoming).forEach(([key, colour]) => {
+        if (!dirtyClassColoursRef.current.has(key)) next[key] = colour;
+      });
+      Object.keys(next).forEach(key => {
+        if (!dirtyClassColoursRef.current.has(key) && !(key in incoming)) delete next[key];
+      });
+      draftClassColoursRef.current = next;
+      return next;
+    });
   }, [preferences.timetable.class_colors]);
+
+  draftClassColoursRef.current = draftClassColours;
 
   const entries = useMemo(() => buildEntries(timetable, customLessons), [customLessons, timetable]);
   const timetableClasses = useMemo(() => {
@@ -268,21 +283,36 @@ const TimetableSettings: React.FC = () => {
   );
 
   const changeClassColour = (key: string, colour: string) => {
+    dirtyClassColoursRef.current.add(key);
     setDraftClassColours(current => ({ ...current, [key]: colour }));
   };
 
-  const saveClassColours = () => {
+  const persistClassColours = (colours: Record<string, string>) => {
+    const saved = { ...colours };
     void updatePreferences({
       timetable: {
-        class_colors: draftClassColours,
+        class_colors: saved,
       },
+    }).then(success => {
+      if (!success) return;
+      Object.keys(saved).forEach(key => {
+        if (dirtyClassColoursRef.current.has(key) && draftClassColoursRef.current[key] === saved[key]) {
+          dirtyClassColoursRef.current.delete(key);
+        }
+      });
     });
   };
 
+  const saveClassColours = () => {
+    persistClassColours(draftClassColoursRef.current);
+  };
+
   const resetClassColour = (key: string, defaultColour: string) => {
-    const next = { ...draftClassColours, [key]: defaultColour };
+    dirtyClassColoursRef.current.add(key);
+    const next = { ...draftClassColoursRef.current, [key]: defaultColour };
+    draftClassColoursRef.current = next;
     setDraftClassColours(next);
-    void updatePreferences({ timetable: { class_colors: next } });
+    persistClassColours(next);
   };
 
   const selectCourse = (courseId: string) => {
