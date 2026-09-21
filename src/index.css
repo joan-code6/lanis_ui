@@ -87,17 +87,17 @@ html.onboarding-active body::-webkit-scrollbar,
 
 /* Default CSS variables (overridden by JS on mount) */
 :root {
-  --color-primary-50: 236 254 255;
-  --color-primary-100: 207 250 254;
-  --color-primary-200: 165 243 252;
-  --color-primary-300: 103 232 249;
-  --color-primary-400: 34 211 238;
-  --color-primary-500: 6 182 212;
-  --color-primary-600: 8 145 178;
-  --color-primary-700: 14 116 144;
-  --color-primary-800: 21 94 117;
-  --color-primary-900: 22 78 99;
-  --color-primary-950: 8 51 68;
+  --color-primary-50: 255 241 242;
+  --color-primary-100: 255 228 230;
+  --color-primary-200: 254 205 211;
+  --color-primary-300: 253 164 175;
+  --color-primary-400: 251 113 133;
+  --color-primary-500: 244 63 94;
+  --color-primary-600: 225 29 72;
+  --color-primary-700: 190 18 60;
+  --color-primary-800: 159 18 57;
+  --color-primary-900: 136 19 55;
+  --color-primary-950: 76 5 25;
 
   --color-surface-50: 250 250 250;
   --color-surface-100: 245 245 245;

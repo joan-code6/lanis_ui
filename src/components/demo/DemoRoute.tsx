@@ -47,7 +47,7 @@ const readAppearance = (values: Map<string, string | null>) => {
   const themeColor: ThemeColor = storedColor === 'emerald' || storedColor === 'sapphire' || storedColor === 'amethyst'
     || storedColor === 'ruby' || storedColor === 'amber' || storedColor === 'cyan'
     ? storedColor
-    : 'cyan';
+    : 'ruby';
   return { themeMode, themeColor };
 };
 

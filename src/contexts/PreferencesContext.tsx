@@ -9,7 +9,7 @@ export const CURRENT_ONBOARDING_VERSION = 1;
 const LEGACY_PREFERENCES_OWNER_KEY = 'lanis_preferences_legacy_owner';
 
 export const DEFAULT_USER_PREFERENCES: UserPreferences = {
-  appearance: { theme_mode: 'system', theme_color: 'cyan' },
+  appearance: { theme_mode: 'system', theme_color: 'ruby' },
   sidebar: { order: DEFAULT_SIDEBAR_ORDER, hidden_items: [] },
   dashboard: { pinned_modules: [], hidden_modules: [], view_mode: 'grid' },
   timetable: { view_mode: 'rolling', layout_mode: 'cards', show_homework: true, show_exams: true },
@@ -94,7 +94,7 @@ const legacyPreferences = (): UserPreferences => {
   const themeColor = color === 'emerald' || color === 'sapphire' || color === 'amethyst'
     || color === 'ruby' || color === 'amber' || color === 'cyan'
     ? color
-    : 'cyan';
+    : 'ruby';
   const timetableMode = localStorage.getItem('lanis_timetable_view_mode');
   let pinnedModules: string[] = [];
   try {

@@ -90,7 +90,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const [themeColor, setThemeColorState] = useState<ThemeColor>(() => {
     const storedTheme = localStorage.getItem(THEME_COLOR_KEY);
-    return isThemeColor(storedTheme) ? storedTheme : 'cyan';
+    return isThemeColor(storedTheme) ? storedTheme : 'ruby';
   });
 
   const isOled = themeMode === 'oled';
