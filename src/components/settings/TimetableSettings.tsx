@@ -204,6 +204,7 @@ const TimetableSettings: React.FC = () => {
   const timetableClasses = useMemo(() => {
     const lessons = [
       ...(timetable?.days || []).flatMap(day => day.lessons),
+      ...(timetable?.all_days || []).flatMap(day => day.lessons),
       ...customLessons.filter(lesson => !lesson.removed),
     ];
     const unique = new Map<string, TimetableColourLesson>();

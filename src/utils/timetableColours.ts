@@ -46,9 +46,12 @@ const hslToHex = (hue: number, saturation: number, lightness: number): string =>
 
 export const defaultTimetableClassColour = (key: string): string => {
   const hash = hashKey(key);
-  const hue = hash % 360;
-  const saturation = 0.62 + ((hash >>> 9) % 12) / 100;
-  const lightness = 0.38 + ((hash >>> 17) % 8) / 100;
+  // Keep the full hash precision in the HSL coordinates. This gives a large
+  // deterministic color space without assigning colors based on the current
+  // subset of visible lessons.
+  const hue = (hash / 0x100000000) * 360;
+  const saturation = 0.58 + (((hash >>> 8) & 0xff) / 255) * 0.25;
+  const lightness = 0.36 + (((hash >>> 16) & 0xff) / 255) * 0.2;
   return hslToHex(hue, saturation, lightness);
 };
 

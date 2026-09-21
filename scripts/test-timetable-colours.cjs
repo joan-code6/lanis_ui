@@ -24,6 +24,12 @@ const defaults = defaultTimetableClassColours(lessons);
 assert.equal(Object.keys(defaults).length, lessons.length);
 assert.equal(new Set(Object.values(defaults)).size, lessons.length);
 assert.deepEqual(defaultTimetableClassColours([...lessons].reverse()), defaults);
+const reportedCollisionLessons = [
+  { subject: 'Fach 133', course_id: '133' },
+  { subject: 'Fach 241', course_id: '241' },
+];
+const reportedCollisionColours = defaultTimetableClassColours(reportedCollisionLessons);
+assert.notEqual(reportedCollisionColours[timetableClassKey(reportedCollisionLessons[0])], reportedCollisionColours[timetableClassKey(reportedCollisionLessons[1])]);
 assert.equal(timetableClassKey({ subject: ' Mathematik ' }), 'subject:mathematik');
 assert.equal(timetableClassKey({ subject: 'Mathematik', course_id: ' COURSE-1 ' }), 'course:course-1');
 assert.equal(timetableClassKey({ subject: 'Mathematik', course_name: ' LK Mathematik ' }), 'course-name:lk mathematik');
