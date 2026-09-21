@@ -86,7 +86,13 @@ const DashboardNotifications: React.FC = () => {
     }
     const controller = new AbortController();
     setLoading(true);
-    dashboardAPI.getNotifications(token, reloadKey > 0, controller.signal)
+    dashboardAPI.getNotifications(
+      token,
+      reloadKey > 0,
+      Array.from(enabledSources),
+      dashboardPreferences.notification_show_read,
+      controller.signal,
+    )
       .then(response => {
         if (controller.signal.aborted) return;
         if (!response.success) throw new Error('Hinweise konnten nicht geladen werden.');

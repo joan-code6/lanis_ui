@@ -529,10 +529,16 @@ export const notificationsAPI = {
 };
 
 export const dashboardAPI = {
-  async getNotifications(token: string, refresh = false, signal?: AbortSignal): Promise<DashboardNotificationsResponse> {
+  async getNotifications(
+    token: string,
+    refresh = false,
+    sources: DashboardNotificationSource[] = [],
+    showRead = false,
+    signal?: AbortSignal,
+  ): Promise<DashboardNotificationsResponse> {
     const response = await apiClient.get<DashboardNotificationsResponse>('/dashboard/notifications', {
       headers: { 'X-Session-Token': token },
-      params: { refresh },
+      params: { refresh, sources: sources.join(','), show_read: showRead },
       signal,
     });
     return response.data;
