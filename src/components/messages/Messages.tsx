@@ -42,7 +42,15 @@ const Messages: React.FC = () => {
   const [searchParams] = useSearchParams();
   const [messages, setMessages] = useState<MessageHeader[]>(() => {
     const cached = isDemoRoute() ? null : localStorage.getItem('messages_cache');
-    return cached ? JSON.parse(cached) : [];
+    if (!cached) return [];
+    try {
+      return JSON.parse(cached).map((message: MessageHeader) => ({
+        ...message,
+        Betreff: htmlToText(message.Betreff),
+      }));
+    } catch {
+      return [];
+    }
   });
   const [isUpdating, setIsUpdating] = useState(false);
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
@@ -157,7 +165,7 @@ const Messages: React.FC = () => {
           Sender: msg.sender || msg.Sender,
           SenderId: msg.sender || msg.Sender,
           SenderName: displayName(msg.SenderName, msg.sender || msg.Sender),
-          Betreff: msg.Betreff,
+          Betreff: htmlToText(msg.Betreff),
           WeitereEmpfaenger: msg.WeitereEmpfaenger,
           private: msg.private || 0,
           empf: Array.isArray(msg.empf) ? msg.empf.map((recipient: unknown) => displayName(recipient)) : [],
