@@ -12,7 +12,7 @@ export const DEFAULT_USER_PREFERENCES: UserPreferences = {
   appearance: { theme_mode: 'system', theme_color: 'cyan' },
   sidebar: { order: DEFAULT_SIDEBAR_ORDER, hidden_items: [] },
   dashboard: { pinned_modules: [], hidden_modules: [], view_mode: 'grid' },
-  timetable: { view_mode: 'rolling', layout_mode: 'cards', show_homework: true, show_exams: true },
+  timetable: { view_mode: 'rolling', layout_mode: 'cards', show_homework: true, show_exams: true, class_colors: {} },
   homework: { completed_display: 'green' },
   vertretungsplan: { class_override: '' },
   onboarding: { version: 0, status: 'not_started', last_step: 'welcome' },

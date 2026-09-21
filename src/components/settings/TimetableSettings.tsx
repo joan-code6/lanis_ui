@@ -16,6 +16,11 @@ import { usePreferences } from '../../contexts/PreferencesContext';
 import { settingsAPI, timetableAPI } from '../../services/api';
 import { ClassLink, CustomLesson, TimetableLayoutMode, TimetableLesson, TimetableResponse } from '../../types';
 import { TimetableViewMode, weekdayForDate } from '../../utils/timetableView';
+import {
+  defaultTimetableClassColours,
+  TimetableColourLesson,
+  timetableClassKey,
+} from '../../utils/timetableColours';
 
 interface EditableEntry {
   key: string;
@@ -174,6 +179,24 @@ const TimetableSettings: React.FC = () => {
   }, [token]);
 
   const entries = useMemo(() => buildEntries(timetable, customLessons), [customLessons, timetable]);
+  const timetableClasses = useMemo(() => {
+    const lessons = [
+      ...(timetable?.days || []).flatMap(day => day.lessons),
+      ...customLessons.filter(lesson => !lesson.removed),
+    ];
+    const unique = new Map<string, TimetableColourLesson>();
+    lessons.forEach(lesson => {
+      const key = timetableClassKey(lesson);
+      if (!unique.has(key)) unique.set(key, lesson);
+    });
+    return [...unique.entries()]
+      .map(([key, lesson]) => ({ key, lesson }))
+      .sort((left, right) => left.lesson.subject.localeCompare(right.lesson.subject, 'de'));
+  }, [customLessons, timetable]);
+  const defaultClassColours = useMemo(
+    () => defaultTimetableClassColours(timetableClasses.map(item => item.lesson)),
+    [timetableClasses],
+  );
   const weekdayOptions = useMemo(() => {
     const datesByWeekday = new Map(
       (timetable?.days || []).map(day => [weekdayForDate(day.date), day.date]),
@@ -231,6 +254,14 @@ const TimetableSettings: React.FC = () => {
 
   const updateTimetableViewMode = (mode: TimetableViewMode) => {
     void updatePreferences({ timetable: { view_mode: mode } });
+  };
+
+  const updateClassColour = (key: string, colour: string) => {
+    void updatePreferences({
+      timetable: {
+        class_colors: { ...preferences.timetable.class_colors, [key]: colour },
+      },
+    });
   };
 
   const selectCourse = (courseId: string) => {
@@ -392,6 +423,46 @@ const TimetableSettings: React.FC = () => {
           <option value="cards">Karten</option>
           <option value="compact">Kompakt &amp; farbig</option>
         </select>
+      </section>
+
+      <section className="card">
+        <h3 className="font-semibold text-surface-900 dark:text-white">Farben der Kurse</h3>
+        <p className="mt-1 text-sm text-surface-500">Passe die Farbe jedes Kurses in der kompakten Ansicht an. Die Auswahl wird mit deinem Lanis-Konto synchronisiert.</p>
+        {timetableClasses.length > 0 ? (
+          <div className="mt-4 grid gap-2 sm:grid-cols-2">
+            {timetableClasses.map(({ key, lesson }) => {
+              const defaultColour = defaultClassColours[key];
+              const colour = preferences.timetable.class_colors[key] || defaultColour;
+              const detail = lesson.class_name || lesson.course_name;
+              return (
+                <div key={key} className="flex min-w-0 items-center gap-3 rounded-xl border border-surface-200 px-3 py-2.5 dark:border-surface-700">
+                  <input
+                    type="color"
+                    aria-label={`Farbe für ${lesson.subject}`}
+                    className="h-9 w-11 shrink-0 cursor-pointer rounded-lg border border-surface-300 bg-transparent p-0.5 dark:border-surface-600"
+                    value={colour}
+                    onChange={event => updateClassColour(key, event.target.value)}
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-surface-900 dark:text-white">{lesson.subject || 'Unterricht'}</p>
+                    {detail && <p className="truncate text-xs text-surface-500">{detail}</p>}
+                  </div>
+                  <button
+                    type="button"
+                    className="rounded-lg p-2 text-surface-400 transition-colors hover:bg-surface-100 hover:text-surface-700 dark:hover:bg-surface-800 dark:hover:text-surface-200"
+                    aria-label={`Farbe für ${lesson.subject} zurücksetzen`}
+                    title="Standardfarbe wiederherstellen"
+                    onClick={() => updateClassColour(key, defaultColour)}
+                  >
+                    <ArrowPathIcon className="h-4 w-4" />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <p className="mt-4 text-sm text-surface-500">Sobald Kurse im Stundenplan verfügbar sind, kannst du ihre Farben hier anpassen.</p>
+        )}
       </section>
 
       <section className="card">
