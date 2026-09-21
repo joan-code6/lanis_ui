@@ -132,6 +132,9 @@ const TimetableSettings: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+  const [draftClassColours, setDraftClassColours] = useState<Record<string, string>>(
+    () => preferences.timetable.class_colors,
+  );
   const lessonListRef = useRef<HTMLElement>(null);
   const editorRef = useRef<HTMLElement>(null);
 
@@ -177,6 +180,10 @@ const TimetableSettings: React.FC = () => {
     load(controller.signal);
     return () => controller.abort();
   }, [token]);
+
+  useEffect(() => {
+    setDraftClassColours(preferences.timetable.class_colors);
+  }, [preferences.timetable.class_colors]);
 
   const entries = useMemo(() => buildEntries(timetable, customLessons), [customLessons, timetable]);
   const timetableClasses = useMemo(() => {
@@ -256,12 +263,26 @@ const TimetableSettings: React.FC = () => {
     void updatePreferences({ timetable: { view_mode: mode } });
   };
 
-  const updateClassColour = (key: string, colour: string) => {
+  const draftClassColour = (key: string, defaultColour: string) => (
+    draftClassColours[key] || defaultColour
+  );
+
+  const changeClassColour = (key: string, colour: string) => {
+    setDraftClassColours(current => ({ ...current, [key]: colour }));
+  };
+
+  const saveClassColours = () => {
     void updatePreferences({
       timetable: {
-        class_colors: { ...preferences.timetable.class_colors, [key]: colour },
+        class_colors: draftClassColours,
       },
     });
+  };
+
+  const resetClassColour = (key: string, defaultColour: string) => {
+    const next = { ...draftClassColours, [key]: defaultColour };
+    setDraftClassColours(next);
+    void updatePreferences({ timetable: { class_colors: next } });
   };
 
   const selectCourse = (courseId: string) => {
@@ -432,7 +453,7 @@ const TimetableSettings: React.FC = () => {
           <div className="mt-4 grid gap-2 sm:grid-cols-2">
             {timetableClasses.map(({ key, lesson }) => {
               const defaultColour = defaultClassColours[key];
-              const colour = preferences.timetable.class_colors[key] || defaultColour;
+              const colour = draftClassColour(key, defaultColour);
               const detail = lesson.class_name || lesson.course_name;
               return (
                 <div key={key} className="flex min-w-0 items-center gap-3 rounded-xl border border-surface-200 px-3 py-2.5 dark:border-surface-700">
@@ -441,7 +462,8 @@ const TimetableSettings: React.FC = () => {
                     aria-label={`Farbe für ${lesson.subject}`}
                     className="h-9 w-11 shrink-0 cursor-pointer rounded-lg border border-surface-300 bg-transparent p-0.5 dark:border-surface-600"
                     value={colour}
-                    onChange={event => updateClassColour(key, event.target.value)}
+                    onChange={event => changeClassColour(key, event.target.value)}
+                    onBlur={saveClassColours}
                   />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium text-surface-900 dark:text-white">{lesson.subject || 'Unterricht'}</p>
@@ -452,7 +474,7 @@ const TimetableSettings: React.FC = () => {
                     className="rounded-lg p-2 text-surface-400 transition-colors hover:bg-surface-100 hover:text-surface-700 dark:hover:bg-surface-800 dark:hover:text-surface-200"
                     aria-label={`Farbe für ${lesson.subject} zurücksetzen`}
                     title="Standardfarbe wiederherstellen"
-                    onClick={() => updateClassColour(key, defaultColour)}
+                    onClick={() => resetClassColour(key, defaultColour)}
                   >
                     <ArrowPathIcon className="h-4 w-4" />
                   </button>
