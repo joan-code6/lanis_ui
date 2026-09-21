@@ -72,7 +72,7 @@ const customLesson = (override: CustomLesson, existing?: TimetableLesson): Timet
   };
 };
 
-const applyOverrides = (
+export const applyTimetableOverrides = (
   lessons: TimetableLesson[],
   overrides: CustomLesson[],
   activeWeek: 'A' | 'B' | undefined,
@@ -120,7 +120,7 @@ export const projectTimetableDays = (
     return [{
       ...template,
       date: key,
-      lessons: applyOverrides(
+      lessons: applyTimetableOverrides(
         lessons,
         overrides.filter(override => weekdayForDate(override.date) === getDay(value)),
         activeWeek,

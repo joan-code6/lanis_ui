@@ -115,6 +115,7 @@ export interface UserPreferences {
     layout_mode: TimetableLayoutMode;
     show_homework: boolean;
     show_exams: boolean;
+    class_colors: Record<string, string>;
   };
   homework: {
     completed_display: CompletedHomeworkDisplay;

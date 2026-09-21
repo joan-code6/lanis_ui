@@ -22,7 +22,7 @@ export const DEFAULT_USER_PREFERENCES: UserPreferences = {
     notification_show_read: false,
     notification_limit: 20,
   },
-  timetable: { view_mode: 'rolling', layout_mode: 'cards', show_homework: true, show_exams: true },
+  timetable: { view_mode: 'rolling', layout_mode: 'cards', show_homework: true, show_exams: true, class_colors: {} },
   homework: { completed_display: 'green' },
   vertretungsplan: { class_override: '' },
   onboarding: { version: 0, status: 'not_started', last_step: 'welcome' },
