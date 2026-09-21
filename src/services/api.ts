@@ -185,6 +185,8 @@ import {
   DateispeicherSearchResponse,
   StudyGroupsResponse,
   NotificationConfigResponse,
+  DashboardNotificationsResponse,
+  DashboardNotificationSource,
   NotificationPreferences,
   NotificationPreferencesResponse,
   VertretungsplanNotificationOptionsResponse,
@@ -522,6 +524,44 @@ export const notificationsAPI = {
     const response = await apiClient.post<{ success: boolean }>('/notifications/test', {}, {
       headers: { 'X-Session-Token': token },
     });
+    return response.data;
+  },
+};
+
+export const dashboardAPI = {
+  async getNotifications(
+    token: string,
+    refresh = false,
+    sources: DashboardNotificationSource[] = [],
+    showRead = false,
+    signal?: AbortSignal,
+  ): Promise<DashboardNotificationsResponse> {
+    const response = await apiClient.get<DashboardNotificationsResponse>('/dashboard/notifications', {
+      headers: { 'X-Session-Token': token },
+      params: { refresh, sources: sources.join(','), show_read: showRead },
+      signal,
+    });
+    return response.data;
+  },
+
+  async markNotificationsRead(token: string, notificationIds: string[]): Promise<{ success: boolean; updated: number }> {
+    const response = await apiClient.post<{ success: boolean; updated: number }>(
+      '/dashboard/notifications/read',
+      { notification_ids: notificationIds },
+      { headers: { 'X-Session-Token': token } },
+    );
+    return response.data;
+  },
+
+  async markAllNotificationsRead(
+    token: string,
+    sources: DashboardNotificationSource[],
+  ): Promise<{ success: boolean; updated: number }> {
+    const response = await apiClient.post<{ success: boolean; updated: number }>(
+      '/dashboard/notifications/read-all',
+      { sources },
+      { headers: { 'X-Session-Token': token } },
+    );
     return response.data;
   },
 };

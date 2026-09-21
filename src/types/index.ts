@@ -103,6 +103,12 @@ export interface UserPreferences {
     pinned_modules: string[];
     hidden_modules: string[];
     view_mode: DashboardViewMode;
+    notifications_enabled: boolean;
+    notification_messages_enabled: boolean;
+    notification_native_enabled: boolean;
+    notification_dsb_enabled: boolean;
+    notification_show_read: boolean;
+    notification_limit: 5 | 10 | 20 | 50;
   };
   timetable: {
     view_mode: TimetableViewMode;
@@ -365,6 +371,31 @@ export interface NotificationPreferences {
   poll_interval_minutes: number;
   timezone: string;
   show_preview: boolean;
+}
+
+export type DashboardNotificationSource = 'messages' | 'native' | 'dsb';
+
+export interface DashboardNotification {
+  id: string;
+  source: DashboardNotificationSource;
+  title: string;
+  detail: string;
+  meta?: string;
+  occurred_at?: string;
+  path: string;
+  created_at: string;
+  read: boolean;
+  read_at: string | null;
+}
+
+export interface DashboardNotificationsResponse {
+  success: boolean;
+  enabled: boolean;
+  notifications: DashboardNotification[];
+  unread_count: number;
+  source_counts: Record<DashboardNotificationSource, number>;
+  unread_source_counts: Record<DashboardNotificationSource, number>;
+  errors: Partial<Record<DashboardNotificationSource, string>>;
 }
 
 export interface NotificationConfigResponse {
