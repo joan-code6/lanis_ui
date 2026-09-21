@@ -26,11 +26,17 @@ assert.equal(new Set(Object.values(defaults)).size, lessons.length);
 assert.deepEqual(defaultTimetableClassColours([...lessons].reverse()), defaults);
 assert.equal(timetableClassKey({ subject: ' Mathematik ' }), 'subject:mathematik');
 assert.equal(timetableClassKey({ subject: 'Mathematik', course_id: ' COURSE-1 ' }), 'course:course-1');
+assert.equal(timetableClassKey({ subject: 'Mathematik', course_name: ' LK Mathematik ' }), 'course-name:lk mathematik');
+assert.equal(
+  JSON.stringify(defaultTimetableClassColours(lessons.slice(0, 4))),
+  JSON.stringify(Object.fromEntries(lessons.slice(0, 4).map(lesson => [timetableClassKey(lesson), defaults[timetableClassKey(lesson)]]))),
+);
 assert.equal(
   timetableClassColour(lessons[0], defaults, { [timetableClassKey(lessons[0])]: '#abcdef' }),
   '#abcdef',
 );
 assert.equal(contrastingTextColour('#ffffff'), '#111827');
 assert.equal(contrastingTextColour('#111827'), '#ffffff');
+assert.equal(contrastingTextColour('#00ff00'), '#111827');
 
 console.log('Timetable colour checks passed: unique defaults, stable keys, overrides, and contrast.');

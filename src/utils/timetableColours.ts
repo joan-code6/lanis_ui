@@ -5,21 +5,6 @@ export type TimetableColourLesson = Pick<
   'subject' | 'class_name' | 'course_name'
 > & { course_id?: string | null };
 
-export const TIMETABLE_CLASS_COLOURS = [
-  '#2563eb',
-  '#059669',
-  '#ea580c',
-  '#c026d3',
-  '#0891b2',
-  '#e11d48',
-  '#4f46e5',
-  '#65a30d',
-  '#7c3aed',
-  '#0d9488',
-  '#ca8a04',
-  '#db2777',
-] as const;
-
 const normalize = (value: unknown) => String(value || '')
   .normalize('NFKC')
   .trim()
@@ -28,43 +13,62 @@ const normalize = (value: unknown) => String(value || '')
 export const timetableClassKey = (lesson: TimetableColourLesson): string => {
   const courseId = normalize(lesson.course_id);
   if (courseId) return `course:${courseId}`;
+  const courseName = normalize(lesson.course_name);
+  if (courseName) return `course-name:${courseName}`;
   return `subject:${normalize(lesson.subject) || 'unterricht'}`;
 };
 
 const hashKey = (key: string): number => [...key].reduce(
-  (value, character) => ((value * 31) + character.charCodeAt(0)) | 0,
-  0,
+  (value, character) => Math.imul(value ^ character.charCodeAt(0), 16777619),
+  2166136261,
 ) >>> 0;
 
 export const defaultTimetableClassColours = (
   lessons: TimetableColourLesson[],
 ): Record<string, string> => {
   const keys = [...new Set(lessons.map(timetableClassKey))].sort();
-  const used = new Set<number>();
+  return Object.fromEntries(keys.map(key => [key, defaultTimetableClassColour(key)]));
+};
 
-  return Object.fromEntries(keys.map(key => {
-    const preferredIndex = hashKey(key) % TIMETABLE_CLASS_COLOURS.length;
-    let index = preferredIndex;
-    if (used.size < TIMETABLE_CLASS_COLOURS.length) {
-      while (used.has(index)) index = (index + 1) % TIMETABLE_CLASS_COLOURS.length;
-      used.add(index);
-    }
-    return [key, TIMETABLE_CLASS_COLOURS[index]];
-  }));
+const hslToHex = (hue: number, saturation: number, lightness: number): string => {
+  const chroma = (1 - Math.abs((2 * lightness) - 1)) * saturation;
+  const sector = hue / 60;
+  const second = chroma * (1 - Math.abs((sector % 2) - 1));
+  const [red, green, blue] = sector < 1 ? [chroma, second, 0]
+    : sector < 2 ? [second, chroma, 0]
+      : sector < 3 ? [0, chroma, second]
+        : sector < 4 ? [0, second, chroma]
+          : sector < 5 ? [second, 0, chroma]
+            : [chroma, 0, second];
+  const match = lightness - (chroma / 2);
+  return `#${[red, green, blue].map(value => Math.round((value + match) * 255).toString(16).padStart(2, '0')).join('')}`;
+};
+
+export const defaultTimetableClassColour = (key: string): string => {
+  const hash = hashKey(key);
+  const hue = hash % 360;
+  const saturation = 0.62 + ((hash >>> 9) % 12) / 100;
+  const lightness = 0.38 + ((hash >>> 17) % 8) / 100;
+  return hslToHex(hue, saturation, lightness);
 };
 
 export const timetableClassColour = (
   lesson: TimetableColourLesson,
   defaults: Record<string, string>,
   overrides: Record<string, string>,
-): string => overrides[timetableClassKey(lesson)] || defaults[timetableClassKey(lesson)] || TIMETABLE_CLASS_COLOURS[0];
+): string => overrides[timetableClassKey(lesson)] || defaults[timetableClassKey(lesson)] || defaultTimetableClassColour(timetableClassKey(lesson));
 
 export const contrastingTextColour = (colour: string): '#111827' | '#ffffff' => {
   const match = colour.match(/^#([0-9a-f]{6})$/i);
   if (!match) return '#ffffff';
   const value = Number.parseInt(match[1], 16);
-  const red = (value >> 16) & 255;
-  const green = (value >> 8) & 255;
-  const blue = value & 255;
-  return ((red * 299) + (green * 587) + (blue * 114)) / 1000 > 160 ? '#111827' : '#ffffff';
+  const relativeLuminance = (channel: number) => {
+    const normalized = channel / 255;
+    return normalized <= 0.03928 ? normalized / 12.92 : ((normalized + 0.055) / 1.055) ** 2.4;
+  };
+  const luminance = 0.2126 * relativeLuminance((value >> 16) & 255)
+    + 0.7152 * relativeLuminance((value >> 8) & 255)
+    + 0.0722 * relativeLuminance(value & 255);
+  const contrast = (foreground: number) => (Math.max(luminance, foreground) + 0.05) / (Math.min(luminance, foreground) + 0.05);
+  return contrast(0.007) >= contrast(1) ? '#111827' : '#ffffff';
 };
