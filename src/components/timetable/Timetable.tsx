@@ -23,6 +23,11 @@ import { weekTypeForDate } from '../../utils/timetableView';
 import SEO from '../seo/SEO';
 import { layoutTimetableEntries, TimetableEntry, timetableEntries } from '../../utils/timetableExams';
 import { createTimetableRefreshTracker } from '../../utils/timetableRefresh';
+import {
+  contrastingTextColour,
+  defaultTimetableClassColours,
+  timetableClassColour,
+} from '../../utils/timetableColours';
 
 const Timetable: React.FC = () => {
   const { token } = useAuth();
@@ -375,6 +380,15 @@ const TimelineView: React.FC<{
   const unscheduled = days.flatMap(day => (
     layoutsByDate.get(day.date)?.unscheduled.map(entry => ({ day, entry })) || []
   ));
+  const defaultClassColours = useMemo(
+    () => defaultTimetableClassColours(days.flatMap(day => day.lessons)),
+    [days],
+  );
+  const colourForLesson = (lesson: TimetableLesson) => timetableClassColour(
+    lesson,
+    defaultClassColours,
+    preferences.timetable.class_colors,
+  );
 
   return (
     <div className="overflow-hidden rounded-xl border border-surface-200 bg-white sm:rounded-2xl dark:border-surface-800 dark:bg-surface-900" role="table" aria-label="Kompakter farbiger Stundenplan">
@@ -414,7 +428,7 @@ const TimelineView: React.FC<{
                   width: `${100 / laneCount}%`,
                 }}
               >
-                <CompactTimetableEntry entry={entry} showHomework={preferences.timetable.show_homework} onOpenCourse={onOpenCourse} />
+                <CompactTimetableEntry entry={entry} colour={colourForLesson(entry.lesson)} showHomework={preferences.timetable.show_homework} onOpenCourse={onOpenCourse} />
               </div>
             ))}
           </div>;
@@ -426,7 +440,7 @@ const TimelineView: React.FC<{
         <div className="mt-2 grid gap-2 sm:grid-cols-2">
           {unscheduled.map(({ day, entry }, index) => <div key={entry.exam ? `unscheduled-${entry.exam.id}` : `unscheduled-${day.date}-${index}`} className="rounded-lg bg-surface-50 p-1.5 dark:bg-surface-800/40">
             <p className="mb-1 px-1 text-[10px] font-medium text-surface-500">{day.name || format(new Date(`${day.date}T12:00:00`), 'EEEE', { locale: de })} · Stunden nicht angegeben</p>
-            <CompactTimetableEntry entry={entry} showHomework={preferences.timetable.show_homework} onOpenCourse={onOpenCourse} />
+            <CompactTimetableEntry entry={entry} colour={colourForLesson(entry.lesson)} showHomework={preferences.timetable.show_homework} onOpenCourse={onOpenCourse} />
           </div>)}
         </div>
       </section>}
@@ -436,11 +450,17 @@ const TimelineView: React.FC<{
 
 const CompactTimetableEntry: React.FC<{
   entry: TimetableEntry;
+  colour: string;
   showHomework: boolean;
   onOpenCourse: (lesson: TimetableLesson) => void;
-}> = ({ entry: { lesson, exam }, showHomework, onOpenCourse }) => (
+}> = ({ entry: { lesson, exam }, colour, showHomework, onOpenCourse }) => (
   <div
-    className={`relative flex h-full min-w-0 flex-col justify-center overflow-hidden rounded-md border p-1 text-white shadow-sm transition sm:rounded-xl sm:p-2.5 ${exam ? 'border-violet-700 bg-violet-600 dark:bg-violet-700' : subjectColour(lesson)} ${lesson.cancelled ? '!border-red-700 !bg-red-600 opacity-70' : ''} ${lesson.substitution ? 'ring-2 ring-inset ring-amber-300' : ''} ${lesson.course_id ? 'cursor-pointer hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-surface-900' : ''}`}
+    className={`relative flex h-full min-w-0 flex-col justify-center overflow-hidden rounded-md border p-1 shadow-sm transition sm:rounded-xl sm:p-2.5 ${exam ? 'border-violet-700 !bg-violet-600 !text-white dark:!bg-violet-700' : ''} ${lesson.cancelled ? '!border-red-700 !bg-red-600 !text-white opacity-70' : ''} ${lesson.substitution ? 'ring-2 ring-inset ring-amber-300' : ''} ${lesson.course_id ? 'cursor-pointer hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-surface-900' : ''}`}
+    style={!exam && !lesson.cancelled ? {
+      backgroundColor: colour,
+      borderColor: colour,
+      color: contrastingTextColour(colour),
+    } : undefined}
     role={lesson.course_id ? 'link' : undefined}
     tabIndex={lesson.course_id ? 0 : undefined}
     aria-label={lesson.course_id ? `${lesson.subject} in Mein Unterricht öffnen` : undefined}
@@ -458,32 +478,15 @@ const CompactTimetableEntry: React.FC<{
       </span>
       {exam ? <AcademicCapIcon className="h-3 w-3 shrink-0 sm:h-4 sm:w-4" aria-label={exam.type || 'Klausur'} /> : lesson.week_type ? <span className="rounded bg-white/20 px-1 text-[8px] font-bold sm:text-[10px]">{lesson.week_type}</span> : null}
     </div>
-    <div className="mt-1 space-y-0.5 text-[8px] leading-tight text-white/90 sm:mt-2 sm:space-y-1 sm:text-xs sm:leading-normal">
+    <div className="mt-1 space-y-0.5 text-[8px] leading-tight opacity-90 sm:mt-2 sm:space-y-1 sm:text-xs sm:leading-normal">
       {exam && <p className="truncate font-semibold">{exam.type || 'Klausur'}</p>}
       {lesson.class_name && <p>{lesson.class_name}</p>}
       {lesson.teacher && <p>{lesson.teacher}</p>}
       {lesson.room && <p>{lesson.room}</p>}
     </div>
-    {showHomework && Boolean(lesson.homework?.length) && <span className="mt-1 inline-flex items-center gap-0.5 text-[8px] font-semibold text-white/90 sm:text-[10px]" title="Hausaufgabe vorhanden"><BookOpenIcon className="h-2.5 w-2.5 sm:h-3 sm:w-3" /> HA</span>}
+    {showHomework && Boolean(lesson.homework?.length) && <span className="mt-1 inline-flex items-center gap-0.5 text-[8px] font-semibold opacity-90 sm:text-[10px]" title="Hausaufgabe vorhanden"><BookOpenIcon className="h-2.5 w-2.5 sm:h-3 sm:w-3" /> HA</span>}
   </div>
 );
-
-const SUBJECT_COLOURS = [
-  'border-blue-800 bg-blue-700 dark:bg-blue-700',
-  'border-emerald-800 bg-emerald-700 dark:bg-emerald-700',
-  'border-orange-800 bg-orange-700 dark:bg-orange-700',
-  'border-fuchsia-800 bg-fuchsia-700 dark:bg-fuchsia-700',
-  'border-cyan-800 bg-cyan-700 dark:bg-cyan-700',
-  'border-rose-800 bg-rose-700 dark:bg-rose-700',
-  'border-indigo-800 bg-indigo-700 dark:bg-indigo-700',
-  'border-lime-800 bg-lime-700 dark:bg-lime-700',
-] as const;
-
-const subjectColour = (lesson: TimetableLesson) => {
-  const key = String(lesson.course_id || lesson.course_name || lesson.subject).normalize('NFKC').toLocaleLowerCase('de');
-  const hash = [...key].reduce((value, character) => ((value * 31) + character.charCodeAt(0)) | 0, 0);
-  return SUBJECT_COLOURS[(hash >>> 0) % SUBJECT_COLOURS.length];
-};
 
 const SUBJECT_SHORT_NAMES: Record<string, string> = {
   deutsch: 'D', mathematik: 'M', englisch: 'E', biologie: 'Bio', geschichte: 'G',

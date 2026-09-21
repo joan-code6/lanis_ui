@@ -18,7 +18,7 @@ import {
   ListBulletIcon,
   Squares2X2Icon,
 } from '@heroicons/react/24/outline';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, parseISO, addMonths, subMonths, startOfWeek, endOfWeek, isToday } from 'date-fns';
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, parseISO, addMonths, subMonths, startOfWeek, endOfWeek, isToday, startOfDay, isValid, differenceInCalendarDays } from 'date-fns';
 import { de } from 'date-fns/locale';
 import clsx from 'clsx';
 
@@ -26,6 +26,80 @@ interface DayEvent {
   event: CalendarEvent;
   category: CalendarCategory | undefined;
 }
+
+interface CalendarEventRange {
+  start: Date;
+  end: Date;
+}
+
+interface WeekEventSegment extends DayEvent {
+  startColumn: number;
+  endColumn: number;
+  lane: number;
+  continuesFromPreviousWeek: boolean;
+  continuesIntoNextWeek: boolean;
+}
+
+const getEventDateRange = (event: CalendarEvent): CalendarEventRange | null => {
+  const start = parseISO(event.start);
+  if (!isValid(start)) return null;
+
+  const parsedEnd = parseISO(event.end || '');
+  const end = isValid(parsedEnd) && parsedEnd > start
+    // Calendar event ends are exclusive. Moving back one millisecond keeps an
+    // event ending at midnight out of the following day.
+    ? new Date(parsedEnd.getTime() - 1)
+    : start;
+
+  return {
+    start: startOfDay(start),
+    end: startOfDay(end),
+  };
+};
+
+const getWeekEventSegments = (weekDays: Date[], events: DayEvent[]): WeekEventSegment[] => {
+  const weekStart = weekDays[0];
+  const weekEnd = weekDays[weekDays.length - 1];
+
+  const segments = events.flatMap((entry) => {
+    const range = getEventDateRange(entry.event);
+    if (!range || range.end < weekStart || range.start > weekEnd) return [];
+
+    const clippedStart = range.start < weekStart ? weekStart : range.start;
+    const clippedEnd = range.end > weekEnd ? weekEnd : range.end;
+
+    return [{
+      ...entry,
+      range,
+      startColumn: differenceInCalendarDays(clippedStart, weekStart),
+      endColumn: differenceInCalendarDays(clippedEnd, weekStart),
+    }];
+  }).sort((a, b) => {
+    const aLength = differenceInCalendarDays(a.range.end, a.range.start);
+    const bLength = differenceInCalendarDays(b.range.end, b.range.start);
+
+    return Number(bLength > 0) - Number(aLength > 0)
+      || a.startColumn - b.startColumn
+      || bLength - aLength
+      || a.event.start.localeCompare(b.event.start)
+      || a.event.title.localeCompare(b.event.title, 'de');
+  });
+
+  const occupiedThroughColumn: number[] = [];
+
+  return segments.map(({ range, ...segment }) => {
+    let lane = occupiedThroughColumn.findIndex((endColumn) => endColumn < segment.startColumn);
+    if (lane === -1) lane = occupiedThroughColumn.length;
+    occupiedThroughColumn[lane] = segment.endColumn;
+
+    return {
+      ...segment,
+      lane,
+      continuesFromPreviousWeek: range.start < weekStart,
+      continuesIntoNextWeek: range.end > weekEnd,
+    };
+  });
+};
 
 const parseColor = (color: string): [number, number, number] | null => {
   const value = color.trim().toLowerCase();
@@ -184,6 +258,21 @@ const Kalender: React.FC = () => {
     const calEnd = endOfWeek(monthEnd, { weekStartsOn: 1 });
     return eachDayOfInterval({ start: calStart, end: calEnd });
   }, [currentDate]);
+
+  const categorizedEvents = useMemo(() => filteredEvents.map((event) => ({
+    event,
+    category: categories.find((category) => String(category.id) === String(event.category)),
+  })), [filteredEvents, categories]);
+
+  const calendarWeeks = useMemo(() => {
+    return Array.from({ length: calendarDays.length / 7 }, (_, weekIndex) => {
+      const days = calendarDays.slice(weekIndex * 7, weekIndex * 7 + 7);
+      return {
+        days,
+        segments: getWeekEventSegments(days, categorizedEvents),
+      };
+    });
+  }, [calendarDays, categorizedEvents]);
 
   const goToPrevMonth = () => setCurrentDate(subMonths(currentDate, 1));
   const goToNextMonth = () => setCurrentDate(addMonths(currentDate, 1));
@@ -368,58 +457,76 @@ const Kalender: React.FC = () => {
           ))}
         </div>
 
-        <div
-          className="flex-1 min-h-0 grid grid-cols-7 auto-rows-[80px] sm:auto-rows-[160px] content-start gap-px bg-surface-200 dark:bg-surface-700 rounded-xl overflow-y-auto overflow-x-hidden border border-surface-100 dark:border-surface-700"
-        >
-          {calendarDays.map((day) => {
-            const dateKey = format(day, 'yyyy-MM-dd');
-            const dayEvents = eventsByDate.get(dateKey) || [];
-            const isCurrentMonth = isSameMonth(day, currentDate);
-            const isCurrentDay = isToday(day);
+        <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden rounded-xl border border-surface-100 bg-surface-200 dark:border-surface-700 dark:bg-surface-700">
+          {calendarWeeks.map(({ days, segments }) => (
+            <div
+              key={format(days[0], 'yyyy-MM-dd')}
+              className="relative min-h-[80px] border-b border-surface-200 last:border-b-0 sm:min-h-[160px] dark:border-surface-700"
+            >
+              <div className="absolute inset-0 grid grid-cols-7 gap-px bg-surface-200 dark:bg-surface-700">
+                {days.map((day) => {
+                  const dateKey = format(day, 'yyyy-MM-dd');
+                  const isCurrentMonth = isSameMonth(day, currentDate);
+                  const isCurrentDay = isToday(day);
 
-            return (
-              <div
-                key={dateKey}
-                className={clsx(
-                  'bg-white dark:bg-surface-900 min-h-0 p-1 sm:p-1.5 transition-colors overflow-hidden flex flex-col',
-                  !isCurrentMonth && 'bg-surface-50 dark:!bg-surface-900 text-surface-300 dark:text-surface-600'
-                )}
-              >
-                <div className={clsx(
-                  'text-xs font-medium mb-1 w-6 h-6 flex items-center justify-center',
-                  isCurrentDay && 'bg-primary-600 text-white rounded-full'
-                )}>
-                  {format(day, 'd')}
-                </div>
-                <div className={clsx(
-                  'calendar-events-scroll flex-1 min-h-0 space-y-0.5 overflow-y-auto',
-                  dayEvents.length > 3 && 'calendar-events-scrollable'
-                )}>
-                  {dayEvents.map(({ event, category }, idx) => {
-                    const backgroundColor = category?.color || event.category_color;
-                    return (
-                    <button
-                      key={idx}
-                      onClick={() => handleEventClick(event)}
+                  return (
+                    <div
+                      key={dateKey}
                       className={clsx(
-                        'w-full text-left text-[11px] px-1 py-0.5 rounded truncate block',
-                        backgroundColor
-                          ? ''
-                          : 'bg-surface-100 dark:bg-surface-700 text-surface-700 dark:text-surface-300 hover:bg-surface-200 dark:hover:bg-surface-600'
+                        'min-h-0 overflow-hidden bg-white p-1 transition-colors sm:p-1.5 dark:bg-surface-900',
+                        !isCurrentMonth && 'bg-surface-50 text-surface-300 dark:!bg-surface-900 dark:text-surface-600'
                       )}
-                      style={backgroundColor ? {
-                        backgroundColor,
-                        color: getContrastingTextColor(backgroundColor),
-                      } : {}}
+                    >
+                      <div className={clsx(
+                        'flex h-6 w-6 items-center justify-center text-xs font-medium',
+                        isCurrentDay && 'rounded-full bg-primary-600 text-white'
+                      )}>
+                        {format(day, 'd')}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="pointer-events-none relative grid grid-cols-7 auto-rows-[20px] gap-y-0.5 px-0 pb-1 pt-8 sm:pt-9">
+                {segments.map(({
+                  event,
+                  category,
+                  startColumn,
+                  endColumn,
+                  lane,
+                  continuesFromPreviousWeek,
+                  continuesIntoNextWeek,
+                }) => {
+                  const backgroundColor = category?.color || event.category_color;
+
+                  return (
+                    <button
+                      key={event.id}
+                      onClick={() => handleEventClick(event)}
+                      title={event.title}
+                      className={clsx(
+                        'pointer-events-auto z-[1] mx-1 block min-w-0 truncate rounded px-1 py-0.5 text-left text-[11px] transition-[filter] hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-1 sm:mx-1.5',
+                        continuesFromPreviousWeek && 'rounded-l-none',
+                        continuesIntoNextWeek && 'rounded-r-none',
+                        !backgroundColor && 'bg-surface-100 text-surface-700 hover:bg-surface-200 dark:bg-surface-700 dark:text-surface-300 dark:hover:bg-surface-600'
+                      )}
+                      style={{
+                        gridColumn: `${startColumn + 1} / ${endColumn + 2}`,
+                        gridRow: lane + 1,
+                        ...(backgroundColor ? {
+                          backgroundColor,
+                          color: getContrastingTextColor(backgroundColor),
+                        } : {}),
+                      }}
                     >
                       {event.title}
                     </button>
-                    );
-                  })}
-                </div>
+                  );
+                })}
               </div>
-            );
-          })}
+            </div>
+          ))}
         </div>
       </div>
       )}

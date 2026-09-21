@@ -15,7 +15,13 @@ import { useAuth } from '../../contexts/AuthContext';
 import { usePreferences } from '../../contexts/PreferencesContext';
 import { settingsAPI, timetableAPI } from '../../services/api';
 import { ClassLink, CustomLesson, TimetableLayoutMode, TimetableLesson, TimetableResponse } from '../../types';
-import { TimetableViewMode, weekdayForDate } from '../../utils/timetableView';
+import { applyTimetableOverrides, TimetableViewMode, weekdayForDate } from '../../utils/timetableView';
+import {
+  defaultTimetableClassColour,
+  defaultTimetableClassColours,
+  TimetableColourLesson,
+  timetableClassKey,
+} from '../../utils/timetableColours';
 
 interface EditableEntry {
   key: string;
@@ -127,6 +133,11 @@ const TimetableSettings: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+  const [draftClassColours, setDraftClassColours] = useState<Record<string, string>>(
+    () => preferences.timetable.class_colors,
+  );
+  const draftClassColoursRef = useRef(draftClassColours);
+  const dirtyClassColoursRef = useRef(new Set<string>());
   const lessonListRef = useRef<HTMLElement>(null);
   const editorRef = useRef<HTMLElement>(null);
 
@@ -173,7 +184,47 @@ const TimetableSettings: React.FC = () => {
     return () => controller.abort();
   }, [token]);
 
+  useEffect(() => {
+    const incoming = preferences.timetable.class_colors;
+    setDraftClassColours(current => {
+      const next = { ...current };
+      Object.entries(incoming).forEach(([key, colour]) => {
+        if (!dirtyClassColoursRef.current.has(key)) next[key] = colour;
+      });
+      Object.keys(next).forEach(key => {
+        if (!dirtyClassColoursRef.current.has(key) && !(key in incoming)) delete next[key];
+      });
+      draftClassColoursRef.current = next;
+      return next;
+    });
+  }, [preferences.timetable.class_colors]);
+
+  draftClassColoursRef.current = draftClassColours;
+
   const entries = useMemo(() => buildEntries(timetable, customLessons), [customLessons, timetable]);
+  const timetableClasses = useMemo(() => {
+    const days = [...(timetable?.days || []), ...(timetable?.all_days || [])];
+    const lessons = days.flatMap(day => {
+      const overrides = customLessons.filter(override => weekdayForDate(override.date) === weekdayForDate(day.date));
+      return (['A', 'B'] as const).flatMap(activeWeek => applyTimetableOverrides(
+        day.lessons.filter(lesson => !lesson.week_type || lesson.week_type === activeWeek),
+        overrides,
+        activeWeek,
+      ));
+    });
+    const unique = new Map<string, TimetableColourLesson>();
+    lessons.forEach(lesson => {
+      const key = timetableClassKey(lesson);
+      if (!unique.has(key)) unique.set(key, lesson);
+    });
+    return [...unique.entries()]
+      .map(([key, lesson]) => ({ key, lesson }))
+      .sort((left, right) => left.lesson.subject.localeCompare(right.lesson.subject, 'de'));
+  }, [customLessons, timetable]);
+  const defaultClassColours = useMemo(
+    () => defaultTimetableClassColours(timetableClasses.map(item => item.lesson)),
+    [timetableClasses],
+  );
   const weekdayOptions = useMemo(() => {
     const datesByWeekday = new Map(
       (timetable?.days || []).map(day => [weekdayForDate(day.date), day.date]),
@@ -189,6 +240,15 @@ const TimetableSettings: React.FC = () => {
     () => classLinks.find(link => link.course_id === draft.course_id),
     [classLinks, draft.course_id],
   );
+  const selectedEntry = entries.find(entry => entry.key === selectedKey);
+  const colourLesson: TimetableColourLesson = {
+    subject: draft.subject || selectedEntry?.lesson?.subject || 'Unterricht',
+    class_name: draft.class_name || selectedEntry?.lesson?.class_name,
+    course_id: draft.course_id ?? selectedEntry?.lesson?.course_id,
+    course_name: selectedEntry?.lesson?.course_name,
+  };
+  const colourKey = timetableClassKey(colourLesson);
+  const defaultColour = defaultClassColours[colourKey] || defaultTimetableClassColour(colourKey);
 
   useEffect(() => {
     if (selectedKey || !entries.length) return;
@@ -232,6 +292,51 @@ const TimetableSettings: React.FC = () => {
   const updateTimetableViewMode = (mode: TimetableViewMode) => {
     void updatePreferences({ timetable: { view_mode: mode } });
   };
+
+  const draftClassColour = (key: string, defaultColour: string) => (
+    draftClassColours[key] || defaultColour
+  );
+
+  const changeClassColour = (key: string, colour: string) => {
+    dirtyClassColoursRef.current.add(key);
+    setDraftClassColours(current => ({ ...current, [key]: colour }));
+  };
+
+  const persistClassColours = (colours: Record<string, string>) => {
+    const saved = { ...colours };
+    void updatePreferences({
+      timetable: {
+        class_colors: saved,
+      },
+    }).then(success => {
+      if (!success) return;
+      Object.keys(saved).forEach(key => {
+        if (dirtyClassColoursRef.current.has(key) && draftClassColoursRef.current[key] === saved[key]) {
+          dirtyClassColoursRef.current.delete(key);
+        }
+      });
+    });
+  };
+
+  const saveClassColours = () => {
+    persistClassColours(draftClassColoursRef.current);
+  };
+
+  const resetClassColour = (key: string, defaultColour: string) => {
+    dirtyClassColoursRef.current.add(key);
+    const next = { ...draftClassColoursRef.current, [key]: defaultColour };
+    draftClassColoursRef.current = next;
+    setDraftClassColours(next);
+    persistClassColours(next);
+  };
+
+  useEffect(() => () => {
+    if (dirtyClassColoursRef.current.size > 0) {
+      void updatePreferences({
+        timetable: { class_colors: draftClassColoursRef.current },
+      });
+    }
+  }, [updatePreferences]);
 
   const selectCourse = (courseId: string) => {
     const course = classLinks.find(link => link.course_id === courseId);
@@ -510,6 +615,35 @@ const TimetableSettings: React.FC = () => {
               <div>
                 <label className="label" htmlFor="custom-lesson-period">Stunde / Bereich</label>
                 <input id="custom-lesson-period" className="input" value={draft.period} onChange={event => updateDraft('period', event.target.value)} placeholder="z. B. 1 oder 1–2" required />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between gap-3 rounded-xl border border-surface-200 p-3 dark:border-surface-700">
+              <div className="min-w-0">
+                <label className="label" htmlFor="custom-lesson-colour">Farbe in der kompakten Ansicht</label>
+                <p className="mt-0.5 text-xs text-surface-500">Wird für diesen Kurs bzw. diese Klasse verwendet.</p>
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                <input
+                  id="custom-lesson-colour"
+                  type="color"
+                  aria-label={`Farbe für ${colourLesson.subject}`}
+                  className="h-9 w-11 cursor-pointer rounded-lg border border-surface-300 bg-transparent p-0.5 dark:border-surface-600"
+                  value={draftClassColour(colourKey, defaultColour)}
+                  onChange={event => changeClassColour(colourKey, event.target.value)}
+                  onBlur={saveClassColours}
+                  disabled={draft.removed}
+                />
+                <button
+                  type="button"
+                  className="rounded-lg p-2 text-surface-400 transition-colors hover:bg-surface-100 hover:text-surface-700 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-surface-800 dark:hover:text-surface-200"
+                  aria-label="Standardfarbe wiederherstellen"
+                  title="Standardfarbe wiederherstellen"
+                  onClick={() => resetClassColour(colourKey, defaultColour)}
+                  disabled={draft.removed}
+                >
+                  <ArrowPathIcon className="h-4 w-4" />
+                </button>
               </div>
             </div>
 

@@ -81,8 +81,10 @@ export function usePublicStatus(enabled = true) {
       }
     };
     void refresh();
-    const timer = window.setInterval(() => void refresh(), 60_000);
-    return () => { active = false; controller?.abort(); window.clearInterval(timer); };
+    // The backend monitor runs independently. A page-level interval only
+    // creates needless traffic (and each hook instance used to create one).
+    // StatusPage exposes an explicit refresh action when a fresh read is needed.
+    return () => { active = false; controller?.abort(); };
   }, [enabled, revision]);
   return { data, loading, error, status: freshStatus(data), refresh: () => setRevision(value => value + 1) };
 }
