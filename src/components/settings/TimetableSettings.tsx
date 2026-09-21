@@ -15,7 +15,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { usePreferences } from '../../contexts/PreferencesContext';
 import { settingsAPI, timetableAPI } from '../../services/api';
 import { ClassLink, CustomLesson, TimetableLayoutMode, TimetableLesson, TimetableResponse } from '../../types';
-import { TimetableViewMode, weekdayForDate } from '../../utils/timetableView';
+import { applyTimetableOverrides, TimetableViewMode, weekdayForDate } from '../../utils/timetableView';
 import {
   defaultTimetableClassColours,
   TimetableColourLesson,
@@ -202,11 +202,12 @@ const TimetableSettings: React.FC = () => {
 
   const entries = useMemo(() => buildEntries(timetable, customLessons), [customLessons, timetable]);
   const timetableClasses = useMemo(() => {
-    const lessons = [
-      ...(timetable?.days || []).flatMap(day => day.lessons),
-      ...(timetable?.all_days || []).flatMap(day => day.lessons),
-      ...customLessons.filter(lesson => !lesson.removed),
-    ];
+    const days = [...(timetable?.days || []), ...(timetable?.all_days || [])];
+    const lessons = days.flatMap(day => applyTimetableOverrides(
+      day.lessons,
+      customLessons.filter(override => weekdayForDate(override.date) === weekdayForDate(day.date)),
+      undefined,
+    ));
     const unique = new Map<string, TimetableColourLesson>();
     lessons.forEach(lesson => {
       const key = timetableClassKey(lesson);
