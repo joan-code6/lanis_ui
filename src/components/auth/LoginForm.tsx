@@ -214,6 +214,7 @@ const LoginForm: React.FC = () => {
         title="Anmelden"
         description="Melde dich bei Lanis an — der modernen Benutzeroberfläche für das Schulportal Hessen. Wähle deine Schule aus und logge dich ein."
         path="/login"
+        noindex
       />
       <button
         onClick={cycleTheme}

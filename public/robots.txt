@@ -1,5 +1,19 @@
 User-agent: *
 Allow: /
 Disallow: /login
+Disallow: /dashboard
+Disallow: /messages
+Disallow: /courses
+Disallow: /calendar
+Disallow: /timetable
+Disallow: /study-groups
+Disallow: /dateispeicher
+Disallow: /vertretungsplan
+Disallow: /dsb
+Disallow: /wahlen
+Disallow: /profile
+Disallow: /settings
+Disallow: /onboarding
+Disallow: /set-custom-backend
 
 Sitemap: https://lanis.arg-server.de/sitemap.xml

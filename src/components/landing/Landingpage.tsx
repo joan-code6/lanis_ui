@@ -413,7 +413,7 @@ const Landingpage: React.FC = () => {
   return (
     <div className="min-h-screen bg-[#fcfcf9] dark:bg-surface-950 text-[#1a1a1a] dark:text-surface-100 overflow-x-hidden transition-colors duration-300">
       <SEO
-        title="Lanis | Das Schulportal Hessen, neu gedacht"
+        title="Das Schulportal Hessen, neu gedacht"
         description="Lanis ist die modernere, inoffizielle Oberfläche für das Schulportal Hessen: Hausaufgaben direkt im Stundenplan, Push-Benachrichtigungen und Ladezeiten unter 50 Millisekunden."
         path="/"
       />
