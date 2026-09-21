@@ -18,10 +18,18 @@ export const timetableClassKey = (lesson: TimetableColourLesson): string => {
   return `subject:${normalize(lesson.subject) || 'unterricht'}`;
 };
 
-const hashKey = (key: string): number => [...key].reduce(
-  (value, character) => Math.imul(value ^ character.charCodeAt(0), 16777619),
-  2166136261,
-) >>> 0;
+const hashKey = (key: string): number => {
+  let first = 0xdeadbeef;
+  let second = 0x41c6ce57;
+  for (const character of key) {
+    const code = character.charCodeAt(0);
+    first = Math.imul(first ^ code, 2654435761);
+    second = Math.imul(second ^ code, 1597334677);
+  }
+  first = Math.imul(first ^ (first >>> 16), 2246822507) ^ Math.imul(second ^ (second >>> 13), 3266489909);
+  second = Math.imul(second ^ (second >>> 16), 2246822507) ^ Math.imul(first ^ (first >>> 13), 3266489909);
+  return (first >>> 0) * 2097152 + ((second >>> 0) & 0x1fffff);
+};
 
 export const defaultTimetableClassColours = (
   lessons: TimetableColourLesson[],
@@ -49,9 +57,9 @@ export const defaultTimetableClassColour = (key: string): string => {
   // Keep the full hash precision in the HSL coordinates. This gives a large
   // deterministic color space without assigning colors based on the current
   // subset of visible lessons.
-  const hue = (hash / 0x100000000) * 360;
-  const saturation = 0.58 + (((hash >>> 8) & 0xff) / 255) * 0.25;
-  const lightness = 0.36 + (((hash >>> 16) & 0xff) / 255) * 0.2;
+  const hue = (hash / 0x20000000000000) * 360;
+  const saturation = 0.58 + ((Math.floor(hash / 0x100) % 256) / 255) * 0.25;
+  const lightness = 0.36 + ((Math.floor(hash / 0x10000) % 256) / 255) * 0.2;
   return hslToHex(hue, saturation, lightness);
 };
 

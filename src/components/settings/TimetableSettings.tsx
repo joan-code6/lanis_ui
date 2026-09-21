@@ -316,6 +316,14 @@ const TimetableSettings: React.FC = () => {
     persistClassColours(next);
   };
 
+  useEffect(() => () => {
+    if (dirtyClassColoursRef.current.size > 0) {
+      void updatePreferences({
+        timetable: { class_colors: draftClassColoursRef.current },
+      });
+    }
+  }, [updatePreferences]);
+
   const selectCourse = (courseId: string) => {
     const course = classLinks.find(link => link.course_id === courseId);
     setDraft(previous => ({
