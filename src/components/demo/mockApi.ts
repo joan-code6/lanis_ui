@@ -483,13 +483,17 @@ function urlMatches(pattern: string, url: string): boolean {
 
 const mockDashboardReadIds = new Set<string>();
 
+const compactNotificationText = (value: string, maxLength = 36) => (
+  value.length > maxLength ? `${value.slice(0, maxLength - 1).trimEnd()}…` : value
+);
+
 function getMockDashboardNotifications() {
   const messageItems = mockMessageHeaders
     .filter(message => message.unread)
     .map(message => ({
       id: `demo-message-${message.Uniquid}`,
       source: 'messages',
-      title: message.Betreff,
+      title: compactNotificationText(message.Betreff.replace(/^[^:]+:\s*/, '')),
       detail: message.Sender,
       meta: message.date,
       path: '/messages',
@@ -516,8 +520,8 @@ function getMockDashboardNotifications() {
     return {
       id,
       source: 'dsb',
-      title: `${row.Info || 'Änderung'} · ${row.Fach}`,
-      detail: `${demoUser.klasse} · ${row.Stunde}. Std. · Raum ${row.Raum}`,
+      title: compactNotificationText(`${row.Info || 'Änderung'} · ${row.Fach}`),
+      detail: `${row.Stunde}. Std. · Raum ${row.Raum}`,
       meta: table.date || '',
       path: '/dsb',
       created_at: now.toISOString(),
