@@ -77,6 +77,19 @@ export interface TokenRefreshResponse {
   expires_in: number;
 }
 
+export interface AccountExport {
+  schema_version: number;
+  generated_at: string;
+  account: {
+    school_id: string | null;
+    username: string | null;
+    credential_stored: boolean;
+    credential_created_at: string | null;
+    credential_expires_at: string | null;
+  };
+  [key: string]: unknown;
+}
+
 export interface User {
   [key: string]: string;
 }
