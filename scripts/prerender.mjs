@@ -77,6 +77,7 @@ const server = createServer((req, res) => {
 const routes = [
   { path: '/', file: 'index.html' },
   { path: '/status', file: 'status/index.html' },
+  { path: '/login', file: 'login/index.html' },
 ];
 
 function hasUnavailableBrowser(error) {
@@ -187,6 +188,7 @@ async function prerender() {
     console.log('\nPrerendering complete!');
     console.log('  dist/index.html              — Landing page');
     console.log('  dist/status/index.html       — Public status');
+    console.log('  dist/login/index.html        — Login');
   } finally {
     await browser.close();
     server.close();
