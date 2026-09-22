@@ -258,29 +258,29 @@ html[data-theme="cyan"] {
 }
 html[data-theme="coral"] {
   --color-primary-50: 254 227 234;
-  --color-primary-100: 252 208 219;
-  --color-primary-200: 249 183 197;
-  --color-primary-300: 246 157 168;
-  --color-primary-400: 248 131 121;
-  --color-primary-500: 222 99 100;
-  --color-primary-600: 195 70 78;
-  --color-primary-700: 163 53 62;
-  --color-primary-800: 132 45 52;
-  --color-primary-900: 105 39 45;
-  --color-primary-950: 63 23 29;
+  --color-primary-100: 253 210 206;
+  --color-primary-200: 251 185 177;
+  --color-primary-300: 249 159 148;
+  --color-primary-400: 249 143 130;
+  --color-primary-500: 248 131 121;
+  --color-primary-600: 192 79 61;
+  --color-primary-700: 170 67 55;
+  --color-primary-800: 146 58 54;
+  --color-primary-900: 118 48 46;
+  --color-primary-950: 72 28 26;
 }
 html[data-theme="blush"] {
-  --color-primary-50: 255 247 249;
+  --color-primary-50: 255 249 250;
   --color-primary-100: 254 227 234;
-  --color-primary-200: 252 201 213;
-  --color-primary-300: 246 166 185;
-  --color-primary-400: 232 124 151;
-  --color-primary-500: 210 91 124;
-  --color-primary-600: 183 66 99;
-  --color-primary-700: 152 49 78;
-  --color-primary-800: 123 42 64;
-  --color-primary-900: 96 34 51;
-  --color-primary-950: 57 19 31;
+  --color-primary-200: 249 208 222;
+  --color-primary-300: 240 179 203;
+  --color-primary-400: 221 145 179;
+  --color-primary-500: 201 111 152;
+  --color-primary-600: 169 84 125;
+  --color-primary-700: 135 67 101;
+  --color-primary-800: 109 53 83;
+  --color-primary-900: 86 43 67;
+  --color-primary-950: 51 26 42;
 }
 
 @layer components {
