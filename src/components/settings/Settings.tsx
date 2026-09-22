@@ -56,7 +56,7 @@ const isStandalone = () =>
   window.matchMedia('(display-mode: standalone)').matches ||
   (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
 
-const themeColors: { key: ThemeColor; label: string; hex: string }[] = [
+const themeColors: { key: ThemeColor; label: string; hex: string; checkClass?: string }[] = [
   { key: 'emerald', label: 'Emerald', hex: '#10b981' },
   { key: 'sapphire', label: 'Saphir', hex: '#3b82f6' },
   { key: 'amethyst', label: 'Amethyst', hex: '#a855f7' },
@@ -64,6 +64,7 @@ const themeColors: { key: ThemeColor; label: string; hex: string }[] = [
   { key: 'amber', label: 'Bernstein', hex: '#f59e0b' },
   { key: 'cyan', label: 'Cyan', hex: '#06b6d4' },
   { key: 'coral', label: 'Koralle', hex: '#f88379' },
+  { key: 'blush', label: 'Blush', hex: '#fee3ea', checkClass: 'text-surface-800' },
 ];
 
 const defaultNotificationPreferences: NotificationPreferences = {
@@ -1025,7 +1026,7 @@ const Settings: React.FC = () => {
                   style={{ backgroundColor: c.hex }}
                 >
                   {themeColor === c.key && (
-                    <CheckIcon className="w-4 h-4 text-white" />
+                    <CheckIcon className={`w-4 h-4 ${c.checkClass || 'text-white'}`} />
                   )}
                 </span>
                 <span className="text-xs font-medium text-surface-600 dark:text-surface-300">{c.label}</span>

@@ -17,6 +17,7 @@ const themes = {
   ruby: { base: [244, 63, 94], hat: softInkHat, themeColor: '#f43f5e' },
   amber: { base: [245, 158, 11], hat: softInkHat, themeColor: '#f59e0b' },
   coral: { base: [248, 131, 121], hat: softInkHat, themeColor: '#f88379' },
+  blush: { base: [254, 227, 234], hat: softInkHat, themeColor: '#fee3ea' },
 };
 
 const iconSizes = {
