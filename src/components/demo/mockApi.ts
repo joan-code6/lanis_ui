@@ -339,6 +339,17 @@ const mockCourseDetails: Record<string, any> = {
   },
 };
 
+const syncMockCourseSubmissionCount = (submission: MockSubmission) => {
+  const course = mockCourseDetails[submission.course_id];
+  const entry = course?.entries?.find(
+    (item: any) => item.entry_id === submission.entry_id,
+  );
+  const upload = entry?.uploads?.find(
+    (item: any) => (item.detail_ref || item.id) === submission.detail_ref,
+  );
+  if (upload) upload.uploaded_count = submission.uploaded_count;
+};
+
 const mockEntryDetails: Record<string, any> = {
   b1e1: { id: 'b1e1', title: 'Gedichtvergleich: Stadt und Natur', content: '<p>Vergleiche Bildsprache und Stimmung der beiden Gedichte.</p><p><strong>Arbeitsauftrag:</strong> Belege deine Aussage mit je einer Textstelle und einem Fachbegriff.</p>', date: daysAgo(1), attachments: [{ name: 'Gedichtvergleich-Leitfaden.pdf', url: '/files/gedichtvergleich-leitfaden.pdf' }] },
   b2e1: { id: 'b2e1', title: 'Lineare Funktionen und Steigung', content: '<p>Lies Steigung und y-Achsenabschnitt aus dem Graphen ab und zeichne die Funktion.</p><p><strong>Arbeitsauftrag:</strong> Notiere jeden Rechenschritt und prüfe einen Punkt durch Einsetzen.</p>', date: daysAgo(2), attachments: [{ name: 'Funktionsgraphen-Arbeitsblatt.pdf', url: '/files/funktionsgraphen-arbeitsblatt.pdf' }] },
@@ -766,6 +777,7 @@ export function getMockResponse(url: string, method: string, config: any): { dat
       return { name, status: 'erfolgreich', message: null };
     });
     summary.uploaded_count = files.length;
+    syncMockCourseSubmissionCount(summary);
     return { status: 200, data: { success: true, all_succeeded: true, files: statuses } };
   }
   if (u === '/meinunterricht/submissions/file' && method === 'delete') {
@@ -776,6 +788,7 @@ export function getMockResponse(url: string, method: string, config: any): { dat
     const index = files.findIndex(file => file.index === fileIndex);
     if (index >= 0) files.splice(index, 1);
     summary.uploaded_count = files.length;
+    syncMockCourseSubmissionCount(summary);
     return { status: 200, data: { success: true, code: '1', message: 'File deleted successfully' } };
   }
   if (u.startsWith('/meinunterricht/submissions/') && method === 'get') {
