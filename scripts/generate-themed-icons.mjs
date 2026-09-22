@@ -10,7 +10,7 @@ const sourceHat = [18, 52, 70];
 const softInkHat = [18, 52, 70];
 
 const themes = {
-  cyan: { base: sourceBase, hat: softInkHat, themeColor: '#06b6d4' },
+  cyan: { base: [1, 188, 214], hat: softInkHat, themeColor: '#06b6d4' },
   emerald: { base: [16, 185, 129], hat: softInkHat, themeColor: '#10b981' },
   sapphire: { base: [59, 130, 246], hat: softInkHat, themeColor: '#3b82f6' },
   amethyst: { base: [168, 85, 247], hat: softInkHat, themeColor: '#a855f7' },
