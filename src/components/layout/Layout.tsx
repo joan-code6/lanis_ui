@@ -194,7 +194,7 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
 
       <div className={'hidden md:flex md:flex-col md:fixed transition-[width] duration-300 ease-out ' + (isSidebarCollapsed ? 'md:w-[60px]' : 'md:w-64') + ' ' + (isDemo ? 'md:top-10 md:bottom-0' : 'md:inset-y-0')}>
         <div className="flex-1 flex flex-col min-h-0 bg-white dark:bg-surface-900 border-r border-surface-100 dark:border-surface-800">
-          <SidebarContent navigation={navigation} isCollapsed={isSidebarCollapsed} />
+          <SidebarContent navigation={navigation} isCollapsed={isSidebarCollapsed} canCollapse />
         </div>
       </div>
 
@@ -253,9 +253,11 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
   function SidebarContent({
     navigation,
     isCollapsed = false,
+    canCollapse = false,
   }: {
     navigation: SidebarNavigationItem[];
     isCollapsed?: boolean;
+    canCollapse?: boolean;
   }) {
     return (
       <>
@@ -295,7 +297,7 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
               </svg>
             )}
           </Link>
-          {!isCollapsed && (
+          {canCollapse && !isCollapsed && (
             <button
               type="button"
               onClick={() => setIsSidebarCollapsed(true)}
