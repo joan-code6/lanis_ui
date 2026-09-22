@@ -137,10 +137,11 @@ const UploadResults: React.FC<{ statuses: SubmissionUploadStatus[] }> = ({ statu
 
 const SubmissionDetailView: React.FC<{
   detail: SubmissionDetail;
+  refreshError: string;
   token: string;
   onBack: () => void;
   onRefresh: () => Promise<void>;
-}> = ({ detail, token, onBack, onRefresh }) => {
+}> = ({ detail, refreshError, token, onBack, onRefresh }) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [busy, setBusy] = useState(false);
@@ -153,7 +154,7 @@ const SubmissionDetailView: React.FC<{
   const maxBytes = parseMaxBytes(detail.max_file_size);
   const attemptClosed = detail.allows_multiple_attempts === false && detail.own_files.length > 0;
   const uploadAllowed = detail.status === 'open' && detail.can_upload && !attemptClosed;
-  const maxFiles = detail.allows_multiple_files === false ? 1 : 5;
+  const multipleFilesAllowed = detail.allows_multiple_files !== false;
   const accept = detail.allowed_file_types.length > 0
     && !detail.allowed_file_types.some(type => type.trim().toLowerCase() === 'alle')
     ? detail.allowed_file_types
@@ -164,8 +165,8 @@ const SubmissionDetailView: React.FC<{
   const chooseFiles = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || []);
     setError('');
-    if (files.length > maxFiles) {
-      setError(`Für diese Abgabe sind höchstens ${maxFiles} Datei${maxFiles === 1 ? '' : 'en'} erlaubt.`);
+    if (!multipleFilesAllowed && files.length > 1) {
+      setError('Für diese Abgabe ist nur eine Datei erlaubt.');
       event.target.value = '';
       return;
     }
@@ -266,7 +267,7 @@ const SubmissionDetailView: React.FC<{
         </button>
       </div>
 
-      {error && <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900/70 dark:bg-red-950/30 dark:text-red-200"><ExclamationCircleIcon className="mt-0.5 h-5 w-5 shrink-0" />{error}</div>}
+      {(error || refreshError) && <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900/70 dark:bg-red-950/30 dark:text-red-200"><ExclamationCircleIcon className="mt-0.5 h-5 w-5 shrink-0" />{error || refreshError}</div>}
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1.3fr)_minmax(280px,.7fr)]">
         <section className="card overflow-hidden p-0">
@@ -289,13 +290,13 @@ const SubmissionDetailView: React.FC<{
 
             {uploadAllowed ? (
               <div className="mt-5 rounded-2xl border border-primary-200 bg-primary-50/60 p-4 dark:border-primary-900/70 dark:bg-primary-950/20">
-                <input ref={inputRef} type="file" className="sr-only" multiple={maxFiles > 1} accept={accept} onChange={chooseFiles} />
+                <input ref={inputRef} type="file" className="sr-only" multiple={multipleFilesAllowed} accept={accept} onChange={chooseFiles} />
                 <button type="button" onClick={() => inputRef.current?.click()} className="flex w-full flex-col items-center justify-center rounded-xl border border-dashed border-primary-300 px-4 py-7 text-center text-primary-800 transition-colors hover:bg-primary-100/70 dark:border-primary-800 dark:text-primary-200 dark:hover:bg-primary-950/50">
                   <DocumentArrowUpIcon className="h-8 w-8" />
                   <span className="mt-2 font-semibold">Dateien auswählen</span>
-                  <span className="mt-1 text-xs text-primary-700/80 dark:text-primary-300/80">{detail.allowed_file_types.join(', ') || 'Erlaubte Dateitypen ansehen'} · maximal {maxFiles} Datei{maxFiles === 1 ? '' : 'en'}</span>
+                  <span className="mt-1 text-xs text-primary-700/80 dark:text-primary-300/80">{detail.allowed_file_types.join(', ') || 'Erlaubte Dateitypen ansehen'} · {multipleFilesAllowed ? 'Mehrere Dateien möglich' : 'Maximal eine Datei'}</span>
                 </button>
-                {selectedFiles.length > 0 && <div className="mt-3 space-y-2">{selectedFiles.map(file => <FileRow key={`${file.name}-${file.lastModified}`} name={file.name} meta={formatBytes(file.size)} action={<button type="button" onClick={() => setSelectedFiles(current => current.filter(item => item !== file))} className="rounded-lg p-2 text-surface-500 hover:bg-surface-200 dark:hover:bg-surface-800" aria-label={`${file.name} entfernen`}><XMarkIcon className="h-4 w-4" /></button>} />)}</div>}
+                {selectedFiles.length > 0 && <div className="mt-3 space-y-2">{selectedFiles.map(file => <FileRow key={`${file.name}-${file.lastModified}`} name={file.name} meta={formatBytes(file.size)} action={<button type="button" onClick={() => { setSelectedFiles(current => current.filter(item => item !== file)); if (inputRef.current) inputRef.current.value = ''; }} className="rounded-lg p-2 text-surface-500 hover:bg-surface-200 dark:hover:bg-surface-800" aria-label={`${file.name} entfernen`}><XMarkIcon className="h-4 w-4" /></button>} />)}</div>}
                 <button type="button" onClick={() => void upload()} disabled={!selectedFiles.length || busy} className="btn btn-primary mt-3 w-full disabled:cursor-not-allowed disabled:opacity-50">{busy ? 'Wird hochgeladen …' : 'Hochladen'}</button>
               </div>
             ) : (
@@ -379,7 +380,7 @@ const Submissions: React.FC = () => {
   return (
     <div className="p-6">
       {isDetail && detail ? (
-        <SubmissionDetailView detail={detail} token={token} onBack={() => navigate(listPath)} onRefresh={async () => { if (id) await loadDetail(id); }} />
+        <SubmissionDetailView detail={detail} refreshError={error} token={token} onBack={() => navigate(listPath)} onRefresh={async () => { if (id) await loadDetail(id); }} />
       ) : !isDetail ? (
         <div className="mx-auto max-w-5xl space-y-6">
           <div className="flex flex-wrap items-end justify-between gap-4"><div><p className="text-sm font-semibold uppercase tracking-[0.14em] text-primary-700 dark:text-primary-300">Mein Unterricht</p><h1 className="mt-1 text-3xl font-bold text-surface-900 dark:text-surface-100">Abgaben</h1><p className="mt-2 text-sm text-surface-600 dark:text-surface-400">Alle Upload-Aufträge, Fristen und deine abgegebenen Dateien an einem Ort.</p></div><button type="button" onClick={() => void loadList()} className="btn btn-secondary inline-flex items-center gap-2"><ArrowPathIcon className="h-4 w-4" /> Aktualisieren</button></div>
