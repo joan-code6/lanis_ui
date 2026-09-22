@@ -685,7 +685,13 @@ export const coursesAPI = {
     const response = await apiClient.post<SubmissionUploadResponse>(
       '/meinunterricht/submissions/upload',
       form,
-      { headers: { 'X-Session-Token': token }, signal },
+      {
+        headers: {
+          'X-Session-Token': token,
+          'Content-Type': 'multipart/form-data',
+        },
+        signal,
+      },
     );
     return response.data;
   },
@@ -705,7 +711,14 @@ export const coursesAPI = {
     form.append('password', password);
     const response = await apiClient.delete<SubmissionDeleteResponse>(
       '/meinunterricht/submissions/file',
-      { headers: { 'X-Session-Token': token }, data: form, signal },
+      {
+        headers: {
+          'X-Session-Token': token,
+          'Content-Type': 'multipart/form-data',
+        },
+        data: form,
+        signal,
+      },
     );
     return response.data;
   },

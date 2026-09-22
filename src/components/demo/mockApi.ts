@@ -200,6 +200,53 @@ const mockSubmissions = [
   { id: 's6', detail_ref: 'demo-s6', course_id: 'b6', entry_id: 'b6e1', title: 'Barrierefreie Website', course_name: 'Informatik 9c', date_text: 'Montag, 05.10.2026 · 09:40 Uhr', status: 'open', uploaded_count: 0 },
 ];
 
+type MockSubmission = (typeof mockSubmissions)[number];
+type MockSubmissionFile = {
+  name: string;
+  index: string;
+  time: string;
+  comment: null;
+  person: null;
+  download_ref: string;
+  public: false;
+};
+
+const mockSubmissionFiles: Record<string, MockSubmissionFile[]> = {};
+
+const createMockSubmissionFile = (submission: MockSubmission, index: number, name?: string): MockSubmissionFile => ({
+  name: name || `${submission.course_name.replace(/\s+/g, '-')}-${index}.pdf`,
+  index: String(index),
+  time: 'Heute, 12:00 Uhr',
+  comment: null,
+  person: null,
+  download_ref: `demo-file-${submission.id}-${index}`,
+  public: false,
+});
+
+const getMockSubmissionFiles = (submission: MockSubmission): MockSubmissionFile[] => {
+  if (!mockSubmissionFiles[submission.id]) {
+    mockSubmissionFiles[submission.id] = Array.from(
+      { length: submission.uploaded_count },
+      (_, index) => createMockSubmissionFile(submission, index + 1),
+    );
+  }
+  submission.uploaded_count = mockSubmissionFiles[submission.id].length;
+  return mockSubmissionFiles[submission.id];
+};
+
+const mockFormValue = (data: any, name: string): string => {
+  const value = data?.get?.(name) ?? data?.[name];
+  return typeof value === 'string' ? value : '';
+};
+
+const mockUploadedNames = (data: any): string[] => {
+  const files = data?.getAll?.('files');
+  if (!Array.isArray(files)) return [];
+  return files
+    .map(file => (typeof file?.name === 'string' ? file.name : ''))
+    .filter(Boolean);
+};
+
 const mockAttendanceOverview = {
   success: true,
   source: 'schulportal',
@@ -708,23 +755,33 @@ export function getMockResponse(url: string, method: string, config: any): { dat
     return { status: 200, data: new Blob(['Demo-Abgabedatei'], { type: 'text/plain' }) };
   }
   if (u === '/meinunterricht/submissions/upload' && method === 'post') {
-    return { status: 200, data: { success: true, all_succeeded: true, files: [{ name: 'demo-upload.pdf', status: 'erfolgreich', message: null }] } };
+    const uploadId = mockFormValue(config?.data, 'upload_id');
+    const summary = mockSubmissions.find(item => `upload-${item.id}` === uploadId) || mockSubmissions[0];
+    const files = getMockSubmissionFiles(summary);
+    const names = mockUploadedNames(config?.data);
+    const uploadedNames = names.length > 0 ? names : ['demo-upload.pdf'];
+    const statuses = uploadedNames.map(name => {
+      const nextIndex = files.reduce((highest, file) => Math.max(highest, Number(file.index) || 0), 0) + 1;
+      files.push(createMockSubmissionFile(summary, nextIndex, name));
+      return { name, status: 'erfolgreich', message: null };
+    });
+    summary.uploaded_count = files.length;
+    return { status: 200, data: { success: true, all_succeeded: true, files: statuses } };
   }
   if (u === '/meinunterricht/submissions/file' && method === 'delete') {
+    const uploadId = mockFormValue(config?.data, 'upload_id');
+    const summary = mockSubmissions.find(item => `upload-${item.id}` === uploadId) || mockSubmissions[0];
+    const files = getMockSubmissionFiles(summary);
+    const fileIndex = mockFormValue(config?.data, 'file_index');
+    const index = files.findIndex(file => file.index === fileIndex);
+    if (index >= 0) files.splice(index, 1);
+    summary.uploaded_count = files.length;
     return { status: 200, data: { success: true, code: '1', message: 'File deleted successfully' } };
   }
   if (u.startsWith('/meinunterricht/submissions/') && method === 'get') {
     const ref = u.split('/').pop() || 'demo-s1';
     const summary = mockSubmissions.find(item => item.detail_ref === ref) || mockSubmissions[0];
-    const ownFiles = summary.uploaded_count ? Array.from({ length: summary.uploaded_count }, (_, index) => ({
-      name: `${summary.course_name.replace(/\s+/g, '-')}-${index + 1}.pdf`,
-      index: String(index + 1),
-      time: 'Heute, 12:00 Uhr',
-      comment: null,
-      person: null,
-      download_ref: `demo-file-${index + 1}`,
-      public: false,
-    })) : [];
+    const ownFiles = getMockSubmissionFiles(summary);
     return { status: 200, data: { success: true, submission: {
       ...summary,
       upload_id: `upload-${summary.id}`,

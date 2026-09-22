@@ -154,6 +154,12 @@ const SubmissionDetailView: React.FC<{
   const attemptClosed = detail.allows_multiple_attempts === false && detail.own_files.length > 0;
   const uploadAllowed = detail.status === 'open' && detail.can_upload && !attemptClosed;
   const maxFiles = detail.allows_multiple_files === false ? 1 : 5;
+  const accept = detail.allowed_file_types.length > 0
+    && !detail.allowed_file_types.some(type => type.trim().toLowerCase() === 'alle')
+    ? detail.allowed_file_types
+      .map(type => `.${type.toLowerCase().replace(/^\./, '')}`)
+      .join(',')
+    : undefined;
 
   const chooseFiles = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || []);
@@ -283,7 +289,7 @@ const SubmissionDetailView: React.FC<{
 
             {uploadAllowed ? (
               <div className="mt-5 rounded-2xl border border-primary-200 bg-primary-50/60 p-4 dark:border-primary-900/70 dark:bg-primary-950/20">
-                <input ref={inputRef} type="file" className="sr-only" multiple={maxFiles > 1} accept={detail.allowed_file_types.map(type => `.${type.toLowerCase().replace(/^\./, '')}`).join(',')} onChange={chooseFiles} />
+                <input ref={inputRef} type="file" className="sr-only" multiple={maxFiles > 1} accept={accept} onChange={chooseFiles} />
                 <button type="button" onClick={() => inputRef.current?.click()} className="flex w-full flex-col items-center justify-center rounded-xl border border-dashed border-primary-300 px-4 py-7 text-center text-primary-800 transition-colors hover:bg-primary-100/70 dark:border-primary-800 dark:text-primary-200 dark:hover:bg-primary-950/50">
                   <DocumentArrowUpIcon className="h-8 w-8" />
                   <span className="mt-2 font-semibold">Dateien auswählen</span>
