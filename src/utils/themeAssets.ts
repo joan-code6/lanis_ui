@@ -7,6 +7,8 @@ export const THEME_COLORS: ThemeColor[] = [
   'amethyst',
   'ruby',
   'amber',
+  'coral',
+  'blush',
 ];
 
 export function isThemeColor(value: unknown): value is ThemeColor {
@@ -20,6 +22,8 @@ export const THEME_COLOR_HEX: Record<ThemeColor, string> = {
   amethyst: '#a855f7',
   ruby: '#f43f5e',
   amber: '#f59e0b',
+  coral: '#f88379',
+  blush: '#fee3ea',
 };
 
 export function getThemeIconUrl(theme: ThemeColor, filename = 'android-chrome-192x192.png') {

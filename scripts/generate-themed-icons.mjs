@@ -5,17 +5,19 @@ import sharp from 'sharp';
 const faviconDirectory = join(process.cwd(), 'public', 'favicon');
 const sourcePath = join(faviconDirectory, 'android-chrome-512x512.png');
 
-const sourceBase = [1, 188, 214];
-const sourceHat = [9, 64, 116];
+const sourceBase = [244, 63, 94];
+const sourceHat = [18, 52, 70];
 const softInkHat = [18, 52, 70];
 
 const themes = {
-  cyan: { base: sourceBase, hat: softInkHat, themeColor: '#06b6d4' },
+  cyan: { base: [1, 188, 214], hat: softInkHat, themeColor: '#06b6d4' },
   emerald: { base: [16, 185, 129], hat: softInkHat, themeColor: '#10b981' },
   sapphire: { base: [59, 130, 246], hat: softInkHat, themeColor: '#3b82f6' },
   amethyst: { base: [168, 85, 247], hat: softInkHat, themeColor: '#a855f7' },
   ruby: { base: [244, 63, 94], hat: softInkHat, themeColor: '#f43f5e' },
   amber: { base: [245, 158, 11], hat: softInkHat, themeColor: '#f59e0b' },
+  coral: { base: [248, 131, 121], hat: softInkHat, themeColor: '#f88379' },
+  blush: { base: [254, 227, 234], hat: softInkHat, themeColor: '#fee3ea' },
 };
 
 const iconSizes = {

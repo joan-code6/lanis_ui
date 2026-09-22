@@ -56,13 +56,15 @@ const isStandalone = () =>
   window.matchMedia('(display-mode: standalone)').matches ||
   (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
 
-const themeColors: { key: ThemeColor; label: string; hex: string }[] = [
+const themeColors: { key: ThemeColor; label: string; hex: string; checkClass?: string }[] = [
   { key: 'emerald', label: 'Emerald', hex: '#10b981' },
   { key: 'sapphire', label: 'Saphir', hex: '#3b82f6' },
   { key: 'amethyst', label: 'Amethyst', hex: '#a855f7' },
   { key: 'ruby', label: 'Rubin', hex: '#f43f5e' },
   { key: 'amber', label: 'Bernstein', hex: '#f59e0b' },
   { key: 'cyan', label: 'Cyan', hex: '#06b6d4' },
+  { key: 'coral', label: 'Koralle', hex: '#f88379' },
+  { key: 'blush', label: 'Blush', hex: '#fee3ea', checkClass: 'text-surface-800' },
 ];
 
 const defaultNotificationPreferences: NotificationPreferences = {
@@ -1006,7 +1008,7 @@ const Settings: React.FC = () => {
         <div className="card">
           <h3 className="text-base font-semibold text-surface-900 dark:text-surface-100 mb-1">Primärfarbe</h3>
           <p className="text-sm text-surface-500 mb-5">Wähle eine Farbe für das Design</p>
-          <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
+          <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-7">
             {themeColors.map((c) => (
               <button
                 key={c.key}
@@ -1024,7 +1026,7 @@ const Settings: React.FC = () => {
                   style={{ backgroundColor: c.hex }}
                 >
                   {themeColor === c.key && (
-                    <CheckIcon className="w-4 h-4 text-white" />
+                    <CheckIcon className={`w-4 h-4 ${c.checkClass || 'text-white'}`} />
                   )}
                 </span>
                 <span className="text-xs font-medium text-surface-600 dark:text-surface-300">{c.label}</span>

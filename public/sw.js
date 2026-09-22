@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lanis-ui-shell-v6'
+const CACHE_NAME = 'lanis-ui-shell-v7'
 const OFFLINE_RESPONSE = () =>
   new Response('Offline', {
     status: 503,
@@ -8,7 +8,7 @@ const OFFLINE_RESPONSE = () =>
     },
   })
 
-const THEME_NAMES = ['cyan', 'emerald', 'sapphire', 'amethyst', 'ruby', 'amber']
+const THEME_NAMES = ['cyan', 'emerald', 'sapphire', 'amethyst', 'ruby', 'amber', 'coral', 'blush']
 const THEME_ASSET_NAMES = [
   'site.webmanifest',
   'favicon-16x16.png',

@@ -43,13 +43,15 @@ const themeModes: Array<{ id: ThemeMode; label: string; note: string }> = [
   { id: 'oled', label: 'OLED', note: 'Echtes Schwarz' },
 ];
 
-const themeColors: Array<{ id: ThemeColor; label: string; hex: string }> = [
+const themeColors: Array<{ id: ThemeColor; label: string; hex: string; checkClass?: string }> = [
   { id: 'cyan', label: 'Cyan', hex: '#06b6d4' },
   { id: 'sapphire', label: 'Saphir', hex: '#3b82f6' },
   { id: 'emerald', label: 'Smaragd', hex: '#10b981' },
   { id: 'amethyst', label: 'Amethyst', hex: '#a855f7' },
   { id: 'ruby', label: 'Rubin', hex: '#f43f5e' },
   { id: 'amber', label: 'Bernstein', hex: '#f59e0b' },
+  { id: 'coral', label: 'Koralle', hex: '#f88379' },
+  { id: 'blush', label: 'Blush', hex: '#fee3ea', checkClass: 'text-surface-800' },
 ];
 
 const recommendedModule = (name: string) => {
@@ -289,7 +291,7 @@ const Onboarding: React.FC = () => {
                     <div className="flex flex-wrap gap-3">
                       {themeColors.map(color => (
                         <button key={color.id} type="button" onClick={() => setDraftThemeColor(color.id)} className={`group flex items-center gap-2 rounded-full border bg-white py-2 pl-2 pr-3 text-sm font-medium transition-all dark:bg-surface-900 min-[900px]:pr-4 min-[900px]:text-base ${themeColor === color.id ? 'border-primary-500 ring-2 ring-primary-500/15' : 'border-surface-200 dark:border-surface-800'}`} aria-pressed={themeColor === color.id}>
-                          <span className="flex h-7 w-7 items-center justify-center rounded-full min-[900px]:h-8 min-[900px]:w-8" style={{ backgroundColor: color.hex }}>{themeColor === color.id && <CheckIcon className="h-4 w-4 text-white" />}</span>
+                          <span className="flex h-7 w-7 items-center justify-center rounded-full min-[900px]:h-8 min-[900px]:w-8" style={{ backgroundColor: color.hex }}>{themeColor === color.id && <CheckIcon className={`h-4 w-4 ${color.checkClass || 'text-white'}`} />}</span>
                           {color.label}
                         </button>
                       ))}
