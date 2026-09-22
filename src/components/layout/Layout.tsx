@@ -177,17 +177,8 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
       {isSidebarOpen && (
         <div className={'fixed inset-x-0 bottom-0 flex z-40 md:hidden ' + (isDemo ? 'top-10' : 'inset-0')}>
           <div className={'fixed inset-x-0 bottom-0 bg-surface-900/40 backdrop-blur-sm ' + (isDemo ? 'top-10' : 'inset-0')} onClick={() => setIsSidebarOpen(false)} />
-          <div className="relative flex-1 flex flex-col max-w-xs w-full bg-white dark:bg-surface-900 shadow-soft-lg animate-drawer-in">
-            <div className="absolute top-0 right-0 -mr-12 pt-4">
-              <button
-                type="button"
-                className="flex items-center justify-center h-10 w-10 rounded-full focus:outline-none focus:ring-2 focus:ring-white/50"
-                onClick={() => setIsSidebarOpen(false)}
-              >
-                <XMarkIcon className="h-6 w-6 text-white" />
-              </button>
-            </div>
-            <SidebarContent navigation={navigation} />
+          <div className="relative flex flex-1 flex-col max-w-xs w-full bg-white dark:bg-surface-900 shadow-soft-lg animate-drawer-in">
+            <SidebarContent navigation={navigation} showCloseButton />
           </div>
         </div>
       )}
@@ -254,10 +245,12 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
     navigation,
     isCollapsed = false,
     canCollapse = false,
+    showCloseButton = false,
   }: {
     navigation: SidebarNavigationItem[];
     isCollapsed?: boolean;
     canCollapse?: boolean;
+    showCloseButton?: boolean;
   }) {
     return (
       <>
@@ -319,6 +312,16 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
                 <path d="M19 12H9" />
                 <path d="m13 8-4 4 4 4" />
               </svg>
+            </button>
+          )}
+          {showCloseButton && (
+            <button
+              type="button"
+              onClick={() => setIsSidebarOpen(false)}
+              className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg text-surface-500 transition-colors hover:bg-surface-100 hover:text-surface-700 focus:outline-none focus:ring-2 focus:ring-primary-500/50 dark:text-surface-400 dark:hover:bg-surface-800 dark:hover:text-surface-200"
+              aria-label="Menü schließen"
+            >
+              <XMarkIcon className="h-5 w-5" />
             </button>
           )}
         </div>
