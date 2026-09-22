@@ -229,25 +229,41 @@ const AccountSettings: React.FC = () => {
     setError('');
     try {
       await authAPI.deleteAccount(token);
-      const registration = 'serviceWorker' in navigator
-        ? await navigator.serviceWorker.getRegistration()
-        : undefined;
-      const subscription = await registration?.pushManager.getSubscription();
-      const cleanupTasks: Promise<unknown>[] = [];
-      if (subscription) cleanupTasks.push(subscription.unsubscribe());
-      if (registration) cleanupTasks.push(registration.unregister());
-      if ('caches' in window) {
-        cleanupTasks.push(caches.keys().then(names => Promise.all(names.map(name => caches.delete(name)))));
-      }
-      await Promise.allSettled(cleanupTasks);
-      localStorage.clear();
-      await logout();
-      navigate('/login', { replace: true });
     } catch {
       setError('Das Konto konnte nicht vollständig gelöscht werden. Bitte versuche es erneut.');
-    } finally {
       setDeleting(false);
+      return;
     }
+
+    const cleanupTasks: Promise<unknown>[] = [];
+    if ('serviceWorker' in navigator) {
+      cleanupTasks.push(Promise.resolve().then(async () => {
+        const registration = await navigator.serviceWorker.getRegistration();
+        if (!registration) return;
+        const subscription = await registration.pushManager.getSubscription();
+        if (subscription) await subscription.unsubscribe();
+        await registration.unregister();
+      }));
+    }
+    if ('caches' in window) {
+      cleanupTasks.push(Promise.resolve().then(async () => {
+        const names = await caches.keys();
+        await Promise.all(names.map(name => caches.delete(name)));
+      }));
+    }
+    await Promise.allSettled(cleanupTasks);
+    try {
+      localStorage.clear();
+    } catch {
+      // The deleted server account must still be logged out if storage is unavailable.
+    }
+    try {
+      await logout();
+    } catch {
+      // The account is already deleted; always continue to the login screen.
+    }
+    navigate('/login', { replace: true });
+    setDeleting(false);
   };
 
   return <div className="space-y-6">
