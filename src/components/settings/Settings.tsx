@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTheme, ThemeColor } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useBasePath } from '../../contexts/BasePathContext';
@@ -194,6 +194,7 @@ const sectionMeta: Record<SettingsSection, { title: string; subtitle: string }> 
 
 const AccountSettings: React.FC = () => {
   const { token, logout } = useAuth();
+  const navigate = useNavigate();
   const [exporting, setExporting] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [confirmation, setConfirmation] = useState('');
@@ -228,20 +229,20 @@ const AccountSettings: React.FC = () => {
     setError('');
     try {
       await authAPI.deleteAccount(token);
-      for (let index = localStorage.length - 1; index >= 0; index -= 1) {
-        const key = localStorage.key(index);
-        if (key) localStorage.removeItem(key);
-      }
-      if ('caches' in window) {
-        await Promise.all((await caches.keys()).map(cacheName => caches.delete(cacheName)));
-      }
       const registration = 'serviceWorker' in navigator
         ? await navigator.serviceWorker.getRegistration()
         : undefined;
       const subscription = await registration?.pushManager.getSubscription();
-      if (subscription) await subscription.unsubscribe();
+      const cleanupTasks: Promise<unknown>[] = [];
+      if (subscription) cleanupTasks.push(subscription.unsubscribe());
+      if (registration) cleanupTasks.push(registration.unregister());
+      if ('caches' in window) {
+        cleanupTasks.push(caches.keys().then(names => Promise.all(names.map(name => caches.delete(name)))));
+      }
+      await Promise.allSettled(cleanupTasks);
+      localStorage.clear();
       await logout();
-      window.location.assign('/login');
+      navigate('/login', { replace: true });
     } catch {
       setError('Das Konto konnte nicht vollständig gelöscht werden. Bitte versuche es erneut.');
     } finally {
@@ -564,7 +565,8 @@ const Settings: React.FC = () => {
     return availability.hasNativeSubstitutionPlan || availability.hasDsbModule;
   });
   const visibleSettingsSections = settingsSections.filter(item => (
-    item.id !== 'vertretungsplan' || hasNativeSubstitutionPlan
+    (item.id !== 'vertretungsplan' || hasNativeSubstitutionPlan)
+    && (item.id !== 'account' || basePath !== '/demo')
   ));
   const requestedSection = location.pathname.slice(settingsRoot.length).split('/').filter(Boolean)[0] as SettingsSection | undefined;
   const section: SettingsSection = requestedSection && visibleSettingsSections.some(item => item.id === requestedSection)

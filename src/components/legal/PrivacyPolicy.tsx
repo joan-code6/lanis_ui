@@ -66,11 +66,12 @@ const PrivacyPolicy: React.FC = () => {
               Aufgrund dieser technischen Trennung hat die im Browser ausgeführte Benutzeroberfläche
               keinen Zugriff auf serverseitige Protokolle, Datenbanken oder Speicherfristen des Backends
               und kann dessen Verarbeitung weder einsehen noch steuern. Die konkrete serverseitige
-              Verarbeitung wird ausschließlich durch die Implementierung und Konfiguration des separaten
+              Verarbeitung wird durch die Implementierung und Konfiguration des separaten
               Backend-Projekts bestimmt. Für das bereitgestellte Standard-Backend unter{' '}
               <span className="text-[#333] break-all">{DEFAULT_API_BASE_URL}</span> ist ebenfalls die in
-              Abschnitt 1 genannte Person verantwortlich. Bei einem selbst eingestellten Backend ist
-              dessen jeweiliger Betreiber für die dortige Verarbeitung verantwortlich.
+              Abschnitt 1 genannte Person verantwortlich; die dort gespeicherten Daten und Fristen sind
+              in Abschnitt 9 beschrieben. Bei einem selbst eingestellten Backend ist dessen jeweiliger
+              Betreiber für die dortige Verarbeitung verantwortlich.
             </p>
             <p className="mt-2">
               Mit dem Start der Anmeldung veranlasst du die Übermittlung deiner Eingaben an diese Adresse.
@@ -195,11 +196,23 @@ const PrivacyPolicy: React.FC = () => {
               Browsers oder Betriebssystems einbezogen. Beim freiwilligen WhatsApp-Assistenten wird
               außerdem die WhatsApp Business Platform von Meta einbezogen. Lokal gespeicherte Daten bleiben
               grundsätzlich erhalten, bis du dich abmeldest, sie durch die Anwendung ersetzt werden, eine
-              vorgesehene Cache-Frist abläuft oder du die Website-Daten im Browser löschst. Die
-              Speicherfristen des technisch getrennten Backends ergeben sich aus dessen jeweiliger
-              Implementierung und Konfiguration; sie lassen sich nicht aus dieser Benutzeroberfläche
-              auslesen.
+              vorgesehene Cache-Frist abläuft oder du die Website-Daten im Browser löschst.
             </p>
+            <div className="mt-3 space-y-2">
+                <p>Beim bereitgestellten Standard-Backend gelten derzeit folgende Kategorien und Fristen:</p>
+                <ul className="list-disc space-y-1 pl-5">
+                  <li>verschlüsselt gespeicherte Schulportal-Zugangsdaten und LANIS-Aktualisierungssitzungen: bis zu 90 Tage nach der Anmeldung;</li>
+                  <li>Profil, Einstellungen, eigene Stunden, Klassenverknüpfungen, Push-Abos sowie Login- und Aktivitätsdaten: bis zur Löschung des LANIS-Kontos;</li>
+                  <li>gewöhnliche Antwort-Caches: regelmäßig 10 Minuten; Profil-, App- und Moduldaten höchstens 30 Tage;</li>
+                  <li>private Ausfall-Snapshots: höchstens 24 Stunden; gemeinsam genutzte heruntergeladene Unterrichtsdateien: höchstens 30 Tage;</li>
+                  <li>WhatsApp-Gesprächsverlauf: höchstens 24 Stunden; Einmalcodes und ausstehende Bestätigungen: 10 Minuten;</li>
+                  <li>externe WhatsApp-Nachrichten-IDs zur Verhinderung doppelter Verarbeitung: 7 Tage.</li>
+                </ul>
+                <p>Beim Löschen des LANIS-Kontos werden die kontobezogenen Daten und Sitzungen beim Standard-Backend entfernt. Daten im Schulportal Hessen selbst werden dadurch nicht gelöscht. Gemeinsam genutzte Unterrichtsdateien werden nicht einem einzelnen Konto zugeordnet und deshalb erst nach Ablauf ihrer Cache-Frist entfernt.</p>
+            </div>
+            {usesCustomBackend && (
+              <p className="mt-2">Bei einem selbst eingestellten Backend richten sich Speicherkategorien und Löschfristen nach den Angaben und der Konfiguration seines Betreibers.</p>
+            )}
           </div>
 
           <div>
@@ -209,6 +222,12 @@ const PrivacyPolicy: React.FC = () => {
               Berichtigung, Löschung, Einschränkung der Verarbeitung, Datenübertragbarkeit und Widerspruch.
               Eine erteilte Einwilligung kannst du jederzeit mit Wirkung für die Zukunft widerrufen. Du hast
               außerdem das Recht, dich bei einer zuständigen Datenschutzaufsichtsbehörde zu beschweren.
+            </p>
+            <p className="mt-2">
+              Beim bereitgestellten Standard-Backend kannst du in den Einstellungen unter „Datenschutz und
+              Konto“ deine von LANIS gespeicherten Daten als JSON exportieren oder alle kontobezogenen
+              LANIS-Daten löschen. Sicherheitsgeheimnisse wie Passwörter, Tokens, Cookies und
+              kryptografische Schlüssel sind nicht Bestandteil des Exports.
             </p>
           </div>
 
