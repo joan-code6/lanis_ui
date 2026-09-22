@@ -50,6 +50,7 @@ const themeColors: Array<{ id: ThemeColor; label: string; hex: string }> = [
   { id: 'amethyst', label: 'Amethyst', hex: '#a855f7' },
   { id: 'ruby', label: 'Rubin', hex: '#f43f5e' },
   { id: 'amber', label: 'Bernstein', hex: '#f59e0b' },
+  { id: 'coral', label: 'Koralle', hex: '#f88379' },
 ];
 
 const recommendedModule = (name: string) => {

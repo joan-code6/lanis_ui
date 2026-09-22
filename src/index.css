@@ -256,6 +256,19 @@ html[data-theme="cyan"] {
   --color-primary-900: 22 78 99;
   --color-primary-950: 8 51 68;
 }
+html[data-theme="coral"] {
+  --color-primary-50: 254 227 234;
+  --color-primary-100: 252 208 219;
+  --color-primary-200: 249 183 197;
+  --color-primary-300: 246 157 168;
+  --color-primary-400: 248 131 121;
+  --color-primary-500: 222 99 100;
+  --color-primary-600: 195 70 78;
+  --color-primary-700: 163 53 62;
+  --color-primary-800: 132 45 52;
+  --color-primary-900: 105 39 45;
+  --color-primary-950: 63 23 29;
+}
 
 @layer components {
   .card {

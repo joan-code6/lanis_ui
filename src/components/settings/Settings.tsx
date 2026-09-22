@@ -63,6 +63,7 @@ const themeColors: { key: ThemeColor; label: string; hex: string }[] = [
   { key: 'ruby', label: 'Rubin', hex: '#f43f5e' },
   { key: 'amber', label: 'Bernstein', hex: '#f59e0b' },
   { key: 'cyan', label: 'Cyan', hex: '#06b6d4' },
+  { key: 'coral', label: 'Koralle', hex: '#f88379' },
 ];
 
 const defaultNotificationPreferences: NotificationPreferences = {
@@ -1006,7 +1007,7 @@ const Settings: React.FC = () => {
         <div className="card">
           <h3 className="text-base font-semibold text-surface-900 dark:text-surface-100 mb-1">Primärfarbe</h3>
           <p className="text-sm text-surface-500 mb-5">Wähle eine Farbe für das Design</p>
-          <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
+          <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-7">
             {themeColors.map((c) => (
               <button
                 key={c.key}

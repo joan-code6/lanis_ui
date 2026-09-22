@@ -82,7 +82,7 @@ export interface User {
 }
 
 export type ThemeMode = 'system' | 'light' | 'dark' | 'oled';
-export type ThemeColor = 'emerald' | 'sapphire' | 'amethyst' | 'ruby' | 'amber' | 'cyan';
+export type ThemeColor = 'emerald' | 'sapphire' | 'amethyst' | 'ruby' | 'amber' | 'cyan' | 'coral';
 export type DashboardViewMode = 'grid' | 'list';
 export type TimetableViewMode = 'rolling' | 'week';
 export type TimetableLayoutMode = 'cards' | 'compact';
