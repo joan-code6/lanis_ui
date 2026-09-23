@@ -2,6 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTheme, ThemeColor } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
+import {
+  CUSTOM_BACKEND_STORAGE_KEY,
+  clearBackendScopedStorage,
+} from '../../utils/backendConfig';
 import { useBasePath } from '../../contexts/BasePathContext';
 import { usePreferences } from '../../contexts/PreferencesContext';
 import axios from 'axios';
@@ -253,7 +257,14 @@ const AccountSettings: React.FC = () => {
     }
     await Promise.allSettled(cleanupTasks);
     try {
+      // This URL identifies the user's chosen server, not account data. Keep
+      // it so the next login is sent to the same backend after a reload.
+      const customBackendUrl = localStorage.getItem(CUSTOM_BACKEND_STORAGE_KEY);
+      clearBackendScopedStorage();
       localStorage.clear();
+      if (customBackendUrl) {
+        localStorage.setItem(CUSTOM_BACKEND_STORAGE_KEY, customBackendUrl);
+      }
     } catch {
       // The deleted server account must still be logged out if storage is unavailable.
     }
