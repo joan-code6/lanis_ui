@@ -22,7 +22,7 @@ export default function StatusPage() {
     { name: 'LANIS', state: data ? 'up' as const : 'unknown' as const },
     { name: 'Schulportal Hessen', state: status },
   ];
-  const windowSummary: (Omit<NonNullable<PublicStatus['summary_windows']>['90d'], 'latency'> & { latency?: NonNullable<PublicStatus['summary_windows']>['90d']['latency'] }) | undefined = data?.summary_windows?.[windowKey] ?? data?.summary;
+  const windowSummary: (Omit<NonNullable<PublicStatus['summary_windows']>['90d'], 'latency'> & { latency?: NonNullable<PublicStatus['summary_windows']>['90d']['latency'] }) | undefined = data?.summary_windows?.[windowKey] ?? (windowKey === '90d' ? data?.summary : undefined);
 
   return (
     <div className="min-h-[100dvh] bg-surface-50 text-surface-900 dark:bg-surface-950 dark:text-surface-100">
@@ -69,8 +69,8 @@ export default function StatusPage() {
           <section className="mt-4 grid gap-3 sm:grid-cols-2" aria-label="Komponentenstatus">
             {(data?.current.features ?? [{ name: 'login', status: 'unknown' as const }, { name: 'modules', status: 'unknown' as const }]).map(feature => (
               <div key={feature.name} className="flex items-center justify-between rounded-xl border bg-white px-4 py-3 dark:bg-surface-900">
-                <div><p className="text-sm font-medium">{feature.name === 'login' ? 'Anmeldung' : 'Module'}</p><p className="text-xs text-surface-500">{feature.latency_ms == null ? 'Keine Latenzmessung' : `${feature.latency_ms} ms aktuell`}{data?.summary_windows?.[windowKey]?.latency.features[feature.name]?.p95 == null ? '' : ` · p95 ${data.summary_windows[windowKey].latency.features[feature.name].p95} ms`}</p></div>
-                <span className="flex items-center gap-2 text-sm text-surface-600 dark:text-surface-300"><span className={`h-2.5 w-2.5 rounded-full ${statusColors[feature.status]}`} />{statusLabels[feature.status]}</span>
+                <div><p className="text-sm font-medium">{feature.name === 'login' ? 'Anmeldung' : 'Module'}</p><p className="text-xs text-surface-500">{status === 'unknown' ? 'Keine aktuelle Messung' : feature.latency_ms == null ? 'Keine Latenzmessung' : `${feature.latency_ms} ms aktuell`}{data?.summary_windows?.[windowKey]?.latency.features[feature.name]?.p95 == null ? '' : ` · p95 ${data.summary_windows[windowKey].latency.features[feature.name].p95} ms`}</p></div>
+                <span className="flex items-center gap-2 text-sm text-surface-600 dark:text-surface-300"><span className={`h-2.5 w-2.5 rounded-full ${statusColors[status === 'unknown' ? 'unknown' : feature.status]}`} />{statusLabels[status === 'unknown' ? 'unknown' : feature.status]}</span>
               </div>
             ))}
           </section>
@@ -94,7 +94,7 @@ export default function StatusPage() {
 
             <div className="mt-4 flex flex-wrap gap-2" aria-label="Auswertungszeitraum">
               {([['24h', '24 Stunden'], ['7d', '7 Tage'], ['30d', '30 Tage'], ['90d', '90 Tage']] as const).map(([key, label]) => (
-                <button key={key} type="button" aria-pressed={windowKey === key} onClick={() => setWindowKey(key)} className={`rounded-full border px-3 py-1.5 text-xs ${windowKey === key ? 'border-primary-600 bg-primary-50 text-primary-700 dark:bg-primary-950 dark:text-primary-300' : 'border-surface-200 text-surface-500 dark:border-surface-700'}`}>{label}</button>
+                <button key={key} type="button" disabled={!data?.summary_windows && key !== '90d'} aria-pressed={windowKey === key} onClick={() => setWindowKey(key)} className={`rounded-full border px-3 py-1.5 text-xs disabled:cursor-not-allowed disabled:opacity-50 ${windowKey === key ? 'border-primary-600 bg-primary-50 text-primary-700 dark:bg-primary-950 dark:text-primary-300' : 'border-surface-200 text-surface-500 dark:border-surface-700'}`}>{label}</button>
               ))}
               {windowSummary?.latency?.overall?.median != null && <span className="self-center text-xs text-surface-500">Median {windowSummary.latency.overall.median} ms · p95 {windowSummary.latency.overall.p95 ?? '—'} ms</span>}
             </div>
