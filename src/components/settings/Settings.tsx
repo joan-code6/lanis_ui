@@ -65,6 +65,7 @@ const themeColors: { key: ThemeColor; label: string; hex: string; checkClass?: s
   { key: 'cyan', label: 'Cyan', hex: '#06b6d4' },
   { key: 'coral', label: 'Koralle', hex: '#f88379' },
   { key: 'blush', label: 'Blush', hex: '#fee3ea', checkClass: 'text-surface-800' },
+  { key: 'moss', label: 'Oliven grün', hex: '#4b573f' },
 ];
 
 const defaultNotificationPreferences: NotificationPreferences = {

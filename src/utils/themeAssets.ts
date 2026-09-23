@@ -9,6 +9,7 @@ export const THEME_COLORS: ThemeColor[] = [
   'amber',
   'coral',
   'blush',
+  'moss',
 ];
 
 export function isThemeColor(value: unknown): value is ThemeColor {
@@ -24,6 +25,7 @@ export const THEME_COLOR_HEX: Record<ThemeColor, string> = {
   amber: '#f59e0b',
   coral: '#f88379',
   blush: '#fee3ea',
+  moss: '#4b573f',
 };
 
 export function getThemeIconUrl(theme: ThemeColor, filename = 'android-chrome-192x192.png') {
