@@ -149,6 +149,7 @@ const SubmissionDetailView: React.FC<{
   const [error, setError] = useState('');
   const [uploadStatuses, setUploadStatuses] = useState<SubmissionUploadStatus[]>([]);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState('');
   const [password, setPassword] = useState('');
 
   const maxBytes = parseMaxBytes(detail.max_file_size);
@@ -234,17 +235,19 @@ const SubmissionDetailView: React.FC<{
     if (!deleteTarget || !password || busy) return;
     setBusy(true);
     setError('');
+    setDeleteError('');
     try {
       const response = await coursesAPI.deleteSubmissionFile(token, detail, deleteTarget, password);
       if (!response.success) {
-        setError(response.message || response.error || 'Die Datei konnte nicht gelöscht werden.');
+        setDeleteError(response.message || response.error || 'Die Datei konnte nicht gelöscht werden.');
       } else {
         setDeleteTarget(null);
         setPassword('');
+        setDeleteError('');
         await onRefresh();
       }
     } catch {
-      setError('Die Datei konnte nicht gelöscht werden.');
+      setDeleteError('Die Datei konnte nicht gelöscht werden.');
     } finally {
       setBusy(false);
     }
@@ -316,7 +319,7 @@ const SubmissionDetailView: React.FC<{
         </aside>
       </div>
 
-      {deleteTarget && <div className="fixed inset-0 z-50 flex items-center justify-center bg-surface-950/60 p-4 backdrop-blur-sm" role="presentation"><div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-soft-lg dark:bg-surface-900" role="dialog" aria-modal="true" aria-labelledby="delete-submission-file-title"><h2 id="delete-submission-file-title" className="text-lg font-semibold text-surface-900 dark:text-surface-100">Datei löschen?</h2><p className="mt-2 text-sm text-surface-600 dark:text-surface-400">Das Schulportal verlangt dein Passwort, um diese Datei endgültig zu löschen.</p><label className="mt-5 block text-sm font-medium text-surface-700 dark:text-surface-300">Passwort<input type="password" value={password} onChange={event => setPassword(event.target.value)} autoFocus className="input mt-1 w-full" autoComplete="current-password" /></label><div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end"><button type="button" className="btn btn-secondary" onClick={() => { setDeleteTarget(null); setPassword(''); }}>Abbrechen</button><button type="button" className="btn btn-primary" disabled={!password || busy} onClick={() => void removeFile()}>Endgültig löschen</button></div></div></div>}
+      {deleteTarget && <div className="fixed inset-0 z-50 flex items-center justify-center bg-surface-950/60 p-4 backdrop-blur-sm" role="presentation"><div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-soft-lg dark:bg-surface-900" role="dialog" aria-modal="true" aria-labelledby="delete-submission-file-title"><h2 id="delete-submission-file-title" className="text-lg font-semibold text-surface-900 dark:text-surface-100">Datei löschen?</h2><p className="mt-2 text-sm text-surface-600 dark:text-surface-400">Das Schulportal verlangt dein Passwort, um diese Datei endgültig zu löschen.</p>{deleteError && <div className="mt-4 flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-900/70 dark:bg-red-950/30 dark:text-red-200"><ExclamationCircleIcon className="mt-0.5 h-4 w-4 shrink-0" />{deleteError}</div>}<label className="mt-5 block text-sm font-medium text-surface-700 dark:text-surface-300">Passwort<input type="password" value={password} onChange={event => { setPassword(event.target.value); setDeleteError(''); }} autoFocus className="input mt-1 w-full" autoComplete="current-password" /></label><div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end"><button type="button" className="btn btn-secondary" onClick={() => { setDeleteTarget(null); setPassword(''); setDeleteError(''); }}>Abbrechen</button><button type="button" className="btn btn-primary" disabled={!password || busy} onClick={() => void removeFile()}>Endgültig löschen</button></div></div></div>}
     </div>
   );
 };
@@ -330,6 +333,7 @@ const Submissions: React.FC = () => {
   const [detail, setDetail] = useState<SubmissionDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const detailRequestRef = useRef(0);
 
   const listPath = `${basePath}/courses/submissions`;
   const openSubmission = (submission: Submission) => navigate(`${listPath}/${encodeURIComponent(submission.detail_ref || submission.id)}`);
@@ -351,16 +355,21 @@ const Submissions: React.FC = () => {
 
   const loadDetail = async (detailRef: string, signal?: AbortSignal) => {
     if (!token) return;
+    const requestId = detailRequestRef.current + 1;
+    detailRequestRef.current = requestId;
     setLoading(true);
     setError('');
     try {
       const response = await coursesAPI.getSubmission(token, detailRef, signal);
+      if (requestId !== detailRequestRef.current || signal?.aborted) return;
       if (response.success && response.submission) setDetail(response.submission);
       else setError(response.error || 'Die Abgabe konnte nicht geladen werden.');
     } catch (loadError) {
-      if (!axios.isCancel(loadError)) setError('Die Abgabe konnte nicht geladen werden.');
+      if (requestId === detailRequestRef.current && !axios.isCancel(loadError)) {
+        setError('Die Abgabe konnte nicht geladen werden.');
+      }
     } finally {
-      if (!signal?.aborted) setLoading(false);
+      if (requestId === detailRequestRef.current && !signal?.aborted) setLoading(false);
     }
   };
 
@@ -368,7 +377,10 @@ const Submissions: React.FC = () => {
     const controller = new AbortController();
     setDetail(null);
     if (id) void loadDetail(id, controller.signal);
-    else void loadList(controller.signal);
+    else {
+      detailRequestRef.current += 1;
+      void loadList(controller.signal);
+    }
     return () => controller.abort();
   }, [token, id]);
 
