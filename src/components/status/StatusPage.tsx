@@ -22,6 +22,9 @@ export default function StatusPage() {
     { name: 'LANIS', state: data ? 'up' as const : 'unknown' as const },
     { name: 'Schulportal Hessen', state: status },
   ];
+  const featureReadings = data?.current.features?.length
+    ? data.current.features
+    : [{ name: 'login', status: 'unknown' as const }, { name: 'modules', status: 'unknown' as const }];
   const windowSummary: (Omit<NonNullable<PublicStatus['summary_windows']>['90d'], 'latency'> & { latency?: NonNullable<PublicStatus['summary_windows']>['90d']['latency'] }) | undefined = data?.summary_windows?.[windowKey] ?? (windowKey === '90d' ? data?.summary : undefined);
 
   return (
@@ -67,7 +70,7 @@ export default function StatusPage() {
           </section>
 
           <section className="mt-4 grid gap-3 sm:grid-cols-2" aria-label="Komponentenstatus">
-            {(data?.current.features ?? [{ name: 'login', status: 'unknown' as const }, { name: 'modules', status: 'unknown' as const }]).map(feature => (
+            {featureReadings.map(feature => (
               <div key={feature.name} className="flex items-center justify-between rounded-xl border bg-white px-4 py-3 dark:bg-surface-900">
                 <div><p className="text-sm font-medium">{feature.name === 'login' ? 'Anmeldung' : 'Module'}</p><p className="text-xs text-surface-500">{status === 'unknown' ? 'Keine aktuelle Messung' : feature.latency_ms == null ? 'Keine Latenzmessung' : `${feature.latency_ms} ms aktuell`}{data?.summary_windows?.[windowKey]?.latency.features[feature.name]?.p95 == null ? '' : ` · p95 ${data.summary_windows[windowKey].latency.features[feature.name].p95} ms`}</p></div>
                 <span className="flex items-center gap-2 text-sm text-surface-600 dark:text-surface-300"><span className={`h-2.5 w-2.5 rounded-full ${statusColors[status === 'unknown' ? 'unknown' : feature.status]}`} />{statusLabels[status === 'unknown' ? 'unknown' : feature.status]}</span>
@@ -132,15 +135,19 @@ export default function StatusPage() {
               <p className="mt-4 text-sm text-surface-500">Keine Störungen</p>
             ) : (
               <ul className="mt-3 divide-y">
-                {data.incidents.slice(0, 10).map((incident, index) => (
+                {data.incidents.slice(0, 10).map((incident, index) => {
+                  const hasResolution = Object.prototype.hasOwnProperty.call(incident, 'resolved_at');
+                  const isOngoing = hasResolution && incident.resolved_at === null;
+                  return (
                   <li key={`${incident.started_at}-${index}`} className="flex flex-wrap items-center justify-between gap-2 py-4 text-sm">
-                    <div><time className="text-surface-500">{formatTimestamp(incident.started_at || incident.checked_at || null)}</time><p className="mt-1 text-xs text-surface-500">{incident.resolved_at ? `Resolved ${formatTimestamp(incident.resolved_at)}` : 'Ongoing'} · {incident.checks ?? 1} confirmed checks{incident.affected_features?.length ? ` · ${incident.affected_features.map(name => name === 'login' ? 'Anmeldung' : 'Module').join(', ')}` : ''}</p></div>
+                    <div><time className="text-surface-500">{formatTimestamp(incident.started_at || incident.checked_at || null)}</time><p className="mt-1 text-xs text-surface-500">{incident.resolved_at ? `Resolved ${formatTimestamp(incident.resolved_at)}` : isOngoing ? 'Ongoing' : 'Historical observation'} · {incident.checks ?? 1} confirmed checks{incident.affected_features?.length ? ` · ${incident.affected_features.map(name => name === 'login' ? 'Anmeldung' : 'Module').join(', ')}` : ''}</p></div>
                     <span className="flex items-center gap-2">
                       <span className={`h-2 w-2 rounded-full ${statusColors[incident.status]}`} />
                       {incident.resolved_at ? 'Behoben' : statusLabels[incident.status]}
                     </span>
                   </li>
-                ))}
+                  );
+                })}
               </ul>
             )}
           </section>
