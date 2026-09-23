@@ -283,6 +283,20 @@ html[data-theme="blush"] {
   --color-primary-950: 51 26 42;
 }
 
+html[data-theme="moss"] {
+  --color-primary-50: 244 245 243;
+  --color-primary-100: 226 228 224;
+  --color-primary-200: 197 201 194;
+  --color-primary-300: 161 168 155;
+  --color-primary-400: 120 129 111;
+  --color-primary-500: 75 87 63;
+  --color-primary-600: 66 77 55;
+  --color-primary-700: 56 65 47;
+  --color-primary-800: 45 52 38;
+  --color-primary-900: 34 39 28;
+  --color-primary-950: 21 24 18;
+}
+
 @layer components {
   .card {
     @apply bg-white dark:bg-surface-900 rounded-2xl p-6 shadow-soft border border-surface-100 dark:border-surface-800;

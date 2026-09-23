@@ -102,7 +102,7 @@ const legacyPreferences = (): UserPreferences => {
           : 'system';
   const color = localStorage.getItem('lanis_theme_color');
   const themeColor = color === 'emerald' || color === 'sapphire' || color === 'amethyst'
-    || color === 'ruby' || color === 'amber' || color === 'cyan' || color === 'coral' || color === 'blush'
+    || color === 'ruby' || color === 'amber' || color === 'cyan' || color === 'coral' || color === 'blush' || color === 'moss'
     ? color
     : 'ruby';
   const timetableMode = localStorage.getItem('lanis_timetable_view_mode');
