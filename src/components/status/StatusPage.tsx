@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import AppIcon from '../AppIcon';
 import SEO from '../seo/SEO';
@@ -6,11 +7,13 @@ import {
   formatTimestamp,
   statusColors,
   statusLabels,
+  PublicStatus,
   usePublicStatus,
 } from '../../services/publicStatus';
 import { getCustomBackendUrl } from '../../utils/backendConfig';
 
 export default function StatusPage() {
+  const [windowKey, setWindowKey] = useState<'24h' | '7d' | '30d' | '90d'>('90d');
   const { data, loading, error, status, refresh } = usePublicStatus();
   const customBackend = getCustomBackendUrl();
   const days = data?.daily.slice(-90)
@@ -19,6 +22,7 @@ export default function StatusPage() {
     { name: 'LANIS', state: data ? 'up' as const : 'unknown' as const },
     { name: 'Schulportal Hessen', state: status },
   ];
+  const windowSummary: (Omit<NonNullable<PublicStatus['summary_windows']>['90d'], 'latency'> & { latency?: NonNullable<PublicStatus['summary_windows']>['90d']['latency'] }) | undefined = data?.summary_windows?.[windowKey] ?? data?.summary;
 
   return (
     <div className="min-h-[100dvh] bg-surface-50 text-surface-900 dark:bg-surface-950 dark:text-surface-100">
@@ -62,6 +66,15 @@ export default function StatusPage() {
             ))}
           </section>
 
+          <section className="mt-4 grid gap-3 sm:grid-cols-2" aria-label="Komponentenstatus">
+            {(data?.current.features ?? [{ name: 'login', status: 'unknown' as const }, { name: 'modules', status: 'unknown' as const }]).map(feature => (
+              <div key={feature.name} className="flex items-center justify-between rounded-xl border bg-white px-4 py-3 dark:bg-surface-900">
+                <div><p className="text-sm font-medium">{feature.name === 'login' ? 'Anmeldung' : 'Module'}</p><p className="text-xs text-surface-500">{feature.latency_ms == null ? 'Keine Latenzmessung' : `${feature.latency_ms} ms aktuell`}{data?.summary_windows?.[windowKey]?.latency.features[feature.name]?.p95 == null ? '' : ` · p95 ${data.summary_windows[windowKey].latency.features[feature.name].p95} ms`}</p></div>
+                <span className="flex items-center gap-2 text-sm text-surface-600 dark:text-surface-300"><span className={`h-2.5 w-2.5 rounded-full ${statusColors[feature.status]}`} />{statusLabels[feature.status]}</span>
+              </div>
+            ))}
+          </section>
+
           <p className="mt-3 text-sm text-surface-500">
             {error ? 'Status nicht verfügbar' : `Stand: ${formatTimestamp(data?.current.checked_at ?? null)}`}
           </p>
@@ -69,18 +82,26 @@ export default function StatusPage() {
           <section className="mt-12" aria-labelledby="history-title">
             <div className="flex items-end justify-between gap-4">
               <div>
-                <h2 id="history-title" className="text-xl font-semibold">Letzte 90 Tage</h2>
+                <h2 id="history-title" className="text-xl font-semibold">Verfügbarkeit</h2>
                 <p className="mt-1 text-sm text-surface-500">
-                  Abdeckung {formatPercent(data?.summary.coverage_percent ?? null)}
+                  Abdeckung {formatPercent(windowSummary?.coverage_percent ?? null)}
                 </p>
               </div>
               <p className="text-3xl font-semibold tracking-tight">
-                {formatPercent(data?.summary.uptime_percent ?? null)}
+                {formatPercent(windowSummary?.uptime_percent ?? null)}
               </p>
             </div>
 
+            <div className="mt-4 flex flex-wrap gap-2" aria-label="Auswertungszeitraum">
+              {([['24h', '24 Stunden'], ['7d', '7 Tage'], ['30d', '30 Tage'], ['90d', '90 Tage']] as const).map(([key, label]) => (
+                <button key={key} type="button" aria-pressed={windowKey === key} onClick={() => setWindowKey(key)} className={`rounded-full border px-3 py-1.5 text-xs ${windowKey === key ? 'border-primary-600 bg-primary-50 text-primary-700 dark:bg-primary-950 dark:text-primary-300' : 'border-surface-200 text-surface-500 dark:border-surface-700'}`}>{label}</button>
+              ))}
+              {windowSummary?.latency?.overall?.median != null && <span className="self-center text-xs text-surface-500">Median {windowSummary.latency.overall.median} ms · p95 {windowSummary.latency.overall.p95 ?? '—'} ms</span>}
+            </div>
+
+            <p className="mt-6 text-xs text-surface-500">Täglicher Status über die letzten 90 Tage</p>
             <div
-              className="mt-6 grid grid-cols-[repeat(15,minmax(0,1fr))] gap-2 sm:grid-cols-[repeat(18,minmax(0,1fr))] sm:gap-2.5"
+              className="mt-3 grid grid-cols-[repeat(15,minmax(0,1fr))] gap-2 sm:grid-cols-[repeat(18,minmax(0,1fr))] sm:gap-2.5"
               aria-label="Täglicher Status der letzten 90 Tage"
               data-status-history
             >
@@ -111,12 +132,12 @@ export default function StatusPage() {
               <p className="mt-4 text-sm text-surface-500">Keine Störungen</p>
             ) : (
               <ul className="mt-3 divide-y">
-                {data.incidents.slice(0, 5).map((incident, index) => (
-                  <li key={`${incident.checked_at}-${index}`} className="flex items-center justify-between gap-4 py-4 text-sm">
-                    <time className="text-surface-500">{formatTimestamp(incident.checked_at)}</time>
+                {data.incidents.slice(0, 10).map((incident, index) => (
+                  <li key={`${incident.started_at}-${index}`} className="flex flex-wrap items-center justify-between gap-2 py-4 text-sm">
+                    <div><time className="text-surface-500">{formatTimestamp(incident.started_at || incident.checked_at || null)}</time><p className="mt-1 text-xs text-surface-500">{incident.resolved_at ? `Resolved ${formatTimestamp(incident.resolved_at)}` : 'Ongoing'} · {incident.checks ?? 1} confirmed checks{incident.affected_features?.length ? ` · ${incident.affected_features.map(name => name === 'login' ? 'Anmeldung' : 'Module').join(', ')}` : ''}</p></div>
                     <span className="flex items-center gap-2">
                       <span className={`h-2 w-2 rounded-full ${statusColors[incident.status]}`} />
-                      {statusLabels[incident.status]}
+                      {incident.resolved_at ? 'Behoben' : statusLabels[incident.status]}
                     </span>
                   </li>
                 ))}
