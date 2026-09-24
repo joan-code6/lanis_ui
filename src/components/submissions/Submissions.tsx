@@ -143,6 +143,7 @@ const SubmissionDetailView: React.FC<{
   onRefresh: () => Promise<void>;
 }> = ({ detail, refreshError, token, onBack, onRefresh }) => {
   const inputRef = useRef<HTMLInputElement>(null);
+  const mountedRef = useRef(true);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [busy, setBusy] = useState(false);
   const [downloading, setDownloading] = useState<string | null>(null);
@@ -151,6 +152,10 @@ const SubmissionDetailView: React.FC<{
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState('');
   const [password, setPassword] = useState('');
+
+  useEffect(() => () => {
+    mountedRef.current = false;
+  }, []);
 
   const maxBytes = parseMaxBytes(detail.max_file_size);
   const attemptClosed = detail.allows_multiple_attempts === false && detail.own_files.length > 0;
@@ -201,7 +206,7 @@ const SubmissionDetailView: React.FC<{
         setUploadStatuses(response.files || []);
         setSelectedFiles([]);
         if (inputRef.current) inputRef.current.value = '';
-        await onRefresh();
+        if (mountedRef.current) await onRefresh();
       }
     } catch (uploadError) {
       if (!axios.isCancel(uploadError)) setError('Die Dateien konnten nicht hochgeladen werden.');
@@ -244,7 +249,7 @@ const SubmissionDetailView: React.FC<{
         setDeleteTarget(null);
         setPassword('');
         setDeleteError('');
-        await onRefresh();
+        if (mountedRef.current) await onRefresh();
       }
     } catch {
       setDeleteError('Die Datei konnte nicht gelöscht werden.');
@@ -286,7 +291,7 @@ const SubmissionDetailView: React.FC<{
               <FileRow
                 key={file.index}
                 name={file.name}
-                meta={file.time || file.comment}
+                meta={[file.time, file.comment].filter(Boolean).join(' · ') || null}
                 action={<div className="flex shrink-0 items-center gap-1"><button type="button" className="rounded-lg p-2 text-surface-500 hover:bg-surface-100 hover:text-primary-700 dark:hover:bg-surface-800 dark:hover:text-primary-300" onClick={() => void download(file.download_ref, file.name)} title="Datei herunterladen"><ArrowDownTrayIcon className={clsx('h-4 w-4', downloading === file.download_ref && 'animate-bounce')} /></button>{detail.can_delete && <button type="button" className="rounded-lg p-2 text-surface-500 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/40 dark:hover:text-red-300" onClick={() => setDeleteTarget(file.index)} title="Datei löschen"><TrashIcon className="h-4 w-4" /></button>}</div>}
               />
             ))}
@@ -334,6 +339,8 @@ const Submissions: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const detailRequestRef = useRef(0);
+  const currentIdRef = useRef(id);
+  currentIdRef.current = id;
 
   const listPath = `${basePath}/courses/submissions`;
   const openSubmission = (submission: Submission) => navigate(`${listPath}/${encodeURIComponent(submission.detail_ref || submission.id)}`);
@@ -392,7 +399,7 @@ const Submissions: React.FC = () => {
   return (
     <div className="p-6">
       {isDetail && detail ? (
-        <SubmissionDetailView detail={detail} refreshError={error} token={token} onBack={() => navigate(listPath)} onRefresh={async () => { if (id) await loadDetail(id); }} />
+        <SubmissionDetailView detail={detail} refreshError={error} token={token} onBack={() => navigate(listPath)} onRefresh={async () => { if (id && currentIdRef.current === id) await loadDetail(id); }} />
       ) : !isDetail ? (
         <div className="mx-auto max-w-5xl space-y-6">
           <div className="flex flex-wrap items-end justify-between gap-4"><div><p className="text-sm font-semibold uppercase tracking-[0.14em] text-primary-700 dark:text-primary-300">Mein Unterricht</p><h1 className="mt-1 text-3xl font-bold text-surface-900 dark:text-surface-100">Abgaben</h1><p className="mt-2 text-sm text-surface-600 dark:text-surface-400">Alle Upload-Aufträge, Fristen und deine abgegebenen Dateien an einem Ort.</p></div><button type="button" onClick={() => void loadList()} className="btn btn-secondary inline-flex items-center gap-2"><ArrowPathIcon className="h-4 w-4" /> Aktualisieren</button></div>
