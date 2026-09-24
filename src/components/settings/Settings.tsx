@@ -6,6 +6,11 @@ import {
   CUSTOM_BACKEND_STORAGE_KEY,
   clearBackendScopedStorage,
 } from '../../utils/backendConfig';
+import {
+  beginAccountDataDeletion,
+  captureAccountDataGeneration,
+  restoreAccountDataDeletionState,
+} from '../../utils/accountDataWrites';
 import { useBasePath } from '../../contexts/BasePathContext';
 import { usePreferences } from '../../contexts/PreferencesContext';
 import axios from 'axios';
@@ -242,6 +247,8 @@ const AccountSettings: React.FC = () => {
       return;
     }
 
+    const deletionGeneration = beginAccountDataDeletion();
+
     const cleanupTasks: Promise<unknown>[] = [];
     if ('serviceWorker' in navigator) {
       cleanupTasks.push(Promise.resolve().then(async () => {
@@ -265,6 +272,7 @@ const AccountSettings: React.FC = () => {
       const customBackendUrl = localStorage.getItem(CUSTOM_BACKEND_STORAGE_KEY);
       clearBackendScopedStorage();
       localStorage.clear();
+      restoreAccountDataDeletionState(deletionGeneration);
       if (customBackendUrl) {
         localStorage.setItem(CUSTOM_BACKEND_STORAGE_KEY, customBackendUrl);
       }
@@ -647,11 +655,12 @@ const Settings: React.FC = () => {
     setHasNativeSubstitutionPlan(availability.hasNativeSubstitutionPlan || availability.hasDsbModule);
     if (!token) return undefined;
 
+    const writeGeneration = captureAccountDataGeneration();
     const controller = new AbortController();
     appsAPI.getModules(token, controller.signal)
       .then(response => {
         if (controller.signal.aborted || !response.success) return;
-        writeModulesCache(user, response.modules);
+        writeModulesCache(user, response.modules, writeGeneration);
         const availability = getModuleAvailability(response.modules);
         setHasNativeSubstitutionPlan(availability.hasNativeSubstitutionPlan || availability.hasDsbModule);
       })

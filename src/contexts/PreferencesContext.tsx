@@ -4,6 +4,7 @@ import { useTheme } from './ThemeContext';
 import { settingsAPI } from '../services/api';
 import { UserPreferences, UserPreferencesPatch } from '../types';
 import { DEFAULT_SIDEBAR_ORDER, normalizeSidebarOrder } from '../utils/sidebarNavigation';
+import { canWriteAccountData, captureAccountDataGeneration } from '../utils/accountDataWrites';
 
 export const CURRENT_ONBOARDING_VERSION = 1;
 const LEGACY_PREFERENCES_OWNER_KEY = 'lanis_preferences_legacy_owner';
@@ -160,13 +161,18 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode; sync?: b
     setThemeColor(next.appearance.theme_color);
   }, [setThemeColor, setThemeMode]);
 
-  const writeCache = useCallback((next: UserPreferences, dirty: boolean) => {
-    if (!cacheKey) return;
+  const writeCache = useCallback((
+    next: UserPreferences,
+    dirty: boolean,
+    generation = captureAccountDataGeneration(),
+  ) => {
+    if (!cacheKey || !canWriteAccountData(generation)) return;
     localStorage.setItem(cacheKey, JSON.stringify({ preferences: next, dirty } satisfies CachedPreferences));
   }, [cacheKey]);
 
   useEffect(() => {
     const controller = new AbortController();
+    const writeGeneration = captureAccountDataGeneration();
     const cached = readCache(cacheKey);
     const legacyOwner = localStorage.getItem(LEGACY_PREFERENCES_OWNER_KEY);
     const canClaimLegacyPreferences = Boolean(sync && token && cacheKey && !legacyOwner);
@@ -179,7 +185,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode; sync?: b
       return () => controller.abort();
     }
 
-    if (canClaimLegacyPreferences) {
+    if (canClaimLegacyPreferences && canWriteAccountData(writeGeneration)) {
       localStorage.setItem(LEGACY_PREFERENCES_OWNER_KEY, cacheKey);
     }
 
@@ -195,7 +201,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode; sync?: b
     const load = async () => {
       try {
         const response = await settingsAPI.getPreferences(token, controller.signal);
-        if (controller.signal.aborted) return;
+        if (controller.signal.aborted || !canWriteAccountData(writeGeneration)) return;
         let next = normalizePreferences({
           ...response.preferences,
           sidebar: {
@@ -208,7 +214,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode; sync?: b
         if (!response.stored || cached?.dirty) {
           next = cached?.preferences || localFallback;
           const migrated = await settingsAPI.updatePreferences(token, next, controller.signal);
-          if (controller.signal.aborted) return;
+          if (controller.signal.aborted || !canWriteAccountData(writeGeneration)) return;
           next = normalizePreferences({
             ...migrated.preferences,
             sidebar: { ...next.sidebar, ...migrated.preferences.sidebar },
@@ -216,14 +222,15 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode; sync?: b
           });
         }
         applyPreferences(next);
-        writeCache(next, false);
+        writeCache(next, false, writeGeneration);
         localStorage.removeItem('pinned_modules');
         localStorage.removeItem('lanis_timetable_view_mode');
       } catch (error) {
         if (controller.signal.aborted) return;
         console.error('Failed to load account preferences:', error);
+        if (!canWriteAccountData(writeGeneration)) return;
         applyPreferences(localFallback);
-        writeCache(localFallback, cached?.dirty ?? true);
+        writeCache(localFallback, cached?.dirty ?? true, writeGeneration);
       } finally {
         if (!controller.signal.aborted) {
           setIsLoading(false);
@@ -236,13 +243,14 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode; sync?: b
   }, [applyPreferences, cacheKey, sync, token, writeCache]);
 
   const updatePreferences = useCallback((patch: UserPreferencesPatch): Promise<boolean> => {
+    const writeGeneration = captureAccountDataGeneration();
     const next = mergePreferences(preferencesRef.current, patch);
     applyPreferences(next);
-    writeCache(next, true);
+    writeCache(next, true, writeGeneration);
     setSyncError('');
 
     if (!sync || !token) {
-      writeCache(next, false);
+      writeCache(next, false, writeGeneration);
       return Promise.resolve(true);
     }
 
@@ -262,14 +270,15 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode; sync?: b
           sidebar: { ...next.sidebar, ...response.preferences.sidebar },
           dashboard: { ...next.dashboard, ...response.preferences.dashboard },
         });
-        if (JSON.stringify(preferencesRef.current) === JSON.stringify(next)) {
+        if (canWriteAccountData(writeGeneration)
+          && JSON.stringify(preferencesRef.current) === JSON.stringify(next)) {
           applyPreferences(saved);
-          writeCache(saved, false);
+          writeCache(saved, false, writeGeneration);
         }
         return true;
       } catch (error) {
         console.error('Failed to save account preferences:', error);
-        writeCache(preferencesRef.current, true);
+        writeCache(preferencesRef.current, true, writeGeneration);
         setSyncError('Änderungen sind lokal gespeichert und werden beim nächsten Versuch synchronisiert.');
         return false;
       } finally {

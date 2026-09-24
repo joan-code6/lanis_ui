@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { AuthContextType, LoginRequest, User } from '../types';
 import { authAPI, notificationsAPI, unsubscribeBrowserPushSubscription } from '../services/api';
+import { completeAccountDataDeletion } from '../utils/accountDataWrites';
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -79,6 +80,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       localStorage.setItem(REFRESH_TOKEN_KEY, response.refresh_token);
       localStorage.setItem(TOKEN_EXPIRES_KEY, expiresAt.toString());
       localStorage.setItem(USER_KEY, JSON.stringify(basicUser));
+      completeAccountDataDeletion();
 
       try {
         const userResponse = await authAPI.getUserProfile(response.access_token);
