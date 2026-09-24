@@ -232,7 +232,10 @@ const AccountSettings: React.FC = () => {
     setDeleting(true);
     setError('');
     try {
-      await authAPI.deleteAccount(token);
+      const result = await authAPI.deleteAccount(token);
+      if (!result.success) {
+        throw new Error('Account deletion was not confirmed by the server.');
+      }
     } catch {
       setError('Das Konto konnte nicht vollständig gelöscht werden. Bitte versuche es erneut.');
       setDeleting(false);
