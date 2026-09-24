@@ -7,6 +7,7 @@ import Layout from '../layout/Layout';
 import { demoModules, demoPinnedModules, demoUser } from './demoData';
 import { getDemoTabId, keepDemoSessionAlive, readDemoStorageSnapshot, writeDemoStorageSnapshot } from '../../utils/demoMode';
 import type { ThemeColor, ThemeMode } from '../../types';
+import { ACCOUNT_DATA_GENERATION_KEY } from '../../utils/accountDataWrites';
 
 const mockAuth = {
   isAuthenticated: true as const,
@@ -62,13 +63,10 @@ const seedLocalStorage = () => {
   );
   let restoreAllowed = true;
   const handleExternalAuthRemoval = (event: StorageEvent) => {
-    const authKeys = [
-      'auth_access_token',
-      'auth_refresh_token',
-      'auth_expires_at',
-      'auth_user',
-    ];
-    if (event.key === null || (authKeys.includes(event.key) && event.newValue === null)) {
+    if (
+      event.key === ACCOUNT_DATA_GENERATION_KEY
+      && event.newValue?.endsWith(':deleting')
+    ) {
       restoreAllowed = false;
       if (tabId) writeDemoStorageSnapshot(tabId, null);
     }

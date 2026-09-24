@@ -1,4 +1,4 @@
-const ACCOUNT_DATA_GENERATION_KEY = '__lanis_account_data_generation';
+export const ACCOUNT_DATA_GENERATION_KEY = '__lanis_account_data_generation';
 
 let deletionInProgress = false;
 
