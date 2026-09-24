@@ -63,6 +63,19 @@ export const restoreAccountDataDeletionState = (generation: number): void => {
   }
 };
 
+export const finishAccountDataDeletion = (generation: number): void => {
+  if (readGenerationState().generation !== generation) return;
+  deletionInProgress = false;
+  try {
+    window.localStorage.setItem(
+      ACCOUNT_DATA_GENERATION_KEY,
+      `${generation}:active`,
+    );
+  } catch {
+    // Keep the in-memory state aligned when local storage is unavailable.
+  }
+};
+
 export const completeAccountDataDeletion = (): void => {
   const generation = captureAccountDataGeneration() + 1;
   deletionInProgress = false;

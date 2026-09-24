@@ -9,6 +9,7 @@ import {
 import {
   beginAccountDataDeletion,
   captureAccountDataGeneration,
+  finishAccountDataDeletion,
   restoreAccountDataDeletionState,
 } from '../../utils/accountDataWrites';
 import { useBasePath } from '../../contexts/BasePathContext';
@@ -284,6 +285,7 @@ const AccountSettings: React.FC = () => {
     } catch {
       // The account is already deleted; always continue to the login screen.
     }
+    finishAccountDataDeletion(deletionGeneration);
     navigate('/login', { replace: true });
     setDeleting(false);
   };
