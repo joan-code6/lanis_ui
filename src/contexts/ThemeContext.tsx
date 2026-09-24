@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { ThemeColor, ThemeMode } from '../types';
 import { applyThemeAssets, isThemeColor, THEME_COLOR_HEX } from '../utils/themeAssets';
+import { canWriteAccountData, captureAccountDataGeneration } from '../utils/accountDataWrites';
 
 export type { ThemeColor, ThemeMode } from '../types';
 
@@ -116,6 +117,8 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const setThemeMode = useCallback((mode: ThemeMode) => {
     setThemeModeState(mode);
+    const generation = captureAccountDataGeneration();
+    if (!canWriteAccountData(generation)) return;
     localStorage.setItem(THEME_MODE_KEY, mode);
     localStorage.setItem(OLED_MODE_KEY, String(mode === 'oled'));
     if (mode === 'system') localStorage.removeItem(DARK_MODE_KEY);
@@ -132,6 +135,8 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const setThemeColor = useCallback((color: ThemeColor) => {
     setThemeColorState(color);
+    const generation = captureAccountDataGeneration();
+    if (!canWriteAccountData(generation)) return;
     localStorage.setItem(THEME_COLOR_KEY, color);
     applyPrimaryTheme(color);
   }, []);

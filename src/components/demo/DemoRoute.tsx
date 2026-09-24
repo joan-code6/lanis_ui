@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
 import { AuthContext } from '../../contexts/AuthContext';
 import { PreferencesProvider } from '../../contexts/PreferencesContext';
@@ -7,6 +7,7 @@ import Layout from '../layout/Layout';
 import { demoModules, demoPinnedModules, demoUser } from './demoData';
 import { getDemoTabId, keepDemoSessionAlive, readDemoStorageSnapshot, writeDemoStorageSnapshot } from '../../utils/demoMode';
 import type { ThemeColor, ThemeMode } from '../../types';
+import { ACCOUNT_DATA_GENERATION_KEY } from '../../utils/accountDataWrites';
 
 const mockAuth = {
   isAuthenticated: true as const,
@@ -60,6 +61,17 @@ const seedLocalStorage = () => {
   const previous = storedSnapshot || new Map<string, string | null>(
     DEMO_STORAGE_KEYS.map(key => [key, localStorage.getItem(key)]),
   );
+  let restoreAllowed = true;
+  const handleExternalAuthRemoval = (event: StorageEvent) => {
+    if (
+      event.key === ACCOUNT_DATA_GENERATION_KEY
+      && event.newValue?.endsWith(':deleting')
+    ) {
+      restoreAllowed = false;
+      if (tabId) writeDemoStorageSnapshot(tabId, null);
+    }
+  };
+  window.addEventListener('storage', handleExternalAuthRemoval);
   if (!storedSnapshot && tabId) {
     writeDemoStorageSnapshot(tabId, Object.fromEntries(previous));
   }
@@ -71,39 +83,35 @@ const seedLocalStorage = () => {
   ['messages_cache', 'courses_cache', 'username_cache', 'dsb_plan_cache_v2'].forEach(key => localStorage.removeItem(key));
 
   return () => {
-    (tabId && readDemoStorageSnapshot(tabId)
+    window.removeEventListener('storage', handleExternalAuthRemoval);
+    const valuesToRestore = tabId && readDemoStorageSnapshot(tabId)
       ? new Map(Object.entries(readDemoStorageSnapshot(tabId) || {}))
-      : previous
-    ).forEach((value, key) => {
-      if (value === null) localStorage.removeItem(key);
-      else localStorage.setItem(key, value);
-    });
+      : previous;
+    if (restoreAllowed) {
+      valuesToRestore.forEach((value, key) => {
+        if (value === null) localStorage.removeItem(key);
+        else localStorage.setItem(key, value);
+      });
+    }
     if (tabId) writeDemoStorageSnapshot(tabId, null);
+    return restoreAllowed ? valuesToRestore : null;
   };
 };
 
 const DemoRoute: React.FC = () => {
-  const { themeMode, themeColor, setThemeMode, setThemeColor } = useTheme();
-  const initialAppearanceRef = useRef({ themeMode, themeColor });
+  const { setThemeMode, setThemeColor } = useTheme();
 
   useEffect(() => {
     const restoreStorage = seedLocalStorage();
     const tabId = getDemoTabId();
     const stopHeartbeat = tabId ? keepDemoSessionAlive(tabId) : () => {};
     return () => {
-      const storedValues = tabId ? readDemoStorageSnapshot(tabId) : null;
-      const previous = storedValues
-        ? new Map(Object.entries(storedValues))
-        : null;
       stopHeartbeat();
-      restoreStorage();
+      const previous = restoreStorage();
       if (previous) {
         const appearance = readAppearance(previous);
         setThemeMode(appearance.themeMode);
         setThemeColor(appearance.themeColor);
-      } else {
-        setThemeMode(initialAppearanceRef.current.themeMode);
-        setThemeColor(initialAppearanceRef.current.themeColor);
       }
     };
   }, [setThemeColor, setThemeMode]);

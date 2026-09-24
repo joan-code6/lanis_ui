@@ -20,6 +20,7 @@ import { format, parseISO } from 'date-fns';
 import { de } from 'date-fns/locale';
 import clsx from 'clsx';
 import { isDemoRoute } from '../../utils/demoMode';
+import { canWriteAccountData, captureAccountDataGeneration } from '../../utils/accountDataWrites';
 
 const htmlToText = (value: unknown): string => {
   if (typeof value !== 'string') return '';
@@ -153,6 +154,7 @@ const Messages: React.FC = () => {
 
   const loadMessages = async (signal?: AbortSignal, clearError = true) => {
     if (!token) return;
+    const writeGeneration = captureAccountDataGeneration();
     setIsUpdating(true);
     try {
       if (clearError) setError('');
@@ -175,7 +177,9 @@ const Messages: React.FC = () => {
         }));
         const resolved = applyUsernameCache(transformedMessages);
         setMessages(resolved);
-        localStorage.setItem('messages_cache', JSON.stringify(resolved));
+        if (canWriteAccountData(writeGeneration)) {
+          localStorage.setItem('messages_cache', JSON.stringify(resolved));
+        }
       } else {
         setError('Fehler beim Laden der Nachrichten.');
       }

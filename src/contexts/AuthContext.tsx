@@ -1,6 +1,11 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { AuthContextType, LoginRequest, User } from '../types';
 import { authAPI, notificationsAPI, unsubscribeBrowserPushSubscription } from '../services/api';
+import {
+  canWriteAccountData,
+  captureAccountDataGeneration,
+  completeAccountDataDeletion,
+} from '../utils/accountDataWrites';
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -40,9 +45,39 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setIsLoading(false);
   }, []);
 
+  useEffect(() => {
+    const handleStorage = (event: StorageEvent) => {
+      const authKeys = [
+        ACCESS_TOKEN_KEY,
+        REFRESH_TOKEN_KEY,
+        TOKEN_EXPIRES_KEY,
+        USER_KEY,
+      ];
+      if (event.key !== null && !(authKeys.includes(event.key) && event.newValue === null)) {
+        return;
+      }
+      setToken(null);
+      setUser(null);
+      setIsAuthenticated(false);
+    };
+
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, []);
+
   const login = async (credentials: LoginRequest): Promise<boolean> => {
+    let writeGeneration = captureAccountDataGeneration();
     try {
       const response = await authAPI.login(credentials);
+
+      if (!canWriteAccountData(writeGeneration)) {
+        try {
+          await authAPI.logout(response.access_token);
+        } catch {
+          // The server may already have revoked this session during deletion.
+        }
+        return false;
+      }
 
       const expiresAt = Date.now() + response.expires_in * 1000;
 
@@ -59,10 +94,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       localStorage.setItem(REFRESH_TOKEN_KEY, response.refresh_token);
       localStorage.setItem(TOKEN_EXPIRES_KEY, expiresAt.toString());
       localStorage.setItem(USER_KEY, JSON.stringify(basicUser));
+      completeAccountDataDeletion();
+      writeGeneration = captureAccountDataGeneration();
 
       try {
         const userResponse = await authAPI.getUserProfile(response.access_token);
-        if (userResponse.success) {
+        if (userResponse.success && canWriteAccountData(writeGeneration)) {
           const accountUser = {
             ...userResponse.data,
             username: response.username,
@@ -74,11 +111,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         }
       } catch (error) {
         console.warn('Failed to fetch user profile:', error);
-        setUser({
-          username: response.username,
-          school_id: response.school_id,
-          encryption_ready: response.encryption_ready.toString(),
-        });
+        if (canWriteAccountData(writeGeneration)) {
+          setUser({
+            username: response.username,
+            school_id: response.school_id,
+            encryption_ready: response.encryption_ready.toString(),
+          });
+        }
       }
 
       return true;
@@ -89,11 +128,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const refreshToken = useCallback(async (): Promise<boolean> => {
+    const writeGeneration = captureAccountDataGeneration();
     const refreshTokenValue = localStorage.getItem(REFRESH_TOKEN_KEY);
     if (!refreshTokenValue) return false;
 
     try {
       const response = await authAPI.refreshToken(refreshTokenValue);
+
+      if (!canWriteAccountData(writeGeneration)) return false;
 
       const expiresAt = Date.now() + response.expires_in * 1000;
 
