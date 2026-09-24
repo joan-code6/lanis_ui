@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
 import { AuthContext } from '../../contexts/AuthContext';
 import { PreferencesProvider } from '../../contexts/PreferencesContext';
@@ -94,13 +94,12 @@ const seedLocalStorage = () => {
       });
     }
     if (tabId) writeDemoStorageSnapshot(tabId, null);
-    return valuesToRestore;
+    return restoreAllowed ? valuesToRestore : null;
   };
 };
 
 const DemoRoute: React.FC = () => {
-  const { themeMode, themeColor, setThemeMode, setThemeColor } = useTheme();
-  const initialAppearanceRef = useRef({ themeMode, themeColor });
+  const { setThemeMode, setThemeColor } = useTheme();
 
   useEffect(() => {
     const restoreStorage = seedLocalStorage();
@@ -113,9 +112,6 @@ const DemoRoute: React.FC = () => {
         const appearance = readAppearance(previous);
         setThemeMode(appearance.themeMode);
         setThemeColor(appearance.themeColor);
-      } else {
-        setThemeMode(initialAppearanceRef.current.themeMode);
-        setThemeColor(initialAppearanceRef.current.themeColor);
       }
     };
   }, [setThemeColor, setThemeMode]);
