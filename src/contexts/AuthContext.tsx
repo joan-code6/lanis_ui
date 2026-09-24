@@ -40,6 +40,26 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setIsLoading(false);
   }, []);
 
+  useEffect(() => {
+    const handleStorage = (event: StorageEvent) => {
+      const authKeys = [
+        ACCESS_TOKEN_KEY,
+        REFRESH_TOKEN_KEY,
+        TOKEN_EXPIRES_KEY,
+        USER_KEY,
+      ];
+      if (event.key !== null && !(authKeys.includes(event.key) && event.newValue === null)) {
+        return;
+      }
+      setToken(null);
+      setUser(null);
+      setIsAuthenticated(false);
+    };
+
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, []);
+
   const login = async (credentials: LoginRequest): Promise<boolean> => {
     try {
       const response = await authAPI.login(credentials);
