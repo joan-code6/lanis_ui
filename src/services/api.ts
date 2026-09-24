@@ -11,6 +11,7 @@ import {
 } from '../types';
 import { getMockResponse } from '../components/demo/mockApi';
 import { DEFAULT_API_BASE_URL, getApiBaseUrl } from '../utils/backendConfig';
+import { canWriteAccountData, captureAccountDataGeneration } from '../utils/accountDataWrites';
 // School List API
 const SCHOOL_CACHE_KEY = 'school_cache';
 const SCHOOL_CACHE_TTL = 24 * 60 * 60 * 1000;
@@ -287,6 +288,7 @@ function isTokenExpiringSoon(thresholdMs: number = 5 * 60 * 1000): boolean {
 let refreshPromise: Promise<boolean> | null = null;
 
 async function refreshAccessToken(): Promise<boolean> {
+  const writeGeneration = captureAccountDataGeneration();
   const refreshTokenValue = getRefreshToken();
   if (!refreshTokenValue) return false;
 
@@ -295,6 +297,7 @@ async function refreshAccessToken(): Promise<boolean> {
       refresh_token: refreshTokenValue,
     } as TokenRefreshRequest);
 
+    if (!canWriteAccountData(writeGeneration)) return false;
     const expiresAt = Date.now() + response.data.expires_in * 1000;
     localStorage.setItem(ACCESS_TOKEN_KEY, response.data.access_token);
     localStorage.setItem(TOKEN_EXPIRES_KEY, expiresAt.toString());
@@ -1091,6 +1094,7 @@ apiClient.interceptors.response.use(
         // Try refreshing the token once
         const refreshTokenValue = getRefreshToken();
         if (refreshTokenValue) {
+          const writeGeneration = captureAccountDataGeneration();
           if (requestConfig) requestConfig._authRetryAttempted = true;
 
           try {
@@ -1098,6 +1102,9 @@ apiClient.interceptors.response.use(
               refresh_token: refreshTokenValue,
             } as TokenRefreshRequest);
 
+            if (!canWriteAccountData(writeGeneration)) {
+              return Promise.reject(error);
+            }
             const expiresAt = Date.now() + refreshResponse.data.expires_in * 1000;
             localStorage.setItem(ACCESS_TOKEN_KEY, refreshResponse.data.access_token);
             localStorage.setItem(TOKEN_EXPIRES_KEY, expiresAt.toString());
