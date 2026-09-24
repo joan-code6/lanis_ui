@@ -60,6 +60,20 @@ const seedLocalStorage = () => {
   const previous = storedSnapshot || new Map<string, string | null>(
     DEMO_STORAGE_KEYS.map(key => [key, localStorage.getItem(key)]),
   );
+  let restoreAllowed = true;
+  const handleExternalAuthRemoval = (event: StorageEvent) => {
+    const authKeys = [
+      'auth_access_token',
+      'auth_refresh_token',
+      'auth_expires_at',
+      'auth_user',
+    ];
+    if (event.key === null || (authKeys.includes(event.key) && event.newValue === null)) {
+      restoreAllowed = false;
+      if (tabId) writeDemoStorageSnapshot(tabId, null);
+    }
+  };
+  window.addEventListener('storage', handleExternalAuthRemoval);
   if (!storedSnapshot && tabId) {
     writeDemoStorageSnapshot(tabId, Object.fromEntries(previous));
   }
@@ -71,14 +85,18 @@ const seedLocalStorage = () => {
   ['messages_cache', 'courses_cache', 'username_cache', 'dsb_plan_cache_v2'].forEach(key => localStorage.removeItem(key));
 
   return () => {
-    (tabId && readDemoStorageSnapshot(tabId)
+    window.removeEventListener('storage', handleExternalAuthRemoval);
+    const valuesToRestore = tabId && readDemoStorageSnapshot(tabId)
       ? new Map(Object.entries(readDemoStorageSnapshot(tabId) || {}))
-      : previous
-    ).forEach((value, key) => {
-      if (value === null) localStorage.removeItem(key);
-      else localStorage.setItem(key, value);
-    });
+      : previous;
+    if (restoreAllowed) {
+      valuesToRestore.forEach((value, key) => {
+        if (value === null) localStorage.removeItem(key);
+        else localStorage.setItem(key, value);
+      });
+    }
     if (tabId) writeDemoStorageSnapshot(tabId, null);
+    return valuesToRestore;
   };
 };
 
@@ -91,12 +109,8 @@ const DemoRoute: React.FC = () => {
     const tabId = getDemoTabId();
     const stopHeartbeat = tabId ? keepDemoSessionAlive(tabId) : () => {};
     return () => {
-      const storedValues = tabId ? readDemoStorageSnapshot(tabId) : null;
-      const previous = storedValues
-        ? new Map(Object.entries(storedValues))
-        : null;
       stopHeartbeat();
-      restoreStorage();
+      const previous = restoreStorage();
       if (previous) {
         const appearance = readAppearance(previous);
         setThemeMode(appearance.themeMode);
