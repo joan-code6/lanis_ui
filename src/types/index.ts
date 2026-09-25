@@ -493,7 +493,20 @@ export interface CourseDetailEntry {
   homework_done: boolean;
   attendance: string;
   files: EntryAttachment[];
+  uploads?: EntryUpload[];
   content?: string;
+}
+
+export interface EntryUpload {
+  id: string;
+  detail_ref: string;
+  title: string;
+  status: 'open' | 'closed' | string;
+  date_text?: string | null;
+  uploaded?: string | null;
+  uploaded_count?: number | null;
+  course_id?: string;
+  entry_id?: string;
 }
 
 export interface CourseMark {
@@ -568,17 +581,74 @@ export interface WeeklyViewResponse {
 
 export interface Submission {
   id: string;
+  detail_ref: string;
+  course_id: string;
+  entry_id: string;
   title: string;
-  course: string;
-  due_date: string;
-  status: string;
-  url: string;
-  [key: string]: any;
+  course_name: string;
+  status: 'open' | 'closed' | string;
+  date_text?: string | null;
+  uploaded?: string | null;
+  uploaded_count?: number | null;
 }
 
 export interface SubmissionsResponse {
   success: boolean;
   submissions: Submission[];
+  error?: string;
+}
+
+export interface SubmissionFile {
+  name: string;
+  index: string;
+  time?: string | null;
+  comment?: string | null;
+  person?: string | null;
+  download_ref: string;
+  public?: boolean;
+}
+
+export interface SubmissionDetail extends Submission {
+  upload_id: string;
+  start?: string | null;
+  deadline?: string | null;
+  automatic_deletion?: string | null;
+  allows_multiple_files?: boolean | null;
+  allows_multiple_attempts?: boolean | null;
+  visibility?: string | null;
+  allowed_file_types: string[];
+  max_file_size?: string | null;
+  additional_text?: string | null;
+  own_files: SubmissionFile[];
+  public_files: SubmissionFile[];
+  can_upload: boolean;
+  can_delete: boolean;
+}
+
+export interface SubmissionDetailResponse {
+  success: boolean;
+  submission?: SubmissionDetail;
+  error?: string;
+}
+
+export interface SubmissionUploadStatus {
+  name: string;
+  status: string;
+  message?: string | null;
+}
+
+export interface SubmissionUploadResponse {
+  success: boolean;
+  files: SubmissionUploadStatus[];
+  all_succeeded?: boolean;
+  error?: string;
+}
+
+export interface SubmissionDeleteResponse {
+  success: boolean;
+  code?: string;
+  message?: string;
+  error?: string;
 }
 
 // Common types
