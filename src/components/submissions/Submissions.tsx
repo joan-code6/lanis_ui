@@ -397,12 +397,36 @@ const Submissions: React.FC = () => {
   if (!token) return <div className="p-6 text-center text-surface-500">Nicht authentifiziert</div>;
 
   return (
-    <div className="p-6">
+    <div className="min-h-full min-w-0 px-3 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
       {isDetail && detail ? (
         <SubmissionDetailView detail={detail} refreshError={error} token={token} onBack={() => navigate(listPath)} onRefresh={async () => { if (id && currentIdRef.current === id) await loadDetail(id); }} />
       ) : !isDetail ? (
-        <div className="mx-auto max-w-5xl space-y-6">
-          <div className="flex flex-wrap items-end justify-between gap-4"><div><p className="text-sm font-semibold uppercase tracking-[0.14em] text-primary-700 dark:text-primary-300">Mein Unterricht</p><h1 className="mt-1 text-3xl font-bold text-surface-900 dark:text-surface-100">Abgaben</h1><p className="mt-2 text-sm text-surface-600 dark:text-surface-400">Alle Upload-Aufträge, Fristen und deine abgegebenen Dateien an einem Ort.</p></div><button type="button" onClick={() => void loadList()} className="btn btn-secondary inline-flex items-center gap-2"><ArrowPathIcon className="h-4 w-4" /> Aktualisieren</button></div>
+        <div className="mx-auto max-w-7xl space-y-6">
+          <header className="mb-4 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:items-start sm:justify-between">
+            <div className="flex items-start gap-3">
+              <button
+                type="button"
+                className="mt-0.5 rounded-lg p-2 text-surface-500 transition-colors hover:bg-surface-100 hover:text-surface-800 dark:text-surface-400 dark:hover:bg-surface-800 dark:hover:text-white"
+                onClick={() => navigate(`${basePath}/courses`)}
+                aria-label="Zurück zu Mein Unterricht"
+              >
+                <ArrowLeftIcon className="h-5 w-5" />
+              </button>
+              <div>
+                <h1 className="text-2xl font-bold tracking-tight text-surface-900 dark:text-white sm:text-3xl">Abgaben</h1>
+                <p className="mt-1.5 text-sm text-surface-500 dark:text-surface-400">Upload-Aufträge und Fristen</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              className="btn btn-secondary self-start"
+              onClick={() => void loadList()}
+              disabled={loading}
+            >
+              <ArrowPathIcon className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+              Aktualisieren
+            </button>
+          </header>
           {error && <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900/70 dark:bg-red-950/30 dark:text-red-200"><ExclamationCircleIcon className="mt-0.5 h-5 w-5 shrink-0" />{error}</div>}
           {!loading && !error && <div className="grid gap-3 sm:grid-cols-3"><div className="card border-l-4 border-l-primary-500"><p className="text-xs uppercase tracking-[0.14em] text-surface-500">Aufträge</p><p className="mt-1 text-2xl font-bold text-surface-900 dark:text-surface-100">{submissions.length}</p></div><div className="card border-l-4 border-l-emerald-500"><p className="text-xs uppercase tracking-[0.14em] text-surface-500">Offen</p><p className="mt-1 text-2xl font-bold text-surface-900 dark:text-surface-100">{openCount}</p></div><div className="card border-l-4 border-l-surface-300 dark:border-l-surface-700"><p className="text-xs uppercase tracking-[0.14em] text-surface-500">Abgegeben</p><p className="mt-1 text-2xl font-bold text-surface-900 dark:text-surface-100">{submissions.filter(item => (item.uploaded_count || 0) > 0).length}</p></div></div>}
           {loading ? <div className="space-y-3">{Array.from({ length: 4 }).map((_, index) => <div key={index} className="card h-36 animate-pulse bg-surface-100 dark:bg-surface-900" />)}</div> : submissions.length === 0 ? !error && <div className="card py-14 text-center"><DocumentArrowUpIcon className="mx-auto h-12 w-12 text-surface-400" /><h2 className="mt-3 text-lg font-semibold text-surface-900 dark:text-surface-100">Keine Abgaben</h2><p className="mx-auto mt-1 max-w-md text-sm text-surface-500 dark:text-surface-400">Sobald dir ein Upload-Auftrag zugewiesen wurde, erscheint er hier.</p></div> : <div className="space-y-3">{submissions.map(submission => <SubmissionCard key={submission.id} submission={submission} onOpen={() => openSubmission(submission)} />)}</div>}
