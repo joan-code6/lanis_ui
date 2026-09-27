@@ -37,8 +37,8 @@ export default function StatusPage() {
   } as const;
   const windowDays = { '24h': 1, '7d': 7, '30d': 30, '90d': 90 } as const;
   const historyGridClasses = {
-    '24h': 'grid-cols-1 max-w-xs',
-    '7d': 'grid-cols-7 gap-1 sm:gap-2',
+    '24h': 'grid-cols-[repeat(48,minmax(0,1fr))] gap-1',
+    '7d': 'grid-cols-[repeat(28,minmax(0,1fr))] gap-1',
     '30d': 'grid-cols-10 gap-2.5 sm:grid-cols-[repeat(15,minmax(0,1fr))] sm:gap-3',
     '90d': 'grid-cols-[repeat(15,minmax(0,1fr))] gap-2 sm:grid-cols-[repeat(18,minmax(0,1fr))] sm:gap-2.5',
   } as const;
@@ -54,7 +54,11 @@ export default function StatusPage() {
     ?? Array.from({ length: selectedDays }, (_, index) => ({ day: String(index), status: 'unknown' as const })))
     .map(day => ({ ...day, sourceDay: day.day }));
   const latestDay: HistoryDay = days[0] ?? { day: 'unknown', sourceDay: 'unknown', status: 'unknown' };
-  const historyDays: HistoryDay[] = windowKey === '24h' ? [latestDay] : days;
+  const historyDays: HistoryDay[] = windowKey === '24h'
+    ? Array.from({ length: 48 }, (_, index) => ({ ...latestDay, day: `${latestDay.day}-${index}` }))
+    : windowKey === '7d'
+      ? days.flatMap(day => Array.from({ length: 4 }, (_, index) => ({ ...day, day: `${day.day}-${index}` })))
+      : days;
   const statusForHistoryDay = (day: HistoryDay): ServiceStatus => {
     return getEffectiveDailyStatus(day.sourceDay, day.status, data?.incidents ?? []);
   };
@@ -143,8 +147,8 @@ export default function StatusPage() {
           <section className="mt-12" aria-labelledby="history-title">
             <div className="flex items-end justify-between gap-4">
               <div>
-                <h2 id="history-title" className="text-xl font-semibold">Verfügbarkeit</h2>
-                <p className="mt-1 text-sm text-surface-500">Im ausgewählten Zeitraum · Datenabdeckung {formatPercent(windowSummary?.coverage_percent ?? null)}</p>
+                <h2 id="history-title" className="text-3xl font-semibold tracking-tight">Verfügbarkeit</h2>
+                <p className="mt-1 text-sm text-surface-500">Im ausgewählten Zeitraum</p>
               </div>
               <div className="text-right">
                 <p className="text-3xl font-semibold tracking-tight">
@@ -162,7 +166,7 @@ export default function StatusPage() {
 
             <div
               className={`mt-6 grid w-full items-center ${historyGridClasses[windowKey]}`}
-              aria-label={`Statusverlauf der letzten ${selectedWindowLabel}`}
+              aria-label={`Tagesstatus der letzten ${selectedWindowLabel}; Balken zeigen den jeweiligen Tagesstatus`}
               data-status-history
             >
               {historyDays.map((day, index) => {
