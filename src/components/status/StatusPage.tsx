@@ -115,16 +115,18 @@ export default function StatusPage() {
                 <h2 id="history-title" className="text-xl font-semibold">Verfügbarkeit</h2>
                 <p className="mt-1 text-sm text-surface-500">Im ausgewählten Zeitraum</p>
               </div>
-              <p className="text-3xl font-semibold tracking-tight">
-                {formatPercent(windowSummary?.uptime_percent ?? null)}
-              </p>
+              <div className="text-right">
+                <p className="text-3xl font-semibold tracking-tight">
+                  {formatPercent(windowSummary?.uptime_percent ?? null)}
+                </p>
+                {windowSummary?.latency?.overall?.median != null && <p className="mt-1 text-xs text-surface-500">Median {windowSummary.latency.overall.median} ms · p95 {windowSummary.latency.overall.p95 ?? '—'} ms</p>}
+              </div>
             </div>
 
             <div className="mt-4 flex flex-wrap items-center gap-2" aria-label="Auswertungszeitraum">
               {([['24h', '24 Stunden'], ['7d', '7 Tage'], ['30d', '30 Tage'], ['90d', '90 Tage']] as const).map(([key, label]) => (
                 <button key={key} type="button" disabled={!data?.summary_windows?.[key] && key !== '90d'} aria-pressed={windowKey === key} onClick={() => setWindowKey(key)} className={`rounded-full border px-3 py-1.5 text-xs disabled:cursor-not-allowed disabled:opacity-50 ${windowKey === key ? 'border-primary-600 bg-primary-50 text-primary-700 dark:bg-primary-950 dark:text-primary-300' : 'border-surface-200 text-surface-500 dark:border-surface-700'}`}>{label}</button>
               ))}
-              {windowSummary?.latency?.overall?.median != null && <span className="ml-auto shrink-0 text-xs text-surface-500">Median {windowSummary.latency.overall.median} ms · p95 {windowSummary.latency.overall.p95 ?? '—'} ms</span>}
             </div>
 
             <div
