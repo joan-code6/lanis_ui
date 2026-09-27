@@ -5,7 +5,19 @@ export type ServiceStatus = 'up' | 'degraded' | 'down' | 'unknown';
 export interface Observation {
   status: ServiceStatus;
   checked_at: string | null;
-  features: { name: string; status: ServiceStatus }[];
+  latency_ms?: number | null;
+  features: { name: string; status: ServiceStatus; latency_ms?: number | null }[];
+}
+export interface PublicIncident {
+  started_at: string;
+  checked_at?: string;
+  resolved_at: string | null;
+  duration_seconds: number | null;
+  status: 'degraded' | 'down';
+  checks: number;
+  affected_features: string[];
+  last_checked_at: string;
+  error: string | null;
 }
 interface Availability {
   checks: number;
@@ -21,9 +33,10 @@ export interface PublicStatus {
   generated_at: string;
   current: Observation & { stale: boolean };
   summary: Availability & { period_days: number };
+  summary_windows?: Record<'24h' | '7d' | '30d' | '90d', Availability & { period_days: number; latency: { overall: { median: number | null; p95: number | null }; features: Record<string, { median: number | null; p95: number | null }> } }>;
   daily: (Availability & { day: string; status: ServiceStatus })[];
-  incidents: Observation[];
-  measurement: { interval_seconds: number; stale_after_seconds: number; period_start: string; period_end: string; description: string };
+  incidents: PublicIncident[];
+  measurement: { interval_seconds: number; incident_interval_seconds: number; stale_after_seconds: number; period_start: string; period_end: string; description: string };
 }
 export const statusLabels: Record<ServiceStatus, string> = {
   up: 'Erreichbar', degraded: 'Eingeschränkt', down: 'Nicht erreichbar', unknown: 'Unbekannt',
