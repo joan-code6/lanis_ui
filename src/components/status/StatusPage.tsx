@@ -7,10 +7,37 @@ import {
   formatTimestamp,
   statusColors,
   statusLabels,
+  PublicIncident,
   PublicStatus,
+  ServiceStatus,
   usePublicStatus,
 } from '../../services/publicStatus';
 import { getCustomBackendUrl } from '../../utils/backendConfig';
+
+type HistoryDay = { day: string; sourceDay: string; status: ServiceStatus };
+
+function incidentsForDay(incidents: PublicIncident[], day: string): PublicIncident[] {
+  const start = Date.parse(`${day}T00:00:00Z`);
+  if (!Number.isFinite(start)) return [];
+  const end = start + 24 * 60 * 60 * 1000;
+  return incidents.filter(incident => {
+    const incidentStart = Date.parse(incident.started_at || incident.checked_at || '');
+    const incidentEnd = incident.resolved_at ? Date.parse(incident.resolved_at) : Date.now();
+    return Number.isFinite(incidentStart) && Number.isFinite(incidentEnd)
+      && incidentStart < end && incidentEnd >= start;
+  });
+}
+
+function incidentDescription(incident: PublicIncident): string {
+  const affected = incident.affected_features?.map(feature => feature === 'login' ? 'Anmeldung' : 'Module').join(', ');
+  const period = `${formatTimestamp(incident.started_at)} – ${incident.resolved_at ? formatTimestamp(incident.resolved_at) : 'noch aktiv'}`;
+  return [
+    `${statusLabels[incident.status]} · ${period}`,
+    affected ? `Betroffen: ${affected}` : '',
+    `${incident.checks ?? 1} bestätigte Messungen`,
+    incident.error || '',
+  ].filter(Boolean).join(' · ');
+}
 
 export default function StatusPage() {
   const [windowKey, setWindowKey] = useState<'24h' | '7d' | '30d' | '90d'>('90d');
@@ -37,13 +64,14 @@ export default function StatusPage() {
   } as const;
   const selectedWindowLabel = windowLabels[windowKey];
   const selectedDays = windowDays[windowKey];
-  const days = data?.daily.slice(-selectedDays)
-    ?? Array.from({ length: selectedDays }, (_, index) => ({ day: String(index), status: 'unknown' as const }));
-  const latestDay = days[0] ?? { day: 'unknown', status: 'unknown' as const };
-  const historyDays = windowKey === '24h'
-    ? Array.from({ length: 48 }, (_, index) => ({ ...latestDay, day: `${latestDay.day}-${index}` }))
+  const days: HistoryDay[] = (data?.daily.slice(-selectedDays)
+    ?? Array.from({ length: selectedDays }, (_, index) => ({ day: String(index), status: 'unknown' as const })))
+    .map(day => ({ ...day, sourceDay: day.day }));
+  const latestDay: HistoryDay = days[0] ?? { day: 'unknown', sourceDay: 'unknown', status: 'unknown' };
+  const historyDays: HistoryDay[] = windowKey === '24h'
+    ? Array.from({ length: 48 }, (_, index) => ({ ...latestDay, day: `${latestDay.day}-${index}`, sourceDay: latestDay.sourceDay }))
     : windowKey === '7d'
-      ? days.flatMap(day => Array.from({ length: 4 }, (_, index) => ({ ...day, day: `${day.day}-${index}` })))
+      ? days.flatMap(day => Array.from({ length: 4 }, (_, index) => ({ ...day, day: `${day.day}-${index}`, sourceDay: day.sourceDay })))
       : days;
   const services = [
     { name: 'LANIS', state: data ? 'up' as const : 'unknown' as const },
@@ -134,13 +162,28 @@ export default function StatusPage() {
               aria-label={`Statusverlauf der letzten ${selectedWindowLabel}`}
               data-status-history
             >
-              {historyDays.map(day => (
-                <span
-                  key={day.day}
-                  title={`${day.day}: ${statusLabels[day.status]}`}
-                  className={`min-w-0 ${historyBubbleClasses[windowKey]} ${statusColors[day.status]} transition-transform hover:scale-110`}
-                />
-              ))}
+              {historyDays.map(day => {
+                const dayIncidents = day.status === 'degraded' || day.status === 'down'
+                  ? incidentsForDay(data?.incidents ?? [], day.sourceDay)
+                  : [];
+                const tooltipId = `incident-${day.day}`;
+                return (
+                  <span
+                    key={day.day}
+                    tabIndex={dayIncidents.length ? 0 : undefined}
+                    aria-describedby={dayIncidents.length ? tooltipId : undefined}
+                    title={`${day.sourceDay}: ${statusLabels[day.status]}${dayIncidents.length ? ` · ${dayIncidents.map(incidentDescription).join(' | ')}` : ''}`}
+                    className={`group relative min-w-0 outline-none ${historyBubbleClasses[windowKey]} ${statusColors[day.status]} transition-transform hover:scale-110 focus-visible:z-10 focus-visible:scale-110 focus-visible:ring-2 focus-visible:ring-primary-500`}
+                  >
+                    {dayIncidents.length > 0 && (
+                      <span id={tooltipId} role="tooltip" className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-2 hidden w-72 -translate-x-1/2 rounded-xl border border-surface-200 bg-white p-3 text-left text-xs leading-relaxed text-surface-700 shadow-xl group-hover:block group-focus:block dark:border-surface-700 dark:bg-surface-900 dark:text-surface-200">
+                        <span className="mb-1 block font-semibold">Störung am {day.sourceDay}</span>
+                        {dayIncidents.map((incident, index) => <span key={`${incident.started_at}-${index}`} className="block">{incidentDescription(incident)}</span>)}
+                      </span>
+                    )}
+                  </span>
+                );
+              })}
             </div>
 
             <div className="mt-5 flex flex-wrap gap-4 text-xs text-surface-500">
