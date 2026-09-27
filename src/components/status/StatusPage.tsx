@@ -28,15 +28,11 @@ function incidentsForDay(incidents: PublicIncident[], day: string): PublicIncide
   });
 }
 
-function incidentDescription(incident: PublicIncident): string {
-  const affected = incident.affected_features?.map(feature => feature === 'login' ? 'Anmeldung' : 'Module').join(', ');
-  const period = `${formatTimestamp(incident.started_at)} – ${incident.resolved_at ? formatTimestamp(incident.resolved_at) : 'noch aktiv'}`;
-  return [
-    `${statusLabels[incident.status]} · ${period}`,
-    affected ? `Betroffen: ${affected}` : '',
-    `${incident.checks ?? 1} bestätigte Messungen`,
-    incident.error || '',
-  ].filter(Boolean).join(' · ');
+function formatIncidentDay(day: string): string {
+  const timestamp = Date.parse(`${day}T00:00:00Z`);
+  return Number.isFinite(timestamp)
+    ? new Date(timestamp).toLocaleDateString('de-DE', { day: '2-digit', month: 'short', year: 'numeric' })
+    : day;
 }
 
 export default function StatusPage() {
@@ -172,13 +168,27 @@ export default function StatusPage() {
                     key={day.day}
                     tabIndex={dayIncidents.length ? 0 : undefined}
                     aria-describedby={dayIncidents.length ? tooltipId : undefined}
-                    title={`${day.sourceDay}: ${statusLabels[day.status]}${dayIncidents.length ? ` · ${dayIncidents.map(incidentDescription).join(' | ')}` : ''}`}
                     className={`group relative min-w-0 outline-none ${historyBubbleClasses[windowKey]} ${statusColors[day.status]} transition-transform hover:scale-110 focus-visible:z-10 focus-visible:scale-110 focus-visible:ring-2 focus-visible:ring-primary-500`}
                   >
                     {dayIncidents.length > 0 && (
-                      <span id={tooltipId} role="tooltip" className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-2 hidden w-72 -translate-x-1/2 rounded-xl border border-surface-200 bg-white p-3 text-left text-xs leading-relaxed text-surface-700 shadow-xl group-hover:block group-focus:block dark:border-surface-700 dark:bg-surface-900 dark:text-surface-200">
-                        <span className="mb-1 block font-semibold">Störung am {day.sourceDay}</span>
-                        {dayIncidents.map((incident, index) => <span key={`${incident.started_at}-${index}`} className="block">{incidentDescription(incident)}</span>)}
+                      <span id={tooltipId} role="tooltip" className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-2 hidden w-72 -translate-x-1/2 rounded-xl border border-surface-200 bg-white p-3 text-left text-xs text-surface-700 shadow-xl group-hover:block group-focus:block dark:border-surface-700 dark:bg-surface-900 dark:text-surface-200">
+                        <span className="mb-3 block text-[10px] font-semibold uppercase tracking-[0.12em] text-surface-400">Störung · {formatIncidentDay(day.sourceDay)}</span>
+                        <span className="space-y-3">
+                          {dayIncidents.map((incident, index) => (
+                            <span key={`${incident.started_at}-${index}`} className="block border-t border-surface-100 pt-3 first:border-0 first:pt-0 dark:border-surface-800">
+                              <span className="flex items-center gap-2 font-semibold text-surface-900 dark:text-surface-100">
+                                <span className={`h-2 w-2 shrink-0 rounded-full ${statusColors[incident.status]}`} />
+                                {statusLabels[incident.status]}
+                              </span>
+                              <span className="mt-1 block text-[11px] text-surface-500">{formatTimestamp(incident.started_at)} – {incident.resolved_at ? formatTimestamp(incident.resolved_at) : 'Noch aktiv'}</span>
+                              <span className="mt-2 flex flex-wrap gap-1.5">
+                                {incident.affected_features?.map(feature => <span key={feature} className="rounded-md bg-surface-100 px-1.5 py-0.5 text-[10px] font-medium text-surface-600 dark:bg-surface-800 dark:text-surface-300">{feature === 'login' ? 'Anmeldung' : 'Module'}</span>)}
+                                <span className="rounded-md bg-surface-100 px-1.5 py-0.5 text-[10px] text-surface-500 dark:bg-surface-800 dark:text-surface-400">{incident.checks ?? 1} bestätigte Checks</span>
+                              </span>
+                              {incident.error && <code className="mt-2 block break-words rounded-md bg-surface-50 px-2 py-1 text-[10px] text-surface-500 dark:bg-surface-950 dark:text-surface-400">{incident.error}</code>}
+                            </span>
+                          ))}
+                        </span>
                       </span>
                     )}
                   </span>
