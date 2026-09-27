@@ -5,6 +5,8 @@ import SEO from '../seo/SEO';
 import {
   formatPercent,
   formatTimestamp,
+  getEffectiveDailyStatus,
+  incidentsForDay,
   statusColors,
   statusLabels,
   PublicIncident,
@@ -15,19 +17,6 @@ import {
 import { getCustomBackendUrl } from '../../utils/backendConfig';
 
 type HistoryDay = { day: string; sourceDay: string; status: ServiceStatus };
-const statusSeverity: Record<ServiceStatus, number> = { unknown: 0, up: 1, degraded: 2, down: 3 };
-
-function incidentsForDay(incidents: PublicIncident[], day: string): PublicIncident[] {
-  const start = Date.parse(`${day}T00:00:00Z`);
-  if (!Number.isFinite(start)) return [];
-  const end = start + 24 * 60 * 60 * 1000;
-  return incidents.filter(incident => {
-    const incidentStart = Date.parse(incident.started_at || incident.checked_at || '');
-    const incidentEnd = incident.resolved_at ? Date.parse(incident.resolved_at) : Date.now();
-    return Number.isFinite(incidentStart) && Number.isFinite(incidentEnd)
-      && incidentStart < end && incidentEnd >= start;
-  });
-}
 
 function formatIncidentDay(day: string): string {
   const timestamp = Date.parse(`${day}T00:00:00Z`);
@@ -71,13 +60,7 @@ export default function StatusPage() {
       ? days.flatMap(day => Array.from({ length: 4 }, (_, index) => ({ ...day, day: `${day.day}-${index}`, sourceDay: day.sourceDay })))
       : days;
   const statusForHistoryDay = (day: HistoryDay): ServiceStatus => {
-    const incidentStatus = incidentsForDay(data?.incidents ?? [], day.sourceDay)
-      .reduce<ServiceStatus | null>((strongest, incident) => (
-        !strongest || statusSeverity[incident.status] > statusSeverity[strongest] ? incident.status : strongest
-      ), null);
-    return incidentStatus && statusSeverity[incidentStatus] > statusSeverity[day.status]
-      ? incidentStatus
-      : day.status;
+    return getEffectiveDailyStatus(day.sourceDay, day.status, data?.incidents ?? []);
   };
   const services = [
     { name: 'LANIS', state: data ? 'up' as const : 'unknown' as const },

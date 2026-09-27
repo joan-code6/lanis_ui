@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { formatPercent, statusColors, statusLabels, usePublicStatus } from '../../services/publicStatus';
+import { formatPercent, getEffectiveDailyStatus, statusColors, statusLabels, usePublicStatus } from '../../services/publicStatus';
 
 export default function UptimePreview() {
   const { data, status } = usePublicStatus();
@@ -26,13 +26,16 @@ export default function UptimePreview() {
           </p>
         </div>
         <div className="mt-6 grid grid-cols-[repeat(15,minmax(0,1fr))] gap-2" aria-hidden="true" data-status-history>
-          {days.map(day => (
-            <span
-              key={day.day}
-              title={`${day.day}: ${statusLabels[day.status]}`}
-              className={`aspect-square rounded-full ${statusColors[day.status]}`}
-            />
-          ))}
+          {days.map(day => {
+            const effectiveStatus = getEffectiveDailyStatus(day.day, day.status, data?.incidents ?? []);
+            return (
+              <span
+                key={day.day}
+                title={`${day.day}: ${statusLabels[effectiveStatus]}`}
+                className={`aspect-square rounded-full ${statusColors[effectiveStatus]}`}
+              />
+            );
+          })}
         </div>
         <div className="mt-5 flex items-center justify-between text-xs text-surface-500">
           <span>Letzte 90 Tage</span>
