@@ -7,6 +7,7 @@ interface SEOProps {
   path?: string;
   image?: string;
   noindex?: boolean;
+  structuredData?: Record<string, unknown>;
 }
 
 const SITE_NAME = 'Lanis';
@@ -19,6 +20,7 @@ const SEO: React.FC<SEOProps> = ({
   path = '/',
   image = DEFAULT_IMAGE,
   noindex = false,
+  structuredData,
 }) => {
   const isStandalone =
     window.matchMedia('(display-mode: standalone)').matches ||
@@ -31,6 +33,7 @@ const SEO: React.FC<SEOProps> = ({
     <Helmet>
       <title>{fullTitle}</title>
       <meta name="description" content={description} />
+      {structuredData && <script type="application/ld+json">{JSON.stringify(structuredData)}</script>}
 
       <link rel="canonical" href={url} />
 

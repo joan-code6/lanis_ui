@@ -44,6 +44,30 @@ export const statusLabels: Record<ServiceStatus, string> = {
 export const statusColors: Record<ServiceStatus, string> = {
   up: 'bg-emerald-500', degraded: 'bg-amber-500', down: 'bg-rose-500', unknown: 'bg-surface-300 dark:bg-surface-600',
 };
+const statusSeverity: Record<ServiceStatus, number> = { unknown: 0, up: 1, degraded: 2, down: 3 };
+export function incidentsForDay(incidents: PublicIncident[], day: string): PublicIncident[] {
+  const start = Date.parse(`${day}T00:00:00Z`);
+  if (!Number.isFinite(start)) return [];
+  const end = start + 24 * 60 * 60 * 1000;
+  return incidents.filter(incident => {
+    const incidentStart = Date.parse(incident.started_at || incident.checked_at || '');
+    const hasResolution = Object.prototype.hasOwnProperty.call(incident, 'resolved_at');
+    const incidentEnd = !hasResolution
+      ? incidentStart + 1
+      : incident.resolved_at ? Date.parse(incident.resolved_at) : Date.now();
+    return Number.isFinite(incidentStart) && Number.isFinite(incidentEnd)
+      && incidentStart < end && incidentEnd > start;
+  });
+}
+export function getEffectiveDailyStatus(day: string, dailyStatus: ServiceStatus, incidents: PublicIncident[]): ServiceStatus {
+  const incidentStatus = incidentsForDay(incidents, day)
+    .reduce<ServiceStatus | null>((strongest, incident) => (
+      !strongest || statusSeverity[incident.status] > statusSeverity[strongest] ? incident.status : strongest
+    ), null);
+  return incidentStatus && statusSeverity[incidentStatus] > statusSeverity[dailyStatus]
+    ? incidentStatus
+    : dailyStatus;
+}
 export function formatTimestamp(value: string | null): string {
   return value && Number.isFinite(Date.parse(value))
     ? new Date(value).toLocaleString('de-DE', { dateStyle: 'medium', timeStyle: 'short' }) : 'Noch keine Messung';
