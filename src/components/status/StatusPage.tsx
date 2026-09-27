@@ -69,7 +69,11 @@ export default function StatusPage() {
 
   return (
     <div className="min-h-[100dvh] bg-surface-50 text-surface-900 dark:bg-surface-950 dark:text-surface-100">
-      <SEO title="Status" description="Aktueller Status von LANIS und Schulportal Hessen." path="/status" />
+      <SEO
+        title="Schulportal Hessen Status & Uptime"
+        description="Schulportal Hessen Statusseite mit Uptime, Verfügbarkeit und aktuellen Störungen. Ein Status-Feature von Lanis für das SPH mit 24-Stunden-, 7-, 30- und 90-Tage-Verlauf."
+        path="/status"
+      />
       <div className="mx-auto max-w-4xl px-5 py-7 sm:px-8">
         <nav className="flex items-center justify-between" aria-label="Status-Navigation">
           <Link to="/" className="flex items-center gap-2.5 font-semibold">
