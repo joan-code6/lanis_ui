@@ -15,6 +15,7 @@ import {
 import { getCustomBackendUrl } from '../../utils/backendConfig';
 
 type HistoryDay = { day: string; sourceDay: string; status: ServiceStatus };
+const statusSeverity: Record<ServiceStatus, number> = { unknown: 0, up: 1, degraded: 2, down: 3 };
 
 function incidentsForDay(incidents: PublicIncident[], day: string): PublicIncident[] {
   const start = Date.parse(`${day}T00:00:00Z`);
@@ -69,6 +70,15 @@ export default function StatusPage() {
     : windowKey === '7d'
       ? days.flatMap(day => Array.from({ length: 4 }, (_, index) => ({ ...day, day: `${day.day}-${index}`, sourceDay: day.sourceDay })))
       : days;
+  const statusForHistoryDay = (day: HistoryDay): ServiceStatus => {
+    const incidentStatus = incidentsForDay(data?.incidents ?? [], day.sourceDay)
+      .reduce<ServiceStatus | null>((strongest, incident) => (
+        !strongest || statusSeverity[incident.status] > statusSeverity[strongest] ? incident.status : strongest
+      ), null);
+    return incidentStatus && statusSeverity[incidentStatus] > statusSeverity[day.status]
+      ? incidentStatus
+      : day.status;
+  };
   const services = [
     { name: 'LANIS', state: data ? 'up' as const : 'unknown' as const },
     { name: 'Schulportal Hessen', state: status },
@@ -159,7 +169,8 @@ export default function StatusPage() {
               data-status-history
             >
               {historyDays.map(day => {
-                const dayIncidents = day.status === 'degraded' || day.status === 'down'
+                const dayStatus = statusForHistoryDay(day);
+                const dayIncidents = dayStatus === 'degraded' || dayStatus === 'down'
                   ? incidentsForDay(data?.incidents ?? [], day.sourceDay)
                   : [];
                 const tooltipId = `incident-${day.day}`;
@@ -168,10 +179,10 @@ export default function StatusPage() {
                     key={day.day}
                     tabIndex={dayIncidents.length ? 0 : undefined}
                     aria-describedby={dayIncidents.length ? tooltipId : undefined}
-                    className={`group relative min-w-0 outline-none ${historyBubbleClasses[windowKey]} ${statusColors[day.status]} transition-transform hover:scale-110 focus-visible:z-10 focus-visible:scale-110 focus-visible:ring-2 focus-visible:ring-primary-500`}
+                    className={`group relative min-w-0 outline-none ${historyBubbleClasses[windowKey]} ${statusColors[dayStatus]} transition-transform hover:scale-110 focus-visible:z-10 focus-visible:scale-110 focus-visible:ring-2 focus-visible:ring-primary-500`}
                   >
                     {dayIncidents.length > 0 && (
-                      <span id={tooltipId} role="tooltip" className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-2 hidden w-72 -translate-x-1/2 rounded-xl border border-surface-200 bg-white p-3 text-left text-xs text-surface-700 shadow-xl group-hover:block group-focus:block dark:border-surface-700 dark:bg-surface-900 dark:text-surface-200">
+                      <span id={tooltipId} role="tooltip" className="pointer-events-auto absolute bottom-full left-1/2 z-20 mb-0 hidden w-72 -translate-x-1/2 cursor-text select-text rounded-xl border border-surface-200 bg-white p-3 text-left text-xs text-surface-700 shadow-xl group-hover:block group-focus:block dark:border-surface-700 dark:bg-surface-900 dark:text-surface-200">
                         <span className="mb-3 block text-[10px] font-semibold uppercase tracking-[0.12em] text-surface-400">Störung · {formatIncidentDay(day.sourceDay)}</span>
                         <span className="space-y-3">
                           {dayIncidents.map((incident, index) => (
