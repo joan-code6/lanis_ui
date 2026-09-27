@@ -24,14 +24,14 @@ export default function StatusPage() {
   } as const;
   const windowDays = { '24h': 1, '7d': 7, '30d': 30, '90d': 90 } as const;
   const historyGridClasses = {
-    '24h': 'grid-cols-1 max-w-16 sm:max-w-20',
-    '7d': 'grid-cols-7 max-w-2xl gap-3 sm:gap-4',
+    '24h': 'grid-cols-[repeat(48,minmax(0,1fr))] gap-1',
+    '7d': 'grid-cols-[repeat(28,minmax(0,1fr))] gap-1',
     '30d': 'grid-cols-10 gap-2.5 sm:grid-cols-[repeat(15,minmax(0,1fr))] sm:gap-3',
     '90d': 'grid-cols-[repeat(15,minmax(0,1fr))] gap-2 sm:grid-cols-[repeat(18,minmax(0,1fr))] sm:gap-2.5',
   } as const;
   const historyBubbleClasses = {
-    '24h': 'h-14 w-14 sm:h-16 sm:w-16 ring-4 ring-surface-100 dark:ring-surface-900',
-    '7d': 'aspect-square rounded-full',
+    '24h': 'h-8 rounded-[2px]',
+    '7d': 'h-8 rounded-[2px]',
     '30d': 'aspect-square rounded-full',
     '90d': 'aspect-square rounded-full',
   } as const;
@@ -39,6 +39,12 @@ export default function StatusPage() {
   const selectedDays = windowDays[windowKey];
   const days = data?.daily.slice(-selectedDays)
     ?? Array.from({ length: selectedDays }, (_, index) => ({ day: String(index), status: 'unknown' as const }));
+  const latestDay = days[0] ?? { day: 'unknown', status: 'unknown' as const };
+  const historyDays = windowKey === '24h'
+    ? Array.from({ length: 48 }, (_, index) => ({ ...latestDay, day: `${latestDay.day}-${index}` }))
+    : windowKey === '7d'
+      ? days.flatMap(day => Array.from({ length: 4 }, (_, index) => ({ ...day, day: `${day.day}-${index}` })))
+      : days;
   const services = [
     { name: 'LANIS', state: data ? 'up' as const : 'unknown' as const },
     { name: 'Schulportal Hessen', state: status },
@@ -118,7 +124,7 @@ export default function StatusPage() {
               {([['24h', '24 Stunden'], ['7d', '7 Tage'], ['30d', '30 Tage'], ['90d', '90 Tage']] as const).map(([key, label]) => (
                 <button key={key} type="button" disabled={!data?.summary_windows?.[key] && key !== '90d'} aria-pressed={windowKey === key} onClick={() => setWindowKey(key)} className={`rounded-full border px-3 py-1.5 text-xs disabled:cursor-not-allowed disabled:opacity-50 ${windowKey === key ? 'border-primary-600 bg-primary-50 text-primary-700 dark:bg-primary-950 dark:text-primary-300' : 'border-surface-200 text-surface-500 dark:border-surface-700'}`}>{label}</button>
               ))}
-              {windowSummary?.latency?.overall?.median != null && <span className="ml-auto inline-flex shrink-0 items-center rounded-full border border-surface-200 bg-surface-50 px-3 py-1.5 font-mono text-[11px] tracking-tight text-surface-500 dark:border-surface-700 dark:bg-surface-900 dark:text-surface-400">Median {windowSummary.latency.overall.median} ms <span className="mx-1 text-surface-300 dark:text-surface-600">·</span> p95 {windowSummary.latency.overall.p95 ?? '—'} ms</span>}
+              {windowSummary?.latency?.overall?.median != null && <span className="ml-auto shrink-0 text-xs text-surface-500">Median {windowSummary.latency.overall.median} ms · p95 {windowSummary.latency.overall.p95 ?? '—'} ms</span>}
             </div>
 
             <div
@@ -126,7 +132,7 @@ export default function StatusPage() {
               aria-label={`Statusverlauf der letzten ${selectedWindowLabel}`}
               data-status-history
             >
-              {days.map(day => (
+              {historyDays.map(day => (
                 <span
                   key={day.day}
                   title={`${day.day}: ${statusLabels[day.status]}`}
