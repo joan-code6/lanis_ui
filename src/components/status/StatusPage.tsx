@@ -23,6 +23,18 @@ export default function StatusPage() {
     '90d': '90 Tage',
   } as const;
   const windowDays = { '24h': 1, '7d': 7, '30d': 30, '90d': 90 } as const;
+  const historyGridClasses = {
+    '24h': 'grid-cols-1 max-w-16 sm:max-w-20',
+    '7d': 'grid-cols-7 max-w-2xl gap-3 sm:gap-4',
+    '30d': 'grid-cols-10 gap-2.5 sm:grid-cols-[repeat(15,minmax(0,1fr))] sm:gap-3',
+    '90d': 'grid-cols-[repeat(15,minmax(0,1fr))] gap-2 sm:grid-cols-[repeat(18,minmax(0,1fr))] sm:gap-2.5',
+  } as const;
+  const historyBubbleClasses = {
+    '24h': 'h-14 w-14 sm:h-16 sm:w-16 ring-4 ring-surface-100 dark:ring-surface-900',
+    '7d': 'aspect-square rounded-full',
+    '30d': 'aspect-square rounded-full',
+    '90d': 'aspect-square rounded-full',
+  } as const;
   const selectedWindowLabel = windowLabels[windowKey];
   const selectedDays = windowDays[windowKey];
   const days = data?.daily.slice(-selectedDays)
@@ -102,16 +114,15 @@ export default function StatusPage() {
               </p>
             </div>
 
-            <div className="mt-4 flex flex-wrap gap-2" aria-label="Auswertungszeitraum">
+            <div className="mt-4 flex flex-wrap items-center gap-2" aria-label="Auswertungszeitraum">
               {([['24h', '24 Stunden'], ['7d', '7 Tage'], ['30d', '30 Tage'], ['90d', '90 Tage']] as const).map(([key, label]) => (
                 <button key={key} type="button" disabled={!data?.summary_windows?.[key] && key !== '90d'} aria-pressed={windowKey === key} onClick={() => setWindowKey(key)} className={`rounded-full border px-3 py-1.5 text-xs disabled:cursor-not-allowed disabled:opacity-50 ${windowKey === key ? 'border-primary-600 bg-primary-50 text-primary-700 dark:bg-primary-950 dark:text-primary-300' : 'border-surface-200 text-surface-500 dark:border-surface-700'}`}>{label}</button>
               ))}
-              {windowSummary?.latency?.overall?.median != null && <span className="self-center text-xs text-surface-500">Median {windowSummary.latency.overall.median} ms · p95 {windowSummary.latency.overall.p95 ?? '—'} ms</span>}
+              {windowSummary?.latency?.overall?.median != null && <span className="ml-auto inline-flex shrink-0 items-center rounded-full border border-surface-200 bg-surface-50 px-3 py-1.5 font-mono text-[11px] tracking-tight text-surface-500 dark:border-surface-700 dark:bg-surface-900 dark:text-surface-400">Median {windowSummary.latency.overall.median} ms <span className="mx-1 text-surface-300 dark:text-surface-600">·</span> p95 {windowSummary.latency.overall.p95 ?? '—'} ms</span>}
             </div>
 
-            <p className="mt-6 text-xs text-surface-500">Statusverlauf · {selectedWindowLabel}</p>
             <div
-              className="mt-3 grid grid-cols-[repeat(15,minmax(0,1fr))] gap-2 sm:grid-cols-[repeat(18,minmax(0,1fr))] sm:gap-2.5"
+              className={`mt-6 grid w-full items-center ${historyGridClasses[windowKey]}`}
               aria-label={`Statusverlauf der letzten ${selectedWindowLabel}`}
               data-status-history
             >
@@ -119,7 +130,7 @@ export default function StatusPage() {
                 <span
                   key={day.day}
                   title={`${day.day}: ${statusLabels[day.status]}`}
-                  className={`aspect-square rounded-full ${statusColors[day.status]}`}
+                  className={`min-w-0 ${historyBubbleClasses[windowKey]} ${statusColors[day.status]} transition-transform hover:scale-110`}
                 />
               ))}
             </div>
