@@ -51,9 +51,12 @@ export function incidentsForDay(incidents: PublicIncident[], day: string): Publi
   const end = start + 24 * 60 * 60 * 1000;
   return incidents.filter(incident => {
     const incidentStart = Date.parse(incident.started_at || incident.checked_at || '');
-    const incidentEnd = incident.resolved_at ? Date.parse(incident.resolved_at) : Date.now();
+    const hasResolution = Object.prototype.hasOwnProperty.call(incident, 'resolved_at');
+    const incidentEnd = !hasResolution
+      ? incidentStart + 1
+      : incident.resolved_at ? Date.parse(incident.resolved_at) : Date.now();
     return Number.isFinite(incidentStart) && Number.isFinite(incidentEnd)
-      && incidentStart < end && incidentEnd >= start;
+      && incidentStart < end && incidentEnd > start;
   });
 }
 export function getEffectiveDailyStatus(day: string, dailyStatus: ServiceStatus, incidents: PublicIncident[]): ServiceStatus {

@@ -31,7 +31,6 @@ export default function UptimePreview() {
             return (
               <span
                 key={day.day}
-                title={`${day.day}: ${statusLabels[effectiveStatus]}`}
                 className={`aspect-square rounded-full ${statusColors[effectiveStatus]}`}
               />
             );

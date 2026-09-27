@@ -21,7 +21,7 @@ type HistoryDay = { day: string; sourceDay: string; status: ServiceStatus };
 function formatIncidentDay(day: string): string {
   const timestamp = Date.parse(`${day}T00:00:00Z`);
   return Number.isFinite(timestamp)
-    ? new Date(timestamp).toLocaleDateString('de-DE', { day: '2-digit', month: 'short', year: 'numeric' })
+    ? new Date(timestamp).toLocaleDateString('de-DE', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' })
     : day;
 }
 
@@ -37,8 +37,8 @@ export default function StatusPage() {
   } as const;
   const windowDays = { '24h': 1, '7d': 7, '30d': 30, '90d': 90 } as const;
   const historyGridClasses = {
-    '24h': 'grid-cols-[repeat(48,minmax(0,1fr))] gap-1',
-    '7d': 'grid-cols-[repeat(28,minmax(0,1fr))] gap-1',
+    '24h': 'grid-cols-1 max-w-xs',
+    '7d': 'grid-cols-7 gap-1 sm:gap-2',
     '30d': 'grid-cols-10 gap-2.5 sm:grid-cols-[repeat(15,minmax(0,1fr))] sm:gap-3',
     '90d': 'grid-cols-[repeat(15,minmax(0,1fr))] gap-2 sm:grid-cols-[repeat(18,minmax(0,1fr))] sm:gap-2.5',
   } as const;
@@ -54,11 +54,7 @@ export default function StatusPage() {
     ?? Array.from({ length: selectedDays }, (_, index) => ({ day: String(index), status: 'unknown' as const })))
     .map(day => ({ ...day, sourceDay: day.day }));
   const latestDay: HistoryDay = days[0] ?? { day: 'unknown', sourceDay: 'unknown', status: 'unknown' };
-  const historyDays: HistoryDay[] = windowKey === '24h'
-    ? Array.from({ length: 48 }, (_, index) => ({ ...latestDay, day: `${latestDay.day}-${index}`, sourceDay: latestDay.sourceDay }))
-    : windowKey === '7d'
-      ? days.flatMap(day => Array.from({ length: 4 }, (_, index) => ({ ...day, day: `${day.day}-${index}`, sourceDay: day.sourceDay })))
-      : days;
+  const historyDays: HistoryDay[] = windowKey === '24h' ? [latestDay] : days;
   const statusForHistoryDay = (day: HistoryDay): ServiceStatus => {
     return getEffectiveDailyStatus(day.sourceDay, day.status, data?.incidents ?? []);
   };
@@ -130,7 +126,7 @@ export default function StatusPage() {
             <div className="flex items-end justify-between gap-4">
               <div>
                 <h2 id="history-title" className="text-xl font-semibold">Verfügbarkeit</h2>
-                <p className="mt-1 text-sm text-surface-500">Im ausgewählten Zeitraum</p>
+                <p className="mt-1 text-sm text-surface-500">Im ausgewählten Zeitraum · Datenabdeckung {formatPercent(windowSummary?.coverage_percent ?? null)}</p>
               </div>
               <div className="text-right">
                 <p className="text-3xl font-semibold tracking-tight">
@@ -151,21 +147,27 @@ export default function StatusPage() {
               aria-label={`Statusverlauf der letzten ${selectedWindowLabel}`}
               data-status-history
             >
-              {historyDays.map(day => {
+              {historyDays.map((day, index) => {
                 const dayStatus = statusForHistoryDay(day);
                 const dayIncidents = dayStatus === 'degraded' || dayStatus === 'down'
                   ? incidentsForDay(data?.incidents ?? [], day.sourceDay)
                   : [];
                 const tooltipId = `incident-${day.day}`;
+                const tooltipPosition = index === 0
+                  ? 'left-0 translate-x-0 sm:left-1/2 sm:-translate-x-1/2'
+                  : index === historyDays.length - 1
+                    ? 'right-0 left-auto translate-x-0 sm:left-1/2 sm:right-auto sm:-translate-x-1/2'
+                    : 'left-1/2 -translate-x-1/2';
                 return (
                   <span
                     key={day.day}
-                    tabIndex={dayIncidents.length ? 0 : undefined}
+                    tabIndex={0}
+                    aria-label={`${day.sourceDay}: ${statusLabels[dayStatus]}`}
                     aria-describedby={dayIncidents.length ? tooltipId : undefined}
                     className={`group relative min-w-0 outline-none ${historyBubbleClasses[windowKey]} ${statusColors[dayStatus]} transition-transform hover:scale-110 focus-visible:z-10 focus-visible:scale-110 focus-visible:ring-2 focus-visible:ring-primary-500`}
                   >
                     {dayIncidents.length > 0 && (
-                      <span id={tooltipId} role="tooltip" className="pointer-events-auto absolute bottom-full left-1/2 z-20 mb-0 hidden w-72 -translate-x-1/2 cursor-text select-text rounded-xl border border-surface-200 bg-white p-3 text-left text-xs text-surface-700 shadow-xl group-hover:block group-focus:block dark:border-surface-700 dark:bg-surface-900 dark:text-surface-200">
+                      <span id={tooltipId} role="tooltip" className={`pointer-events-auto absolute bottom-full z-20 mb-0 hidden w-72 cursor-text select-text rounded-xl border border-surface-200 bg-white p-3 text-left text-xs text-surface-700 shadow-xl group-hover:block group-focus:block dark:border-surface-700 dark:bg-surface-900 dark:text-surface-200 ${tooltipPosition}`}>
                         <span className="mb-3 block text-[10px] font-semibold uppercase tracking-[0.12em] text-surface-400">Störung · {formatIncidentDay(day.sourceDay)}</span>
                         <span className="space-y-3">
                           {dayIncidents.map((incident, index) => (
@@ -174,7 +176,7 @@ export default function StatusPage() {
                                 <span className={`h-2 w-2 shrink-0 rounded-full ${statusColors[incident.status]}`} />
                                 {statusLabels[incident.status]}
                               </span>
-                              <span className="mt-1 block text-[11px] text-surface-500">{formatTimestamp(incident.started_at)} – {incident.resolved_at ? formatTimestamp(incident.resolved_at) : 'Noch aktiv'}</span>
+                              <span className="mt-1 block text-[11px] text-surface-500">{formatTimestamp(incident.started_at || incident.checked_at || null)} – {Object.prototype.hasOwnProperty.call(incident, 'resolved_at') ? incident.resolved_at ? formatTimestamp(incident.resolved_at) : 'Noch aktiv' : 'Historische Messung'}</span>
                               <span className="mt-2 flex flex-wrap gap-1.5">
                                 {incident.affected_features?.map(feature => <span key={feature} className="rounded-md bg-surface-100 px-1.5 py-0.5 text-[10px] font-medium text-surface-600 dark:bg-surface-800 dark:text-surface-300">{feature === 'login' ? 'Anmeldung' : 'Module'}</span>)}
                                 <span className="rounded-md bg-surface-100 px-1.5 py-0.5 text-[10px] text-surface-500 dark:bg-surface-800 dark:text-surface-400">{incident.checks ?? 1} bestätigte Checks</span>
