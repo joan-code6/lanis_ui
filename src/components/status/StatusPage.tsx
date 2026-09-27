@@ -73,6 +73,20 @@ export default function StatusPage() {
         title="Schulportal Hessen Status & Uptime"
         description="Schulportal Hessen Statusseite mit Uptime, Verfügbarkeit und aktuellen Störungen. Ein Status-Feature von Lanis für das SPH mit 24-Stunden-, 7-, 30- und 90-Tage-Verlauf."
         path="/status"
+        structuredData={{
+          '@context': 'https://schema.org',
+          '@type': 'WebPage',
+          name: 'Schulportal Hessen Status & Uptime',
+          description: 'Uptime, Verfügbarkeit und aktuelle Störungen des Schulportal Hessen – ein Status-Feature von Lanis.',
+          url: 'https://lanis.arg-server.de/status',
+          isPartOf: { '@type': 'WebSite', name: 'Lanis', url: 'https://lanis.arg-server.de' },
+          about: {
+            '@type': 'Service',
+            name: 'Schulportal Hessen',
+            serviceType: 'Status- und Uptime-Monitoring',
+            provider: { '@type': 'Organization', name: 'Lanis', url: 'https://lanis.arg-server.de' },
+          },
+        }}
       />
       <div className="mx-auto max-w-4xl px-5 py-7 sm:px-8">
         <nav className="flex items-center justify-between" aria-label="Status-Navigation">
@@ -86,7 +100,7 @@ export default function StatusPage() {
         <main className="pb-16 pt-14 sm:pt-20">
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
-              <h1 className="text-4xl font-semibold tracking-tight">Status</h1>
+              <h1 className="text-4xl font-semibold tracking-tight">Schulportal Hessen Status</h1>
               {customBackend && <p className="mt-2 text-sm text-surface-500">Eigenes Backend</p>}
             </div>
             <button
