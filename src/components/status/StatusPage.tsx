@@ -16,8 +16,17 @@ export default function StatusPage() {
   const [windowKey, setWindowKey] = useState<'24h' | '7d' | '30d' | '90d'>('90d');
   const { data, loading, error, status, refresh } = usePublicStatus();
   const customBackend = getCustomBackendUrl();
-  const days = data?.daily.slice(-90)
-    ?? Array.from({ length: 90 }, (_, index) => ({ day: String(index), status: 'unknown' as const }));
+  const windowLabels = {
+    '24h': '24 Stunden',
+    '7d': '7 Tage',
+    '30d': '30 Tage',
+    '90d': '90 Tage',
+  } as const;
+  const windowDays = { '24h': 1, '7d': 7, '30d': 30, '90d': 90 } as const;
+  const selectedWindowLabel = windowLabels[windowKey];
+  const selectedDays = windowDays[windowKey];
+  const days = data?.daily.slice(-selectedDays)
+    ?? Array.from({ length: selectedDays }, (_, index) => ({ day: String(index), status: 'unknown' as const }));
   const services = [
     { name: 'LANIS', state: data ? 'up' as const : 'unknown' as const },
     { name: 'Schulportal Hessen', state: status },
@@ -86,9 +95,7 @@ export default function StatusPage() {
             <div className="flex items-end justify-between gap-4">
               <div>
                 <h2 id="history-title" className="text-xl font-semibold">Verfügbarkeit</h2>
-                <p className="mt-1 text-sm text-surface-500">
-                  Abdeckung {formatPercent(windowSummary?.coverage_percent ?? null)}
-                </p>
+                <p className="mt-1 text-sm text-surface-500">Im ausgewählten Zeitraum</p>
               </div>
               <p className="text-3xl font-semibold tracking-tight">
                 {formatPercent(windowSummary?.uptime_percent ?? null)}
@@ -102,10 +109,10 @@ export default function StatusPage() {
               {windowSummary?.latency?.overall?.median != null && <span className="self-center text-xs text-surface-500">Median {windowSummary.latency.overall.median} ms · p95 {windowSummary.latency.overall.p95 ?? '—'} ms</span>}
             </div>
 
-            <p className="mt-6 text-xs text-surface-500">Täglicher Status über die letzten 90 Tage</p>
+            <p className="mt-6 text-xs text-surface-500">Statusverlauf · {selectedWindowLabel}</p>
             <div
               className="mt-3 grid grid-cols-[repeat(15,minmax(0,1fr))] gap-2 sm:grid-cols-[repeat(18,minmax(0,1fr))] sm:gap-2.5"
-              aria-label="Täglicher Status der letzten 90 Tage"
+              aria-label={`Statusverlauf der letzten ${selectedWindowLabel}`}
               data-status-history
             >
               {days.map(day => (
