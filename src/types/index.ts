@@ -604,7 +604,7 @@ export interface AuthContextType {
   token: string | null;
   user: User | null;
   login: (credentials: LoginRequest) => Promise<boolean>;
-  logout: () => Promise<void>;
+  logout: (shouldClearStorage?: () => boolean) => Promise<void>;
   refreshToken: () => Promise<boolean>;
 }
 

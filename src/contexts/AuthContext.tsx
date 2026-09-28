@@ -150,7 +150,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }, []);
 
-  const logout = async () => {
+  const logout = async (shouldClearStorage: () => boolean = () => true) => {
     try {
       if (token) {
         try {
@@ -185,10 +185,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setToken(null);
       setUser(null);
       setIsAuthenticated(false);
-      localStorage.removeItem(ACCESS_TOKEN_KEY);
-      localStorage.removeItem(REFRESH_TOKEN_KEY);
-      localStorage.removeItem(TOKEN_EXPIRES_KEY);
-      localStorage.removeItem(USER_KEY);
+      if (shouldClearStorage()) {
+        localStorage.removeItem(ACCESS_TOKEN_KEY);
+        localStorage.removeItem(REFRESH_TOKEN_KEY);
+        localStorage.removeItem(TOKEN_EXPIRES_KEY);
+        localStorage.removeItem(USER_KEY);
+      }
     }
   };
 

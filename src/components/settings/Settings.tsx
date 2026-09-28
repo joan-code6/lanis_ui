@@ -263,7 +263,11 @@ const AccountSettings: React.FC = () => {
     if ('caches' in window) {
       cleanupTasks.push(Promise.resolve().then(async () => {
         const names = await caches.keys();
-        await Promise.all(names.map(name => caches.delete(name)));
+        await Promise.all(
+          names
+            .filter(name => !name.startsWith('lanis-ui-shell-'))
+            .map(name => caches.delete(name)),
+        );
       }));
     }
     await Promise.allSettled(cleanupTasks);
@@ -287,7 +291,7 @@ const AccountSettings: React.FC = () => {
       // The deleted server account must still be logged out if storage is unavailable.
     }
     try {
-      await logout();
+      await logout(() => ownsAccountDataDeletion(deletionGeneration));
     } catch {
       // The account is already deleted; always continue to the login screen.
     }
