@@ -252,6 +252,22 @@ const CourseExams: React.FC<{ exams?: string[] }> = ({ exams = [] }) => {
 
 const Courses: React.FC = () => {
   const { token } = useAuth();
+  const downloadCourseAttachment = async (event: React.MouseEvent<HTMLAnchorElement>, url: string) => {
+    const match = url.match(/\/meinunterricht\/file\/([a-f0-9]{64})(?:$|\?)/i);
+    if (!match || !token) return;
+    event.preventDefault();
+    try {
+      const blob = await coursesAPI.downloadFile(token, match[1]);
+      const objectUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = objectUrl;
+      link.download = 'lanis-attachment';
+      link.click();
+      URL.revokeObjectURL(objectUrl);
+    } catch (error) {
+      console.error('Could not download course attachment', error);
+    }
+  };
   const { preferences } = usePreferences();
   const navigate = useNavigate();
   const { id: courseIdFromUrl } = useParams();
@@ -1024,6 +1040,7 @@ const Courses: React.FC = () => {
                               <a
                                 key={index}
                                 href={file.url !== '#' ? file.url : undefined}
+                                onClick={(event) => downloadCourseAttachment(event, file.url)}
                                 className={clsx(
                                   "inline-flex items-center p-2.5 sm:p-3 rounded-lg border transition-all min-w-0 sm:min-w-48",
                                   file.url !== '#' 
@@ -1142,6 +1159,7 @@ const Courses: React.FC = () => {
                                 <a
                                   key={fileIndex}
                                   href={file.url !== '#' ? file.url : undefined}
+                                  onClick={(event) => downloadCourseAttachment(event, file.url)}
                                   className={clsx(
                                     "inline-flex items-center px-3 py-1.5 rounded-lg text-xs border",
                                     file.url !== '#'

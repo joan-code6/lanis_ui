@@ -92,6 +92,8 @@ const seedLocalStorage = () => {
         if (value === null) localStorage.removeItem(key);
         else localStorage.setItem(key, value);
       });
+    } else {
+      DEMO_STORAGE_KEYS.forEach(key => localStorage.removeItem(key));
     }
     if (tabId) writeDemoStorageSnapshot(tabId, null);
     return restoreAllowed ? valuesToRestore : null;
