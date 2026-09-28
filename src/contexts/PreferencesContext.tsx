@@ -15,6 +15,7 @@ export const DEFAULT_USER_PREFERENCES: UserPreferences = {
     pinned_modules: [],
     hidden_modules: [],
     view_mode: 'grid',
+    show_search: true,
     notifications_enabled: true,
     notification_messages_enabled: true,
     notification_native_enabled: true,

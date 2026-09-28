@@ -103,6 +103,7 @@ export interface UserPreferences {
     pinned_modules: string[];
     hidden_modules: string[];
     view_mode: DashboardViewMode;
+    show_search: boolean;
     notifications_enabled: boolean;
     notification_messages_enabled: boolean;
     notification_native_enabled: boolean;
