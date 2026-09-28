@@ -49,6 +49,7 @@ const Dashboard: React.FC = () => {
   const [selectedFolder, setSelectedFolder] = useState<string>('all');
   const [externalModule, setExternalModule] = useState<Module | null>(null);
   const viewMode = preferences.dashboard.view_mode;
+  const showSearch = preferences.dashboard.show_search;
   const [isEditMode, setIsEditMode] = useState(false);
   const pinnedModules = preferences.dashboard.pinned_modules;
   const hiddenModules = preferences.dashboard.hidden_modules;
@@ -209,6 +210,11 @@ const Dashboard: React.FC = () => {
     void updatePreferences({ dashboard: { hidden_modules: newHidden, pinned_modules: newPinned } });
   };
 
+  const toggleSearch = () => {
+    if (showSearch) setSearchTerm('');
+    void updatePreferences({ dashboard: { show_search: !showSearch } });
+  };
+
   const handleDragStart = (event: React.DragEvent, moduleName: string) => {
     event.dataTransfer.effectAllowed = 'move';
     event.dataTransfer.setData('text/plain', moduleName);
@@ -243,7 +249,7 @@ const Dashboard: React.FC = () => {
 
   const filteredModules = modules.filter((module) => {
     if (!isEditMode && hiddenModules.includes(module.name)) return false;
-    const matchesSearch = module.name.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = !showSearch || module.name.toLowerCase().includes(searchTerm.toLowerCase());
     const moduleFolders = module.folders.map(f => f.trim());
     const matchesFolder = selectedFolder === 'all' || moduleFolders.includes(selectedFolder);
     return matchesSearch && matchesFolder;
@@ -289,7 +295,6 @@ const Dashboard: React.FC = () => {
       />
       <div className="page-header">
         <h1 className="page-title">Dashboard</h1>
-        <p className="page-subtitle">Alle verfügbaren Apps und Module</p>
       </div>
 
       <DashboardNotifications />
@@ -301,22 +306,39 @@ const Dashboard: React.FC = () => {
       )}
 
       <div className="mb-6 flex flex-col sm:flex-row gap-3 sm:gap-4 items-stretch sm:items-center justify-between">
-        <div className="flex-1 max-w-sm lg:max-w-md relative w-full min-w-0">
-          <MagnifyingGlassIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-surface-400" />
-          <input
-            type="text"
-            placeholder="Apps und Module durchsuchen..."
-            className="input pl-10 text-sm"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+        <div className="relative w-full min-w-0 max-w-sm flex-1 lg:max-w-md">
+          {(showSearch || isEditMode) && (
+            <>
+              <MagnifyingGlassIcon className={clsx('absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2', showSearch ? 'text-surface-400' : 'text-surface-300 dark:text-surface-600')} />
+              <input
+                type="text"
+                placeholder={showSearch ? 'Apps und Module durchsuchen...' : 'Suche ausgeblendet'}
+                className={clsx('input w-full pl-10 text-sm', isEditMode && 'pr-12', !showSearch && 'cursor-not-allowed bg-surface-200 text-surface-500 opacity-50 dark:bg-surface-700 dark:text-surface-400')}
+                value={showSearch ? searchTerm : ''}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                disabled={!showSearch}
+              />
+              {isEditMode && (
+                <button
+                  type="button"
+                  onClick={toggleSearch}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-surface-500 transition-colors hover:bg-surface-100 hover:text-primary-600 dark:text-surface-400 dark:hover:bg-surface-700 dark:hover:text-primary-400"
+                  aria-label={showSearch ? 'Dashboard-Suche ausblenden' : 'Dashboard-Suche einblenden'}
+                  aria-pressed={showSearch}
+                  title={showSearch ? 'Suche ausblenden' : 'Suche einblenden'}
+                >
+                  {showSearch ? <EyeSlashIcon className="h-4 w-4" /> : <EyeIcon className="h-4 w-4" />}
+                </button>
+              )}
+            </>
+          )}
         </div>
 
         <div className="flex items-center gap-2 w-full sm:w-auto">
           <select
             value={selectedFolder}
             onChange={(e) => setSelectedFolder(e.target.value)}
-            className="input text-sm flex-1 min-w-0 sm:flex-none sm:w-auto sm:max-w-[200px]"
+            className="hidden input text-sm flex-1 min-w-0 sm:flex-none sm:w-auto sm:max-w-[200px]"
           >
             <option value="all">Alle Ordner</option>
             {folders.map((folder) => (
