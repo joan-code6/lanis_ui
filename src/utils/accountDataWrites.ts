@@ -53,6 +53,17 @@ export const ownsAccountDataDeletion = (generation: number): boolean => {
   return state.deleting && state.generation === generation;
 };
 
+export const hasAccountDataLoginSince = (generation: number): boolean => {
+  try {
+    const value = window.localStorage.getItem(ACCOUNT_DATA_GENERATION_KEY) || '';
+    const [generationText, state] = value.split(':', 3);
+    const currentGeneration = Number.parseInt(generationText, 10);
+    return state === 'login' && Number.isFinite(currentGeneration) && currentGeneration >= generation;
+  } catch {
+    return false;
+  }
+};
+
 export const canWriteAccountData = (generation: number): boolean => {
   const state = readGenerationState();
   if (!state.deleting) deletionInProgress = false;
@@ -80,7 +91,17 @@ export const restoreAccountDataDeletionState = (generation: number): void => {
 };
 
 export const finishAccountDataDeletion = (generation: number): void => {
-  if (readGenerationState().generation !== generation) return;
+  const current = readGenerationState();
+  if (current.generation > generation) return;
+  if (current.generation < generation && current.deleting) return;
+  try {
+    const marker = window.localStorage.getItem(ACCOUNT_DATA_GENERATION_KEY) || '';
+    const [generationText, state] = marker.split(':', 3);
+    const markedGeneration = Number.parseInt(generationText, 10);
+    if (state === 'login' && Number.isFinite(markedGeneration) && markedGeneration >= generation) return;
+  } catch {
+    // If storage is unavailable, the in-memory deletion guard still applies.
+  }
   if (deletionLeaseTimer !== undefined) window.clearInterval(deletionLeaseTimer);
   deletionLeaseTimer = undefined;
   const nextGeneration = generation + 1;
@@ -103,7 +124,7 @@ export const completeAccountDataDeletion = (): void => {
   try {
     window.localStorage.setItem(
       ACCOUNT_DATA_GENERATION_KEY,
-      `${generation}:active`,
+      `${generation}:login`,
     );
   } catch {
     // A successful login should not fail because this cache guard is unavailable.

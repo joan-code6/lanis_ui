@@ -9,6 +9,8 @@ import { getDemoTabId, keepDemoSessionAlive, readDemoStorageSnapshot, writeDemoS
 import type { ThemeColor, ThemeMode } from '../../types';
 import {
   ACCOUNT_DATA_GENERATION_KEY,
+  captureAccountDataGeneration,
+  hasAccountDataLoginSince,
   isAccountDataDeletionInProgress,
 } from '../../utils/accountDataWrites';
 
@@ -34,6 +36,17 @@ const DEMO_STORAGE_KEYS = [
   'lanis_oled_mode',
   'lanis_dark_mode',
   'lanis_theme_color',
+] as const;
+
+const DEMO_OWNED_STORAGE_KEYS = [
+  '__demo_mode',
+  'pinned_modules',
+  'profile_cache',
+  'messages_cache',
+  'courses_cache',
+  'username_cache',
+  'dsb_plan_cache_v2',
+  'modules_cache:demo%3Amia.keller',
 ] as const;
 
 const readAppearance = (values: Map<string, string | null>) => {
@@ -65,6 +78,8 @@ const seedLocalStorage = () => {
     DEMO_STORAGE_KEYS.map(key => [key, localStorage.getItem(key)]),
   );
   let restoreAllowed = !isAccountDataDeletionInProgress();
+  let deletionGeneration = restoreAllowed ? null : captureAccountDataGeneration();
+  const valuesOwnedByDemo = new Map<string, string | null>();
   if (!restoreAllowed && tabId) writeDemoStorageSnapshot(tabId, null);
   const handleExternalAuthRemoval = (event: StorageEvent) => {
     if (
@@ -72,6 +87,7 @@ const seedLocalStorage = () => {
       && isAccountDataDeletionInProgress()
     ) {
       restoreAllowed = false;
+      deletionGeneration = captureAccountDataGeneration();
       if (tabId) writeDemoStorageSnapshot(tabId, null);
     }
   };
@@ -85,6 +101,7 @@ const seedLocalStorage = () => {
   localStorage.setItem('profile_cache', JSON.stringify(demoUser));
   localStorage.setItem('modules_cache:demo%3Amia.keller', JSON.stringify(demoModules));
   ['messages_cache', 'courses_cache', 'username_cache', 'dsb_plan_cache_v2'].forEach(key => localStorage.removeItem(key));
+  DEMO_STORAGE_KEYS.forEach(key => valuesOwnedByDemo.set(key, localStorage.getItem(key)));
 
   return () => {
     window.removeEventListener('storage', handleExternalAuthRemoval);
@@ -97,7 +114,17 @@ const seedLocalStorage = () => {
         else localStorage.setItem(key, value);
       });
     } else {
-      DEMO_STORAGE_KEYS.forEach(key => localStorage.removeItem(key));
+      const loginHasSupersededDeletion = deletionGeneration !== null
+        && hasAccountDataLoginSince(deletionGeneration);
+      const keysToRemove = loginHasSupersededDeletion
+        ? DEMO_OWNED_STORAGE_KEYS
+        : DEMO_STORAGE_KEYS;
+      keysToRemove.forEach(key => {
+        const demoValue = valuesOwnedByDemo.get(key);
+        if (demoValue !== null && localStorage.getItem(key) === demoValue) {
+          localStorage.removeItem(key);
+        }
+      });
     }
     if (tabId) writeDemoStorageSnapshot(tabId, null);
     return restoreAllowed ? valuesToRestore : null;

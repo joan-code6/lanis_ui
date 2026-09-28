@@ -10,6 +10,8 @@ import {
   beginAccountDataDeletion,
   captureAccountDataGeneration,
   finishAccountDataDeletion,
+  hasAccountDataLoginSince,
+  isAccountDataDeletionInProgress,
   ownsAccountDataDeletion,
   restoreAccountDataDeletionState,
 } from '../../utils/accountDataWrites';
@@ -271,7 +273,13 @@ const AccountSettings: React.FC = () => {
       }));
     }
     await Promise.allSettled(cleanupTasks);
-    if (!ownsAccountDataDeletion(deletionGeneration)) {
+    if (
+      !ownsAccountDataDeletion(deletionGeneration)
+      && (
+        isAccountDataDeletionInProgress()
+        || hasAccountDataLoginSince(deletionGeneration)
+      )
+    ) {
       // A fresh login may have recovered the expired lease in another tab.
       // Never let this stale handler clear that newer browser session.
       window.location.replace('/login');
@@ -291,7 +299,13 @@ const AccountSettings: React.FC = () => {
       // The deleted server account must still be logged out if storage is unavailable.
     }
     try {
-      await logout(() => ownsAccountDataDeletion(deletionGeneration));
+      await logout(() => (
+        ownsAccountDataDeletion(deletionGeneration)
+        || (
+          !isAccountDataDeletionInProgress()
+          && !hasAccountDataLoginSince(deletionGeneration)
+        )
+      ));
     } catch {
       // The account is already deleted; always continue to the login screen.
     }
