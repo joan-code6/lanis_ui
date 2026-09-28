@@ -48,6 +48,11 @@ export const captureAccountDataGeneration = (): number => readGenerationState().
 
 export const isAccountDataDeletionInProgress = (): boolean => readGenerationState().deleting;
 
+export const ownsAccountDataDeletion = (generation: number): boolean => {
+  const state = readGenerationState();
+  return state.deleting && state.generation === generation;
+};
+
 export const canWriteAccountData = (generation: number): boolean => {
   const state = readGenerationState();
   if (!state.deleting) deletionInProgress = false;

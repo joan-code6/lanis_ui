@@ -10,6 +10,7 @@ import {
   beginAccountDataDeletion,
   captureAccountDataGeneration,
   finishAccountDataDeletion,
+  ownsAccountDataDeletion,
   restoreAccountDataDeletionState,
 } from '../../utils/accountDataWrites';
 import { useBasePath } from '../../contexts/BasePathContext';
@@ -257,7 +258,6 @@ const AccountSettings: React.FC = () => {
         if (!registration) return;
         const subscription = await registration.pushManager.getSubscription();
         if (subscription) await subscription.unsubscribe();
-        await registration.unregister();
       }));
     }
     if ('caches' in window) {
@@ -267,6 +267,12 @@ const AccountSettings: React.FC = () => {
       }));
     }
     await Promise.allSettled(cleanupTasks);
+    if (!ownsAccountDataDeletion(deletionGeneration)) {
+      // A fresh login may have recovered the expired lease in another tab.
+      // Never let this stale handler clear that newer browser session.
+      window.location.replace('/login');
+      return;
+    }
     try {
       // This URL identifies the user's chosen server, not account data. Keep
       // it so the next login is sent to the same backend after a reload.
