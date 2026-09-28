@@ -46,6 +46,8 @@ if (typeof window !== 'undefined') {
 
 export const captureAccountDataGeneration = (): number => readGenerationState().generation;
 
+export const isAccountDataDeletionInProgress = (): boolean => readGenerationState().deleting;
+
 export const canWriteAccountData = (generation: number): boolean => {
   const state = readGenerationState();
   if (!state.deleting) deletionInProgress = false;

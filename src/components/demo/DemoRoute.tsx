@@ -7,7 +7,10 @@ import Layout from '../layout/Layout';
 import { demoModules, demoPinnedModules, demoUser } from './demoData';
 import { getDemoTabId, keepDemoSessionAlive, readDemoStorageSnapshot, writeDemoStorageSnapshot } from '../../utils/demoMode';
 import type { ThemeColor, ThemeMode } from '../../types';
-import { ACCOUNT_DATA_GENERATION_KEY } from '../../utils/accountDataWrites';
+import {
+  ACCOUNT_DATA_GENERATION_KEY,
+  isAccountDataDeletionInProgress,
+} from '../../utils/accountDataWrites';
 
 const mockAuth = {
   isAuthenticated: true as const,
@@ -61,18 +64,19 @@ const seedLocalStorage = () => {
   const previous = storedSnapshot || new Map<string, string | null>(
     DEMO_STORAGE_KEYS.map(key => [key, localStorage.getItem(key)]),
   );
-  let restoreAllowed = true;
+  let restoreAllowed = !isAccountDataDeletionInProgress();
+  if (!restoreAllowed && tabId) writeDemoStorageSnapshot(tabId, null);
   const handleExternalAuthRemoval = (event: StorageEvent) => {
     if (
       event.key === ACCOUNT_DATA_GENERATION_KEY
-      && event.newValue?.split(':')[1] === 'deleting'
+      && isAccountDataDeletionInProgress()
     ) {
       restoreAllowed = false;
       if (tabId) writeDemoStorageSnapshot(tabId, null);
     }
   };
   window.addEventListener('storage', handleExternalAuthRemoval);
-  if (!storedSnapshot && tabId) {
+  if (!storedSnapshot && tabId && restoreAllowed) {
     writeDemoStorageSnapshot(tabId, Object.fromEntries(previous));
   }
 
