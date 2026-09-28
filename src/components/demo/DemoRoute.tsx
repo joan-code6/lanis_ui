@@ -65,7 +65,7 @@ const seedLocalStorage = () => {
   const handleExternalAuthRemoval = (event: StorageEvent) => {
     if (
       event.key === ACCOUNT_DATA_GENERATION_KEY
-      && event.newValue?.endsWith(':deleting')
+      && event.newValue?.split(':')[1] === 'deleting'
     ) {
       restoreAllowed = false;
       if (tabId) writeDemoStorageSnapshot(tabId, null);
