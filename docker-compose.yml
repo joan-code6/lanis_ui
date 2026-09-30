@@ -1,0 +1,11 @@
+services:
+  schulportal-ui:
+    build: .
+    container_name: lanis-ui
+    ports:
+      - "3000:3000"        # host:container — change the left side if 3000 is taken on your server
+    volumes:
+      - ./:/app            # live-mounts your project so code changes apply without rebuilding
+      - /app/node_modules  # keeps container's node_modules from being overwritten by the mount
+    restart: unless-stopped
+    # env_file: .env       # uncomment if your app reads env vars via docker instead of the .env file directly
