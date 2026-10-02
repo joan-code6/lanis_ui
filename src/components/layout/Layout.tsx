@@ -23,6 +23,8 @@ import {
   FolderIcon,
   MagnifyingGlassIcon,
   MinusIcon,
+  ChatBubbleBottomCenterTextIcon,
+  XMarkIcon as CloseIcon,
 } from '@heroicons/react/24/outline';
 import { Link, useLocation } from 'react-router-dom';
 import GlobalSearch from '../search/GlobalSearch';
@@ -59,6 +61,7 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
   ));
   const [isSearchOpen, setIsSearchOpen] = React.useState(false);
   const [showLogoutConfirmation, setShowLogoutConfirmation] = React.useState(false);
+  const [isFeedbackOpen, setIsFeedbackOpen] = React.useState(false);
   const [hasNativeDateispeicher, setHasNativeDateispeicher] = React.useState(false);
   const [hasNativeSubstitutionPlan, setHasNativeSubstitutionPlan] = React.useState(false);
   const [hasDsbModule, setHasDsbModule] = React.useState(false);
@@ -229,6 +232,7 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
         hasNativeSubstitutionPlan={hasNativeSubstitutionPlan}
         hasDsbModule={hasDsbModule}
       />
+      {isFeedbackOpen && <FeedbackDialog onClose={() => setIsFeedbackOpen(false)} />}
       <pwa-install
         ref={pwaRef}
         manifest-url={manifestUrl}
@@ -378,6 +382,18 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
             })}
           </nav>
           <div className="mt-auto pt-4 border-t border-surface-100 dark:border-surface-800">
+            <button
+              type="button"
+              onClick={() => setIsFeedbackOpen(true)}
+              className={`nav-link mb-1 text-surface-500 dark:text-surface-400 hover:text-surface-700 dark:hover:text-surface-300 ${isCollapsed ? 'mx-auto h-10 w-10 justify-center gap-0 px-0' : 'w-full'}`}
+              title={isCollapsed ? 'Feedback geben' : undefined}
+              aria-label="Feedback geben"
+            >
+              <ChatBubbleBottomCenterTextIcon className="nav-link-icon text-surface-400 dark:text-surface-500" />
+              <span className={`overflow-hidden whitespace-nowrap transition-[max-width,opacity] duration-300 ${isCollapsed ? 'max-w-0 opacity-0' : 'max-w-32 opacity-100'}`}>
+                Feedback geben
+              </span>
+            </button>
             <div className="relative">
               {showLogoutConfirmation && (
                 <div
@@ -424,5 +440,77 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
     );
   }
 };
+
+function FeedbackDialog({ onClose }: { onClose: () => void }) {
+  const [category, setCategory] = React.useState('Idee für eine Funktion');
+  const [summary, setSummary] = React.useState('');
+  const [details, setDetails] = React.useState('');
+  const [message, setMessage] = React.useState('');
+
+  React.useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [onClose]);
+
+  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!summary.trim() || !details.trim()) {
+      setMessage('Bitte gib einen kurzen Titel und eine Beschreibung ein.');
+      return;
+    }
+    setMessage('Das Feedback kann derzeit noch nicht gesendet werden. Die Backend-Anbindung folgt.');
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-[100] flex items-end justify-center bg-surface-950/50 p-0 backdrop-blur-sm sm:items-center sm:p-4"
+      onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}
+    >
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="feedback-title"
+        className="max-h-[92dvh] w-full overflow-y-auto rounded-t-2xl border border-surface-200 bg-white p-5 shadow-soft-lg dark:border-surface-700 dark:bg-surface-900 sm:max-w-lg sm:rounded-2xl sm:p-6"
+      >
+        <div className="mb-5 flex items-start justify-between gap-4">
+          <div>
+            <h2 id="feedback-title" className="text-lg font-semibold text-surface-900 dark:text-surface-100">Feedback geben</h2>
+            <p className="mt-1 text-sm text-surface-500 dark:text-surface-400">Was können wir verbessern? Ideen und Fehlermeldungen helfen uns weiter.</p>
+          </div>
+          <button type="button" onClick={onClose} aria-label="Schließen" className="rounded-lg p-2 text-surface-400 hover:bg-surface-100 hover:text-surface-700 dark:hover:bg-surface-800 dark:hover:text-surface-200">
+            <CloseIcon className="h-5 w-5" />
+          </button>
+        </div>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <label className="block text-sm font-medium text-surface-700 dark:text-surface-300">
+            Worum geht es?
+            <select value={category} onChange={(event) => setCategory(event.target.value)} className="input mt-1.5 w-full">
+              <option>Idee für eine Funktion</option>
+              <option>Fehler melden</option>
+              <option>Allgemeines Feedback</option>
+            </select>
+          </label>
+          <label className="block text-sm font-medium text-surface-700 dark:text-surface-300">
+            Kurzer Titel
+            <input value={summary} onChange={(event) => setSummary(event.target.value)} maxLength={120} required placeholder="Zum Beispiel: Stundenplan lässt sich nicht öffnen" className="input mt-1.5 w-full" />
+          </label>
+          <label className="block text-sm font-medium text-surface-700 dark:text-surface-300">
+            Beschreibung
+            <textarea value={details} onChange={(event) => setDetails(event.target.value)} required rows={5} maxLength={5000} placeholder="Beschreibe deine Idee oder was passiert ist …" className="input mt-1.5 w-full resize-y" />
+          </label>
+          {message && <p role="status" className="text-sm text-surface-600 dark:text-surface-300">{message}</p>}
+          <p className="text-xs text-surface-500 dark:text-surface-400">Das direkte Absenden von Feedback wird in Kürze verfügbar sein.</p>
+          <div className="flex justify-end gap-2 pt-1">
+            <button type="button" onClick={onClose} className="btn btn-secondary">Abbrechen</button>
+            <button type="submit" className="btn">Absenden</button>
+          </div>
+        </form>
+      </section>
+    </div>
+  );
+}
 
 export default Layout;
