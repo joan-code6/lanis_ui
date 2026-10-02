@@ -40,7 +40,7 @@ import {
 import { format, parseISO } from 'date-fns';
 import { de } from 'date-fns/locale';
 import clsx from 'clsx';
-import { isDemoRoute } from '../../utils/demoMode';
+import { isDemoRoute, notifyDemoCacheWrite } from '../../utils/demoMode';
 import { canWriteAccountData, captureAccountDataGeneration } from '../../utils/accountDataWrites';
 
 type ViewMode = 'overview' | 'course-detail' | 'weekly' | 'submissions' | 'entry-detail';
@@ -348,7 +348,9 @@ const Courses: React.FC = () => {
       if (response.success) {
         setCourses(response.entries);
         if (canWriteAccountData(writeGeneration)) {
-          localStorage.setItem('courses_cache', JSON.stringify(response.entries));
+          const cachedCourses = JSON.stringify(response.entries);
+          notifyDemoCacheWrite('courses_cache', cachedCourses);
+          localStorage.setItem('courses_cache', cachedCourses);
         }
       } else {
         setError('Fehler beim Laden der Kurse.');
@@ -381,7 +383,9 @@ const Courses: React.FC = () => {
           if (overview.success) {
             setCourses(overview.entries);
             if (canWriteAccountData(writeGeneration)) {
-              localStorage.setItem('courses_cache', JSON.stringify(overview.entries));
+              const cachedCourses = JSON.stringify(overview.entries);
+              notifyDemoCacheWrite('courses_cache', cachedCourses);
+              localStorage.setItem('courses_cache', cachedCourses);
             }
             const matchingCourse = overview.entries.find(course => course.book_id === courseId);
             if (matchingCourse?.name?.trim()) {
@@ -502,7 +506,9 @@ const Courses: React.FC = () => {
         c.entry_id === entryId ? { ...c, homework_done: newDone } : c
       );
       if (canWriteAccountData(writeGeneration)) {
-        localStorage.setItem('courses_cache', JSON.stringify(updated));
+        const cachedCourses = JSON.stringify(updated);
+        notifyDemoCacheWrite('courses_cache', cachedCourses);
+        localStorage.setItem('courses_cache', cachedCourses);
       }
     }
 

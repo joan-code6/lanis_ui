@@ -2,9 +2,16 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { AuthContextType, LoginRequest, User } from '../types';
 import { authAPI, notificationsAPI, unsubscribeBrowserPushSubscription } from '../services/api';
 import {
+  CUSTOM_BACKEND_STORAGE_KEY,
+  clearBackendScopedStorage,
+} from '../utils/backendConfig';
+import {
   canWriteAccountData,
   captureAccountDataGeneration,
   completeAccountDataDeletion,
+  finishAccountDataDeletion,
+  hasAccountDataDeletionMarker,
+  recordAccountDataDeletion,
   withAccountDataLifecycleLock,
 } from '../utils/accountDataWrites';
 
@@ -34,16 +41,76 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const savedToken = localStorage.getItem(ACCESS_TOKEN_KEY);
-    const savedUser = localStorage.getItem(USER_KEY);
+    let mounted = true;
+    const initializeAuth = async () => {
+      try {
+        await withAccountDataLifecycleLock(async () => {
+          if (hasAccountDataDeletionMarker()) {
+            const deletionGeneration = captureAccountDataGeneration();
+            const customBackendUrl = localStorage.getItem(CUSTOM_BACKEND_STORAGE_KEY);
+            recordAccountDataDeletion();
+            clearBackendScopedStorage();
+            for (let index = localStorage.length - 1; index >= 0; index -= 1) {
+              const key = localStorage.key(index);
+              if (
+                key
+                && key !== CUSTOM_BACKEND_STORAGE_KEY
+                && key !== '__lanis_account_data_generation'
+                && key !== '__lanis_account_deletion_epoch'
+              ) {
+                localStorage.removeItem(key);
+              }
+            }
+            if (customBackendUrl) localStorage.setItem(CUSTOM_BACKEND_STORAGE_KEY, customBackendUrl);
 
-    if (savedToken && savedUser) {
-      setToken(savedToken);
-      setUser(JSON.parse(savedUser));
-      setIsAuthenticated(true);
-    }
+            const cleanupTasks: Promise<unknown>[] = [];
+            if ('serviceWorker' in navigator) {
+              cleanupTasks.push(Promise.resolve().then(async () => {
+                const registration = await navigator.serviceWorker.getRegistration();
+                const subscription = await registration?.pushManager.getSubscription();
+                if (subscription) await subscription.unsubscribe();
+              }));
+            }
+            if ('caches' in window) {
+              cleanupTasks.push(Promise.resolve().then(async () => {
+                const names = await caches.keys();
+                await Promise.all(
+                  names
+                    .filter(name => !name.startsWith('lanis-ui-shell-'))
+                    .map(name => caches.delete(name)),
+                );
+              }));
+            }
+            await Promise.allSettled(cleanupTasks);
+            finishAccountDataDeletion(deletionGeneration);
+            setToken(null);
+            setUser(null);
+            setIsAuthenticated(false);
+            return;
+          }
 
-    setIsLoading(false);
+          const savedToken = localStorage.getItem(ACCESS_TOKEN_KEY);
+          const savedUser = localStorage.getItem(USER_KEY);
+          if (savedToken && savedUser) {
+            setToken(savedToken);
+            setUser(JSON.parse(savedUser));
+            setIsAuthenticated(true);
+          }
+        });
+      } catch (error) {
+        console.warn('Failed to restore a safe authentication state:', error);
+        setToken(null);
+        setUser(null);
+        setIsAuthenticated(false);
+      } finally {
+        if (mounted) setIsLoading(false);
+      }
+    };
+
+    void initializeAuth();
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   useEffect(() => {

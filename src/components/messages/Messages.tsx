@@ -19,7 +19,7 @@ import {
 import { format, parseISO } from 'date-fns';
 import { de } from 'date-fns/locale';
 import clsx from 'clsx';
-import { isDemoRoute } from '../../utils/demoMode';
+import { isDemoRoute, notifyDemoCacheWrite } from '../../utils/demoMode';
 import { canWriteAccountData, captureAccountDataGeneration } from '../../utils/accountDataWrites';
 
 const htmlToText = (value: unknown): string => {
@@ -106,7 +106,9 @@ const Messages: React.FC = () => {
   };
 
   const saveUsernameCache = (data: Record<string, string>) => {
-    localStorage.setItem(USERNAME_CACHE_KEY, JSON.stringify({ data, ts: Date.now() }));
+    const cachedUsername = JSON.stringify({ data, ts: Date.now() });
+    notifyDemoCacheWrite(USERNAME_CACHE_KEY, cachedUsername);
+    localStorage.setItem(USERNAME_CACHE_KEY, cachedUsername);
   };
 
   const usernameCache = useRef<Record<string, string>>(loadUsernameCache());
@@ -178,7 +180,9 @@ const Messages: React.FC = () => {
         const resolved = applyUsernameCache(transformedMessages);
         setMessages(resolved);
         if (canWriteAccountData(writeGeneration)) {
-          localStorage.setItem('messages_cache', JSON.stringify(resolved));
+          const cachedMessages = JSON.stringify(resolved);
+          notifyDemoCacheWrite('messages_cache', cachedMessages);
+          localStorage.setItem('messages_cache', cachedMessages);
         }
       } else {
         setError('Fehler beim Laden der Nachrichten.');

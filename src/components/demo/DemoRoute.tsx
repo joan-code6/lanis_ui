@@ -5,7 +5,7 @@ import { PreferencesProvider } from '../../contexts/PreferencesContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import Layout from '../layout/Layout';
 import { demoModules, demoPinnedModules, demoUser } from './demoData';
-import { getDemoTabId, keepDemoSessionAlive, readDemoStorageSnapshot, writeDemoStorageSnapshot } from '../../utils/demoMode';
+import { getDemoTabId, keepDemoSessionAlive, readDemoStorageSnapshot, registerDemoCacheWriteListener, writeDemoStorageSnapshot } from '../../utils/demoMode';
 import type { ThemeColor, ThemeMode } from '../../types';
 import {
   ACCOUNT_DATA_GENERATION_KEY,
@@ -102,6 +102,11 @@ const seedLocalStorage = () => {
   if (!storedSnapshot && tabId && restoreAllowed) {
     writeDemoStorageSnapshot(tabId, Object.fromEntries(previous));
   }
+  const stopTrackingDemoWrites = registerDemoCacheWriteListener((key, value) => {
+    if ((DEMO_OWNED_STORAGE_KEYS as readonly string[]).includes(key)) {
+      valuesOwnedByDemo.set(key, value);
+    }
+  });
 
   localStorage.setItem('__demo_mode', '1');
   localStorage.setItem('pinned_modules', JSON.stringify(demoPinnedModules));
@@ -111,6 +116,7 @@ const seedLocalStorage = () => {
   DEMO_STORAGE_KEYS.forEach(key => valuesOwnedByDemo.set(key, localStorage.getItem(key)));
 
   return () => {
+    stopTrackingDemoWrites();
     window.removeEventListener('storage', handleExternalAuthRemoval);
     const valuesToRestore = tabId && readDemoStorageSnapshot(tabId)
       ? new Map(Object.entries(readDemoStorageSnapshot(tabId) || {}))
@@ -131,7 +137,7 @@ const seedLocalStorage = () => {
         : DEMO_STORAGE_KEYS;
       keysToRemove.forEach(key => {
         const demoValue = valuesOwnedByDemo.get(key);
-        if (demoValue !== null && localStorage.getItem(key) === demoValue) {
+        if (demoValue !== null && demoValue !== undefined && localStorage.getItem(key) === demoValue) {
           localStorage.removeItem(key);
         }
       });

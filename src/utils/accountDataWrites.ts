@@ -153,6 +153,15 @@ export const captureAccountDataGeneration = (): number => readGenerationState().
 
 export const isAccountDataDeletionInProgress = (): boolean => readGenerationState().deleting;
 
+export const hasAccountDataDeletionMarker = (): boolean => {
+  try {
+    const marker = window.localStorage.getItem(ACCOUNT_DATA_GENERATION_KEY) || '';
+    return marker.split(':', 3)[1] === 'deleting';
+  } catch {
+    return deletionInProgress;
+  }
+};
+
 export const ownsAccountDataDeletion = (generation: number): boolean => {
   const state = readGenerationState();
   return state.deleting && state.generation === generation;

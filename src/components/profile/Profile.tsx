@@ -12,7 +12,7 @@ import {
   ShieldCheckIcon,
   InformationCircleIcon,
 } from '@heroicons/react/24/outline';
-import { isDemoRoute } from '../../utils/demoMode';
+import { isDemoRoute, notifyDemoCacheWrite } from '../../utils/demoMode';
 import { canWriteAccountData, captureAccountDataGeneration } from '../../utils/accountDataWrites';
 
 const Profile: React.FC = () => {
@@ -59,7 +59,9 @@ const Profile: React.FC = () => {
       if (response.success) {
         setUserDetails(response.data);
         if (canWriteAccountData(writeGeneration)) {
-          localStorage.setItem('profile_cache', JSON.stringify(response.data));
+          const cachedProfile = JSON.stringify(response.data);
+          notifyDemoCacheWrite('profile_cache', cachedProfile);
+          localStorage.setItem('profile_cache', cachedProfile);
         }
       } else {
         setError('Fehler beim Laden des Benutzerprofils.');
