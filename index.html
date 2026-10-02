@@ -22,29 +22,11 @@
         position: fixed;
         inset: 0;
         z-index: 2147483647;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 12px;
+        display: block;
         background: #fafafa;
-        color: #171717;
-        font: 500 18px/1.4 system-ui, sans-serif;
       }
-      html.dark.js-booting #boot-screen { background: #0a0a0a; color: #f5f5f5; }
+      html.dark.js-booting #boot-screen { background: #0a0a0a; }
       html.oled.js-booting #boot-screen { background: #000; }
-      #boot-screen::before {
-        content: "";
-        width: 20px;
-        height: 20px;
-        border: 2px solid currentColor;
-        border-right-color: transparent;
-        border-radius: 50%;
-        animation: boot-spin 0.8s linear infinite;
-      }
-      @keyframes boot-spin { to { transform: rotate(360deg); } }
-      @media (prefers-reduced-motion: reduce) {
-        #boot-screen::before { animation: none; }
-      }
     </style>
 
     <!-- Apply the stored appearance before React mounts to avoid a bright flash in OLED mode. -->
@@ -142,7 +124,7 @@
 
   </head>
   <body>
-    <div id="boot-screen" role="status" aria-label="Lanis wird geladen">Lanis</div>
+    <div id="boot-screen" aria-hidden="true"></div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
