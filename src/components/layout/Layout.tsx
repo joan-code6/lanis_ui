@@ -535,7 +535,6 @@ function FeedbackDialog({ token, onClose }: { token: string; onClose: () => void
             <textarea value={details} onChange={(event) => setDetails(event.target.value)} required rows={5} maxLength={5000} placeholder="Beschreibe deine Idee oder was passiert ist …" className="input mt-1.5 w-full resize-y" />
           </label>
           {message && <p role="status" className="text-sm text-surface-600 dark:text-surface-300">{message}</p>}
-          <p className="text-xs text-surface-500 dark:text-surface-400">Dein Benutzerkonto und die aktuelle Seite werden mitgesendet, damit wir dein Feedback zuordnen können.</p>
           <div className="flex justify-end gap-2 pt-1">
             <button type="button" onClick={onClose} className="btn btn-secondary">Abbrechen</button>
             <button type="submit" disabled={isSubmitting} className="btn disabled:cursor-not-allowed disabled:opacity-60">{isSubmitting ? 'Wird gesendet…' : 'Absenden'}</button>

@@ -194,15 +194,14 @@ const SidebarSettings: React.FC = () => {
   const { preferences, updatePreferences, isSaving } = usePreferences();
   const [order, setOrder] = useState(() => normalizeSidebarOrder(preferences.sidebar.order));
   const [hiddenItems, setHiddenItems] = useState<string[]>(() => preferences.sidebar.hidden_items);
-  const [showFeedbackButton, setShowFeedbackButton] = useState(() => preferences.sidebar.show_feedback_button);
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [saveState, setSaveState] = useState<SidebarSaveState>('idle');
+  const [feedbackSaveState, setFeedbackSaveState] = useState<SidebarSaveState>('idle');
 
   useEffect(() => {
     setOrder(normalizeSidebarOrder(preferences.sidebar.order));
     setHiddenItems(preferences.sidebar.hidden_items);
-    setShowFeedbackButton(preferences.sidebar.show_feedback_button);
-  }, [preferences.sidebar.order, preferences.sidebar.hidden_items, preferences.sidebar.show_feedback_button]);
+  }, [preferences.sidebar.order, preferences.sidebar.hidden_items]);
 
   const visibleOrder = order.filter(id => !hiddenItems.includes(id));
   const hiddenOrder = order.filter(id => hiddenItems.includes(id));
@@ -239,25 +238,29 @@ const SidebarSettings: React.FC = () => {
 
   const hasChanges = JSON.stringify(order) !== JSON.stringify(normalizeSidebarOrder(preferences.sidebar.order));
   const hasVisibilityChanges = JSON.stringify(hiddenItems) !== JSON.stringify(preferences.sidebar.hidden_items);
-  const hasFeedbackButtonChanges = showFeedbackButton !== preferences.sidebar.show_feedback_button;
-
   const applyOrder = async () => {
     setSaveState('idle');
-    const saved = await updatePreferences({ sidebar: { order, hidden_items: hiddenItems, show_feedback_button: showFeedbackButton } });
+    const saved = await updatePreferences({ sidebar: { order, hidden_items: hiddenItems } });
     setSaveState(saved ? 'saved' : 'error');
+  };
+
+  const toggleFeedbackButton = async () => {
+    setFeedbackSaveState('idle');
+    const saved = await updatePreferences({
+      sidebar: { show_feedback_button: !preferences.sidebar.show_feedback_button },
+    });
+    setFeedbackSaveState(saved ? 'saved' : 'error');
   };
 
   const cancelChanges = () => {
     setOrder(normalizeSidebarOrder(preferences.sidebar.order));
     setHiddenItems(preferences.sidebar.hidden_items);
-    setShowFeedbackButton(preferences.sidebar.show_feedback_button);
     setSaveState('idle');
   };
 
   const resetOrder = () => {
     setOrder([...DEFAULT_SIDEBAR_ORDER]);
     setHiddenItems([]);
-    setShowFeedbackButton(true);
     setSaveState('idle');
   };
 
@@ -284,6 +287,7 @@ const SidebarSettings: React.FC = () => {
   };
 
   return (
+    <div className="space-y-4">
     <section className="card !p-0 overflow-hidden">
       <div className="border-b border-surface-100 px-5 py-5 dark:border-surface-800 sm:px-6">
         <div className="flex items-start justify-between gap-4">
@@ -293,31 +297,10 @@ const SidebarSettings: React.FC = () => {
               Ziehe Einträge am Griff an ihre neue Position oder nutze die Pfeile. Blende Einträge aus, die du nicht brauchst.
             </p>
           </div>
-          {(hasChanges || hasVisibilityChanges || hasFeedbackButtonChanges) && (
+          {(hasChanges || hasVisibilityChanges) && (
             <span className="badge badge-primary shrink-0">Nicht gespeichert</span>
           )}
         </div>
-      </div>
-
-      <div className="flex items-center justify-between gap-4 border-b border-surface-100 px-5 py-4 dark:border-surface-800 sm:px-6">
-        <div>
-          <p className="text-sm font-medium text-surface-800 dark:text-surface-200">Feedback-Schaltfläche anzeigen</p>
-          <p className="mt-0.5 text-xs text-surface-500 dark:text-surface-400">Zeigt den Feedback-Eintrag unten in der Seitenleiste.</p>
-        </div>
-        <button
-          type="button"
-          role="switch"
-          aria-checked={showFeedbackButton}
-          aria-label="Feedback-Schaltfläche anzeigen"
-          onClick={() => {
-            setShowFeedbackButton(value => !value);
-            setSaveState('idle');
-          }}
-          disabled={isSaving}
-          className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500/40 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:focus:ring-offset-surface-900 ${showFeedbackButton ? 'bg-primary-600' : 'bg-surface-300 dark:bg-surface-700'}`}
-        >
-          <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${showFeedbackButton ? 'translate-x-5' : 'translate-x-0.5'}`} />
-        </button>
       </div>
 
       <ol className="space-y-2 bg-surface-50/70 p-3 dark:bg-surface-950/30 sm:p-4" aria-label="Reihenfolge der Seitenleiste">
@@ -423,7 +406,7 @@ const SidebarSettings: React.FC = () => {
             <button
               type="button"
               onClick={() => void applyOrder()}
-              disabled={(!hasChanges && !hasVisibilityChanges && !hasFeedbackButtonChanges && saveState !== 'error') || isSaving}
+              disabled={(!hasChanges && !hasVisibilityChanges && saveState !== 'error') || isSaving}
               className="btn btn-primary flex-1 disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none"
             >
               {isSaving ? 'Wird gespeichert…' : 'Änderungen speichern'}
@@ -445,6 +428,30 @@ const SidebarSettings: React.FC = () => {
         </div>
       </div>
     </section>
+    <section className="card">
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <h3 className="text-base font-semibold text-surface-900 dark:text-surface-100">Feedback-Schaltfläche</h3>
+          <p className="mt-1 text-sm text-surface-500 dark:text-surface-400">Zeigt den Feedback-Eintrag unten in der Seitenleiste.</p>
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={preferences.sidebar.show_feedback_button}
+          aria-label="Feedback-Schaltfläche anzeigen"
+          onClick={() => void toggleFeedbackButton()}
+          disabled={isSaving}
+          className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500/40 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:focus:ring-offset-surface-900 ${preferences.sidebar.show_feedback_button ? 'bg-primary-600' : 'bg-surface-300 dark:bg-surface-700'}`}
+        >
+          <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${preferences.sidebar.show_feedback_button ? 'translate-x-5' : 'translate-x-0.5'}`} />
+        </button>
+      </div>
+      <div className="mt-3 min-h-5 text-sm" aria-live="polite">
+        {feedbackSaveState === 'saved' && <p className="text-emerald-700 dark:text-emerald-400">Gespeichert und mit deinem Konto synchronisiert.</p>}
+        {feedbackSaveState === 'error' && <p className="text-amber-700 dark:text-amber-300">Lokal gespeichert, aber noch nicht mit deinem Konto synchronisiert. Die Synchronisierung wird erneut versucht.</p>}
+      </div>
+    </section>
+    </div>
   );
 };
 
