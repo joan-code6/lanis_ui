@@ -14,7 +14,17 @@ window.addEventListener('storage', (event) => {
   }
 })
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
+const appRoot = document.getElementById('root')!
+const bootObserver = new MutationObserver((mutations) => {
+  // Keep the cover during redirects, which can briefly leave the root empty.
+  if (mutations.some((mutation) => mutation.target === appRoot) && appRoot.childElementCount > 0) {
+    document.documentElement.classList.remove('js-booting')
+    bootObserver.disconnect()
+  }
+})
+bootObserver.observe(appRoot, { childList: true })
+
+ReactDOM.createRoot(appRoot).render(
   <React.StrictMode>
     <App />
   </React.StrictMode>,

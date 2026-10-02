@@ -13,8 +13,45 @@
     <meta name="robots" content="index, follow" />
     <link rel="canonical" href="https://lanis.arg-server.de/" />
 
+    <style>
+      /* JavaScript adds this class before the body is parsed. Without JavaScript,
+         the prerendered page remains visible to visitors and crawlers. */
+      #boot-screen { display: none; }
+      html.js-booting { overflow: hidden; }
+      html.js-booting #boot-screen {
+        position: fixed;
+        inset: 0;
+        z-index: 2147483647;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        background: #fafafa;
+        color: #171717;
+        font: 500 18px/1.4 system-ui, sans-serif;
+      }
+      html.dark.js-booting #boot-screen { background: #0a0a0a; color: #f5f5f5; }
+      html.oled.js-booting #boot-screen { background: #000; }
+      #boot-screen::before {
+        content: "";
+        width: 20px;
+        height: 20px;
+        border: 2px solid currentColor;
+        border-right-color: transparent;
+        border-radius: 50%;
+        animation: boot-spin 0.8s linear infinite;
+      }
+      @keyframes boot-spin { to { transform: rotate(360deg); } }
+      @media (prefers-reduced-motion: reduce) {
+        #boot-screen::before { animation: none; }
+      }
+    </style>
+
     <!-- Apply the stored appearance before React mounts to avoid a bright flash in OLED mode. -->
     <script>
+      document.documentElement.classList.add('js-booting');
+      // Reveal the static page if the app bundle never starts.
+      window.setTimeout(() => document.documentElement.classList.remove('js-booting'), 15000);
       try {
         const mode = localStorage.getItem('lanis_theme_mode');
         const oled = mode === 'oled' || (!mode && localStorage.getItem('lanis_oled_mode') === 'true');
@@ -105,6 +142,7 @@
 
   </head>
   <body>
+    <div id="boot-screen" role="status" aria-label="Lanis wird geladen">Lanis</div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
