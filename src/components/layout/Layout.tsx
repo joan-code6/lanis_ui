@@ -4,7 +4,7 @@ import { usePreferences } from '../../contexts/PreferencesContext';
 import { BasePathProvider } from '../../contexts/BasePathContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import DemoBar from '../demo/DemoBar';
-import { appsAPI } from '../../services/api';
+import { appsAPI, feedbackAPI, type FeedbackCategory } from '../../services/api';
 import axios from 'axios';
 import {
   HomeIcon,
@@ -232,7 +232,7 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
         hasNativeSubstitutionPlan={hasNativeSubstitutionPlan}
         hasDsbModule={hasDsbModule}
       />
-      {isFeedbackOpen && <FeedbackDialog onClose={() => setIsFeedbackOpen(false)} />}
+      {isFeedbackOpen && <FeedbackDialog token={token || ''} onClose={() => setIsFeedbackOpen(false)} />}
       <pwa-install
         ref={pwaRef}
         manifest-url={manifestUrl}
@@ -382,7 +382,7 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
             })}
           </nav>
           <div className="mt-auto pt-4 border-t border-surface-100 dark:border-surface-800">
-            {preferences.sidebar.show_feedback_button && (
+            {!isDemo && preferences.sidebar.show_feedback_button && (
               <button
                 type="button"
                 onClick={() => setIsFeedbackOpen(true)}
@@ -443,11 +443,13 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
   }
 };
 
-function FeedbackDialog({ onClose }: { onClose: () => void }) {
-  const [category, setCategory] = React.useState('Idee für eine Funktion');
+function FeedbackDialog({ token, onClose }: { token: string; onClose: () => void }) {
+  const [category, setCategory] = React.useState<FeedbackCategory>('feature');
   const [summary, setSummary] = React.useState('');
   const [details, setDetails] = React.useState('');
   const [message, setMessage] = React.useState('');
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [isSubmitted, setIsSubmitted] = React.useState(false);
 
   React.useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -457,13 +459,33 @@ function FeedbackDialog({ onClose }: { onClose: () => void }) {
     return () => document.removeEventListener('keydown', onKeyDown);
   }, [onClose]);
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!summary.trim() || !details.trim()) {
       setMessage('Bitte gib einen kurzen Titel und eine Beschreibung ein.');
       return;
     }
-    setMessage('Das Feedback kann derzeit noch nicht gesendet werden. Die Backend-Anbindung folgt.');
+    if (!token) {
+      setMessage('Melde dich an, um Feedback abzusenden.');
+      return;
+    }
+    setIsSubmitting(true);
+    setMessage('');
+    try {
+      await feedbackAPI.submit(token, {
+        category,
+        title: summary.trim(),
+        details: details.trim(),
+        page: window.location.pathname,
+      });
+      setIsSubmitted(true);
+    } catch (submitError) {
+      setMessage(axios.isAxiosError(submitError) && typeof submitError.response?.data?.detail === 'string'
+        ? submitError.response.data.detail
+        : 'Feedback konnte nicht gesendet werden. Bitte versuche es erneut.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -486,13 +508,22 @@ function FeedbackDialog({ onClose }: { onClose: () => void }) {
             <CloseIcon className="h-5 w-5" />
           </button>
         </div>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        {isSubmitted ? (
+          <div className="py-8 text-center">
+            <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400">
+              <ChatBubbleBottomCenterTextIcon className="h-6 w-6" />
+            </span>
+            <h3 className="mt-4 text-base font-semibold text-surface-900 dark:text-surface-100">Danke für dein Feedback!</h3>
+            <p className="mt-1 text-sm text-surface-500 dark:text-surface-400">Dein Beitrag ist bei uns angekommen.</p>
+            <button type="button" onClick={onClose} className="btn mt-5">Fertig</button>
+          </div>
+        ) : <form onSubmit={(event) => void handleSubmit(event)} className="space-y-4">
           <label className="block text-sm font-medium text-surface-700 dark:text-surface-300">
             Worum geht es?
             <select value={category} onChange={(event) => setCategory(event.target.value)} className="input mt-1.5 w-full">
-              <option>Idee für eine Funktion</option>
-              <option>Fehler melden</option>
-              <option>Allgemeines Feedback</option>
+              <option value="feature">Idee für eine Funktion</option>
+              <option value="bug">Fehler melden</option>
+              <option value="general">Allgemeines Feedback</option>
             </select>
           </label>
           <label className="block text-sm font-medium text-surface-700 dark:text-surface-300">
@@ -504,12 +535,12 @@ function FeedbackDialog({ onClose }: { onClose: () => void }) {
             <textarea value={details} onChange={(event) => setDetails(event.target.value)} required rows={5} maxLength={5000} placeholder="Beschreibe deine Idee oder was passiert ist …" className="input mt-1.5 w-full resize-y" />
           </label>
           {message && <p role="status" className="text-sm text-surface-600 dark:text-surface-300">{message}</p>}
-          <p className="text-xs text-surface-500 dark:text-surface-400">Das direkte Absenden von Feedback wird in Kürze verfügbar sein.</p>
+          <p className="text-xs text-surface-500 dark:text-surface-400">Dein Benutzerkonto und die aktuelle Seite werden mitgesendet, damit wir dein Feedback zuordnen können.</p>
           <div className="flex justify-end gap-2 pt-1">
             <button type="button" onClick={onClose} className="btn btn-secondary">Abbrechen</button>
-            <button type="submit" className="btn">Absenden</button>
+            <button type="submit" disabled={isSubmitting} className="btn disabled:cursor-not-allowed disabled:opacity-60">{isSubmitting ? 'Wird gesendet…' : 'Absenden'}</button>
           </div>
-        </form>
+        </form>}
       </section>
     </div>
   );
