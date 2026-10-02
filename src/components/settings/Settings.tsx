@@ -16,6 +16,7 @@ import {
   isAccountDataDeletionInProgress,
   ownsAccountDataDeletion,
   recordAccountDataDeletion,
+  withAccountDataLifecycleLock,
 } from '../../utils/accountDataWrites';
 import { useBasePath } from '../../contexts/BasePathContext';
 import { usePreferences } from '../../contexts/PreferencesContext';
@@ -332,11 +333,12 @@ const AccountSettings: React.FC = () => {
   };
 
   const deleteAccount = async () => {
-    if ('locks' in navigator) {
-      await navigator.locks.request('lanis-account-deletion', performAccountDeletion);
-      return;
+    try {
+      await withAccountDataLifecycleLock(performAccountDeletion);
+    } catch {
+      setError('Kontoänderungen können in diesem Browser gerade nicht sicher koordiniert werden. Bitte versuche es erneut.');
+      setDeleting(false);
     }
-    await performAccountDeletion();
   };
 
   return <div className="space-y-6">

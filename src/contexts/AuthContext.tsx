@@ -5,6 +5,7 @@ import {
   canWriteAccountData,
   captureAccountDataGeneration,
   completeAccountDataDeletion,
+  withAccountDataLifecycleLock,
 } from '../utils/accountDataWrites';
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -77,15 +78,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       const response = await authAPI.login(credentials);
 
-      if (!canWriteAccountData(writeGeneration)) {
-        try {
-          await authAPI.logout(response.access_token);
-        } catch {
-          // The server may already have revoked this session during deletion.
-        }
-        return false;
-      }
-
       const expiresAt = Date.now() + response.expires_in * 1000;
 
       const basicUser = {
@@ -93,15 +85,27 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         school_id: response.school_id,
         encryption_ready: response.encryption_ready.toString(),
       };
-      setToken(response.access_token);
-      setUser(basicUser);
-      setIsAuthenticated(true);
+      const loginPublished = await withAccountDataLifecycleLock(async () => {
+        if (!canWriteAccountData(writeGeneration)) return false;
+        if (!completeAccountDataDeletion(writeGeneration)) return false;
+        setToken(response.access_token);
+        setUser(basicUser);
+        setIsAuthenticated(true);
+        localStorage.setItem(ACCESS_TOKEN_KEY, response.access_token);
+        localStorage.setItem(REFRESH_TOKEN_KEY, response.refresh_token);
+        localStorage.setItem(TOKEN_EXPIRES_KEY, expiresAt.toString());
+        localStorage.setItem(USER_KEY, JSON.stringify(basicUser));
+        return true;
+      });
 
-      localStorage.setItem(ACCESS_TOKEN_KEY, response.access_token);
-      localStorage.setItem(REFRESH_TOKEN_KEY, response.refresh_token);
-      localStorage.setItem(TOKEN_EXPIRES_KEY, expiresAt.toString());
-      localStorage.setItem(USER_KEY, JSON.stringify(basicUser));
-      completeAccountDataDeletion();
+      if (!loginPublished) {
+        try {
+          await authAPI.logout(response.access_token);
+        } catch {
+          // The server may already have revoked this session during deletion.
+        }
+        return false;
+      }
       writeGeneration = captureAccountDataGeneration();
 
       try {

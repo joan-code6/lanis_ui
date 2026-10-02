@@ -1,9 +1,96 @@
 export const ACCOUNT_DATA_GENERATION_KEY = '__lanis_account_data_generation';
 export const ACCOUNT_DATA_DELETION_EPOCH_KEY = '__lanis_account_deletion_epoch';
+const ACCOUNT_DATA_LIFECYCLE_LOCK_KEY = '__lanis_account_data_lifecycle_lock';
 
 let deletionInProgress = false;
 const DELETION_LEASE_MS = 15 * 60 * 1000;
 let deletionLeaseTimer: number | undefined;
+
+const delay = (milliseconds: number): Promise<void> => new Promise(resolve => {
+  window.setTimeout(resolve, milliseconds);
+});
+
+const withStorageLifecycleLock = async <T>(operation: () => Promise<T>): Promise<T> => {
+  const owner = typeof crypto.randomUUID === 'function'
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const leaseMs = 30_000;
+
+  while (true) {
+    let current: { owner?: string; expiresAt?: number } = {};
+    try {
+      const stored = window.localStorage.getItem(ACCOUNT_DATA_LIFECYCLE_LOCK_KEY) || '{}';
+      current = JSON.parse(stored);
+    } catch {
+      try {
+        window.localStorage.getItem(ACCOUNT_DATA_LIFECYCLE_LOCK_KEY);
+      } catch {
+        throw new Error('Cannot coordinate account changes without browser storage.');
+      }
+      current = {};
+    }
+    if (!current.owner || !current.expiresAt || current.expiresAt <= Date.now()) {
+      try {
+        window.localStorage.setItem(
+          ACCOUNT_DATA_LIFECYCLE_LOCK_KEY,
+          JSON.stringify({ owner, expiresAt: Date.now() + leaseMs }),
+        );
+        await delay(20 + Math.floor(Math.random() * 30));
+        const claimed = JSON.parse(
+          window.localStorage.getItem(ACCOUNT_DATA_LIFECYCLE_LOCK_KEY) || '{}',
+        ) as { owner?: string };
+        if (claimed.owner === owner) break;
+      } catch {
+        throw new Error('Cannot coordinate account changes without browser storage.');
+      }
+    }
+    await delay(40 + Math.floor(Math.random() * 60));
+  }
+
+  const renewTimer = window.setInterval(() => {
+    try {
+      const current = JSON.parse(
+        window.localStorage.getItem(ACCOUNT_DATA_LIFECYCLE_LOCK_KEY) || '{}',
+      ) as { owner?: string };
+      if (current.owner === owner) {
+        window.localStorage.setItem(
+          ACCOUNT_DATA_LIFECYCLE_LOCK_KEY,
+          JSON.stringify({ owner, expiresAt: Date.now() + leaseMs }),
+        );
+      }
+    } catch {
+      // The lease expires naturally if storage becomes unavailable.
+    }
+  }, Math.floor(leaseMs / 3));
+
+  try {
+    return await operation();
+  } finally {
+    window.clearInterval(renewTimer);
+    try {
+      const current = JSON.parse(
+        window.localStorage.getItem(ACCOUNT_DATA_LIFECYCLE_LOCK_KEY) || '{}',
+      ) as { owner?: string };
+      if (current.owner === owner) {
+        window.localStorage.removeItem(ACCOUNT_DATA_LIFECYCLE_LOCK_KEY);
+      }
+    } catch {
+      // The lease expires naturally if storage becomes unavailable.
+    }
+  }
+};
+
+export const withAccountDataLifecycleLock = <T>(
+  operation: () => Promise<T>,
+): Promise<T> => {
+  if (typeof navigator !== 'undefined' && navigator.locks) {
+    return navigator.locks.request<T>(
+      'lanis-account-lifecycle',
+      () => operation() as unknown as T,
+    );
+  }
+  return withStorageLifecycleLock(operation);
+};
 
 const writeDeletionLease = (generation: number): void => {
   try {
@@ -163,7 +250,9 @@ export const finishAccountDataDeletion = (generation: number): void => {
   }
 };
 
-export const completeAccountDataDeletion = (): void => {
+export const completeAccountDataDeletion = (expectedGeneration: number): boolean => {
+  const current = readGenerationState();
+  if (current.deleting || current.generation !== expectedGeneration) return false;
   if (deletionLeaseTimer !== undefined) window.clearInterval(deletionLeaseTimer);
   deletionLeaseTimer = undefined;
   const generation = captureAccountDataGeneration() + 1;
@@ -173,7 +262,9 @@ export const completeAccountDataDeletion = (): void => {
       ACCOUNT_DATA_GENERATION_KEY,
       `${generation}:login`,
     );
+    return true;
   } catch {
     // A successful login should not fail because this cache guard is unavailable.
+    return false;
   }
 };
