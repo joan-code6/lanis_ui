@@ -382,18 +382,20 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
             })}
           </nav>
           <div className="mt-auto pt-4 border-t border-surface-100 dark:border-surface-800">
-            <button
-              type="button"
-              onClick={() => setIsFeedbackOpen(true)}
-              className={`nav-link mb-1 text-surface-500 dark:text-surface-400 hover:text-surface-700 dark:hover:text-surface-300 ${isCollapsed ? 'mx-auto h-10 w-10 justify-center gap-0 px-0' : 'w-full'}`}
-              title={isCollapsed ? 'Feedback geben' : undefined}
-              aria-label="Feedback geben"
-            >
-              <ChatBubbleBottomCenterTextIcon className="nav-link-icon text-surface-400 dark:text-surface-500" />
-              <span className={`overflow-hidden whitespace-nowrap transition-[max-width,opacity] duration-300 ${isCollapsed ? 'max-w-0 opacity-0' : 'max-w-32 opacity-100'}`}>
-                Feedback geben
-              </span>
-            </button>
+            {preferences.sidebar.show_feedback_button && (
+              <button
+                type="button"
+                onClick={() => setIsFeedbackOpen(true)}
+                className={`nav-link mb-1 text-surface-500 dark:text-surface-400 hover:text-surface-700 dark:hover:text-surface-300 ${isCollapsed ? 'mx-auto h-10 w-10 justify-center gap-0 px-0' : 'w-full'}`}
+                title={isCollapsed ? 'Feedback geben' : undefined}
+                aria-label="Feedback geben"
+              >
+                <ChatBubbleBottomCenterTextIcon className="nav-link-icon text-surface-400 dark:text-surface-500" />
+                <span className={`overflow-hidden whitespace-nowrap transition-[max-width,opacity] duration-300 ${isCollapsed ? 'max-w-0 opacity-0' : 'max-w-32 opacity-100'}`}>
+                  Feedback geben
+                </span>
+              </button>
+            )}
             <div className="relative">
               {showLogoutConfirmation && (
                 <div

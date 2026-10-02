@@ -10,7 +10,7 @@ const LEGACY_PREFERENCES_OWNER_KEY = 'lanis_preferences_legacy_owner';
 
 export const DEFAULT_USER_PREFERENCES: UserPreferences = {
   appearance: { theme_mode: 'system', theme_color: 'ruby' },
-  sidebar: { order: DEFAULT_SIDEBAR_ORDER, hidden_items: [] },
+  sidebar: { order: DEFAULT_SIDEBAR_ORDER, hidden_items: [], show_feedback_button: true },
   dashboard: {
     pinned_modules: [],
     hidden_modules: [],
@@ -60,6 +60,9 @@ const normalizePreferences = (value?: Partial<UserPreferences>): UserPreferences
   const homework = value?.homework as (Partial<UserPreferences['homework']> & { hide_completed_in_overview?: boolean }) | undefined;
   const dashboard = value?.dashboard;
   const sidebar = value?.sidebar;
+  const showFeedbackButton = typeof sidebar?.show_feedback_button === 'boolean'
+    ? sidebar.show_feedback_button
+    : true;
   const hiddenSidebarItems = Array.isArray(sidebar?.hidden_items)
     ? sidebar.hidden_items.filter(item => typeof item === 'string')
     : [];
@@ -75,7 +78,7 @@ const normalizePreferences = (value?: Partial<UserPreferences>): UserPreferences
 
   return mergePreferences(DEFAULT_USER_PREFERENCES, {
     appearance: value?.appearance,
-    sidebar: { ...sidebar, hidden_items: hiddenSidebarItems },
+    sidebar: { ...sidebar, hidden_items: hiddenSidebarItems, show_feedback_button: showFeedbackButton },
     dashboard: {
       ...dashboard,
       pinned_modules: pinnedModules,
