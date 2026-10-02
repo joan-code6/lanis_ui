@@ -11,7 +11,11 @@ import {
 } from '../types';
 import { getMockResponse } from '../components/demo/mockApi';
 import { DEFAULT_API_BASE_URL, getApiBaseUrl } from '../utils/backendConfig';
-import { canWriteAccountData, captureAccountDataGeneration } from '../utils/accountDataWrites';
+import {
+  canWriteAccountData,
+  captureAccountDataGeneration,
+  isAccountDataDeletionInProgress,
+} from '../utils/accountDataWrites';
 // School List API
 const SCHOOL_CACHE_KEY = 'school_cache';
 const SCHOOL_CACHE_TTL = 24 * 60 * 60 * 1000;
@@ -1092,6 +1096,7 @@ apiClient.interceptors.response.use(
   },
   async (error) => {
     if (error.response?.status === 401 && localStorage.getItem('__demo_mode') !== '1') {
+      if (isAccountDataDeletionInProgress()) return Promise.reject(error);
       // Don't try to refresh if the request was already to /auth/refresh
       const isRefreshRequest = error.config?.url === '/auth/refresh';
       const requestConfig = error.config as (typeof error.config & {

@@ -9,9 +9,11 @@ import { getDemoTabId, keepDemoSessionAlive, readDemoStorageSnapshot, writeDemoS
 import type { ThemeColor, ThemeMode } from '../../types';
 import {
   ACCOUNT_DATA_GENERATION_KEY,
+  hasAccountDataDeletionOccurredSince,
   captureAccountDataGeneration,
   hasAccountDataLoginSince,
   isAccountDataDeletionInProgress,
+  readAccountDataDeletionEpoch,
 } from '../../utils/accountDataWrites';
 
 const mockAuth = {
@@ -77,14 +79,19 @@ const seedLocalStorage = () => {
   const previous = storedSnapshot || new Map<string, string | null>(
     DEMO_STORAGE_KEYS.map(key => [key, localStorage.getItem(key)]),
   );
+  const initialGeneration = captureAccountDataGeneration();
   let restoreAllowed = !isAccountDataDeletionInProgress();
-  let deletionGeneration = restoreAllowed ? null : captureAccountDataGeneration();
+  let deletionGeneration = restoreAllowed ? null : initialGeneration;
+  const initialDeletionEpoch = readAccountDataDeletionEpoch();
   const valuesOwnedByDemo = new Map<string, string | null>();
   if (!restoreAllowed && tabId) writeDemoStorageSnapshot(tabId, null);
   const handleExternalAuthRemoval = (event: StorageEvent) => {
     if (
       event.key === ACCOUNT_DATA_GENERATION_KEY
-      && isAccountDataDeletionInProgress()
+      && (
+        isAccountDataDeletionInProgress()
+        || hasAccountDataDeletionOccurredSince(initialDeletionEpoch)
+      )
     ) {
       restoreAllowed = false;
       deletionGeneration = captureAccountDataGeneration();
@@ -108,14 +115,17 @@ const seedLocalStorage = () => {
     const valuesToRestore = tabId && readDemoStorageSnapshot(tabId)
       ? new Map(Object.entries(readDemoStorageSnapshot(tabId) || {}))
       : previous;
-    if (restoreAllowed) {
+    const deletionWasObserved = !restoreAllowed
+      || hasAccountDataDeletionOccurredSince(initialDeletionEpoch);
+    if (!deletionWasObserved) {
       valuesToRestore.forEach((value, key) => {
         if (value === null) localStorage.removeItem(key);
         else localStorage.setItem(key, value);
       });
     } else {
       const loginHasSupersededDeletion = deletionGeneration !== null
-        && hasAccountDataLoginSince(deletionGeneration);
+        ? hasAccountDataLoginSince(deletionGeneration)
+        : hasAccountDataLoginSince(initialGeneration);
       const keysToRemove = loginHasSupersededDeletion
         ? DEMO_OWNED_STORAGE_KEYS
         : DEMO_STORAGE_KEYS;

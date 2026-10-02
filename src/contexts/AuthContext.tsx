@@ -56,6 +56,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (event.key !== null && !(authKeys.includes(event.key) && event.newValue === null)) {
         return;
       }
+      if (
+        localStorage.getItem(ACCESS_TOKEN_KEY)
+        && localStorage.getItem(REFRESH_TOKEN_KEY)
+        && localStorage.getItem(USER_KEY)
+      ) {
+        return;
+      }
       setToken(null);
       setUser(null);
       setIsAuthenticated(false);

@@ -1,4 +1,5 @@
 export const ACCOUNT_DATA_GENERATION_KEY = '__lanis_account_data_generation';
+export const ACCOUNT_DATA_DELETION_EPOCH_KEY = '__lanis_account_deletion_epoch';
 
 let deletionInProgress = false;
 const DELETION_LEASE_MS = 15 * 60 * 1000;
@@ -37,8 +38,7 @@ if (typeof window !== 'undefined') {
       if (event.key === ACCOUNT_DATA_GENERATION_KEY) {
       deletionInProgress = readGenerationState().deleting;
     } else if (event.key === null && deletionInProgress) {
-      // localStorage.clear() is part of deletion cleanup; keep blocking writes
-      // in this tab until a fresh login announces that deletion is complete.
+      // Keep blocking writes if another storage operation removes the marker.
       deletionInProgress = true;
     }
   });
@@ -59,6 +59,34 @@ export const hasAccountDataLoginSince = (generation: number): boolean => {
     const [generationText, state] = value.split(':', 3);
     const currentGeneration = Number.parseInt(generationText, 10);
     return state === 'login' && Number.isFinite(currentGeneration) && currentGeneration >= generation;
+  } catch {
+    return false;
+  }
+};
+
+export const readAccountDataDeletionEpoch = (): number => {
+  try {
+    const epoch = Number.parseInt(
+      window.localStorage.getItem(ACCOUNT_DATA_DELETION_EPOCH_KEY) || '0',
+      10,
+    );
+    return Number.isFinite(epoch) ? epoch : 0;
+  } catch {
+    return 0;
+  }
+};
+
+export const hasAccountDataDeletionOccurredSince = (epoch: number): boolean => (
+  readAccountDataDeletionEpoch() > epoch
+);
+
+export const recordAccountDataDeletion = (): boolean => {
+  try {
+    window.localStorage.setItem(
+      ACCOUNT_DATA_DELETION_EPOCH_KEY,
+      String(readAccountDataDeletionEpoch() + 1),
+    );
+    return true;
   } catch {
     return false;
   }

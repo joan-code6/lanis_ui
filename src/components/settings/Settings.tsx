@@ -7,13 +7,15 @@ import {
   clearBackendScopedStorage,
 } from '../../utils/backendConfig';
 import {
+  ACCOUNT_DATA_DELETION_EPOCH_KEY,
+  ACCOUNT_DATA_GENERATION_KEY,
   beginAccountDataDeletion,
   captureAccountDataGeneration,
   finishAccountDataDeletion,
   hasAccountDataLoginSince,
   isAccountDataDeletionInProgress,
   ownsAccountDataDeletion,
-  restoreAccountDataDeletionState,
+  recordAccountDataDeletion,
 } from '../../utils/accountDataWrites';
 import { useBasePath } from '../../contexts/BasePathContext';
 import { usePreferences } from '../../contexts/PreferencesContext';
@@ -240,18 +242,52 @@ const AccountSettings: React.FC = () => {
     if (!token || confirmation !== 'LÖSCHEN') return;
     setDeleting(true);
     setError('');
+    const deletionGeneration = beginAccountDataDeletion();
     try {
       const result = await authAPI.deleteAccount(token);
       if (!result.success) {
         throw new Error('Account deletion was not confirmed by the server.');
       }
     } catch {
+      finishAccountDataDeletion(deletionGeneration);
       setError('Das Konto konnte nicht vollständig gelöscht werden. Bitte versuche es erneut.');
       setDeleting(false);
       return;
     }
 
-    const deletionGeneration = beginAccountDataDeletion();
+    if (
+      !ownsAccountDataDeletion(deletionGeneration)
+      && (
+        isAccountDataDeletionInProgress()
+        || hasAccountDataLoginSince(deletionGeneration)
+      )
+    ) {
+      window.location.replace('/login');
+      return;
+    }
+
+    try {
+      const customBackendUrl = localStorage.getItem(CUSTOM_BACKEND_STORAGE_KEY);
+      const deletionEpochRecorded = recordAccountDataDeletion();
+      clearBackendScopedStorage();
+      for (let index = localStorage.length - 1; index >= 0; index -= 1) {
+        const key = localStorage.key(index);
+        if (
+          key
+          && key !== CUSTOM_BACKEND_STORAGE_KEY
+          && key !== ACCOUNT_DATA_GENERATION_KEY
+          && key !== ACCOUNT_DATA_DELETION_EPOCH_KEY
+        ) {
+          localStorage.removeItem(key);
+        }
+      }
+      if (!deletionEpochRecorded) recordAccountDataDeletion();
+      if (customBackendUrl) {
+        localStorage.setItem(CUSTOM_BACKEND_STORAGE_KEY, customBackendUrl);
+      }
+    } catch {
+      // The deleted server account must still be logged out if storage is unavailable.
+    }
 
     const cleanupTasks: Promise<unknown>[] = [];
     if ('serviceWorker' in navigator) {
@@ -273,31 +309,6 @@ const AccountSettings: React.FC = () => {
       }));
     }
     await Promise.allSettled(cleanupTasks);
-    if (
-      !ownsAccountDataDeletion(deletionGeneration)
-      && (
-        isAccountDataDeletionInProgress()
-        || hasAccountDataLoginSince(deletionGeneration)
-      )
-    ) {
-      // A fresh login may have recovered the expired lease in another tab.
-      // Never let this stale handler clear that newer browser session.
-      window.location.replace('/login');
-      return;
-    }
-    try {
-      // This URL identifies the user's chosen server, not account data. Keep
-      // it so the next login is sent to the same backend after a reload.
-      const customBackendUrl = localStorage.getItem(CUSTOM_BACKEND_STORAGE_KEY);
-      clearBackendScopedStorage();
-      localStorage.clear();
-      restoreAccountDataDeletionState(deletionGeneration);
-      if (customBackendUrl) {
-        localStorage.setItem(CUSTOM_BACKEND_STORAGE_KEY, customBackendUrl);
-      }
-    } catch {
-      // The deleted server account must still be logged out if storage is unavailable.
-    }
     try {
       await logout(() => (
         ownsAccountDataDeletion(deletionGeneration)
