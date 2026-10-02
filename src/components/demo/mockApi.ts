@@ -192,13 +192,60 @@ const mockCourses = [
 ];
 
 const mockSubmissions = [
-  { id: 's1', title: 'Mathematik: Funktionsgraphen', course: 'Mathematik 9c', due_date: relDateTime(1, '23:59:00'), status: 'Ausstehend', url: '' },
-  { id: 's2', title: 'Deutsch: Gedichtvergleich', course: 'Deutsch 9c', due_date: relDateTime(3, '09:40:00'), status: 'Anstehend', url: '' },
-  { id: 's3', title: 'Biologie: See-Experiment', course: 'Biologie 9c', due_date: relDateTime(-1, '23:59:00'), status: 'Abgegeben', url: '' },
-  { id: 's4', title: 'Englisch: Persuasive speech', course: 'Englisch 9c', due_date: relDateTime(4, '23:59:00'), status: 'Ausstehend', url: '' },
-  { id: 's5', title: 'Geschichte: Fabrikarbeit im 19. Jahrhundert', course: 'Geschichte 9c', due_date: relDateTime(8, '23:59:00'), status: 'Ausstehend', url: '' },
-  { id: 's6', title: 'Informatik: Barrierefreie Website', course: 'Informatik 9c', due_date: relDateTime(12, '09:40:00'), status: 'Anstehend', url: '' },
+  { id: 's1', detail_ref: 'demo-s1', course_id: 'b2', entry_id: 'b2e1', title: 'Funktionsgraphen', course_name: 'Mathematik 9c', date_text: 'Freitag, 25.09.2026 · 23:59 Uhr', status: 'open', uploaded_count: 0 },
+  { id: 's2', detail_ref: 'demo-s2', course_id: 'b1', entry_id: 'b1e1', title: 'Gedichtvergleich', course_name: 'Deutsch 9c', date_text: 'Montag, 28.09.2026 · 09:40 Uhr', status: 'open', uploaded_count: 1 },
+  { id: 's3', detail_ref: 'demo-s3', course_id: 'b4', entry_id: 'b4e1', title: 'See-Experiment', course_name: 'Biologie 9c', date_text: 'Abgabe geschlossen', status: 'closed', uploaded_count: 2 },
+  { id: 's4', detail_ref: 'demo-s4', course_id: 'b3', entry_id: 'b3e1', title: 'Persuasive speech', course_name: 'Englisch 9c', date_text: 'Mittwoch, 30.09.2026 · 23:59 Uhr', status: 'open', uploaded_count: 0 },
+  { id: 's5', detail_ref: 'demo-s5', course_id: 'b5', entry_id: 'b5e1', title: 'Fabrikarbeit im 19. Jahrhundert', course_name: 'Geschichte 9c', date_text: 'Freitag, 02.10.2026 · 23:59 Uhr', status: 'open', uploaded_count: 0 },
+  { id: 's6', detail_ref: 'demo-s6', course_id: 'b6', entry_id: 'b6e1', title: 'Barrierefreie Website', course_name: 'Informatik 9c', date_text: 'Montag, 05.10.2026 · 09:40 Uhr', status: 'open', uploaded_count: 0 },
 ];
+
+type MockSubmission = (typeof mockSubmissions)[number];
+type MockSubmissionFile = {
+  name: string;
+  index: string;
+  time: string;
+  comment: null;
+  person: null;
+  download_ref: string;
+  public: false;
+};
+
+const mockSubmissionFiles: Record<string, MockSubmissionFile[]> = {};
+
+const createMockSubmissionFile = (submission: MockSubmission, index: number, name?: string): MockSubmissionFile => ({
+  name: name || `${submission.course_name.replace(/\s+/g, '-')}-${index}.pdf`,
+  index: String(index),
+  time: 'Heute, 12:00 Uhr',
+  comment: null,
+  person: null,
+  download_ref: `demo-file-${submission.id}-${index}`,
+  public: false,
+});
+
+const getMockSubmissionFiles = (submission: MockSubmission): MockSubmissionFile[] => {
+  if (!mockSubmissionFiles[submission.id]) {
+    mockSubmissionFiles[submission.id] = Array.from(
+      { length: submission.uploaded_count },
+      (_, index) => createMockSubmissionFile(submission, index + 1),
+    );
+  }
+  submission.uploaded_count = mockSubmissionFiles[submission.id].length;
+  return mockSubmissionFiles[submission.id];
+};
+
+const mockFormValue = (data: any, name: string): string => {
+  const value = data?.get?.(name) ?? data?.[name];
+  return typeof value === 'string' ? value : '';
+};
+
+const mockUploadedNames = (data: any): string[] => {
+  const files = data?.getAll?.('files');
+  if (!Array.isArray(files)) return [];
+  return files
+    .map(file => (typeof file?.name === 'string' ? file.name : ''))
+    .filter(Boolean);
+};
 
 const mockAttendanceOverview = {
   success: true,
@@ -225,7 +272,7 @@ const mockCourseDetails: Record<string, any> = {
   b1: {
     course_id: 'b1', course_name: 'Deutsch 9c', semester: '1. Halbjahr 2026/2027', teacher_short: 'CN', teacher_full: 'Clara Neumann',
     entries: [
-      { entry_id: 'b1e1', date: daysAgo(1), hours: '3–4', thema: 'Gedichtvergleich: Stadt und Natur', homework: 'Vergleichstabelle zu den beiden Gedichten vervollständigen', homework_done: false, attendance: 'anwesend', files: [{ name: 'Gedichtvergleich-Leitfaden.pdf', url: '/files/gedichtvergleich-leitfaden.pdf' }], content: 'Wir vergleichen Bildsprache, Rhythmus und die Perspektive der beiden Gedichte. Zum Schluss begründen wir, wie die Sprache die jeweilige Stimmung erzeugt.' },
+      { entry_id: 'b1e1', date: daysAgo(1), hours: '3–4', thema: 'Gedichtvergleich: Stadt und Natur', homework: 'Vergleichstabelle zu den beiden Gedichten vervollständigen', homework_done: false, attendance: 'anwesend', files: [{ name: 'Gedichtvergleich-Leitfaden.pdf', url: '/files/gedichtvergleich-leitfaden.pdf' }], uploads: [{ id: 'demo-s2', detail_ref: 'demo-s2', title: 'Gedichtvergleich', status: 'open', uploaded_count: 1 }], content: 'Wir vergleichen Bildsprache, Rhythmus und die Perspektive der beiden Gedichte. Zum Schluss begründen wir, wie die Sprache die jeweilige Stimmung erzeugt.' },
       { entry_id: 'b1e2', date: daysAgo(5), hours: '1–2', thema: 'Sprachliche Bilder und Wirkung', homework: 'Drei Metaphern aus dem Text erklären', homework_done: true, attendance: 'anwesend', files: [], content: 'Wir unterscheiden Metapher, Vergleich und Personifikation und untersuchen ihre Wirkung im Gedicht.' },
       { entry_id: 'b1e3', date: daysAgo(9), hours: '3–4', thema: 'Eine Textdeutung strukturieren', homework: '', homework_done: true, attendance: 'anwesend', files: [], content: 'Wir haben eine Deutungshypothese formuliert und die passenden Belege im Text geordnet.' },
     ],
@@ -240,7 +287,7 @@ const mockCourseDetails: Record<string, any> = {
   b2: {
     course_id: 'b2', course_name: 'Mathematik 9c', semester: '1. Halbjahr 2026/2027', teacher_short: 'MV', teacher_full: 'Martin Vogel',
     entries: [
-      { entry_id: 'b2e1', date: daysAgo(2), hours: '1–2', thema: 'Lineare Funktionen und Steigung', homework: 'Arbeitsblatt „Funktionsgraphen“: Nr. 4–7', homework_done: false, attendance: 'anwesend', files: [{ name: 'Funktionsgraphen-Arbeitsblatt.pdf', url: '/files/funktionsgraphen-arbeitsblatt.pdf' }], content: 'Wir lesen Steigung und y-Achsenabschnitt aus verschiedenen Darstellungen ab und zeichnen den passenden Graphen.' },
+      { entry_id: 'b2e1', date: daysAgo(2), hours: '1–2', thema: 'Lineare Funktionen und Steigung', homework: 'Arbeitsblatt „Funktionsgraphen“: Nr. 4–7', homework_done: false, attendance: 'anwesend', files: [{ name: 'Funktionsgraphen-Arbeitsblatt.pdf', url: '/files/funktionsgraphen-arbeitsblatt.pdf' }], uploads: [{ id: 'demo-s1', detail_ref: 'demo-s1', title: 'Funktionsgraphen', status: 'open', uploaded_count: 0 }], content: 'Wir lesen Steigung und y-Achsenabschnitt aus verschiedenen Darstellungen ab und zeichnen den passenden Graphen.' },
       { entry_id: 'b2e2', date: daysAgo(6), hours: '3–4', thema: 'Tabellen, Graphen und Terme', homework: 'Drei Darstellungen derselben Funktion zuordnen', homework_done: true, attendance: 'anwesend', files: [], content: 'Wir übertragen Werte aus einer Tabelle in ein Koordinatensystem und prüfen unsere Ergebnisse mit dem Funktionsterm.' },
       { entry_id: 'b2e3', date: daysAgo(10), hours: '1–2', thema: 'Koordinatensysteme sicher nutzen', homework: '', homework_done: true, attendance: 'anwesend', files: [], content: 'Wiederholung von Punkten, Achsenbeschriftung und sinnvollen Maßstäben.' },
     ],
@@ -290,6 +337,17 @@ const mockCourseDetails: Record<string, any> = {
     exams: [`${relDate(19)} Projektabgabe`],
     attendance_summary: { anwesend: '16', entschuldigt: '1', unentschuldigt: '0' },
   },
+};
+
+const syncMockCourseSubmissionCount = (submission: MockSubmission) => {
+  const course = mockCourseDetails[submission.course_id];
+  const entry = course?.entries?.find(
+    (item: any) => item.entry_id === submission.entry_id,
+  );
+  const upload = entry?.uploads?.find(
+    (item: any) => (item.detail_ref || item.id) === submission.detail_ref,
+  );
+  if (upload) upload.uploaded_count = submission.uploaded_count;
 };
 
 const mockEntryDetails: Record<string, any> = {
@@ -707,6 +765,57 @@ export function getMockResponse(url: string, method: string, config: any): { dat
       { date: weekDate(3), course: 'Geschichte 9c', entry: 'Industrialisierung und soziale Frage', url: '' },
       { date: weekDate(4), course: 'Informatik 9c', entry: 'Barrierefreie Website', url: '' },
     ] } } };
+  }
+  if (u.startsWith('/meinunterricht/submissions/file/') && method === 'get') {
+    return { status: 200, data: new Blob(['Demo-Abgabedatei'], { type: 'text/plain' }) };
+  }
+  if (u === '/meinunterricht/submissions/upload' && method === 'post') {
+    const uploadId = mockFormValue(config?.data, 'upload_id');
+    const summary = mockSubmissions.find(item => `upload-${item.id}` === uploadId) || mockSubmissions[0];
+    const files = getMockSubmissionFiles(summary);
+    const names = mockUploadedNames(config?.data);
+    const uploadedNames = names.length > 0 ? names : ['demo-upload.pdf'];
+    const statuses = uploadedNames.map(name => {
+      const nextIndex = files.reduce((highest, file) => Math.max(highest, Number(file.index) || 0), 0) + 1;
+      files.push(createMockSubmissionFile(summary, nextIndex, name));
+      return { name, status: 'erfolgreich', message: null };
+    });
+    summary.uploaded_count = files.length;
+    syncMockCourseSubmissionCount(summary);
+    return { status: 200, data: { success: true, all_succeeded: true, files: statuses } };
+  }
+  if (u === '/meinunterricht/submissions/file' && method === 'delete') {
+    const uploadId = mockFormValue(config?.data, 'upload_id');
+    const summary = mockSubmissions.find(item => `upload-${item.id}` === uploadId) || mockSubmissions[0];
+    const files = getMockSubmissionFiles(summary);
+    const fileIndex = mockFormValue(config?.data, 'file_index');
+    const index = files.findIndex(file => file.index === fileIndex);
+    if (index >= 0) files.splice(index, 1);
+    summary.uploaded_count = files.length;
+    syncMockCourseSubmissionCount(summary);
+    return { status: 200, data: { success: true, code: '1', message: 'File deleted successfully' } };
+  }
+  if (u.startsWith('/meinunterricht/submissions/') && method === 'get') {
+    const ref = u.split('/').pop() || 'demo-s1';
+    const summary = mockSubmissions.find(item => item.detail_ref === ref) || mockSubmissions[0];
+    const ownFiles = getMockSubmissionFiles(summary);
+    return { status: 200, data: { success: true, submission: {
+      ...summary,
+      upload_id: `upload-${summary.id}`,
+      start: 'Montag, 21.09.2026 · 08:00 Uhr',
+      deadline: summary.date_text,
+      automatic_deletion: '30.09.2026',
+      allows_multiple_files: true,
+      allows_multiple_attempts: true,
+      visibility: 'Nur Lehrkräfte',
+      allowed_file_types: ['PDF', 'DOCX'],
+      max_file_size: '10 MB',
+      additional_text: 'Bitte nur die fertige Datei abgeben.',
+      own_files: ownFiles,
+      public_files: [{ name: 'Hinweise.pdf', index: '99', time: null, comment: null, person: 'Frau Vogel', download_ref: 'demo-public-file', public: true }],
+      can_upload: summary.status === 'open',
+      can_delete: ownFiles.length > 0,
+    } } };
   }
   if (u === '/meinunterricht/submissions' && method === 'get') { return { status: 200, data: { success: true, submissions: mockSubmissions } }; }
   if (u === '/meinunterricht/homework-done' && method === 'post') { return { status: 200, data: { success: true } }; }

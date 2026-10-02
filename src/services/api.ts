@@ -166,6 +166,9 @@ import {
   EntryDetailsResponse,
   WeeklyViewResponse,
   SubmissionsResponse,
+  SubmissionDetailResponse,
+  SubmissionUploadResponse,
+  SubmissionDeleteResponse,
   HealthResponse,
   CalendarOverviewResponse,
   CalendarEventsResponse,
@@ -657,6 +660,74 @@ export const coursesAPI = {
       headers: { 'X-Session-Token': token },
       signal,
     });
+    return response.data;
+  },
+
+  async getSubmission(token: string, detailRef: string, signal?: AbortSignal): Promise<SubmissionDetailResponse> {
+    const response = await apiClient.get<SubmissionDetailResponse>(
+      `/meinunterricht/submissions/${encodeURIComponent(detailRef)}`,
+      { headers: { 'X-Session-Token': token }, signal },
+    );
+    return response.data;
+  },
+
+  async uploadSubmissionFiles(
+    token: string,
+    detail: { course_id: string; entry_id: string; upload_id: string },
+    files: File[],
+    signal?: AbortSignal,
+  ): Promise<SubmissionUploadResponse> {
+    const form = new FormData();
+    form.append('course_id', detail.course_id);
+    form.append('entry_id', detail.entry_id);
+    form.append('upload_id', detail.upload_id);
+    files.forEach(file => form.append('files', file, file.name));
+    const response = await apiClient.post<SubmissionUploadResponse>(
+      '/meinunterricht/submissions/upload',
+      form,
+      {
+        headers: {
+          'X-Session-Token': token,
+          'Content-Type': 'multipart/form-data',
+        },
+        signal,
+      },
+    );
+    return response.data;
+  },
+
+  async deleteSubmissionFile(
+    token: string,
+    detail: { course_id: string; entry_id: string; upload_id: string },
+    fileIndex: string,
+    password: string,
+    signal?: AbortSignal,
+  ): Promise<SubmissionDeleteResponse> {
+    const form = new FormData();
+    form.append('course_id', detail.course_id);
+    form.append('entry_id', detail.entry_id);
+    form.append('upload_id', detail.upload_id);
+    form.append('file_index', fileIndex);
+    form.append('password', password);
+    const response = await apiClient.delete<SubmissionDeleteResponse>(
+      '/meinunterricht/submissions/file',
+      {
+        headers: {
+          'X-Session-Token': token,
+          'Content-Type': 'multipart/form-data',
+        },
+        data: form,
+        signal,
+      },
+    );
+    return response.data;
+  },
+
+  async downloadSubmissionFile(token: string, fileRef: string, signal?: AbortSignal): Promise<Blob> {
+    const response = await apiClient.get<Blob>(
+      `/meinunterricht/submissions/file/${encodeURIComponent(fileRef)}`,
+      { headers: { 'X-Session-Token': token }, responseType: 'blob', signal },
+    );
     return response.data;
   },
 
