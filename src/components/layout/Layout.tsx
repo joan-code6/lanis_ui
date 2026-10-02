@@ -520,7 +520,7 @@ function FeedbackDialog({ token, onClose }: { token: string; onClose: () => void
         ) : <form onSubmit={(event) => void handleSubmit(event)} className="space-y-4">
           <label className="block text-sm font-medium text-surface-700 dark:text-surface-300">
             Worum geht es?
-            <select value={category} onChange={(event) => setCategory(event.target.value)} className="input mt-1.5 w-full">
+            <select value={category} onChange={(event) => setCategory(event.target.value as FeedbackCategory)} className="input mt-1.5 w-full">
               <option value="feature">Idee für eine Funktion</option>
               <option value="bug">Fehler melden</option>
               <option value="general">Allgemeines Feedback</option>
