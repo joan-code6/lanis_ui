@@ -327,6 +327,10 @@ async function ensureValidToken(): Promise<string | null> {
 }
 
 export const authAPI = {
+  async getValidSessionToken(): Promise<string | null> {
+    return ensureValidToken();
+  },
+
   async login(credentials: LoginRequest): Promise<LoginResponse> {
     const response = await apiClient.post<LoginResponse>('/login', credentials);
     return response.data;

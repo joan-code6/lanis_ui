@@ -16,6 +16,24 @@ const writeDeletionLease = (generation: number): void => {
   }
 };
 
+const stopDeletionLeaseTimer = (deleting: boolean): void => {
+  if (deletionLeaseTimer !== undefined) window.clearInterval(deletionLeaseTimer);
+  deletionLeaseTimer = undefined;
+  deletionInProgress = deleting;
+};
+
+const startDeletionLeaseTimer = (generation: number): void => {
+  if (deletionLeaseTimer !== undefined) window.clearInterval(deletionLeaseTimer);
+  deletionLeaseTimer = window.setInterval(() => {
+    const state = readGenerationState();
+    if (state.generation !== generation) {
+      stopDeletionLeaseTimer(state.deleting);
+      return;
+    }
+    if (deletionInProgress && state.deleting) writeDeletionLease(generation);
+  }, Math.floor(DELETION_LEASE_MS / 3));
+};
+
 const readGenerationState = (): { generation: number; deleting: boolean } => {
   try {
     const value = window.localStorage.getItem(ACCOUNT_DATA_GENERATION_KEY) || '';
@@ -102,38 +120,39 @@ export const beginAccountDataDeletion = (): number => {
   const generation = captureAccountDataGeneration() + 1;
   deletionInProgress = true;
   writeDeletionLease(generation);
-  if (deletionLeaseTimer !== undefined) window.clearInterval(deletionLeaseTimer);
-  deletionLeaseTimer = window.setInterval(() => {
-    if (deletionInProgress) writeDeletionLease(generation);
-  }, Math.floor(DELETION_LEASE_MS / 3));
+  startDeletionLeaseTimer(generation);
   return generation;
 };
 
 export const restoreAccountDataDeletionState = (generation: number): void => {
   deletionInProgress = true;
   writeDeletionLease(generation);
-  if (deletionLeaseTimer !== undefined) window.clearInterval(deletionLeaseTimer);
-  deletionLeaseTimer = window.setInterval(() => {
-    if (deletionInProgress) writeDeletionLease(generation);
-  }, Math.floor(DELETION_LEASE_MS / 3));
+  startDeletionLeaseTimer(generation);
 };
 
 export const finishAccountDataDeletion = (generation: number): void => {
   const current = readGenerationState();
-  if (current.generation > generation) return;
-  if (current.generation < generation && current.deleting) return;
+  if (current.generation > generation) {
+    stopDeletionLeaseTimer(current.deleting);
+    return;
+  }
+  if (current.generation < generation && current.deleting) {
+    stopDeletionLeaseTimer(true);
+    return;
+  }
   try {
     const marker = window.localStorage.getItem(ACCOUNT_DATA_GENERATION_KEY) || '';
     const [generationText, state] = marker.split(':', 3);
     const markedGeneration = Number.parseInt(generationText, 10);
-    if (state === 'login' && Number.isFinite(markedGeneration) && markedGeneration >= generation) return;
+    if (state === 'login' && Number.isFinite(markedGeneration) && markedGeneration >= generation) {
+      stopDeletionLeaseTimer(false);
+      return;
+    }
   } catch {
     // If storage is unavailable, the in-memory deletion guard still applies.
   }
-  if (deletionLeaseTimer !== undefined) window.clearInterval(deletionLeaseTimer);
-  deletionLeaseTimer = undefined;
+  stopDeletionLeaseTimer(false);
   const nextGeneration = generation + 1;
-  deletionInProgress = false;
   try {
     window.localStorage.setItem(
       ACCOUNT_DATA_GENERATION_KEY,

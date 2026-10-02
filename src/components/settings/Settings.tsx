@@ -242,9 +242,15 @@ const AccountSettings: React.FC = () => {
     if (!token || confirmation !== 'LÖSCHEN') return;
     setDeleting(true);
     setError('');
+    const freshToken = await authAPI.getValidSessionToken();
+    if (!freshToken) {
+      setError('Deine Sitzung ist abgelaufen. Bitte melde dich erneut an und versuche es danach noch einmal.');
+      setDeleting(false);
+      return;
+    }
     const deletionGeneration = beginAccountDataDeletion();
     try {
-      const result = await authAPI.deleteAccount(token);
+      const result = await authAPI.deleteAccount(freshToken);
       if (!result.success) {
         throw new Error('Account deletion was not confirmed by the server.');
       }
