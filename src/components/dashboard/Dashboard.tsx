@@ -139,6 +139,10 @@ const Dashboard: React.FC = () => {
       navigate(`${basePath}/dateispeicher`);
       return;
     }
+    if (moduleLinks.includes('/dateiverteilung.php') || module.name.toLowerCase().includes('dateiverteilung')) {
+      navigate(`${basePath}/dateiverteilung`);
+      return;
+    }
     const moduleName = module.name.toLowerCase();
     const isDsbModule = moduleLinks.includes('dsb') || moduleName.includes('dsb');
     const isNativeSubstitutionPlan = !isDsbModule && (

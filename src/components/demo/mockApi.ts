@@ -143,6 +143,39 @@ const mockDateispeicherNodes = {
   },
 };
 
+const mockDateiverteilungen = [
+  {
+    id: 'klassenfahrt-2026',
+    title: 'Einverständniserklärung zur Klassenfahrt',
+    description: 'Bitte unterschrieben bis Freitag bei der Klassenleitung abgeben.',
+    source: 'Klassenleitung 9C',
+    created_at: '10.09.2026',
+    unread: true,
+    files: [{ id: 'einverstaendnis.pdf', name: 'Einverständniserklärung.pdf', size: '184 KB', download_url: 'https://start.schulportal.hessen.de/dateiverteilung.php?a=download&v=17&f=einverstaendnis.pdf' }],
+    links: [],
+  },
+  {
+    id: 'mathe-zugang',
+    title: 'Persönlicher Zugang zur Lernplattform',
+    description: 'Die Zugangsdaten sind nur für dich bestimmt.',
+    source: 'Mathematik 9c',
+    created_at: '08.09.2026',
+    unread: true,
+    files: [{ id: 'zugang.txt', name: 'Zugangsdaten-Mia.txt', size: '1 KB', download_url: 'https://start.schulportal.hessen.de/dateiverteilung.php?a=download&v=18&f=zugang.txt' }],
+    links: [{ label: 'Lernplattform öffnen', url: 'https://example.invalid/lernen' }],
+  },
+  {
+    id: 'schulfest',
+    title: 'Informationen zum Schulfest',
+    description: 'Aufbau ab 09:00 Uhr auf dem Schulhof.',
+    source: 'Schulleitung',
+    created_at: '01.09.2026',
+    unread: false,
+    files: [{ id: 'lageplan.pdf', name: 'Lageplan-Schulfest.pdf', size: '412 KB', download_url: 'https://start.schulportal.hessen.de/dateiverteilung.php?a=download&v=19&f=lageplan.pdf' }],
+    links: [],
+  },
+];
+
 const mockMessageHeaders = [
   { Id: 'dm-1', Uniquid: 'uq-1', Sender: 'Frau Neumann', Betreff: 'Deutsch: Gedichtvergleich für Montag', Papierkorb: '0', private: 0, WeitereEmpfaenger: '', empf: [demoUser.username], unread: true, date: hoursAgo(8) },
   { Id: 'dm-2', Uniquid: 'uq-2', Sender: 'Herr Vogel', Betreff: 'Mathematik: Abgabe zum Funktionsgraphen', Papierkorb: '0', private: 0, WeitereEmpfaenger: '', empf: [demoUser.username], unread: true, date: daysAgo(1) },
@@ -798,6 +831,12 @@ export function getMockResponse(url: string, method: string, config: any): { dat
   if (u.startsWith('/dateispeicher/file/') && method === 'get') {
     const fileId = u.split('/').pop();
     return { status: 200, data: new Blob([`Demo-Datei ${fileId}`], { type: 'text/plain' }) };
+  }
+  if (u === '/dateiverteilung' && method === 'get') {
+    return { status: 200, data: { success: true, distributions: mockDateiverteilungen, distribution_count: mockDateiverteilungen.length, file_count: mockDateiverteilungen.reduce((count, item) => count + item.files.length, 0), unread_count: mockDateiverteilungen.filter(item => item.unread).length } };
+  }
+  if (u === '/dateiverteilung/file' && method === 'get') {
+    return { status: 200, data: new Blob(['Persönliche Demo-Datei'], { type: 'text/plain' }) };
   }
   if (u === '/vertretungsplan' && method === 'get') { return { status: 200, data: mockVertretungsplan }; }
   if (u === '/lerngruppen' && method === 'get') {
