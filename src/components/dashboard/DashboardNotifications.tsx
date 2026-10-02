@@ -162,10 +162,6 @@ const DashboardNotifications: React.FC = () => {
 
   if (!dashboardPreferences.notifications_enabled) return null;
 
-  if (loading && notifications.length === 0) {
-    return <div className="skeleton mb-6 h-40 rounded-2xl" aria-label="Dashboard-Hinweise werden geladen" />;
-  }
-
   if (visibleNotifications.length === 0 && errors.length === 0) return null;
 
   return (
