@@ -238,7 +238,7 @@ const AccountSettings: React.FC = () => {
     }
   };
 
-  const deleteAccount = async () => {
+  const performAccountDeletion = async () => {
     if (!token || confirmation !== 'LÖSCHEN') return;
     setDeleting(true);
     setError('');
@@ -329,6 +329,14 @@ const AccountSettings: React.FC = () => {
     finishAccountDataDeletion(deletionGeneration);
     navigate('/login', { replace: true });
     setDeleting(false);
+  };
+
+  const deleteAccount = async () => {
+    if ('locks' in navigator) {
+      await navigator.locks.request('lanis-account-deletion', performAccountDeletion);
+      return;
+    }
+    await performAccountDeletion();
   };
 
   return <div className="space-y-6">
