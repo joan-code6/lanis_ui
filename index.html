@@ -13,8 +13,27 @@
     <meta name="robots" content="index, follow" />
     <link rel="canonical" href="https://lanis.arg-server.de/" />
 
+    <style>
+      /* JavaScript adds this class before the body is parsed. Without JavaScript,
+         the prerendered page remains visible to visitors and crawlers. */
+      #boot-screen { display: none; }
+      html.js-booting { overflow: hidden; }
+      html.js-booting #boot-screen {
+        position: fixed;
+        inset: 0;
+        z-index: 2147483647;
+        display: block;
+        background: #fafafa;
+      }
+      html.dark.js-booting #boot-screen { background: #0a0a0a; }
+      html.oled.js-booting #boot-screen { background: #000; }
+    </style>
+
     <!-- Apply the stored appearance before React mounts to avoid a bright flash in OLED mode. -->
     <script>
+      document.documentElement.classList.add('js-booting');
+      // Reveal the static page if the app bundle never starts.
+      window.setTimeout(() => document.documentElement.classList.remove('js-booting'), 15000);
       try {
         const mode = localStorage.getItem('lanis_theme_mode');
         const oled = mode === 'oled' || (!mode && localStorage.getItem('lanis_oled_mode') === 'true');
@@ -105,6 +124,7 @@
 
   </head>
   <body>
+    <div id="boot-screen" aria-hidden="true"></div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
