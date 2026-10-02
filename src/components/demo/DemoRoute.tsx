@@ -1,12 +1,20 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
 import { AuthContext } from '../../contexts/AuthContext';
 import { PreferencesProvider } from '../../contexts/PreferencesContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import Layout from '../layout/Layout';
 import { demoModules, demoPinnedModules, demoUser } from './demoData';
-import { getDemoTabId, keepDemoSessionAlive, readDemoStorageSnapshot, writeDemoStorageSnapshot } from '../../utils/demoMode';
+import { getDemoTabId, keepDemoSessionAlive, readDemoStorageSnapshot, registerDemoCacheWriteListener, writeDemoStorageSnapshot } from '../../utils/demoMode';
 import type { ThemeColor, ThemeMode } from '../../types';
+import {
+  ACCOUNT_DATA_GENERATION_KEY,
+  hasAccountDataDeletionOccurredSince,
+  captureAccountDataGeneration,
+  hasAccountDataLoginSince,
+  isAccountDataDeletionInProgress,
+  readAccountDataDeletionEpoch,
+} from '../../utils/accountDataWrites';
 
 const mockAuth = {
   isAuthenticated: true as const,
@@ -30,6 +38,17 @@ const DEMO_STORAGE_KEYS = [
   'lanis_oled_mode',
   'lanis_dark_mode',
   'lanis_theme_color',
+] as const;
+
+const DEMO_OWNED_STORAGE_KEYS = [
+  '__demo_mode',
+  'pinned_modules',
+  'profile_cache',
+  'messages_cache',
+  'courses_cache',
+  'username_cache',
+  'dsb_plan_cache_v2',
+  'modules_cache:demo%3Amia.keller',
 ] as const;
 
 const readAppearance = (values: Map<string, string | null>) => {
@@ -60,50 +79,88 @@ const seedLocalStorage = () => {
   const previous = storedSnapshot || new Map<string, string | null>(
     DEMO_STORAGE_KEYS.map(key => [key, localStorage.getItem(key)]),
   );
-  if (!storedSnapshot && tabId) {
+  const initialGeneration = captureAccountDataGeneration();
+  let restoreAllowed = !isAccountDataDeletionInProgress();
+  let deletionGeneration = restoreAllowed ? null : initialGeneration;
+  const initialDeletionEpoch = readAccountDataDeletionEpoch();
+  const valuesOwnedByDemo = new Map<string, string | null>();
+  if (!restoreAllowed && tabId) writeDemoStorageSnapshot(tabId, null);
+  const handleExternalAuthRemoval = (event: StorageEvent) => {
+    if (
+      event.key === ACCOUNT_DATA_GENERATION_KEY
+      && (
+        isAccountDataDeletionInProgress()
+        || hasAccountDataDeletionOccurredSince(initialDeletionEpoch)
+      )
+    ) {
+      restoreAllowed = false;
+      deletionGeneration = captureAccountDataGeneration();
+      if (tabId) writeDemoStorageSnapshot(tabId, null);
+    }
+  };
+  window.addEventListener('storage', handleExternalAuthRemoval);
+  if (!storedSnapshot && tabId && restoreAllowed) {
     writeDemoStorageSnapshot(tabId, Object.fromEntries(previous));
   }
+  const stopTrackingDemoWrites = registerDemoCacheWriteListener((key, value) => {
+    if ((DEMO_OWNED_STORAGE_KEYS as readonly string[]).includes(key)) {
+      valuesOwnedByDemo.set(key, value);
+    }
+  });
 
   localStorage.setItem('__demo_mode', '1');
   localStorage.setItem('pinned_modules', JSON.stringify(demoPinnedModules));
   localStorage.setItem('profile_cache', JSON.stringify(demoUser));
   localStorage.setItem('modules_cache:demo%3Amia.keller', JSON.stringify(demoModules));
   ['messages_cache', 'courses_cache', 'username_cache', 'dsb_plan_cache_v2'].forEach(key => localStorage.removeItem(key));
+  DEMO_STORAGE_KEYS.forEach(key => valuesOwnedByDemo.set(key, localStorage.getItem(key)));
 
   return () => {
-    (tabId && readDemoStorageSnapshot(tabId)
+    stopTrackingDemoWrites();
+    window.removeEventListener('storage', handleExternalAuthRemoval);
+    const valuesToRestore = tabId && readDemoStorageSnapshot(tabId)
       ? new Map(Object.entries(readDemoStorageSnapshot(tabId) || {}))
-      : previous
-    ).forEach((value, key) => {
-      if (value === null) localStorage.removeItem(key);
-      else localStorage.setItem(key, value);
-    });
+      : previous;
+    const deletionWasObserved = !restoreAllowed
+      || hasAccountDataDeletionOccurredSince(initialDeletionEpoch);
+    if (!deletionWasObserved) {
+      valuesToRestore.forEach((value, key) => {
+        if (value === null) localStorage.removeItem(key);
+        else localStorage.setItem(key, value);
+      });
+    } else {
+      const loginHasSupersededDeletion = deletionGeneration !== null
+        ? hasAccountDataLoginSince(deletionGeneration)
+        : hasAccountDataLoginSince(initialGeneration);
+      const keysToRemove = loginHasSupersededDeletion
+        ? DEMO_OWNED_STORAGE_KEYS
+        : DEMO_STORAGE_KEYS;
+      keysToRemove.forEach(key => {
+        const demoValue = valuesOwnedByDemo.get(key);
+        if (demoValue !== null && demoValue !== undefined && localStorage.getItem(key) === demoValue) {
+          localStorage.removeItem(key);
+        }
+      });
+    }
     if (tabId) writeDemoStorageSnapshot(tabId, null);
+    return restoreAllowed ? valuesToRestore : null;
   };
 };
 
 const DemoRoute: React.FC = () => {
-  const { themeMode, themeColor, setThemeMode, setThemeColor } = useTheme();
-  const initialAppearanceRef = useRef({ themeMode, themeColor });
+  const { setThemeMode, setThemeColor } = useTheme();
 
   useEffect(() => {
     const restoreStorage = seedLocalStorage();
     const tabId = getDemoTabId();
     const stopHeartbeat = tabId ? keepDemoSessionAlive(tabId) : () => {};
     return () => {
-      const storedValues = tabId ? readDemoStorageSnapshot(tabId) : null;
-      const previous = storedValues
-        ? new Map(Object.entries(storedValues))
-        : null;
       stopHeartbeat();
-      restoreStorage();
+      const previous = restoreStorage();
       if (previous) {
         const appearance = readAppearance(previous);
         setThemeMode(appearance.themeMode);
         setThemeColor(appearance.themeColor);
-      } else {
-        setThemeMode(initialAppearanceRef.current.themeMode);
-        setThemeColor(initialAppearanceRef.current.themeColor);
       }
     };
   }, [setThemeColor, setThemeMode]);

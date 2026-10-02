@@ -12,7 +12,8 @@ import {
   ShieldCheckIcon,
   InformationCircleIcon,
 } from '@heroicons/react/24/outline';
-import { isDemoRoute } from '../../utils/demoMode';
+import { isDemoRoute, notifyDemoCacheWrite } from '../../utils/demoMode';
+import { canWriteAccountData, captureAccountDataGeneration } from '../../utils/accountDataWrites';
 
 const Profile: React.FC = () => {
   const { user, token } = useAuth();
@@ -49,6 +50,7 @@ const Profile: React.FC = () => {
 
   const loadUserProfile = async (signal?: AbortSignal) => {
     if (!token) return;
+    const writeGeneration = captureAccountDataGeneration();
     setIsUpdating(true);
     try {
       setError('');
@@ -56,7 +58,11 @@ const Profile: React.FC = () => {
       if (signal?.aborted) return;
       if (response.success) {
         setUserDetails(response.data);
-        localStorage.setItem('profile_cache', JSON.stringify(response.data));
+        if (canWriteAccountData(writeGeneration)) {
+          const cachedProfile = JSON.stringify(response.data);
+          notifyDemoCacheWrite('profile_cache', cachedProfile);
+          localStorage.setItem('profile_cache', cachedProfile);
+        }
       } else {
         setError('Fehler beim Laden des Benutzerprofils.');
       }
