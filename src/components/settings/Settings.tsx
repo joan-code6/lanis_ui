@@ -185,12 +185,12 @@ const sectionMeta: Record<SettingsSection, { title: string; subtitle: string }> 
   notifications: { title: 'Benachrichtigungen', subtitle: 'Nachrichten und neue Vertretungsplan-Einträge per Web-Push mitbekommen.' },
   whatsapp: { title: 'WhatsApp-Assistent', subtitle: 'Dein LANIS-Konto sicher mit dem WhatsApp-Chat verbinden.' },
   app: { title: 'App & Installation', subtitle: 'Lanis auf deinem Gerät griffbereit halten.' },
-  sidebar: { title: 'Seitenleiste', subtitle: 'Passe die Navigation und die Feedback-Schaltfläche an.' },
+  sidebar: { title: 'Seitenleiste', subtitle: 'Passe die Navigation an deine Gewohnheiten an.' },
 };
 
 type SidebarSaveState = 'idle' | 'saved' | 'error';
 
-const SidebarSettings: React.FC = () => {
+const SidebarSettings: React.FC<{ isDemo: boolean }> = ({ isDemo }) => {
   const { preferences, updatePreferences, isSaving } = usePreferences();
   const [order, setOrder] = useState(() => normalizeSidebarOrder(preferences.sidebar.order));
   const [hiddenItems, setHiddenItems] = useState<string[]>(() => preferences.sidebar.hidden_items);
@@ -292,7 +292,7 @@ const SidebarSettings: React.FC = () => {
 
   return (
     <div className="space-y-4">
-    <section className="card">
+    {!isDemo && <section className="card">
       <div className="flex items-center justify-between gap-4">
         <div>
           <h3 className="text-base font-semibold text-surface-900 dark:text-surface-100">Feedback-Schaltfläche</h3>
@@ -322,7 +322,7 @@ const SidebarSettings: React.FC = () => {
           </div>
         )}
       </div>
-    </section>
+    </section>}
     <section className="card !p-0 overflow-hidden">
       <div className="border-b border-surface-100 px-5 py-5 dark:border-surface-800 sm:px-6">
         <div className="flex items-start justify-between gap-4">
@@ -1019,7 +1019,7 @@ const Settings: React.FC = () => {
       {section === 'homework' && <HomeworkSettings />}
       {section === 'vertretungsplan' && <VertretungsplanSettings />}
       {section === 'whatsapp' && <WhatsAppSettings />}
-      {section === 'sidebar' && <SidebarSettings />}
+      {section === 'sidebar' && <SidebarSettings isDemo={basePath === '/demo'} />}
 
       <div className="space-y-6">
         {section === 'appearance' && (
