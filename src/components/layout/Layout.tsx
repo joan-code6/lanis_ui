@@ -131,6 +131,7 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
 
   React.useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      if (isFeedbackOpen) return;
       if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'f')) {
         e.preventDefault();
         setIsSearchOpen(prev => !prev);
@@ -138,7 +139,7 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
     };
     document.addEventListener('keydown', handler);
     return () => document.removeEventListener('keydown', handler);
-  }, []);
+  }, [isFeedbackOpen]);
 
   const navigationItems = {
     search: { name: 'Suche', href: `${basePath}/search`, icon: MagnifyingGlassIcon },
@@ -386,7 +387,8 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
             {!isDemo && preferences.sidebar.show_feedback_button && (
               <button
                 type="button"
-                onClick={() => setIsFeedbackOpen(true)}
+                id="feedback-trigger"
+                onClick={() => { setIsSearchOpen(false); setIsFeedbackOpen(true); }}
                 className={`nav-link mb-1 text-surface-500 dark:text-surface-400 hover:text-surface-700 dark:hover:text-surface-300 ${isCollapsed ? 'mx-auto h-10 w-10 justify-center gap-0 px-0' : 'w-full'}`}
                 title={isCollapsed ? 'Feedback geben' : undefined}
                 aria-label="Feedback geben"
@@ -451,6 +453,7 @@ function FeedbackDialog({ token, onClose }: { token: string; onClose: () => void
   const [details, setDetails] = React.useState('');
   const [message, setMessage] = React.useState('');
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const isSubmittingRef = React.useRef(false);
   const [isSubmitted, setIsSubmitted] = React.useState(false);
 
   React.useEffect(() => {
@@ -461,6 +464,7 @@ function FeedbackDialog({ token, onClose }: { token: string; onClose: () => void
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
+        if (isSubmittingRef.current) return;
         onClose();
         return;
       }
@@ -484,7 +488,9 @@ function FeedbackDialog({ token, onClose }: { token: string; onClose: () => void
     document.addEventListener('keydown', onKeyDown);
     return () => {
       document.removeEventListener('keydown', onKeyDown);
-      if (previousFocus?.isConnected) previousFocus.focus();
+      const trigger = document.getElementById('feedback-trigger');
+      if (trigger instanceof HTMLElement) trigger.focus();
+      else if (previousFocus?.isConnected) previousFocus.focus();
     };
   }, [onClose]);
 
@@ -499,6 +505,7 @@ function FeedbackDialog({ token, onClose }: { token: string; onClose: () => void
       return;
     }
     setIsSubmitting(true);
+    isSubmittingRef.current = true;
     setMessage('');
     try {
       const response = await feedbackAPI.submit(token, {
@@ -518,13 +525,14 @@ function FeedbackDialog({ token, onClose }: { token: string; onClose: () => void
         : 'Feedback konnte nicht gesendet werden. Bitte versuche es erneut.');
     } finally {
       setIsSubmitting(false);
+      isSubmittingRef.current = false;
     }
   };
 
   return (
     <div
       className="fixed inset-0 z-[100] flex items-end justify-center bg-surface-950/50 p-0 backdrop-blur-sm sm:items-center sm:p-4"
-      onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}
+      onMouseDown={(event) => { if (!isSubmitting && event.target === event.currentTarget) onClose(); }}
     >
       <section
         ref={dialogRef}
@@ -539,7 +547,7 @@ function FeedbackDialog({ token, onClose }: { token: string; onClose: () => void
             <h2 id="feedback-title" className="text-lg font-semibold text-surface-900 dark:text-surface-100">Feedback geben</h2>
             <p className="mt-1 text-sm text-surface-500 dark:text-surface-400">Was können wir verbessern? Ideen und Fehlermeldungen helfen uns weiter.</p>
           </div>
-          <button type="button" onClick={onClose} aria-label="Schließen" className="rounded-lg p-2 text-surface-400 hover:bg-surface-100 hover:text-surface-700 dark:hover:bg-surface-800 dark:hover:text-surface-200">
+          <button type="button" onClick={onClose} disabled={isSubmitting} aria-label="Schließen" className="rounded-lg p-2 text-surface-400 hover:bg-surface-100 hover:text-surface-700 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-surface-800 dark:hover:text-surface-200">
             <CloseIcon className="h-5 w-5" />
           </button>
         </div>
@@ -571,7 +579,7 @@ function FeedbackDialog({ token, onClose }: { token: string; onClose: () => void
           </label>
           {message && <p role="status" className="text-sm text-surface-600 dark:text-surface-300">{message}</p>}
           <div className="flex justify-end gap-2 pt-1">
-            <button type="button" onClick={onClose} className="btn btn-secondary">Abbrechen</button>
+            <button type="button" onClick={onClose} disabled={isSubmitting} className="btn btn-secondary disabled:cursor-not-allowed disabled:opacity-60">Abbrechen</button>
             <button type="submit" disabled={isSubmitting} className="btn disabled:cursor-not-allowed disabled:opacity-60">{isSubmitting ? 'Wird gesendet…' : 'Absenden'}</button>
           </div>
         </form>}

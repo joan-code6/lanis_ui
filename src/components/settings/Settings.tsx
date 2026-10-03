@@ -244,12 +244,16 @@ const SidebarSettings: React.FC = () => {
     setSaveState(saved ? 'saved' : 'error');
   };
 
-  const toggleFeedbackButton = async () => {
+  const saveFeedbackButton = async (showFeedbackButton: boolean) => {
     setFeedbackSaveState('idle');
     const saved = await updatePreferences({
-      sidebar: { show_feedback_button: !preferences.sidebar.show_feedback_button },
+      sidebar: { show_feedback_button: showFeedbackButton },
     });
     setFeedbackSaveState(saved ? 'saved' : 'error');
+  };
+
+  const toggleFeedbackButton = async () => {
+    await saveFeedbackButton(!preferences.sidebar.show_feedback_button);
   };
 
   const cancelChanges = () => {
@@ -309,7 +313,14 @@ const SidebarSettings: React.FC = () => {
       </div>
       <div className="mt-3 min-h-5 text-sm" aria-live="polite">
         {feedbackSaveState === 'saved' && <p className="text-emerald-700 dark:text-emerald-400">Gespeichert und mit deinem Konto synchronisiert.</p>}
-        {feedbackSaveState === 'error' && <p className="text-amber-700 dark:text-amber-300">Lokal gespeichert, aber noch nicht mit deinem Konto synchronisiert. Die Synchronisierung wird erneut versucht.</p>}
+        {feedbackSaveState === 'error' && (
+          <div className="flex flex-wrap items-center justify-between gap-2 text-amber-700 dark:text-amber-300">
+            <p>Lokal gespeichert, aber noch nicht mit deinem Konto synchronisiert.</p>
+            <button type="button" onClick={() => void saveFeedbackButton(preferences.sidebar.show_feedback_button)} className="font-medium underline underline-offset-2">
+              Erneut versuchen
+            </button>
+          </div>
+        )}
       </div>
     </section>
     <section className="card !p-0 overflow-hidden">
