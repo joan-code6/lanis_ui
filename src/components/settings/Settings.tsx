@@ -288,6 +288,29 @@ const SidebarSettings: React.FC = () => {
 
   return (
     <div className="space-y-4">
+    <section className="card">
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <h3 className="text-base font-semibold text-surface-900 dark:text-surface-100">Feedback-Schaltfläche</h3>
+          <p className="mt-1 text-sm text-surface-500 dark:text-surface-400">Zeigt den Feedback-Eintrag unten in der Seitenleiste.</p>
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={preferences.sidebar.show_feedback_button}
+          aria-label="Feedback-Schaltfläche anzeigen"
+          onClick={() => void toggleFeedbackButton()}
+          disabled={isSaving}
+          className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500/40 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:focus:ring-offset-surface-900 ${preferences.sidebar.show_feedback_button ? 'bg-primary-600' : 'bg-surface-300 dark:bg-surface-700'}`}
+        >
+          <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${preferences.sidebar.show_feedback_button ? 'translate-x-5' : 'translate-x-0.5'}`} />
+        </button>
+      </div>
+      <div className="mt-3 min-h-5 text-sm" aria-live="polite">
+        {feedbackSaveState === 'saved' && <p className="text-emerald-700 dark:text-emerald-400">Gespeichert und mit deinem Konto synchronisiert.</p>}
+        {feedbackSaveState === 'error' && <p className="text-amber-700 dark:text-amber-300">Lokal gespeichert, aber noch nicht mit deinem Konto synchronisiert. Die Synchronisierung wird erneut versucht.</p>}
+      </div>
+    </section>
     <section className="card !p-0 overflow-hidden">
       <div className="border-b border-surface-100 px-5 py-5 dark:border-surface-800 sm:px-6">
         <div className="flex items-start justify-between gap-4">
@@ -426,29 +449,6 @@ const SidebarSettings: React.FC = () => {
             </p>
           )}
         </div>
-      </div>
-    </section>
-    <section className="card">
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <h3 className="text-base font-semibold text-surface-900 dark:text-surface-100">Feedback-Schaltfläche</h3>
-          <p className="mt-1 text-sm text-surface-500 dark:text-surface-400">Zeigt den Feedback-Eintrag unten in der Seitenleiste.</p>
-        </div>
-        <button
-          type="button"
-          role="switch"
-          aria-checked={preferences.sidebar.show_feedback_button}
-          aria-label="Feedback-Schaltfläche anzeigen"
-          onClick={() => void toggleFeedbackButton()}
-          disabled={isSaving}
-          className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500/40 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:focus:ring-offset-surface-900 ${preferences.sidebar.show_feedback_button ? 'bg-primary-600' : 'bg-surface-300 dark:bg-surface-700'}`}
-        >
-          <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${preferences.sidebar.show_feedback_button ? 'translate-x-5' : 'translate-x-0.5'}`} />
-        </button>
-      </div>
-      <div className="mt-3 min-h-5 text-sm" aria-live="polite">
-        {feedbackSaveState === 'saved' && <p className="text-emerald-700 dark:text-emerald-400">Gespeichert und mit deinem Konto synchronisiert.</p>}
-        {feedbackSaveState === 'error' && <p className="text-amber-700 dark:text-amber-300">Lokal gespeichert, aber noch nicht mit deinem Konto synchronisiert. Die Synchronisierung wird erneut versucht.</p>}
       </div>
     </section>
     </div>
