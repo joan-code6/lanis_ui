@@ -62,6 +62,7 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
   const [isSearchOpen, setIsSearchOpen] = React.useState(false);
   const [showLogoutConfirmation, setShowLogoutConfirmation] = React.useState(false);
   const [isFeedbackOpen, setIsFeedbackOpen] = React.useState(false);
+  const closeFeedbackDialog = React.useCallback(() => setIsFeedbackOpen(false), []);
   const [hasNativeDateispeicher, setHasNativeDateispeicher] = React.useState(false);
   const [hasNativeSubstitutionPlan, setHasNativeSubstitutionPlan] = React.useState(false);
   const [hasDsbModule, setHasDsbModule] = React.useState(false);
@@ -232,7 +233,7 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
         hasNativeSubstitutionPlan={hasNativeSubstitutionPlan}
         hasDsbModule={hasDsbModule}
       />
-      {isFeedbackOpen && <FeedbackDialog token={token || ''} onClose={() => setIsFeedbackOpen(false)} />}
+      {isFeedbackOpen && <FeedbackDialog token={token || ''} onClose={closeFeedbackDialog} />}
       <pwa-install
         ref={pwaRef}
         manifest-url={manifestUrl}
@@ -444,6 +445,7 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
 };
 
 function FeedbackDialog({ token, onClose }: { token: string; onClose: () => void }) {
+  const dialogRef = React.useRef<HTMLElement>(null);
   const [category, setCategory] = React.useState<FeedbackCategory>('feature');
   const [summary, setSummary] = React.useState('');
   const [details, setDetails] = React.useState('');
@@ -452,11 +454,38 @@ function FeedbackDialog({ token, onClose }: { token: string; onClose: () => void
   const [isSubmitted, setIsSubmitted] = React.useState(false);
 
   React.useEffect(() => {
+    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const dialog = dialogRef.current;
+    const focusableSelector = 'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+    dialog?.querySelector<HTMLElement>(focusableSelector)?.focus();
+
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
+      if (event.key === 'Escape') {
+        onClose();
+        return;
+      }
+      if (event.key !== 'Tab' || !dialog) return;
+      const focusable = Array.from(dialog.querySelectorAll<HTMLElement>(focusableSelector));
+      if (focusable.length === 0) {
+        event.preventDefault();
+        dialog.focus();
+        return;
+      }
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && (document.activeElement === first || !dialog.contains(document.activeElement))) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && (document.activeElement === last || !dialog.contains(document.activeElement))) {
+        event.preventDefault();
+        first.focus();
+      }
     };
     document.addEventListener('keydown', onKeyDown);
-    return () => document.removeEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+      if (previousFocus?.isConnected) previousFocus.focus();
+    };
   }, [onClose]);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -472,12 +501,16 @@ function FeedbackDialog({ token, onClose }: { token: string; onClose: () => void
     setIsSubmitting(true);
     setMessage('');
     try {
-      await feedbackAPI.submit(token, {
+      const response = await feedbackAPI.submit(token, {
         category,
         title: summary.trim(),
         details: details.trim(),
         page: window.location.pathname,
       });
+      if (!response.success) {
+        setMessage('Feedback konnte nicht gesendet werden. Bitte versuche es erneut.');
+        return;
+      }
       setIsSubmitted(true);
     } catch (submitError) {
       setMessage(axios.isAxiosError(submitError) && typeof submitError.response?.data?.detail === 'string'
@@ -494,9 +527,11 @@ function FeedbackDialog({ token, onClose }: { token: string; onClose: () => void
       onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}
     >
       <section
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="feedback-title"
+        tabIndex={-1}
         className="max-h-[92dvh] w-full overflow-y-auto rounded-t-2xl border border-surface-200 bg-white p-5 shadow-soft-lg dark:border-surface-700 dark:bg-surface-900 sm:max-w-lg sm:rounded-2xl sm:p-6"
       >
         <div className="mb-5 flex items-start justify-between gap-4">

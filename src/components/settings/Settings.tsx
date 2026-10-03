@@ -300,7 +300,8 @@ const SidebarSettings: React.FC = () => {
           aria-checked={preferences.sidebar.show_feedback_button}
           aria-label="Feedback-Schaltfläche anzeigen"
           onClick={() => void toggleFeedbackButton()}
-          disabled={isSaving}
+          disabled={isSaving || hasChanges || hasVisibilityChanges}
+          title={hasChanges || hasVisibilityChanges ? 'Speichere oder verwirf zuerst deine Navigationsänderungen.' : undefined}
           className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500/40 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:focus:ring-offset-surface-900 ${preferences.sidebar.show_feedback_button ? 'bg-primary-600' : 'bg-surface-300 dark:bg-surface-700'}`}
         >
           <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${preferences.sidebar.show_feedback_button ? 'translate-x-5' : 'translate-x-0.5'}`} />
