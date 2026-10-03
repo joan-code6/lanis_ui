@@ -98,6 +98,7 @@ export interface UserPreferences {
   sidebar: {
     order: string[];
     hidden_items: string[];
+    show_feedback_button: boolean;
   };
   dashboard: {
     pinned_modules: string[];

@@ -4,7 +4,7 @@ import { usePreferences } from '../../contexts/PreferencesContext';
 import { BasePathProvider } from '../../contexts/BasePathContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import DemoBar from '../demo/DemoBar';
-import { appsAPI } from '../../services/api';
+import { appsAPI, feedbackAPI, type FeedbackCategory } from '../../services/api';
 import axios from 'axios';
 import {
   HomeIcon,
@@ -23,6 +23,8 @@ import {
   FolderIcon,
   MagnifyingGlassIcon,
   MinusIcon,
+  ChatBubbleBottomCenterTextIcon,
+  XMarkIcon as CloseIcon,
 } from '@heroicons/react/24/outline';
 import { Link, useLocation } from 'react-router-dom';
 import GlobalSearch from '../search/GlobalSearch';
@@ -59,6 +61,8 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
   ));
   const [isSearchOpen, setIsSearchOpen] = React.useState(false);
   const [showLogoutConfirmation, setShowLogoutConfirmation] = React.useState(false);
+  const [isFeedbackOpen, setIsFeedbackOpen] = React.useState(false);
+  const closeFeedbackDialog = React.useCallback(() => setIsFeedbackOpen(false), []);
   const [hasNativeDateispeicher, setHasNativeDateispeicher] = React.useState(false);
   const [hasNativeSubstitutionPlan, setHasNativeSubstitutionPlan] = React.useState(false);
   const [hasDsbModule, setHasDsbModule] = React.useState(false);
@@ -127,6 +131,7 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
 
   React.useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      if (isFeedbackOpen) return;
       if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'f')) {
         e.preventDefault();
         setIsSearchOpen(prev => !prev);
@@ -134,7 +139,7 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
     };
     document.addEventListener('keydown', handler);
     return () => document.removeEventListener('keydown', handler);
-  }, []);
+  }, [isFeedbackOpen]);
 
   const navigationItems = {
     search: { name: 'Suche', href: `${basePath}/search`, icon: MagnifyingGlassIcon },
@@ -229,6 +234,7 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
         hasNativeSubstitutionPlan={hasNativeSubstitutionPlan}
         hasDsbModule={hasDsbModule}
       />
+      {isFeedbackOpen && <FeedbackDialog token={token || ''} onClose={closeFeedbackDialog} />}
       <pwa-install
         ref={pwaRef}
         manifest-url={manifestUrl}
@@ -378,6 +384,21 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
             })}
           </nav>
           <div className="mt-auto pt-4 border-t border-surface-100 dark:border-surface-800">
+            {!isDemo && preferences.sidebar.show_feedback_button && (
+              <button
+                type="button"
+                id="feedback-trigger"
+                onClick={() => { setIsSearchOpen(false); setIsFeedbackOpen(true); }}
+                className={`nav-link mb-1 text-surface-500 dark:text-surface-400 hover:text-surface-700 dark:hover:text-surface-300 ${isCollapsed ? 'mx-auto h-10 w-10 justify-center gap-0 px-0' : 'w-full'}`}
+                title={isCollapsed ? 'Feedback geben' : undefined}
+                aria-label="Feedback geben"
+              >
+                <ChatBubbleBottomCenterTextIcon className="nav-link-icon text-surface-400 dark:text-surface-500" />
+                <span className={`overflow-hidden whitespace-nowrap transition-[max-width,opacity] duration-300 ${isCollapsed ? 'max-w-0 opacity-0' : 'max-w-32 opacity-100'}`}>
+                  Feedback geben
+                </span>
+              </button>
+            )}
             <div className="relative">
               {showLogoutConfirmation && (
                 <div
@@ -424,5 +445,147 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
     );
   }
 };
+
+function FeedbackDialog({ token, onClose }: { token: string; onClose: () => void }) {
+  const dialogRef = React.useRef<HTMLElement>(null);
+  const [category, setCategory] = React.useState<FeedbackCategory>('feature');
+  const [summary, setSummary] = React.useState('');
+  const [details, setDetails] = React.useState('');
+  const [message, setMessage] = React.useState('');
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const isSubmittingRef = React.useRef(false);
+  const [isSubmitted, setIsSubmitted] = React.useState(false);
+
+  React.useEffect(() => {
+    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const dialog = dialogRef.current;
+    const focusableSelector = 'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+    dialog?.querySelector<HTMLElement>(focusableSelector)?.focus();
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        if (isSubmittingRef.current) return;
+        onClose();
+        return;
+      }
+      if (event.key !== 'Tab' || !dialog) return;
+      const focusable = Array.from(dialog.querySelectorAll<HTMLElement>(focusableSelector));
+      if (focusable.length === 0) {
+        event.preventDefault();
+        dialog.focus();
+        return;
+      }
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && (document.activeElement === first || !dialog.contains(document.activeElement))) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && (document.activeElement === last || !dialog.contains(document.activeElement))) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+      const trigger = document.getElementById('feedback-trigger');
+      if (trigger instanceof HTMLElement) trigger.focus();
+      else if (previousFocus?.isConnected) previousFocus.focus();
+    };
+  }, [onClose]);
+
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!summary.trim() || !details.trim()) {
+      setMessage('Bitte gib einen kurzen Titel und eine Beschreibung ein.');
+      return;
+    }
+    if (!token) {
+      setMessage('Melde dich an, um Feedback abzusenden.');
+      return;
+    }
+    setIsSubmitting(true);
+    isSubmittingRef.current = true;
+    setMessage('');
+    try {
+      const response = await feedbackAPI.submit(token, {
+        category,
+        title: summary.trim(),
+        details: details.trim(),
+        page: window.location.pathname,
+      });
+      if (!response.success) {
+        setMessage('Feedback konnte nicht gesendet werden. Bitte versuche es erneut.');
+        return;
+      }
+      setIsSubmitted(true);
+    } catch (submitError) {
+      setMessage(axios.isAxiosError(submitError) && typeof submitError.response?.data?.detail === 'string'
+        ? submitError.response.data.detail
+        : 'Feedback konnte nicht gesendet werden. Bitte versuche es erneut.');
+    } finally {
+      setIsSubmitting(false);
+      isSubmittingRef.current = false;
+    }
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-[100] flex items-end justify-center bg-surface-950/50 p-0 backdrop-blur-sm sm:items-center sm:p-4"
+      onMouseDown={(event) => { if (!isSubmitting && event.target === event.currentTarget) onClose(); }}
+    >
+      <section
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="feedback-title"
+        tabIndex={-1}
+        className="max-h-[92dvh] w-full overflow-y-auto rounded-t-2xl border border-surface-200 bg-white p-5 shadow-soft-lg dark:border-surface-700 dark:bg-surface-900 sm:max-w-lg sm:rounded-2xl sm:p-6"
+      >
+        <div className="mb-5 flex items-start justify-between gap-4">
+          <div>
+            <h2 id="feedback-title" className="text-lg font-semibold text-surface-900 dark:text-surface-100">Feedback geben</h2>
+            <p className="mt-1 text-sm text-surface-500 dark:text-surface-400">Was können wir verbessern? Ideen und Fehlermeldungen helfen uns weiter.</p>
+          </div>
+          <button type="button" onClick={onClose} disabled={isSubmitting} aria-label="Schließen" className="rounded-lg p-2 text-surface-400 hover:bg-surface-100 hover:text-surface-700 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-surface-800 dark:hover:text-surface-200">
+            <CloseIcon className="h-5 w-5" />
+          </button>
+        </div>
+        {isSubmitted ? (
+          <div className="py-8 text-center">
+            <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400">
+              <ChatBubbleBottomCenterTextIcon className="h-6 w-6" />
+            </span>
+            <h3 className="mt-4 text-base font-semibold text-surface-900 dark:text-surface-100">Danke für dein Feedback!</h3>
+            <p className="mt-1 text-sm text-surface-500 dark:text-surface-400">Dein Beitrag ist bei uns angekommen.</p>
+            <button type="button" onClick={onClose} className="btn mt-5">Fertig</button>
+          </div>
+        ) : <form onSubmit={(event) => void handleSubmit(event)} className="space-y-4">
+          <label className="block text-sm font-medium text-surface-700 dark:text-surface-300">
+            Worum geht es?
+            <select value={category} onChange={(event) => setCategory(event.target.value as FeedbackCategory)} className="input mt-1.5 w-full">
+              <option value="feature">Idee für eine Funktion</option>
+              <option value="bug">Fehler melden</option>
+              <option value="general">Allgemeines Feedback</option>
+            </select>
+          </label>
+          <label className="block text-sm font-medium text-surface-700 dark:text-surface-300">
+            Kurzer Titel
+            <input value={summary} onChange={(event) => setSummary(event.target.value)} maxLength={120} required placeholder="Zum Beispiel: Stundenplan lässt sich nicht öffnen" className="input mt-1.5 w-full" />
+          </label>
+          <label className="block text-sm font-medium text-surface-700 dark:text-surface-300">
+            Beschreibung
+            <textarea value={details} onChange={(event) => setDetails(event.target.value)} required rows={5} maxLength={5000} placeholder="Beschreibe deine Idee oder was passiert ist …" className="input mt-1.5 w-full resize-y" />
+          </label>
+          {message && <p role="status" className="text-sm text-surface-600 dark:text-surface-300">{message}</p>}
+          <div className="flex justify-end gap-2 pt-1">
+            <button type="button" onClick={onClose} disabled={isSubmitting} className="btn btn-secondary disabled:cursor-not-allowed disabled:opacity-60">Abbrechen</button>
+            <button type="submit" disabled={isSubmitting} className="btn disabled:cursor-not-allowed disabled:opacity-60">{isSubmitting ? 'Wird gesendet…' : 'Absenden'}</button>
+          </div>
+        </form>}
+      </section>
+    </div>
+  );
+}
 
 export default Layout;

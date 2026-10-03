@@ -1141,3 +1141,19 @@ export const cacheStatusAPI = {
     return status as { available: boolean; last_successful_fetch_at: string | null; snapshot_count: number; retention_seconds: number };
   },
 };
+
+export type FeedbackCategory = 'feature' | 'bug' | 'general';
+
+export const feedbackAPI = {
+  async submit(
+    token: string,
+    payload: { category: FeedbackCategory; title: string; details: string; page: string },
+  ): Promise<{ success: boolean; id: number }> {
+    const response = await apiClient.post<{ success: boolean; id: number }>(
+      '/feedback',
+      payload,
+      { headers: { 'X-Session-Token': token } },
+    );
+    return response.data;
+  },
+};

@@ -185,22 +185,23 @@ const sectionMeta: Record<SettingsSection, { title: string; subtitle: string }> 
   notifications: { title: 'Benachrichtigungen', subtitle: 'Nachrichten und neue Vertretungsplan-Einträge per Web-Push mitbekommen.' },
   whatsapp: { title: 'WhatsApp-Assistent', subtitle: 'Dein LANIS-Konto sicher mit dem WhatsApp-Chat verbinden.' },
   app: { title: 'App & Installation', subtitle: 'Lanis auf deinem Gerät griffbereit halten.' },
-  sidebar: { title: 'Seitenleiste', subtitle: 'Ordne die Einträge in der Seitenleiste nach deinen Wünschen.' },
+  sidebar: { title: 'Seitenleiste', subtitle: 'Passe die Navigation an deine Gewohnheiten an.' },
 };
 
 type SidebarSaveState = 'idle' | 'saved' | 'error';
 
-const SidebarSettings: React.FC = () => {
+const SidebarSettings: React.FC<{ isDemo: boolean }> = ({ isDemo }) => {
   const { preferences, updatePreferences, isSaving } = usePreferences();
   const [order, setOrder] = useState(() => normalizeSidebarOrder(preferences.sidebar.order));
   const [hiddenItems, setHiddenItems] = useState<string[]>(() => preferences.sidebar.hidden_items);
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [saveState, setSaveState] = useState<SidebarSaveState>('idle');
+  const [feedbackSaveState, setFeedbackSaveState] = useState<SidebarSaveState>('idle');
 
   useEffect(() => {
     setOrder(normalizeSidebarOrder(preferences.sidebar.order));
     setHiddenItems(preferences.sidebar.hidden_items);
-  }, [preferences.sidebar.order]);
+  }, [preferences.sidebar.order, preferences.sidebar.hidden_items]);
 
   const visibleOrder = order.filter(id => !hiddenItems.includes(id));
   const hiddenOrder = order.filter(id => hiddenItems.includes(id));
@@ -237,11 +238,22 @@ const SidebarSettings: React.FC = () => {
 
   const hasChanges = JSON.stringify(order) !== JSON.stringify(normalizeSidebarOrder(preferences.sidebar.order));
   const hasVisibilityChanges = JSON.stringify(hiddenItems) !== JSON.stringify(preferences.sidebar.hidden_items);
-
   const applyOrder = async () => {
     setSaveState('idle');
     const saved = await updatePreferences({ sidebar: { order, hidden_items: hiddenItems } });
     setSaveState(saved ? 'saved' : 'error');
+  };
+
+  const saveFeedbackButton = async (showFeedbackButton: boolean) => {
+    setFeedbackSaveState('idle');
+    const saved = await updatePreferences({
+      sidebar: { show_feedback_button: showFeedbackButton },
+    });
+    setFeedbackSaveState(saved ? 'saved' : 'error');
+  };
+
+  const toggleFeedbackButton = async () => {
+    await saveFeedbackButton(!preferences.sidebar.show_feedback_button);
   };
 
   const cancelChanges = () => {
@@ -279,6 +291,38 @@ const SidebarSettings: React.FC = () => {
   };
 
   return (
+    <div className="space-y-4">
+    {!isDemo && <section className="card">
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <h3 className="text-base font-semibold text-surface-900 dark:text-surface-100">Feedback-Schaltfläche</h3>
+          <p className="mt-1 text-sm text-surface-500 dark:text-surface-400">Zeigt den Feedback-Eintrag unten in der Seitenleiste.</p>
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={preferences.sidebar.show_feedback_button}
+          aria-label="Feedback-Schaltfläche anzeigen"
+          onClick={() => void toggleFeedbackButton()}
+          disabled={isSaving || hasChanges || hasVisibilityChanges}
+          title={hasChanges || hasVisibilityChanges ? 'Speichere oder verwirf zuerst deine Navigationsänderungen.' : undefined}
+          className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500/40 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:focus:ring-offset-surface-900 ${preferences.sidebar.show_feedback_button ? 'bg-primary-600' : 'bg-surface-300 dark:bg-surface-700'}`}
+        >
+          <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${preferences.sidebar.show_feedback_button ? 'translate-x-5' : 'translate-x-0.5'}`} />
+        </button>
+      </div>
+      <div className="mt-3 min-h-5 text-sm" aria-live="polite">
+        {feedbackSaveState === 'saved' && <p className="text-emerald-700 dark:text-emerald-400">Gespeichert und mit deinem Konto synchronisiert.</p>}
+        {feedbackSaveState === 'error' && (
+          <div className="flex flex-wrap items-center justify-between gap-2 text-amber-700 dark:text-amber-300">
+            <p>Lokal gespeichert, aber noch nicht mit deinem Konto synchronisiert.</p>
+            <button type="button" onClick={() => void saveFeedbackButton(preferences.sidebar.show_feedback_button)} className="font-medium underline underline-offset-2">
+              Erneut versuchen
+            </button>
+          </div>
+        )}
+      </div>
+    </section>}
     <section className="card !p-0 overflow-hidden">
       <div className="border-b border-surface-100 px-5 py-5 dark:border-surface-800 sm:px-6">
         <div className="flex items-start justify-between gap-4">
@@ -400,7 +444,7 @@ const SidebarSettings: React.FC = () => {
               disabled={(!hasChanges && !hasVisibilityChanges && saveState !== 'error') || isSaving}
               className="btn btn-primary flex-1 disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none"
             >
-              {isSaving ? 'Wird gespeichert…' : 'Reihenfolge speichern'}
+              {isSaving ? 'Wird gespeichert…' : 'Änderungen speichern'}
             </button>
           </div>
         </div>
@@ -419,6 +463,7 @@ const SidebarSettings: React.FC = () => {
         </div>
       </div>
     </section>
+    </div>
   );
 };
 
@@ -974,7 +1019,7 @@ const Settings: React.FC = () => {
       {section === 'homework' && <HomeworkSettings />}
       {section === 'vertretungsplan' && <VertretungsplanSettings />}
       {section === 'whatsapp' && <WhatsAppSettings />}
-      {section === 'sidebar' && <SidebarSettings />}
+      {section === 'sidebar' && <SidebarSettings isDemo={basePath === '/demo'} />}
 
       <div className="space-y-6">
         {section === 'appearance' && (
