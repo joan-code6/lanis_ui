@@ -1,5 +1,6 @@
 export const ACCOUNT_DATA_GENERATION_KEY = '__lanis_account_data_generation';
 export const ACCOUNT_DATA_DELETION_EPOCH_KEY = '__lanis_account_deletion_epoch';
+export const ACCOUNT_DATA_DELETION_CONFIRMED_KEY = '__lanis_account_deletion_confirmed';
 export const ACCOUNT_DATA_LIFECYCLE_LOCK_KEY = '__lanis_account_data_lifecycle_lock';
 
 let deletionInProgress = false;
@@ -210,6 +211,23 @@ export const recordAccountDataDeletion = (): boolean => {
   }
 };
 
+export const confirmAccountDataDeletion = (generation: number): boolean => {
+  try {
+    window.localStorage.setItem(ACCOUNT_DATA_DELETION_CONFIRMED_KEY, String(generation));
+    return recordAccountDataDeletion();
+  } catch {
+    return false;
+  }
+};
+
+export const isAccountDataDeletionConfirmed = (generation: number): boolean => {
+  try {
+    return window.localStorage.getItem(ACCOUNT_DATA_DELETION_CONFIRMED_KEY) === String(generation);
+  } catch {
+    return false;
+  }
+};
+
 export const canWriteAccountData = (generation: number): boolean => {
   const state = readGenerationState();
   const markerPresent = hasAccountDataDeletionMarker();
@@ -255,6 +273,11 @@ export const finishAccountDataDeletion = (generation: number): void => {
     // If storage is unavailable, the in-memory deletion guard still applies.
   }
   stopDeletionLeaseTimer(false);
+  try {
+    window.localStorage.removeItem(ACCOUNT_DATA_DELETION_CONFIRMED_KEY);
+  } catch {
+    // The generation marker remains authoritative if storage is unavailable.
+  }
   const nextGeneration = generation + 1;
   try {
     window.localStorage.setItem(
@@ -274,6 +297,7 @@ export const completeAccountDataDeletion = (expectedGeneration: number): boolean
   const generation = captureAccountDataGeneration() + 1;
   deletionInProgress = false;
   try {
+    window.localStorage.removeItem(ACCOUNT_DATA_DELETION_CONFIRMED_KEY);
     window.localStorage.setItem(
       ACCOUNT_DATA_GENERATION_KEY,
       `${generation}:login`,

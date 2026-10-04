@@ -214,6 +214,14 @@ const apiClient: AxiosInstance = axios.create({
   },
 });
 
+// Startup deletion recovery must verify or refresh a session without the normal
+// auth interceptors clearing credentials before the result can be evaluated.
+const sessionRecoveryClient: AxiosInstance = axios.create({
+  baseURL: API_BASE_URL,
+  timeout: 30000,
+  headers: { 'Content-Type': 'application/json' },
+});
+
 // Public homepage data must not pass through the authenticated client's
 // interceptors, especially when a custom backend token is stored locally.
 const homepageClient: AxiosInstance = axios.create({
@@ -327,6 +335,20 @@ async function ensureValidToken(): Promise<string | null> {
 }
 
 export const authAPI = {
+  async verifySessionForRecovery(token: string): Promise<{ success: boolean; data: User }> {
+    const response = await sessionRecoveryClient.get<{ success: boolean; data: User }>('/benutzer', {
+      headers: { 'X-Session-Token': token },
+    });
+    return response.data;
+  },
+
+  async refreshSessionForRecovery(refreshToken: string): Promise<TokenRefreshResponse> {
+    const response = await sessionRecoveryClient.post<TokenRefreshResponse>('/auth/refresh', {
+      refresh_token: refreshToken,
+    } as TokenRefreshRequest);
+    return response.data;
+  },
+
   async getValidSessionToken(): Promise<string | null> {
     return ensureValidToken();
   },

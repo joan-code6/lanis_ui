@@ -7,11 +7,13 @@ import {
   clearBackendScopedStorage,
 } from '../../utils/backendConfig';
 import {
+  ACCOUNT_DATA_DELETION_CONFIRMED_KEY,
   ACCOUNT_DATA_DELETION_EPOCH_KEY,
   ACCOUNT_DATA_GENERATION_KEY,
   ACCOUNT_DATA_LIFECYCLE_LOCK_KEY,
   beginAccountDataDeletion,
   captureAccountDataGeneration,
+  confirmAccountDataDeletion,
   finishAccountDataDeletion,
   hasAccountDataLoginSince,
   isAccountDataDeletionInProgress,
@@ -263,6 +265,8 @@ const AccountSettings: React.FC = () => {
       return;
     }
 
+    const deletionConfirmedRecorded = confirmAccountDataDeletion(deletionGeneration);
+
     if (
       !ownsAccountDataDeletion(deletionGeneration)
       && (
@@ -276,7 +280,6 @@ const AccountSettings: React.FC = () => {
 
     try {
       const customBackendUrl = localStorage.getItem(CUSTOM_BACKEND_STORAGE_KEY);
-      const deletionEpochRecorded = recordAccountDataDeletion();
       clearBackendScopedStorage();
       for (let index = localStorage.length - 1; index >= 0; index -= 1) {
         const key = localStorage.key(index);
@@ -285,12 +288,13 @@ const AccountSettings: React.FC = () => {
           && key !== CUSTOM_BACKEND_STORAGE_KEY
           && key !== ACCOUNT_DATA_GENERATION_KEY
           && key !== ACCOUNT_DATA_DELETION_EPOCH_KEY
+          && key !== ACCOUNT_DATA_DELETION_CONFIRMED_KEY
           && key !== ACCOUNT_DATA_LIFECYCLE_LOCK_KEY
         ) {
           localStorage.removeItem(key);
         }
       }
-      if (!deletionEpochRecorded) recordAccountDataDeletion();
+      if (!deletionConfirmedRecorded) recordAccountDataDeletion();
       if (customBackendUrl) {
         localStorage.setItem(CUSTOM_BACKEND_STORAGE_KEY, customBackendUrl);
       }

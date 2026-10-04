@@ -6,13 +6,14 @@ import {
   clearBackendScopedStorage,
 } from '../utils/backendConfig';
 import {
+  ACCOUNT_DATA_DELETION_CONFIRMED_KEY,
   ACCOUNT_DATA_LIFECYCLE_LOCK_KEY,
   canWriteAccountData,
   captureAccountDataGeneration,
   completeAccountDataDeletion,
   finishAccountDataDeletion,
   hasAccountDataDeletionMarker,
-  recordAccountDataDeletion,
+  isAccountDataDeletionConfirmed,
   withAccountDataLifecycleLock,
 } from '../utils/accountDataWrites';
 
@@ -48,28 +49,46 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         await withAccountDataLifecycleLock(async () => {
           if (hasAccountDataDeletionMarker()) {
             const deletionGeneration = captureAccountDataGeneration();
-            const savedToken = localStorage.getItem(ACCESS_TOKEN_KEY);
-            if (savedToken) {
-              try {
-                const profile = await authAPI.getUserProfile(savedToken);
-                finishAccountDataDeletion(deletionGeneration);
-                setToken(savedToken);
-                setUser(profile.data);
-                setIsAuthenticated(true);
-                return;
-              } catch (error) {
-                const status = (error as { response?: { status?: number } })?.response?.status;
-                // Only a server rejection confirms that the pending request deleted
-                // this session. A network failure must not erase a still-live account.
-                if (status !== 401 && status !== 403) return;
+            if (!isAccountDataDeletionConfirmed(deletionGeneration)) {
+              let recoveredToken = localStorage.getItem(ACCESS_TOKEN_KEY);
+              let profile: { success: boolean; data: User } | null = null;
+              let refreshedExpiresAt: number | null = null;
+
+              if (recoveredToken) {
+                try {
+                  profile = await authAPI.verifySessionForRecovery(recoveredToken);
+                } catch {
+                  // A 401 can mean an expired access token; try the saved refresh token.
+                }
               }
-            } else {
-              // Without a server-verifiable session, a pending marker is not proof
-              // that account deletion completed.
+
+              if (!profile) {
+                const savedRefreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
+                if (!savedRefreshToken) return;
+                try {
+                  const refreshed = await authAPI.refreshSessionForRecovery(savedRefreshToken);
+                  recoveredToken = refreshed.access_token;
+                  refreshedExpiresAt = Date.now() + refreshed.expires_in * 1000;
+                  profile = await authAPI.verifySessionForRecovery(recoveredToken);
+                } catch {
+                  // A failed or unreachable refresh cannot confirm account deletion.
+                  return;
+                }
+              }
+
+              if (!profile || !recoveredToken) return;
+              if (refreshedExpiresAt !== null) {
+                localStorage.setItem(ACCESS_TOKEN_KEY, recoveredToken);
+                localStorage.setItem(TOKEN_EXPIRES_KEY, refreshedExpiresAt.toString());
+              }
+              localStorage.setItem(USER_KEY, JSON.stringify(profile.data));
+              finishAccountDataDeletion(deletionGeneration);
+              setToken(recoveredToken);
+              setUser(profile.data);
+              setIsAuthenticated(true);
               return;
             }
             const customBackendUrl = localStorage.getItem(CUSTOM_BACKEND_STORAGE_KEY);
-            recordAccountDataDeletion();
             clearBackendScopedStorage();
             for (let index = localStorage.length - 1; index >= 0; index -= 1) {
               const key = localStorage.key(index);
@@ -78,6 +97,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                 && key !== CUSTOM_BACKEND_STORAGE_KEY
                 && key !== '__lanis_account_data_generation'
                 && key !== '__lanis_account_deletion_epoch'
+                && key !== ACCOUNT_DATA_DELETION_CONFIRMED_KEY
                 && key !== ACCOUNT_DATA_LIFECYCLE_LOCK_KEY
               ) {
                 localStorage.removeItem(key);
