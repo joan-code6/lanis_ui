@@ -197,16 +197,17 @@ const SidebarSettings: React.FC<{ isDemo: boolean }> = ({ isDemo }) => {
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [saveState, setSaveState] = useState<SidebarSaveState>('idle');
   const [feedbackSaveState, setFeedbackSaveState] = useState<SidebarSaveState>('idle');
+  const [isRetryingFeedbackSave, setIsRetryingFeedbackSave] = useState(false);
   const preserveNavigationDraftsRef = React.useRef(false);
 
   useEffect(() => {
     if (preserveNavigationDraftsRef.current) {
-      if (!isSaving) preserveNavigationDraftsRef.current = false;
+      if (!isRetryingFeedbackSave) preserveNavigationDraftsRef.current = false;
       return;
     }
     setOrder(normalizeSidebarOrder(preferences.sidebar.order));
     setHiddenItems(preferences.sidebar.hidden_items);
-  }, [preferences.sidebar.order, preferences.sidebar.hidden_items, isSaving]);
+  }, [preferences.sidebar.order, preferences.sidebar.hidden_items, isRetryingFeedbackSave]);
 
   const visibleOrder = order.filter(id => !hiddenItems.includes(id));
   const hiddenOrder = order.filter(id => hiddenItems.includes(id));
@@ -243,6 +244,7 @@ const SidebarSettings: React.FC<{ isDemo: boolean }> = ({ isDemo }) => {
 
   const hasChanges = JSON.stringify(order) !== JSON.stringify(normalizeSidebarOrder(preferences.sidebar.order));
   const hasVisibilityChanges = JSON.stringify(hiddenItems) !== JSON.stringify(preferences.sidebar.hidden_items);
+  const isSidebarSaveInProgress = isSaving || isRetryingFeedbackSave;
   const applyOrder = async () => {
     setSaveState('idle');
     const saved = await updatePreferences({ sidebar: { order, hidden_items: hiddenItems } });
@@ -251,11 +253,16 @@ const SidebarSettings: React.FC<{ isDemo: boolean }> = ({ isDemo }) => {
 
   const saveFeedbackButton = async (showFeedbackButton: boolean, preserveNavigationDrafts = false) => {
     preserveNavigationDraftsRef.current = preserveNavigationDrafts;
+    if (preserveNavigationDrafts) setIsRetryingFeedbackSave(true);
     setFeedbackSaveState('idle');
-    const saved = await updatePreferences({
-      sidebar: { show_feedback_button: showFeedbackButton },
-    });
-    setFeedbackSaveState(saved ? 'saved' : 'error');
+    try {
+      const saved = await updatePreferences({
+        sidebar: { show_feedback_button: showFeedbackButton },
+      });
+      setFeedbackSaveState(saved ? 'saved' : 'error');
+    } finally {
+      if (preserveNavigationDrafts) setIsRetryingFeedbackSave(false);
+    }
   };
 
   const toggleFeedbackButton = async () => {
@@ -310,7 +317,7 @@ const SidebarSettings: React.FC<{ isDemo: boolean }> = ({ isDemo }) => {
           aria-checked={preferences.sidebar.show_feedback_button}
           aria-label="Feedback-Schaltfläche anzeigen"
           onClick={() => void toggleFeedbackButton()}
-          disabled={isSaving || hasChanges || hasVisibilityChanges}
+          disabled={isSidebarSaveInProgress || hasChanges || hasVisibilityChanges}
           title={hasChanges || hasVisibilityChanges ? 'Speichere oder verwirf zuerst deine Navigationsänderungen.' : undefined}
           className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500/40 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:focus:ring-offset-surface-900 ${preferences.sidebar.show_feedback_button ? 'bg-primary-600' : 'bg-surface-300 dark:bg-surface-700'}`}
         >
@@ -325,7 +332,7 @@ const SidebarSettings: React.FC<{ isDemo: boolean }> = ({ isDemo }) => {
             <button
               type="button"
               onClick={() => void saveFeedbackButton(preferences.sidebar.show_feedback_button, hasChanges || hasVisibilityChanges)}
-              disabled={isSaving}
+              disabled={isSidebarSaveInProgress}
               className="font-medium underline underline-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Erneut versuchen
@@ -353,9 +360,9 @@ const SidebarSettings: React.FC<{ isDemo: boolean }> = ({ isDemo }) => {
         {displayOrder.map((id, index) => (
           <li
             key={id}
-            onDragOver={(event) => { if (!isSaving) event.preventDefault(); }}
+            onDragOver={(event) => { if (!isSidebarSaveInProgress) event.preventDefault(); }}
             onDragEnter={() => {
-              if (!isSaving && draggedId && hiddenItems.includes(draggedId) === hiddenItems.includes(id)) moveItemTo(draggedId, id);
+              if (!isSidebarSaveInProgress && draggedId && hiddenItems.includes(draggedId) === hiddenItems.includes(id)) moveItemTo(draggedId, id);
             }}
             onDrop={() => setDraggedId(null)}
             className={`group flex min-h-16 items-center gap-3 rounded-2xl border bg-white px-3 py-2 shadow-sm transition-[transform,background-color,border-color,box-shadow] duration-150 dark:bg-surface-900 sm:px-4 ${
@@ -370,7 +377,7 @@ const SidebarSettings: React.FC<{ isDemo: boolean }> = ({ isDemo }) => {
               {String(index + 1).padStart(2, '0')}
             </span>
             <span
-              draggable={!isSaving}
+              draggable={!isSidebarSaveInProgress}
               onDragStart={(event) => {
                 event.dataTransfer.effectAllowed = 'move';
                 event.dataTransfer.setData('text/plain', id);
@@ -391,7 +398,7 @@ const SidebarSettings: React.FC<{ isDemo: boolean }> = ({ isDemo }) => {
               <button
                 type="button"
                 onClick={() => deleteDivider(id)}
-                disabled={isSaving}
+                disabled={isSidebarSaveInProgress}
                 aria-label={`Trennlinie löschen`}
                 className="flex h-10 items-center gap-1.5 rounded-lg px-2 text-xs font-medium text-surface-500 transition-colors hover:bg-surface-100 hover:text-red-600 focus:outline-none focus:ring-2 focus:ring-red-500/40 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-surface-800 dark:hover:text-red-400"
               >
@@ -402,7 +409,7 @@ const SidebarSettings: React.FC<{ isDemo: boolean }> = ({ isDemo }) => {
               <button
                 type="button"
                 onClick={() => toggleVisibility(id)}
-                disabled={isSaving}
+                disabled={isSidebarSaveInProgress}
                 aria-label={hiddenItems.includes(id) ? `${getSidebarLabel(id)} einblenden` : `${getSidebarLabel(id)} ausblenden`}
                 className="flex h-10 items-center gap-1.5 rounded-lg px-2 text-xs font-medium text-surface-500 transition-colors hover:bg-surface-100 hover:text-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500/40 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-surface-800 dark:hover:text-primary-400"
               >
@@ -413,7 +420,7 @@ const SidebarSettings: React.FC<{ isDemo: boolean }> = ({ isDemo }) => {
             <button
               type="button"
               onClick={() => moveItem(id, -1)}
-              disabled={isSaving || index === 0 || hiddenItems.includes(id) !== hiddenItems.includes(displayOrder[index - 1])}
+              disabled={isSidebarSaveInProgress || index === 0 || hiddenItems.includes(id) !== hiddenItems.includes(displayOrder[index - 1])}
               aria-label={`${getSidebarLabel(id)} nach oben verschieben`}
               className="flex h-10 w-10 items-center justify-center rounded-lg text-surface-500 transition-colors hover:bg-surface-100 hover:text-surface-800 focus:outline-none focus:ring-2 focus:ring-primary-500/40 disabled:cursor-not-allowed disabled:opacity-25 dark:hover:bg-surface-800 dark:hover:text-surface-100"
             >
@@ -422,7 +429,7 @@ const SidebarSettings: React.FC<{ isDemo: boolean }> = ({ isDemo }) => {
             <button
               type="button"
               onClick={() => moveItem(id, 1)}
-              disabled={isSaving || index === displayOrder.length - 1 || hiddenItems.includes(id) !== hiddenItems.includes(displayOrder[index + 1])}
+              disabled={isSidebarSaveInProgress || index === displayOrder.length - 1 || hiddenItems.includes(id) !== hiddenItems.includes(displayOrder[index + 1])}
               aria-label={`${getSidebarLabel(id)} nach unten verschieben`}
               className="flex h-10 w-10 items-center justify-center rounded-lg text-surface-500 transition-colors hover:bg-surface-100 hover:text-surface-800 focus:outline-none focus:ring-2 focus:ring-primary-500/40 disabled:cursor-not-allowed disabled:opacity-25 dark:hover:bg-surface-800 dark:hover:text-surface-100"
             >
@@ -437,27 +444,27 @@ const SidebarSettings: React.FC<{ isDemo: boolean }> = ({ isDemo }) => {
           <button
             type="button"
             onClick={addDivider}
-            disabled={isSaving}
+            disabled={isSidebarSaveInProgress}
             className="btn btn-ghost justify-center sm:justify-start disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Bars3Icon className="mr-2 h-4 w-4 rotate-90" aria-hidden="true" />
             Trennlinie hinzufügen
           </button>
-          <button type="button" onClick={resetOrder} disabled={isSaving} className="btn btn-ghost justify-center sm:justify-start">
+          <button type="button" onClick={resetOrder} disabled={isSidebarSaveInProgress} className="btn btn-ghost justify-center sm:justify-start">
             <ArrowPathIcon className="mr-2 h-4 w-4" aria-hidden="true" />
             Standard wiederherstellen
           </button>
           <div className="flex gap-3 sm:ml-auto">
-            <button type="button" onClick={cancelChanges} disabled={(!hasChanges && !hasVisibilityChanges) || isSaving} className="btn btn-secondary flex-1 disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none">
+            <button type="button" onClick={cancelChanges} disabled={(!hasChanges && !hasVisibilityChanges) || isSidebarSaveInProgress} className="btn btn-secondary flex-1 disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none">
               Verwerfen
             </button>
             <button
               type="button"
               onClick={() => void applyOrder()}
-              disabled={(!hasChanges && !hasVisibilityChanges && saveState !== 'error') || isSaving}
+              disabled={(!hasChanges && !hasVisibilityChanges && saveState !== 'error') || isSidebarSaveInProgress}
               className="btn btn-primary flex-1 disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none"
             >
-              {isSaving ? 'Wird gespeichert…' : 'Änderungen speichern'}
+              {isSidebarSaveInProgress ? 'Wird gespeichert…' : 'Änderungen speichern'}
             </button>
           </div>
         </div>
