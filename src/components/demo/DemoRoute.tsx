@@ -13,6 +13,7 @@ import {
   hasAccountDataDeletionOccurredSince,
   captureAccountDataGeneration,
   hasAccountDataLoginSince,
+  isAccountDataDeletionInProgress,
   readAccountDataDeletionEpoch,
 } from '../../utils/accountDataWrites';
 
