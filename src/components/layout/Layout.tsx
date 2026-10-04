@@ -62,6 +62,7 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
   const [isSearchOpen, setIsSearchOpen] = React.useState(false);
   const [showLogoutConfirmation, setShowLogoutConfirmation] = React.useState(false);
   const [isFeedbackOpen, setIsFeedbackOpen] = React.useState(false);
+  const feedbackOpenerRef = React.useRef<HTMLButtonElement | null>(null);
   const closeFeedbackDialog = React.useCallback(() => setIsFeedbackOpen(false), []);
   const [hasNativeDateispeicher, setHasNativeDateispeicher] = React.useState(false);
   const [hasNativeSubstitutionPlan, setHasNativeSubstitutionPlan] = React.useState(false);
@@ -234,7 +235,7 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
         hasNativeSubstitutionPlan={hasNativeSubstitutionPlan}
         hasDsbModule={hasDsbModule}
       />
-      {isFeedbackOpen && <FeedbackDialog token={token || ''} onClose={closeFeedbackDialog} />}
+      {isFeedbackOpen && <FeedbackDialog token={token || ''} onClose={closeFeedbackDialog} openerRef={feedbackOpenerRef} />}
       <pwa-install
         ref={pwaRef}
         manifest-url={manifestUrl}
@@ -387,8 +388,12 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
             {!isDemo && preferences.sidebar.show_feedback_button && (
               <button
                 type="button"
-                id="feedback-trigger"
-                onClick={() => { setIsSearchOpen(false); setIsFeedbackOpen(true); }}
+                data-feedback-trigger
+                onClick={(event) => {
+                  feedbackOpenerRef.current = event.currentTarget;
+                  setIsSearchOpen(false);
+                  setIsFeedbackOpen(true);
+                }}
                 className={`nav-link mb-1 text-surface-500 dark:text-surface-400 hover:text-surface-700 dark:hover:text-surface-300 ${isCollapsed ? 'mx-auto h-10 w-10 justify-center gap-0 px-0' : 'w-full'}`}
                 title={isCollapsed ? 'Feedback geben' : undefined}
                 aria-label="Feedback geben"
@@ -446,7 +451,11 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
   }
 };
 
-function FeedbackDialog({ token, onClose }: { token: string; onClose: () => void }) {
+function FeedbackDialog({ token, onClose, openerRef }: {
+  token: string;
+  onClose: () => void;
+  openerRef: { current: HTMLButtonElement | null };
+}) {
   const dialogRef = React.useRef<HTMLElement>(null);
   const [category, setCategory] = React.useState<FeedbackCategory>('feature');
   const [summary, setSummary] = React.useState('');
@@ -493,9 +502,14 @@ function FeedbackDialog({ token, onClose }: { token: string; onClose: () => void
     document.addEventListener('keydown', onKeyDown);
     return () => {
       document.removeEventListener('keydown', onKeyDown);
-      const trigger = document.getElementById('feedback-trigger');
-      if (trigger instanceof HTMLElement) trigger.focus();
-      else if (previousFocus?.isConnected) previousFocus.focus();
+      const opener = openerRef.current;
+      const visibleOpener = opener?.isConnected && opener.getClientRects().length > 0
+        ? opener
+        : Array.from(document.querySelectorAll<HTMLButtonElement>('[data-feedback-trigger]'))
+          .find(trigger => trigger.getClientRects().length > 0);
+      if (visibleOpener) visibleOpener.focus();
+      else if (previousFocus?.isConnected && previousFocus.getClientRects().length > 0) previousFocus.focus();
+      openerRef.current = null;
     };
   }, [onClose]);
 

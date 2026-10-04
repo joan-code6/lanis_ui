@@ -348,9 +348,9 @@ const SidebarSettings: React.FC<{ isDemo: boolean }> = ({ isDemo }) => {
         {displayOrder.map((id, index) => (
           <li
             key={id}
-            onDragOver={(event) => event.preventDefault()}
+            onDragOver={(event) => { if (!isSaving) event.preventDefault(); }}
             onDragEnter={() => {
-              if (draggedId && hiddenItems.includes(draggedId) === hiddenItems.includes(id)) moveItemTo(draggedId, id);
+              if (!isSaving && draggedId && hiddenItems.includes(draggedId) === hiddenItems.includes(id)) moveItemTo(draggedId, id);
             }}
             onDrop={() => setDraggedId(null)}
             className={`group flex min-h-16 items-center gap-3 rounded-2xl border bg-white px-3 py-2 shadow-sm transition-[transform,background-color,border-color,box-shadow] duration-150 dark:bg-surface-900 sm:px-4 ${
@@ -365,7 +365,7 @@ const SidebarSettings: React.FC<{ isDemo: boolean }> = ({ isDemo }) => {
               {String(index + 1).padStart(2, '0')}
             </span>
             <span
-              draggable
+              draggable={!isSaving}
               onDragStart={(event) => {
                 event.dataTransfer.effectAllowed = 'move';
                 event.dataTransfer.setData('text/plain', id);
@@ -386,8 +386,9 @@ const SidebarSettings: React.FC<{ isDemo: boolean }> = ({ isDemo }) => {
               <button
                 type="button"
                 onClick={() => deleteDivider(id)}
+                disabled={isSaving}
                 aria-label={`Trennlinie löschen`}
-                className="flex h-10 items-center gap-1.5 rounded-lg px-2 text-xs font-medium text-surface-500 transition-colors hover:bg-surface-100 hover:text-red-600 focus:outline-none focus:ring-2 focus:ring-red-500/40 dark:hover:bg-surface-800 dark:hover:text-red-400"
+                className="flex h-10 items-center gap-1.5 rounded-lg px-2 text-xs font-medium text-surface-500 transition-colors hover:bg-surface-100 hover:text-red-600 focus:outline-none focus:ring-2 focus:ring-red-500/40 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-surface-800 dark:hover:text-red-400"
               >
                 <TrashIcon className="h-4 w-4" aria-hidden="true" />
                 <span className="hidden sm:inline">Löschen</span>
@@ -396,8 +397,9 @@ const SidebarSettings: React.FC<{ isDemo: boolean }> = ({ isDemo }) => {
               <button
                 type="button"
                 onClick={() => toggleVisibility(id)}
+                disabled={isSaving}
                 aria-label={hiddenItems.includes(id) ? `${getSidebarLabel(id)} einblenden` : `${getSidebarLabel(id)} ausblenden`}
-                className="flex h-10 items-center gap-1.5 rounded-lg px-2 text-xs font-medium text-surface-500 transition-colors hover:bg-surface-100 hover:text-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500/40 dark:hover:bg-surface-800 dark:hover:text-primary-400"
+                className="flex h-10 items-center gap-1.5 rounded-lg px-2 text-xs font-medium text-surface-500 transition-colors hover:bg-surface-100 hover:text-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500/40 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-surface-800 dark:hover:text-primary-400"
               >
                 {hiddenItems.includes(id) ? <EyeIcon className="h-4 w-4" aria-hidden="true" /> : <EyeSlashIcon className="h-4 w-4" aria-hidden="true" />}
                 <span className="hidden sm:inline">{hiddenItems.includes(id) ? 'Zeigen' : 'Ausblenden'}</span>
@@ -406,7 +408,7 @@ const SidebarSettings: React.FC<{ isDemo: boolean }> = ({ isDemo }) => {
             <button
               type="button"
               onClick={() => moveItem(id, -1)}
-              disabled={index === 0 || hiddenItems.includes(id) !== hiddenItems.includes(displayOrder[index - 1])}
+              disabled={isSaving || index === 0 || hiddenItems.includes(id) !== hiddenItems.includes(displayOrder[index - 1])}
               aria-label={`${getSidebarLabel(id)} nach oben verschieben`}
               className="flex h-10 w-10 items-center justify-center rounded-lg text-surface-500 transition-colors hover:bg-surface-100 hover:text-surface-800 focus:outline-none focus:ring-2 focus:ring-primary-500/40 disabled:cursor-not-allowed disabled:opacity-25 dark:hover:bg-surface-800 dark:hover:text-surface-100"
             >
@@ -415,7 +417,7 @@ const SidebarSettings: React.FC<{ isDemo: boolean }> = ({ isDemo }) => {
             <button
               type="button"
               onClick={() => moveItem(id, 1)}
-              disabled={index === displayOrder.length - 1 || hiddenItems.includes(id) !== hiddenItems.includes(displayOrder[index + 1])}
+              disabled={isSaving || index === displayOrder.length - 1 || hiddenItems.includes(id) !== hiddenItems.includes(displayOrder[index + 1])}
               aria-label={`${getSidebarLabel(id)} nach unten verschieben`}
               className="flex h-10 w-10 items-center justify-center rounded-lg text-surface-500 transition-colors hover:bg-surface-100 hover:text-surface-800 focus:outline-none focus:ring-2 focus:ring-primary-500/40 disabled:cursor-not-allowed disabled:opacity-25 dark:hover:bg-surface-800 dark:hover:text-surface-100"
             >
