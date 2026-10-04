@@ -455,6 +455,11 @@ function FeedbackDialog({ token, onClose }: { token: string; onClose: () => void
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const isSubmittingRef = React.useRef(false);
   const [isSubmitted, setIsSubmitted] = React.useState(false);
+  const confirmationHeadingRef = React.useRef<HTMLHeadingElement>(null);
+
+  React.useEffect(() => {
+    if (isSubmitted) confirmationHeadingRef.current?.focus();
+  }, [isSubmitted]);
 
   React.useEffect(() => {
     const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -552,11 +557,11 @@ function FeedbackDialog({ token, onClose }: { token: string; onClose: () => void
           </button>
         </div>
         {isSubmitted ? (
-          <div className="py-8 text-center">
+          <div className="py-8 text-center" role="status" aria-live="polite">
             <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400">
               <ChatBubbleBottomCenterTextIcon className="h-6 w-6" />
             </span>
-            <h3 className="mt-4 text-base font-semibold text-surface-900 dark:text-surface-100">Danke für dein Feedback!</h3>
+            <h3 ref={confirmationHeadingRef} tabIndex={-1} className="mt-4 text-base font-semibold text-surface-900 dark:text-surface-100">Danke für dein Feedback!</h3>
             <p className="mt-1 text-sm text-surface-500 dark:text-surface-400">Dein Beitrag ist bei uns angekommen.</p>
             <button type="button" onClick={onClose} className="btn mt-5">Fertig</button>
           </div>
