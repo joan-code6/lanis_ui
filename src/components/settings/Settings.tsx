@@ -197,11 +197,16 @@ const SidebarSettings: React.FC<{ isDemo: boolean }> = ({ isDemo }) => {
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [saveState, setSaveState] = useState<SidebarSaveState>('idle');
   const [feedbackSaveState, setFeedbackSaveState] = useState<SidebarSaveState>('idle');
+  const preserveNavigationDraftsRef = React.useRef(false);
 
   useEffect(() => {
+    if (preserveNavigationDraftsRef.current) {
+      if (!isSaving) preserveNavigationDraftsRef.current = false;
+      return;
+    }
     setOrder(normalizeSidebarOrder(preferences.sidebar.order));
     setHiddenItems(preferences.sidebar.hidden_items);
-  }, [preferences.sidebar.order, preferences.sidebar.hidden_items]);
+  }, [preferences.sidebar.order, preferences.sidebar.hidden_items, isSaving]);
 
   const visibleOrder = order.filter(id => !hiddenItems.includes(id));
   const hiddenOrder = order.filter(id => hiddenItems.includes(id));
@@ -244,7 +249,8 @@ const SidebarSettings: React.FC<{ isDemo: boolean }> = ({ isDemo }) => {
     setSaveState(saved ? 'saved' : 'error');
   };
 
-  const saveFeedbackButton = async (showFeedbackButton: boolean) => {
+  const saveFeedbackButton = async (showFeedbackButton: boolean, preserveNavigationDrafts = false) => {
+    preserveNavigationDraftsRef.current = preserveNavigationDrafts;
     setFeedbackSaveState('idle');
     const saved = await updatePreferences({
       sidebar: { show_feedback_button: showFeedbackButton },
@@ -318,9 +324,8 @@ const SidebarSettings: React.FC<{ isDemo: boolean }> = ({ isDemo }) => {
             <p>Lokal gespeichert, aber noch nicht mit deinem Konto synchronisiert.</p>
             <button
               type="button"
-              onClick={() => void saveFeedbackButton(preferences.sidebar.show_feedback_button)}
-              disabled={isSaving || hasChanges || hasVisibilityChanges}
-              title={hasChanges || hasVisibilityChanges ? 'Speichere oder verwirf zuerst deine Navigationsänderungen.' : undefined}
+              onClick={() => void saveFeedbackButton(preferences.sidebar.show_feedback_button, hasChanges || hasVisibilityChanges)}
+              disabled={isSaving}
               className="font-medium underline underline-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Erneut versuchen
