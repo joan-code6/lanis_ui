@@ -435,7 +435,7 @@ const SidebarSettings: React.FC<{ isDemo: boolean }> = ({ isDemo }) => {
             Standard wiederherstellen
           </button>
           <div className="flex gap-3 sm:ml-auto">
-            <button type="button" onClick={cancelChanges} disabled={!hasChanges || isSaving} className="btn btn-secondary flex-1 disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none">
+            <button type="button" onClick={cancelChanges} disabled={(!hasChanges && !hasVisibilityChanges) || isSaving} className="btn btn-secondary flex-1 disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none">
               Verwerfen
             </button>
             <button
