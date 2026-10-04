@@ -213,8 +213,10 @@ export const recordAccountDataDeletion = (): boolean => {
 export const canWriteAccountData = (generation: number): boolean => {
   const state = readGenerationState();
   const markerPresent = hasAccountDataDeletionMarker();
-  if (!markerPresent && !state.deleting) deletionInProgress = false;
-  return !deletionInProgress && !markerPresent && !state.deleting && state.generation === generation;
+  if (!state.deleting && (!markerPresent || deletionLeaseTimer === undefined)) {
+    deletionInProgress = false;
+  }
+  return !deletionInProgress && !state.deleting && state.generation === generation;
 };
 
 export const beginAccountDataDeletion = (): number => {
