@@ -566,6 +566,7 @@ function FeedbackDialog({ token, onClose }: { token: string; onClose: () => void
             <button type="button" onClick={onClose} className="btn mt-5">Fertig</button>
           </div>
         ) : <form onSubmit={(event) => void handleSubmit(event)} className="space-y-4">
+          <fieldset disabled={isSubmitting} className="m-0 min-w-0 space-y-4 border-0 p-0">
           <label className="block text-sm font-medium text-surface-700 dark:text-surface-300">
             Worum geht es?
             <select value={category} onChange={(event) => setCategory(event.target.value as FeedbackCategory)} className="input mt-1.5 w-full">
@@ -587,6 +588,7 @@ function FeedbackDialog({ token, onClose }: { token: string; onClose: () => void
             <button type="button" onClick={onClose} disabled={isSubmitting} className="btn btn-secondary disabled:cursor-not-allowed disabled:opacity-60">Abbrechen</button>
             <button type="submit" disabled={isSubmitting} className="btn disabled:cursor-not-allowed disabled:opacity-60">{isSubmitting ? 'Wird gesendet…' : 'Absenden'}</button>
           </div>
+          </fieldset>
         </form>}
       </section>
     </div>
