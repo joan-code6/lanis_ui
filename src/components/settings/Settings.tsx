@@ -316,7 +316,13 @@ const SidebarSettings: React.FC<{ isDemo: boolean }> = ({ isDemo }) => {
         {feedbackSaveState === 'error' && (
           <div className="flex flex-wrap items-center justify-between gap-2 text-amber-700 dark:text-amber-300">
             <p>Lokal gespeichert, aber noch nicht mit deinem Konto synchronisiert.</p>
-            <button type="button" onClick={() => void saveFeedbackButton(preferences.sidebar.show_feedback_button)} className="font-medium underline underline-offset-2">
+            <button
+              type="button"
+              onClick={() => void saveFeedbackButton(preferences.sidebar.show_feedback_button)}
+              disabled={isSaving || hasChanges || hasVisibilityChanges}
+              title={hasChanges || hasVisibilityChanges ? 'Speichere oder verwirf zuerst deine Navigationsänderungen.' : undefined}
+              className="font-medium underline underline-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            >
               Erneut versuchen
             </button>
           </div>
