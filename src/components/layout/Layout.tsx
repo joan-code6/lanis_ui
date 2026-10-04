@@ -464,7 +464,7 @@ function FeedbackDialog({ token, onClose }: { token: string; onClose: () => void
   React.useEffect(() => {
     const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const dialog = dialogRef.current;
-    const focusableSelector = 'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+    const focusableSelector = 'button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])';
     dialog?.querySelector<HTMLElement>(focusableSelector)?.focus();
 
     const onKeyDown = (event: KeyboardEvent) => {
