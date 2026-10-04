@@ -388,7 +388,7 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
             {!isDemo && preferences.sidebar.show_feedback_button && (
               <button
                 type="button"
-                data-feedback-trigger
+                data-feedback-trigger=""
                 onClick={(event) => {
                   feedbackOpenerRef.current = event.currentTarget;
                   setIsSearchOpen(false);
