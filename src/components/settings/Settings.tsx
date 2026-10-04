@@ -9,6 +9,7 @@ import {
 import {
   ACCOUNT_DATA_DELETION_EPOCH_KEY,
   ACCOUNT_DATA_GENERATION_KEY,
+  ACCOUNT_DATA_LIFECYCLE_LOCK_KEY,
   beginAccountDataDeletion,
   captureAccountDataGeneration,
   finishAccountDataDeletion,
@@ -284,6 +285,7 @@ const AccountSettings: React.FC = () => {
           && key !== CUSTOM_BACKEND_STORAGE_KEY
           && key !== ACCOUNT_DATA_GENERATION_KEY
           && key !== ACCOUNT_DATA_DELETION_EPOCH_KEY
+          && key !== ACCOUNT_DATA_LIFECYCLE_LOCK_KEY
         ) {
           localStorage.removeItem(key);
         }

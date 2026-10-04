@@ -6,6 +6,7 @@ import {
   clearBackendScopedStorage,
 } from '../utils/backendConfig';
 import {
+  ACCOUNT_DATA_LIFECYCLE_LOCK_KEY,
   canWriteAccountData,
   captureAccountDataGeneration,
   completeAccountDataDeletion,
@@ -47,6 +48,26 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         await withAccountDataLifecycleLock(async () => {
           if (hasAccountDataDeletionMarker()) {
             const deletionGeneration = captureAccountDataGeneration();
+            const savedToken = localStorage.getItem(ACCESS_TOKEN_KEY);
+            if (savedToken) {
+              try {
+                const profile = await authAPI.getUserProfile(savedToken);
+                finishAccountDataDeletion(deletionGeneration);
+                setToken(savedToken);
+                setUser(profile.data);
+                setIsAuthenticated(true);
+                return;
+              } catch (error) {
+                const status = (error as { response?: { status?: number } })?.response?.status;
+                // Only a server rejection confirms that the pending request deleted
+                // this session. A network failure must not erase a still-live account.
+                if (status !== 401 && status !== 403) return;
+              }
+            } else {
+              // Without a server-verifiable session, a pending marker is not proof
+              // that account deletion completed.
+              return;
+            }
             const customBackendUrl = localStorage.getItem(CUSTOM_BACKEND_STORAGE_KEY);
             recordAccountDataDeletion();
             clearBackendScopedStorage();
@@ -57,6 +78,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                 && key !== CUSTOM_BACKEND_STORAGE_KEY
                 && key !== '__lanis_account_data_generation'
                 && key !== '__lanis_account_deletion_epoch'
+                && key !== ACCOUNT_DATA_LIFECYCLE_LOCK_KEY
               ) {
                 localStorage.removeItem(key);
               }

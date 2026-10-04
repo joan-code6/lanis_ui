@@ -9,10 +9,10 @@ import { getDemoTabId, keepDemoSessionAlive, readDemoStorageSnapshot, registerDe
 import type { ThemeColor, ThemeMode } from '../../types';
 import {
   ACCOUNT_DATA_GENERATION_KEY,
+  hasAccountDataDeletionMarker,
   hasAccountDataDeletionOccurredSince,
   captureAccountDataGeneration,
   hasAccountDataLoginSince,
-  isAccountDataDeletionInProgress,
   readAccountDataDeletionEpoch,
 } from '../../utils/accountDataWrites';
 
@@ -80,7 +80,7 @@ const seedLocalStorage = () => {
     DEMO_STORAGE_KEYS.map(key => [key, localStorage.getItem(key)]),
   );
   const initialGeneration = captureAccountDataGeneration();
-  let restoreAllowed = !isAccountDataDeletionInProgress();
+  let restoreAllowed = !hasAccountDataDeletionMarker();
   let deletionGeneration = restoreAllowed ? null : initialGeneration;
   const initialDeletionEpoch = readAccountDataDeletionEpoch();
   const valuesOwnedByDemo = new Map<string, string | null>();

@@ -1,6 +1,6 @@
 export const ACCOUNT_DATA_GENERATION_KEY = '__lanis_account_data_generation';
 export const ACCOUNT_DATA_DELETION_EPOCH_KEY = '__lanis_account_deletion_epoch';
-const ACCOUNT_DATA_LIFECYCLE_LOCK_KEY = '__lanis_account_data_lifecycle_lock';
+export const ACCOUNT_DATA_LIFECYCLE_LOCK_KEY = '__lanis_account_data_lifecycle_lock';
 
 let deletionInProgress = false;
 const DELETION_LEASE_MS = 15 * 60 * 1000;
@@ -117,7 +117,7 @@ const startDeletionLeaseTimer = (generation: number): void => {
       stopDeletionLeaseTimer(state.deleting);
       return;
     }
-    if (deletionInProgress && state.deleting) writeDeletionLease(generation);
+    if (deletionInProgress && hasAccountDataDeletionMarker()) writeDeletionLease(generation);
   }, Math.floor(DELETION_LEASE_MS / 3));
 };
 
@@ -163,8 +163,12 @@ export const hasAccountDataDeletionMarker = (): boolean => {
 };
 
 export const ownsAccountDataDeletion = (generation: number): boolean => {
-  const state = readGenerationState();
-  return state.deleting && state.generation === generation;
+  try {
+    const [generationText, state] = (window.localStorage.getItem(ACCOUNT_DATA_GENERATION_KEY) || '').split(':', 3);
+    return state === 'deleting' && Number.parseInt(generationText, 10) === generation;
+  } catch {
+    return deletionInProgress && readGenerationState().generation === generation;
+  }
 };
 
 export const hasAccountDataLoginSince = (generation: number): boolean => {
@@ -208,8 +212,9 @@ export const recordAccountDataDeletion = (): boolean => {
 
 export const canWriteAccountData = (generation: number): boolean => {
   const state = readGenerationState();
-  if (!state.deleting) deletionInProgress = false;
-  return !deletionInProgress && !state.deleting && state.generation === generation;
+  const markerPresent = hasAccountDataDeletionMarker();
+  if (!markerPresent && !state.deleting) deletionInProgress = false;
+  return !deletionInProgress && !markerPresent && !state.deleting && state.generation === generation;
 };
 
 export const beginAccountDataDeletion = (): number => {
