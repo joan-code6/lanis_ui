@@ -40,7 +40,8 @@ import {
 import { format, parseISO } from 'date-fns';
 import { de } from 'date-fns/locale';
 import clsx from 'clsx';
-import { isDemoRoute } from '../../utils/demoMode';
+import { isDemoRoute, notifyDemoCacheWrite } from '../../utils/demoMode';
+import { canWriteAccountData, captureAccountDataGeneration } from '../../utils/accountDataWrites';
 
 type ViewMode = 'overview' | 'course-detail' | 'weekly' | 'submissions' | 'entry-detail';
 type CourseDetailTab = 'history' | 'performance' | 'exams';
@@ -251,6 +252,22 @@ const CourseExams: React.FC<{ exams?: string[] }> = ({ exams = [] }) => {
 
 const Courses: React.FC = () => {
   const { token } = useAuth();
+  const downloadCourseAttachment = async (event: React.MouseEvent<HTMLAnchorElement>, url: string, filename: string) => {
+    const match = url.match(/\/meinunterricht\/file\/([a-f0-9]{64})(?:$|\?)/i);
+    if (!match || !token) return;
+    event.preventDefault();
+    try {
+      const blob = await coursesAPI.downloadFile(token, match[1]);
+      const objectUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = objectUrl;
+      link.download = filename || 'download';
+      link.click();
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+    } catch (error) {
+      console.error('Could not download course attachment', error);
+    }
+  };
   const { preferences } = usePreferences();
   const navigate = useNavigate();
   const { id: courseIdFromUrl } = useParams();
@@ -322,6 +339,7 @@ const Courses: React.FC = () => {
 
   const loadCourses = async (signal?: AbortSignal) => {
     if (!token) return;
+    const writeGeneration = captureAccountDataGeneration();
     setIsUpdating(true);
     try {
       setError('');
@@ -329,7 +347,11 @@ const Courses: React.FC = () => {
       if (signal?.aborted) return;
       if (response.success) {
         setCourses(response.entries);
-        localStorage.setItem('courses_cache', JSON.stringify(response.entries));
+        if (canWriteAccountData(writeGeneration)) {
+          const cachedCourses = JSON.stringify(response.entries);
+          notifyDemoCacheWrite('courses_cache', cachedCourses);
+          localStorage.setItem('courses_cache', cachedCourses);
+        }
       } else {
         setError('Fehler beim Laden der Kurse.');
       }
@@ -346,6 +368,7 @@ const Courses: React.FC = () => {
 
   const loadCourseDetails = async (courseId: string, signal?: AbortSignal) => {
     if (!token) return;
+    const writeGeneration = captureAccountDataGeneration();
 
     try {
       setError('');
@@ -359,7 +382,11 @@ const Courses: React.FC = () => {
           if (signal?.aborted) return;
           if (overview.success) {
             setCourses(overview.entries);
-            localStorage.setItem('courses_cache', JSON.stringify(overview.entries));
+            if (canWriteAccountData(writeGeneration)) {
+              const cachedCourses = JSON.stringify(overview.entries);
+              notifyDemoCacheWrite('courses_cache', cachedCourses);
+              localStorage.setItem('courses_cache', cachedCourses);
+            }
             const matchingCourse = overview.entries.find(course => course.book_id === courseId);
             if (matchingCourse?.name?.trim()) {
               resolvedCourse = { ...response, course_name: matchingCourse.name.trim() };
@@ -453,6 +480,7 @@ const Courses: React.FC = () => {
 
   const toggleHomework = async (courseId: string, entryId: string, currentDone: boolean) => {
     if (!token) return;
+    const writeGeneration = captureAccountDataGeneration();
     const newDone = !currentDone;
 
     if (selectedCourse) {
@@ -477,7 +505,11 @@ const Courses: React.FC = () => {
       const updated = parsed.map((c: CourseEntry) =>
         c.entry_id === entryId ? { ...c, homework_done: newDone } : c
       );
-      localStorage.setItem('courses_cache', JSON.stringify(updated));
+      if (canWriteAccountData(writeGeneration)) {
+        const cachedCourses = JSON.stringify(updated);
+        notifyDemoCacheWrite('courses_cache', cachedCourses);
+        localStorage.setItem('courses_cache', cachedCourses);
+      }
     }
 
     try {
@@ -1014,6 +1046,7 @@ const Courses: React.FC = () => {
                               <a
                                 key={index}
                                 href={file.url !== '#' ? file.url : undefined}
+                                onClick={(event) => downloadCourseAttachment(event, file.url, file.name)}
                                 className={clsx(
                                   "inline-flex items-center p-2.5 sm:p-3 rounded-lg border transition-all min-w-0 sm:min-w-48",
                                   file.url !== '#' 
@@ -1132,6 +1165,7 @@ const Courses: React.FC = () => {
                                 <a
                                   key={fileIndex}
                                   href={file.url !== '#' ? file.url : undefined}
+                                  onClick={(event) => downloadCourseAttachment(event, file.url, file.name)}
                                   className={clsx(
                                     "inline-flex items-center px-3 py-1.5 rounded-lg text-xs border",
                                     file.url !== '#'

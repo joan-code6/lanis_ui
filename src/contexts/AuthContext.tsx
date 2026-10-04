@@ -1,6 +1,21 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { AuthContextType, LoginRequest, User } from '../types';
 import { authAPI, notificationsAPI, unsubscribeBrowserPushSubscription } from '../services/api';
+import {
+  CUSTOM_BACKEND_STORAGE_KEY,
+  clearBackendScopedStorage,
+} from '../utils/backendConfig';
+import {
+  ACCOUNT_DATA_DELETION_CONFIRMED_KEY,
+  ACCOUNT_DATA_LIFECYCLE_LOCK_KEY,
+  canWriteAccountData,
+  captureAccountDataGeneration,
+  completeAccountDataDeletion,
+  finishAccountDataDeletion,
+  hasAccountDataDeletionMarker,
+  isAccountDataDeletionConfirmed,
+  withAccountDataLifecycleLock,
+} from '../utils/accountDataWrites';
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -28,19 +43,147 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const savedToken = localStorage.getItem(ACCESS_TOKEN_KEY);
-    const savedUser = localStorage.getItem(USER_KEY);
+    let mounted = true;
+    const initializeAuth = async () => {
+      try {
+        await withAccountDataLifecycleLock(async () => {
+          if (hasAccountDataDeletionMarker()) {
+            const deletionGeneration = captureAccountDataGeneration();
+            if (!isAccountDataDeletionConfirmed(deletionGeneration)) {
+              let recoveredToken = localStorage.getItem(ACCESS_TOKEN_KEY);
+              let profile: { success: boolean; data: User } | null = null;
+              let refreshedExpiresAt: number | null = null;
 
-    if (savedToken && savedUser) {
-      setToken(savedToken);
-      setUser(JSON.parse(savedUser));
-      setIsAuthenticated(true);
-    }
+              if (recoveredToken) {
+                try {
+                  profile = await authAPI.verifySessionForRecovery(recoveredToken);
+                } catch {
+                  // A 401 can mean an expired access token; try the saved refresh token.
+                }
+              }
 
-    setIsLoading(false);
+              if (!profile) {
+                const savedRefreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
+                if (!savedRefreshToken) return;
+                try {
+                  const refreshed = await authAPI.refreshSessionForRecovery(savedRefreshToken);
+                  recoveredToken = refreshed.access_token;
+                  refreshedExpiresAt = Date.now() + refreshed.expires_in * 1000;
+                  profile = await authAPI.verifySessionForRecovery(recoveredToken);
+                } catch {
+                  // A failed or unreachable refresh cannot confirm account deletion.
+                  return;
+                }
+              }
+
+              if (!profile || !recoveredToken) return;
+              if (refreshedExpiresAt !== null) {
+                localStorage.setItem(ACCESS_TOKEN_KEY, recoveredToken);
+                localStorage.setItem(TOKEN_EXPIRES_KEY, refreshedExpiresAt.toString());
+              }
+              localStorage.setItem(USER_KEY, JSON.stringify(profile.data));
+              finishAccountDataDeletion(deletionGeneration);
+              setToken(recoveredToken);
+              setUser(profile.data);
+              setIsAuthenticated(true);
+              return;
+            }
+            const customBackendUrl = localStorage.getItem(CUSTOM_BACKEND_STORAGE_KEY);
+            clearBackendScopedStorage();
+            for (let index = localStorage.length - 1; index >= 0; index -= 1) {
+              const key = localStorage.key(index);
+              if (
+                key
+                && key !== CUSTOM_BACKEND_STORAGE_KEY
+                && key !== '__lanis_account_data_generation'
+                && key !== '__lanis_account_deletion_epoch'
+                && key !== ACCOUNT_DATA_DELETION_CONFIRMED_KEY
+                && key !== ACCOUNT_DATA_LIFECYCLE_LOCK_KEY
+              ) {
+                localStorage.removeItem(key);
+              }
+            }
+            if (customBackendUrl) localStorage.setItem(CUSTOM_BACKEND_STORAGE_KEY, customBackendUrl);
+
+            const cleanupTasks: Promise<unknown>[] = [];
+            if ('serviceWorker' in navigator) {
+              cleanupTasks.push(Promise.resolve().then(async () => {
+                const registration = await navigator.serviceWorker.getRegistration();
+                const subscription = await registration?.pushManager.getSubscription();
+                if (subscription) await subscription.unsubscribe();
+              }));
+            }
+            if ('caches' in window) {
+              cleanupTasks.push(Promise.resolve().then(async () => {
+                const names = await caches.keys();
+                await Promise.all(
+                  names
+                    .filter(name => !name.startsWith('lanis-ui-shell-'))
+                    .map(name => caches.delete(name)),
+                );
+              }));
+            }
+            await Promise.allSettled(cleanupTasks);
+            finishAccountDataDeletion(deletionGeneration);
+            setToken(null);
+            setUser(null);
+            setIsAuthenticated(false);
+            return;
+          }
+
+          const savedToken = localStorage.getItem(ACCESS_TOKEN_KEY);
+          const savedUser = localStorage.getItem(USER_KEY);
+          if (savedToken && savedUser) {
+            setToken(savedToken);
+            setUser(JSON.parse(savedUser));
+            setIsAuthenticated(true);
+          }
+        });
+      } catch (error) {
+        console.warn('Failed to restore a safe authentication state:', error);
+        setToken(null);
+        setUser(null);
+        setIsAuthenticated(false);
+      } finally {
+        if (mounted) setIsLoading(false);
+      }
+    };
+
+    void initializeAuth();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleStorage = (event: StorageEvent) => {
+      const authKeys = [
+        ACCESS_TOKEN_KEY,
+        REFRESH_TOKEN_KEY,
+        TOKEN_EXPIRES_KEY,
+        USER_KEY,
+      ];
+      if (event.key !== null && !(authKeys.includes(event.key) && event.newValue === null)) {
+        return;
+      }
+      if (
+        localStorage.getItem(ACCESS_TOKEN_KEY)
+        && localStorage.getItem(REFRESH_TOKEN_KEY)
+        && localStorage.getItem(USER_KEY)
+      ) {
+        return;
+      }
+      setToken(null);
+      setUser(null);
+      setIsAuthenticated(false);
+    };
+
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
   }, []);
 
   const login = async (credentials: LoginRequest): Promise<boolean> => {
+    let writeGeneration = captureAccountDataGeneration();
     try {
       const response = await authAPI.login(credentials);
 
@@ -51,18 +194,32 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         school_id: response.school_id,
         encryption_ready: response.encryption_ready.toString(),
       };
-      setToken(response.access_token);
-      setUser(basicUser);
-      setIsAuthenticated(true);
+      const loginPublished = await withAccountDataLifecycleLock(async () => {
+        if (!canWriteAccountData(writeGeneration)) return false;
+        if (!completeAccountDataDeletion(writeGeneration)) return false;
+        setToken(response.access_token);
+        setUser(basicUser);
+        setIsAuthenticated(true);
+        localStorage.setItem(ACCESS_TOKEN_KEY, response.access_token);
+        localStorage.setItem(REFRESH_TOKEN_KEY, response.refresh_token);
+        localStorage.setItem(TOKEN_EXPIRES_KEY, expiresAt.toString());
+        localStorage.setItem(USER_KEY, JSON.stringify(basicUser));
+        return true;
+      });
 
-      localStorage.setItem(ACCESS_TOKEN_KEY, response.access_token);
-      localStorage.setItem(REFRESH_TOKEN_KEY, response.refresh_token);
-      localStorage.setItem(TOKEN_EXPIRES_KEY, expiresAt.toString());
-      localStorage.setItem(USER_KEY, JSON.stringify(basicUser));
+      if (!loginPublished) {
+        try {
+          await authAPI.logout(response.access_token);
+        } catch {
+          // The server may already have revoked this session during deletion.
+        }
+        return false;
+      }
+      writeGeneration = captureAccountDataGeneration();
 
       try {
         const userResponse = await authAPI.getUserProfile(response.access_token);
-        if (userResponse.success) {
+        if (userResponse.success && canWriteAccountData(writeGeneration)) {
           const accountUser = {
             ...userResponse.data,
             username: response.username,
@@ -74,11 +231,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         }
       } catch (error) {
         console.warn('Failed to fetch user profile:', error);
-        setUser({
-          username: response.username,
-          school_id: response.school_id,
-          encryption_ready: response.encryption_ready.toString(),
-        });
+        if (canWriteAccountData(writeGeneration)) {
+          setUser({
+            username: response.username,
+            school_id: response.school_id,
+            encryption_ready: response.encryption_ready.toString(),
+          });
+        }
       }
 
       return true;
@@ -89,11 +248,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const refreshToken = useCallback(async (): Promise<boolean> => {
+    const writeGeneration = captureAccountDataGeneration();
     const refreshTokenValue = localStorage.getItem(REFRESH_TOKEN_KEY);
     if (!refreshTokenValue) return false;
 
     try {
       const response = await authAPI.refreshToken(refreshTokenValue);
+
+      if (!canWriteAccountData(writeGeneration)) return false;
 
       const expiresAt = Date.now() + response.expires_in * 1000;
 
@@ -108,7 +270,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }, []);
 
-  const logout = async () => {
+  const logout = async (shouldClearStorage: () => boolean = () => true) => {
     try {
       if (token) {
         try {
@@ -143,10 +305,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setToken(null);
       setUser(null);
       setIsAuthenticated(false);
-      localStorage.removeItem(ACCESS_TOKEN_KEY);
-      localStorage.removeItem(REFRESH_TOKEN_KEY);
-      localStorage.removeItem(TOKEN_EXPIRES_KEY);
-      localStorage.removeItem(USER_KEY);
+      if (shouldClearStorage()) {
+        localStorage.removeItem(ACCESS_TOKEN_KEY);
+        localStorage.removeItem(REFRESH_TOKEN_KEY);
+        localStorage.removeItem(TOKEN_EXPIRES_KEY);
+        localStorage.removeItem(USER_KEY);
+      }
     }
   };
 

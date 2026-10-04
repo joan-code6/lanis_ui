@@ -1,11 +1,30 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTheme, ThemeColor } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
+import {
+  CUSTOM_BACKEND_STORAGE_KEY,
+  clearBackendScopedStorage,
+} from '../../utils/backendConfig';
+import {
+  ACCOUNT_DATA_DELETION_CONFIRMED_KEY,
+  ACCOUNT_DATA_DELETION_EPOCH_KEY,
+  ACCOUNT_DATA_GENERATION_KEY,
+  ACCOUNT_DATA_LIFECYCLE_LOCK_KEY,
+  beginAccountDataDeletion,
+  captureAccountDataGeneration,
+  confirmAccountDataDeletion,
+  finishAccountDataDeletion,
+  hasAccountDataLoginSince,
+  isAccountDataDeletionInProgress,
+  ownsAccountDataDeletion,
+  recordAccountDataDeletion,
+  withAccountDataLifecycleLock,
+} from '../../utils/accountDataWrites';
 import { useBasePath } from '../../contexts/BasePathContext';
 import { usePreferences } from '../../contexts/PreferencesContext';
 import axios from 'axios';
-import { appsAPI, notificationsAPI } from '../../services/api';
+import { appsAPI, authAPI, notificationsAPI } from '../../services/api';
 import { NotificationPreferences, PushSubscriptionPayload } from '../../types';
 import { getModuleAvailability, readModulesCache, writeModulesCache } from '../../utils/moduleCache';
 import {
@@ -111,7 +130,7 @@ const pushSubscriptionToPayload = (subscription: PushSubscription): PushSubscrip
   };
 };
 
-type SettingsSection = 'home' | 'appearance' | 'dashboard' | 'timetable' | 'homework' | 'vertretungsplan' | 'notifications' | 'whatsapp' | 'app' | 'sidebar';
+type SettingsSection = 'home' | 'account' | 'appearance' | 'dashboard' | 'timetable' | 'homework' | 'vertretungsplan' | 'notifications' | 'whatsapp' | 'app' | 'sidebar';
 
 const settingsSections: Array<{
   id: Exclude<SettingsSection, 'home'>;
@@ -119,6 +138,12 @@ const settingsSections: Array<{
   description: string;
   icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
 }> = [
+  {
+    id: 'account',
+    title: 'Datenschutz und Konto',
+    description: 'Deine LANIS-Daten exportieren oder dein LANIS-Konto löschen.',
+    icon: ServerStackIcon,
+  },
   {
     id: 'appearance',
     title: 'Erscheinungsbild',
@@ -177,6 +202,7 @@ const settingsSections: Array<{
 
 const sectionMeta: Record<SettingsSection, { title: string; subtitle: string }> = {
   home: { title: 'Einstellungen', subtitle: 'Passe dein Schulportal an.' },
+  account: { title: 'Datenschutz und Konto', subtitle: 'Exportiere deine LANIS-Daten oder lösche dein LANIS-Konto.' },
   appearance: { title: 'Erscheinungsbild', subtitle: 'Farben und Oberfläche an deine Gewohnheiten anpassen.' },
   dashboard: { title: 'Dashboard', subtitle: 'Lege fest, welche Hinweise auf deinem Dashboard erscheinen.' },
   timetable: { title: 'Stundenplan', subtitle: 'Anzeige und eigene Stundenplanänderungen verwalten.' },
@@ -186,6 +212,159 @@ const sectionMeta: Record<SettingsSection, { title: string; subtitle: string }> 
   whatsapp: { title: 'WhatsApp-Assistent', subtitle: 'Dein LANIS-Konto sicher mit dem WhatsApp-Chat verbinden.' },
   app: { title: 'App & Installation', subtitle: 'Lanis auf deinem Gerät griffbereit halten.' },
   sidebar: { title: 'Seitenleiste', subtitle: 'Ordne die Einträge in der Seitenleiste nach deinen Wünschen.' },
+};
+
+const AccountSettings: React.FC = () => {
+  const { token, logout } = useAuth();
+  const navigate = useNavigate();
+  const [exporting, setExporting] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [confirmation, setConfirmation] = useState('');
+  const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
+
+  const exportData = async () => {
+    if (!token) return;
+    setExporting(true);
+    setError('');
+    try {
+      const blob = await authAPI.exportAccount(token);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'lanis-account-export.json';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      setMessage('Der Export wurde heruntergeladen.');
+    } catch {
+      setError('Der Datenexport konnte nicht erstellt werden. Bitte versuche es später erneut.');
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const performAccountDeletion = async () => {
+    if (!token || confirmation !== 'LÖSCHEN') return;
+    setDeleting(true);
+    setError('');
+    const freshToken = await authAPI.getValidSessionToken();
+    if (!freshToken) {
+      setError('Deine Sitzung ist abgelaufen. Bitte melde dich erneut an und versuche es danach noch einmal.');
+      setDeleting(false);
+      return;
+    }
+    const deletionGeneration = beginAccountDataDeletion();
+    try {
+      const result = await authAPI.deleteAccount(freshToken);
+      if (!result.success) {
+        throw new Error('Account deletion was not confirmed by the server.');
+      }
+    } catch {
+      finishAccountDataDeletion(deletionGeneration);
+      setError('Das Konto konnte nicht vollständig gelöscht werden. Bitte versuche es erneut.');
+      setDeleting(false);
+      return;
+    }
+
+    const deletionConfirmedRecorded = confirmAccountDataDeletion(deletionGeneration);
+
+    if (
+      !ownsAccountDataDeletion(deletionGeneration)
+      && (
+        isAccountDataDeletionInProgress()
+        || hasAccountDataLoginSince(deletionGeneration)
+      )
+    ) {
+      window.location.replace('/login');
+      return;
+    }
+
+    try {
+      const customBackendUrl = localStorage.getItem(CUSTOM_BACKEND_STORAGE_KEY);
+      clearBackendScopedStorage();
+      for (let index = localStorage.length - 1; index >= 0; index -= 1) {
+        const key = localStorage.key(index);
+        if (
+          key
+          && key !== CUSTOM_BACKEND_STORAGE_KEY
+          && key !== ACCOUNT_DATA_GENERATION_KEY
+          && key !== ACCOUNT_DATA_DELETION_EPOCH_KEY
+          && key !== ACCOUNT_DATA_DELETION_CONFIRMED_KEY
+          && key !== ACCOUNT_DATA_LIFECYCLE_LOCK_KEY
+        ) {
+          localStorage.removeItem(key);
+        }
+      }
+      if (!deletionConfirmedRecorded) recordAccountDataDeletion();
+      if (customBackendUrl) {
+        localStorage.setItem(CUSTOM_BACKEND_STORAGE_KEY, customBackendUrl);
+      }
+    } catch {
+      // The deleted server account must still be logged out if storage is unavailable.
+    }
+
+    const cleanupTasks: Promise<unknown>[] = [];
+    if ('serviceWorker' in navigator) {
+      cleanupTasks.push(Promise.resolve().then(async () => {
+        const registration = await navigator.serviceWorker.getRegistration();
+        if (!registration) return;
+        const subscription = await registration.pushManager.getSubscription();
+        if (subscription) await subscription.unsubscribe();
+      }));
+    }
+    if ('caches' in window) {
+      cleanupTasks.push(Promise.resolve().then(async () => {
+        const names = await caches.keys();
+        await Promise.all(
+          names
+            .filter(name => !name.startsWith('lanis-ui-shell-'))
+            .map(name => caches.delete(name)),
+        );
+      }));
+    }
+    await Promise.allSettled(cleanupTasks);
+    try {
+      await logout(() => (
+        ownsAccountDataDeletion(deletionGeneration)
+        || (
+          !isAccountDataDeletionInProgress()
+          && !hasAccountDataLoginSince(deletionGeneration)
+        )
+      ));
+    } catch {
+      // The account is already deleted; always continue to the login screen.
+    }
+    finishAccountDataDeletion(deletionGeneration);
+    navigate('/login', { replace: true });
+    setDeleting(false);
+  };
+
+  const deleteAccount = async () => {
+    try {
+      await withAccountDataLifecycleLock(performAccountDeletion);
+    } catch {
+      setError('Kontoänderungen können in diesem Browser gerade nicht sicher koordiniert werden. Bitte versuche es erneut.');
+      setDeleting(false);
+    }
+  };
+
+  return <div className="space-y-6">
+    <div className="card">
+      <h2 className="text-base font-semibold text-surface-900 dark:text-surface-100">Meine Daten exportieren</h2>
+      <p className="mt-1 text-sm leading-relaxed text-surface-500">Du erhältst die von LANIS gespeicherten Profildaten, Einstellungen, Benachrichtigungsdaten, Aktivitäten und Cache-Inhalte als JSON. Passwörter, Tokens, Cookies und kryptografische Schlüssel werden aus Sicherheitsgründen nicht exportiert.</p>
+      <button type="button" onClick={() => void exportData()} disabled={exporting} className="mt-5 inline-flex items-center rounded-xl bg-primary-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-primary-700 disabled:opacity-50"><ArrowDownTrayIcon className="mr-2 h-4 w-4" />{exporting ? 'Export wird erstellt …' : 'Daten exportieren'}</button>
+    </div>
+    <div className="card border-red-200 dark:border-red-900/60">
+      <h2 className="text-base font-semibold text-red-700 dark:text-red-300">LANIS-Konto löschen</h2>
+      <p className="mt-1 text-sm leading-relaxed text-surface-500">Dadurch werden die bei LANIS gespeicherten Profildaten, Einstellungen, Aktivitäten, Push-Abos, WhatsApp-Verknüpfungen, Sitzungen und lokalen Cache-Daten gelöscht. Deine ursprünglichen Daten im Schulportal Hessen werden dadurch nicht gelöscht.</p>
+      <label className="mt-5 block max-w-sm text-sm font-medium text-surface-700 dark:text-surface-300">Zur Bestätigung <span className="font-mono">LÖSCHEN</span> eingeben<input value={confirmation} onChange={event => setConfirmation(event.target.value)} className="mt-2 block w-full rounded-xl border border-surface-300 bg-white px-3 py-2.5 font-mono text-sm outline-none focus:border-red-500 dark:border-surface-700 dark:bg-surface-900" autoComplete="off" /></label>
+      <button type="button" onClick={() => void deleteAccount()} disabled={deleting || confirmation !== 'LÖSCHEN'} className="mt-4 inline-flex items-center rounded-xl bg-red-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-red-700 disabled:opacity-50"><TrashIcon className="mr-2 h-4 w-4" />{deleting ? 'Konto wird gelöscht …' : 'Konto endgültig löschen'}</button>
+    </div>
+    {message && <p className="rounded-xl bg-emerald-50 p-3 text-sm text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200">{message}</p>}
+    {error && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-800 dark:bg-red-950/40 dark:text-red-200">{error}</p>}
+  </div>;
 };
 
 type SidebarSaveState = 'idle' | 'saved' | 'error';
@@ -486,7 +665,8 @@ const Settings: React.FC = () => {
     return availability.hasNativeSubstitutionPlan || availability.hasDsbModule;
   });
   const visibleSettingsSections = settingsSections.filter(item => (
-    item.id !== 'vertretungsplan' || hasNativeSubstitutionPlan
+    (item.id !== 'vertretungsplan' || hasNativeSubstitutionPlan)
+    && (item.id !== 'account' || basePath !== '/demo')
   ));
   const requestedSection = location.pathname.slice(settingsRoot.length).split('/').filter(Boolean)[0] as SettingsSection | undefined;
   const section: SettingsSection = requestedSection && visibleSettingsSections.some(item => item.id === requestedSection)
@@ -537,11 +717,12 @@ const Settings: React.FC = () => {
     setHasNativeSubstitutionPlan(availability.hasNativeSubstitutionPlan || availability.hasDsbModule);
     if (!token) return undefined;
 
+    const writeGeneration = captureAccountDataGeneration();
     const controller = new AbortController();
     appsAPI.getModules(token, controller.signal)
       .then(response => {
         if (controller.signal.aborted || !response.success) return;
-        writeModulesCache(user, response.modules);
+        writeModulesCache(user, response.modules, writeGeneration);
         const availability = getModuleAvailability(response.modules);
         setHasNativeSubstitutionPlan(availability.hasNativeSubstitutionPlan || availability.hasDsbModule);
       })
@@ -975,6 +1156,7 @@ const Settings: React.FC = () => {
       {section === 'vertretungsplan' && <VertretungsplanSettings />}
       {section === 'whatsapp' && <WhatsAppSettings />}
       {section === 'sidebar' && <SidebarSettings />}
+      {section === 'account' && <AccountSettings />}
 
       <div className="space-y-6">
         {section === 'appearance' && (
