@@ -263,21 +263,9 @@ const SidebarSettings: React.FC<{ isDemo: boolean }> = ({ isDemo }) => {
     setFeedbackSaveState('idle');
     try {
       const saved = await updatePreferences({
-        sidebar: {
-          show_feedback_button: showFeedbackButton,
-          ...(hasUnresolvedSidebarSaveFailure
-            ? {
-                order: preserveNavigationDrafts ? order : preferences.sidebar.order,
-                hidden_items: preserveNavigationDrafts ? hiddenItems : preferences.sidebar.hidden_items,
-              }
-            : {}),
-        },
+        sidebar: { show_feedback_button: showFeedbackButton },
       });
       setFeedbackSaveState(saved ? 'saved' : 'error');
-      if (saved && hasUnresolvedSidebarSaveFailure) {
-        setHasUnresolvedSidebarSaveFailure(false);
-        setSaveState('saved');
-      }
     } finally {
       if (preserveNavigationDrafts) {
         isRetryingFeedbackSaveRef.current = false;
@@ -342,7 +330,7 @@ const SidebarSettings: React.FC<{ isDemo: boolean }> = ({ isDemo }) => {
           title={hasChanges || hasVisibilityChanges
             ? 'Speichere oder verwirf zuerst deine Navigationsänderungen.'
             : hasUnresolvedSidebarSaveFailure
-              ? 'Beim Speichern werden auch die ausstehenden Navigationsänderungen synchronisiert.'
+              ? 'Feedback wird unabhängig gespeichert; Navigationsänderungen bleiben noch offen.'
               : undefined}
           className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500/40 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:focus:ring-offset-surface-900 ${preferences.sidebar.show_feedback_button ? 'bg-primary-600' : 'bg-surface-300 dark:bg-surface-700'}`}
         >

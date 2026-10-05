@@ -56,6 +56,28 @@ const mergePreferences = (
   onboarding: { ...current.onboarding, ...patch.onboarding },
 });
 
+const mergePersistedPatch = (
+  current: UserPreferences,
+  patch: UserPreferencesPatch,
+  persisted: UserPreferences,
+): UserPreferences => {
+  const merged = { ...current };
+  for (const group of Object.keys(patch) as Array<keyof UserPreferences>) {
+    const fields = patch[group];
+    if (!fields) continue;
+
+    const mergedGroup = { ...merged[group] } as Record<string, unknown>;
+    const persistedGroup = persisted[group] as unknown as Record<string, unknown>;
+    for (const field of Object.keys(fields)) {
+      if (Object.prototype.hasOwnProperty.call(persistedGroup, field)) {
+        mergedGroup[field] = persistedGroup[field];
+      }
+    }
+    (merged as unknown as Record<string, unknown>)[group] = mergedGroup;
+  }
+  return merged;
+};
+
 const normalizePreferences = (value?: Partial<UserPreferences>): UserPreferences => {
   const homework = value?.homework as (Partial<UserPreferences['homework']> & { hide_completed_in_overview?: boolean }) | undefined;
   const dashboard = value?.dashboard;
@@ -252,7 +274,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode; sync?: b
     const save = async () => {
       setIsSaving(true);
       try {
-        const response = await settingsAPI.updatePreferences(token, next);
+        const response = await settingsAPI.updatePreferences(token, patch);
         if (patch.sidebar?.order) {
           const persistedOrder = response.preferences.sidebar?.order;
           if (!persistedOrder
@@ -267,14 +289,12 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode; sync?: b
             throw new Error('The backend did not persist the sidebar visibility settings.');
           }
         }
-        const saved = normalizePreferences({
-          ...response.preferences,
-          sidebar: { ...next.sidebar, ...response.preferences.sidebar },
-          dashboard: { ...next.dashboard, ...response.preferences.dashboard },
-        });
+        const persisted = normalizePreferences(response.preferences);
+        const saved = normalizePreferences(mergePersistedPatch(next, patch, persisted));
+        const hasUnsyncedLocalChanges = JSON.stringify(saved) !== JSON.stringify(persisted);
         if (JSON.stringify(preferencesRef.current) === JSON.stringify(next)) {
           applyPreferences(saved);
-          writeCache(saved, false);
+          writeCache(saved, hasUnsyncedLocalChanges);
         }
         return true;
       } catch (error) {
