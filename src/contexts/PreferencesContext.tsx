@@ -289,6 +289,13 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode; sync?: b
             throw new Error('The backend did not persist the sidebar visibility settings.');
           }
         }
+        if (patch.sidebar?.show_feedback_button !== undefined) {
+          const persistedFeedbackButton = response.preferences.sidebar?.show_feedback_button;
+          if (typeof persistedFeedbackButton !== 'boolean'
+            || persistedFeedbackButton !== next.sidebar.show_feedback_button) {
+            throw new Error('The backend did not persist the feedback button preference.');
+          }
+        }
         const persisted = normalizePreferences(response.preferences);
         const saved = normalizePreferences(mergePersistedPatch(next, patch, persisted));
         const hasUnsyncedLocalChanges = JSON.stringify(saved) !== JSON.stringify(persisted);
