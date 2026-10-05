@@ -263,7 +263,12 @@ const SidebarSettings: React.FC<{ isDemo: boolean }> = ({ isDemo }) => {
     setFeedbackSaveState('idle');
     try {
       const saved = await updatePreferences({
-        sidebar: { show_feedback_button: showFeedbackButton },
+        sidebar: {
+          show_feedback_button: showFeedbackButton,
+          ...(hasUnresolvedSidebarSaveFailure
+            ? { order: preferences.sidebar.order, hidden_items: preferences.sidebar.hidden_items }
+            : {}),
+        },
       });
       setFeedbackSaveState(saved ? 'saved' : 'error');
       if (saved && hasUnresolvedSidebarSaveFailure) {

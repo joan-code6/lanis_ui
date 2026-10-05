@@ -260,6 +260,13 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode; sync?: b
             throw new Error('The backend did not persist the sidebar order.');
           }
         }
+        if (patch.sidebar?.hidden_items) {
+          const persistedHiddenItems = response.preferences.sidebar?.hidden_items;
+          if (!persistedHiddenItems
+            || JSON.stringify(persistedHiddenItems) !== JSON.stringify(next.sidebar.hidden_items)) {
+            throw new Error('The backend did not persist the sidebar visibility settings.');
+          }
+        }
         const saved = normalizePreferences({
           ...response.preferences,
           sidebar: { ...next.sidebar, ...response.preferences.sidebar },
