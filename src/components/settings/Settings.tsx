@@ -266,7 +266,10 @@ const SidebarSettings: React.FC<{ isDemo: boolean }> = ({ isDemo }) => {
         sidebar: {
           show_feedback_button: showFeedbackButton,
           ...(hasUnresolvedSidebarSaveFailure
-            ? { order: preferences.sidebar.order, hidden_items: preferences.sidebar.hidden_items }
+            ? {
+                order: preserveNavigationDrafts ? order : preferences.sidebar.order,
+                hidden_items: preserveNavigationDrafts ? hiddenItems : preferences.sidebar.hidden_items,
+              }
             : {}),
         },
       });
