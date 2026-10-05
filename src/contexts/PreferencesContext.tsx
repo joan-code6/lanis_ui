@@ -302,6 +302,9 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode; sync?: b
         if (JSON.stringify(preferencesRef.current) === JSON.stringify(next)) {
           applyPreferences(saved);
           writeCache(saved, hasUnsyncedLocalChanges);
+          setSyncError(hasUnsyncedLocalChanges
+            ? 'Änderungen sind lokal gespeichert und werden beim nächsten Versuch synchronisiert.'
+            : '');
         }
         return true;
       } catch (error) {
