@@ -199,10 +199,11 @@ const SidebarSettings: React.FC<{ isDemo: boolean }> = ({ isDemo }) => {
   const [feedbackSaveState, setFeedbackSaveState] = useState<SidebarSaveState>('idle');
   const [isRetryingFeedbackSave, setIsRetryingFeedbackSave] = useState(false);
   const preserveNavigationDraftsRef = React.useRef(false);
+  const isRetryingFeedbackSaveRef = React.useRef(false);
 
   useEffect(() => {
     if (preserveNavigationDraftsRef.current) {
-      if (!isRetryingFeedbackSave) preserveNavigationDraftsRef.current = false;
+      if (!isRetryingFeedbackSaveRef.current) preserveNavigationDraftsRef.current = false;
       return;
     }
     setOrder(normalizeSidebarOrder(preferences.sidebar.order));
@@ -253,7 +254,10 @@ const SidebarSettings: React.FC<{ isDemo: boolean }> = ({ isDemo }) => {
 
   const saveFeedbackButton = async (showFeedbackButton: boolean, preserveNavigationDrafts = false) => {
     preserveNavigationDraftsRef.current = preserveNavigationDrafts;
-    if (preserveNavigationDrafts) setIsRetryingFeedbackSave(true);
+    if (preserveNavigationDrafts) {
+      isRetryingFeedbackSaveRef.current = true;
+      setIsRetryingFeedbackSave(true);
+    }
     setFeedbackSaveState('idle');
     try {
       const saved = await updatePreferences({
@@ -261,7 +265,10 @@ const SidebarSettings: React.FC<{ isDemo: boolean }> = ({ isDemo }) => {
       });
       setFeedbackSaveState(saved ? 'saved' : 'error');
     } finally {
-      if (preserveNavigationDrafts) setIsRetryingFeedbackSave(false);
+      if (preserveNavigationDrafts) {
+        isRetryingFeedbackSaveRef.current = false;
+        setIsRetryingFeedbackSave(false);
+      }
     }
   };
 
