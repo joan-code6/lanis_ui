@@ -196,6 +196,7 @@ const SidebarSettings: React.FC<{ isDemo: boolean }> = ({ isDemo }) => {
   const [hiddenItems, setHiddenItems] = useState<string[]>(() => preferences.sidebar.hidden_items);
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [saveState, setSaveState] = useState<SidebarSaveState>('idle');
+  const [hasUnresolvedSidebarSaveFailure, setHasUnresolvedSidebarSaveFailure] = useState(false);
   const [feedbackSaveState, setFeedbackSaveState] = useState<SidebarSaveState>('idle');
   const [isRetryingFeedbackSave, setIsRetryingFeedbackSave] = useState(false);
   const preserveNavigationDraftsRef = React.useRef(false);
@@ -250,6 +251,7 @@ const SidebarSettings: React.FC<{ isDemo: boolean }> = ({ isDemo }) => {
     setSaveState('idle');
     const saved = await updatePreferences({ sidebar: { order, hidden_items: hiddenItems } });
     setSaveState(saved ? 'saved' : 'error');
+    setHasUnresolvedSidebarSaveFailure(!saved);
   };
 
   const saveFeedbackButton = async (showFeedbackButton: boolean, preserveNavigationDrafts = false) => {
@@ -324,8 +326,12 @@ const SidebarSettings: React.FC<{ isDemo: boolean }> = ({ isDemo }) => {
           aria-checked={preferences.sidebar.show_feedback_button}
           aria-label="Feedback-Schaltfläche anzeigen"
           onClick={() => void toggleFeedbackButton()}
-          disabled={isSidebarSaveInProgress || hasChanges || hasVisibilityChanges}
-          title={hasChanges || hasVisibilityChanges ? 'Speichere oder verwirf zuerst deine Navigationsänderungen.' : undefined}
+          disabled={isSidebarSaveInProgress || hasChanges || hasVisibilityChanges || hasUnresolvedSidebarSaveFailure}
+          title={hasUnresolvedSidebarSaveFailure
+            ? 'Synchronisiere zuerst die fehlgeschlagenen Navigationsänderungen.'
+            : hasChanges || hasVisibilityChanges
+              ? 'Speichere oder verwirf zuerst deine Navigationsänderungen.'
+              : undefined}
           className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500/40 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:focus:ring-offset-surface-900 ${preferences.sidebar.show_feedback_button ? 'bg-primary-600' : 'bg-surface-300 dark:bg-surface-700'}`}
         >
           <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${preferences.sidebar.show_feedback_button ? 'translate-x-5' : 'translate-x-0.5'}`} />
@@ -339,7 +345,7 @@ const SidebarSettings: React.FC<{ isDemo: boolean }> = ({ isDemo }) => {
             <button
               type="button"
               onClick={() => void saveFeedbackButton(preferences.sidebar.show_feedback_button, hasChanges || hasVisibilityChanges)}
-              disabled={isSidebarSaveInProgress}
+              disabled={isSidebarSaveInProgress || hasUnresolvedSidebarSaveFailure}
               className="font-medium underline underline-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Erneut versuchen
@@ -468,7 +474,7 @@ const SidebarSettings: React.FC<{ isDemo: boolean }> = ({ isDemo }) => {
             <button
               type="button"
               onClick={() => void applyOrder()}
-              disabled={(!hasChanges && !hasVisibilityChanges && saveState !== 'error') || isSidebarSaveInProgress}
+              disabled={(!hasChanges && !hasVisibilityChanges && !hasUnresolvedSidebarSaveFailure) || isSidebarSaveInProgress}
               className="btn btn-primary flex-1 disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none"
             >
               {isSidebarSaveInProgress ? 'Wird gespeichert…' : 'Änderungen speichern'}
@@ -482,7 +488,7 @@ const SidebarSettings: React.FC<{ isDemo: boolean }> = ({ isDemo }) => {
               Gespeichert und mit deinem Konto synchronisiert.
             </p>
           )}
-          {saveState === 'error' && (
+          {hasUnresolvedSidebarSaveFailure && (
             <p className="text-amber-700 dark:text-amber-300">
               Lokal gespeichert, aber noch nicht mit deinem Konto synchronisiert. Versuche es erneut.
             </p>
