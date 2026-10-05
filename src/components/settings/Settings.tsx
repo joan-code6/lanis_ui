@@ -266,6 +266,10 @@ const SidebarSettings: React.FC<{ isDemo: boolean }> = ({ isDemo }) => {
         sidebar: { show_feedback_button: showFeedbackButton },
       });
       setFeedbackSaveState(saved ? 'saved' : 'error');
+      if (saved && hasUnresolvedSidebarSaveFailure) {
+        setHasUnresolvedSidebarSaveFailure(false);
+        setSaveState('saved');
+      }
     } finally {
       if (preserveNavigationDrafts) {
         isRetryingFeedbackSaveRef.current = false;
@@ -326,11 +330,11 @@ const SidebarSettings: React.FC<{ isDemo: boolean }> = ({ isDemo }) => {
           aria-checked={preferences.sidebar.show_feedback_button}
           aria-label="Feedback-Schaltfläche anzeigen"
           onClick={() => void toggleFeedbackButton()}
-          disabled={isSidebarSaveInProgress || hasChanges || hasVisibilityChanges || hasUnresolvedSidebarSaveFailure}
-          title={hasUnresolvedSidebarSaveFailure
-            ? 'Synchronisiere zuerst die fehlgeschlagenen Navigationsänderungen.'
-            : hasChanges || hasVisibilityChanges
-              ? 'Speichere oder verwirf zuerst deine Navigationsänderungen.'
+          disabled={isSidebarSaveInProgress || hasChanges || hasVisibilityChanges}
+          title={hasChanges || hasVisibilityChanges
+            ? 'Speichere oder verwirf zuerst deine Navigationsänderungen.'
+            : hasUnresolvedSidebarSaveFailure
+              ? 'Beim Speichern werden auch die ausstehenden Navigationsänderungen synchronisiert.'
               : undefined}
           className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500/40 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:focus:ring-offset-surface-900 ${preferences.sidebar.show_feedback_button ? 'bg-primary-600' : 'bg-surface-300 dark:bg-surface-700'}`}
         >
@@ -345,7 +349,7 @@ const SidebarSettings: React.FC<{ isDemo: boolean }> = ({ isDemo }) => {
             <button
               type="button"
               onClick={() => void saveFeedbackButton(preferences.sidebar.show_feedback_button, hasChanges || hasVisibilityChanges)}
-              disabled={isSidebarSaveInProgress || hasUnresolvedSidebarSaveFailure}
+              disabled={isSidebarSaveInProgress}
               className="font-medium underline underline-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Erneut versuchen
