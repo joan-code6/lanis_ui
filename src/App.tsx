@@ -26,6 +26,7 @@ import CustomBackend from './components/settings/CustomBackend';
 import Onboarding from './components/onboarding/Onboarding';
 import Wahlen from './components/wahlen/Wahlen';
 import StatusPage from './components/status/StatusPage';
+import SchoolPage from './components/schools/SchoolPage';
 
 const LandingRoot: React.FC = () => {
   const { isAuthenticated } = useAuth();
@@ -73,6 +74,8 @@ const AppRoutes: React.FC = () => {
         <Route path="/" element={<LandingRoot />} />
         <Route path="/landing" element={<Navigate to="/" replace />} />
         <Route path="/status" element={<StatusPage />} />
+        <Route path="/schulen/:slug" element={<SchoolPage />} />
+        <Route path="/schulen/:slug/:variant" element={<SchoolPage />} />
         <Route path="/impressum" element={<Impressum />} />
         <Route path="/privacy-policy" element={<PrivacyPolicy />} />
         <Route path="/set-custom-backend" element={<CustomBackend />} />

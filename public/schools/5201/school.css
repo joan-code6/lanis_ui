@@ -1,0 +1,162 @@
+/* Bootstrap 3.3 */
+/* SPH */
+
+.navbar-custom {
+    background-color: #00bcd5;
+    border-color: #00a5bb;        
+    border-radius: 0;
+    border-bottom: 0;
+    border-right: 0;
+}
+
+.navbar-first {
+    padding-bottom: 0;
+    margin-bottom: 0;
+    border-top: 5px #00a5bb solid;
+}
+
+.headtitle {
+    color: #606060 !important;
+}
+
+.navbar-last {
+    border-bottom: 5px solid #F4F4F4;
+    border-top: 0;
+    padding-bottom: 0;
+    margin-bottom: 5px;
+}
+
+.navbar-custom .navbar-brand {
+    color: #ffffff;
+}
+.navbar-custom .navbar-brand:hover, .navbar-custom .navbar-brand:focus {
+    color: #cdcdcd;
+}
+.navbar-custom .navbar-text {
+    color: #ffffff;
+}
+.navbar-custom .navbar-nav > li > a {
+    color: #fffffe;
+}
+.navbar-custom .navbar-nav > li > a:hover, .navbar-custom .navbar-nav > li > a:focus {
+    color: #dfdfdf;;
+}
+.navbar-custom .navbar-nav > .active > a, .navbar-custom .navbar-nav > .active > a:hover, .navbar-custom .navbar-nav > .active > a:focus {
+    color: #dfdfdf;;
+    /*background-color: #5b7dad;*/
+    background-color: #00bcd5;
+}
+.navbar-custom .navbar-nav > .open > a, .navbar-custom .navbar-nav > .open > a:hover, .navbar-custom .navbar-nav > .open > a:focus {
+    color: #cdcdcd;
+    /*background-color: #5b7dad;*/
+    background-color: #00bcd5;
+}
+.navbar-custom .navbar-toggle {
+    /*background-color: #5b7dad;*/
+    background-color: #00bcd5;
+}
+.navbar-custom .navbar-toggle:hover, .navbar-custom .navbar-toggle:focus {
+    background-color: #5b7dad;
+    background-color: #00bcd5;
+}
+.navbar-custom .navbar-toggle .icon-bar {
+    background-color: #FFFFFF;
+}
+.navbar-custom .navbar-collapse,
+.navbar-custom .navbar-form {
+    border-color: #ffffff;
+}
+.navbar-custom .navbar-link {
+    color: #ffffff;
+}
+.navbar-custom .navbar-link:hover {
+    color: #cdcdcd;
+}
+
+.allButFooter {
+    min-height: calc(100vh - 55px);
+}
+
+.footer {
+    border-top: 5px solid #00bcd5;
+    background-color: #00a5bc;
+    vertical-align: middle;
+    padding: 2px;
+    color: #FFFFFF;
+    /*position: absolute;*/
+    /*position:fixed ;
+    bottom: 0;*/
+    width: 100%;
+    margin: 0;
+    padding: 2px;
+    padding-right: 20px;
+    padding-left: 20px;
+    font-size: 8pt;
+
+    /*clear: both;
+    position: relative;
+    height: 40px;
+    margin-top: -40px;*/
+}
+
+.footer a {    
+    color: #FFFFFF;
+}
+
+
+@media (max-width: 767px) {
+    .navbar-custom .navbar-nav .open .dropdown-menu > li > a {
+        color: #ffffff;
+    }
+    .navbar-custom .navbar-nav .open .dropdown-menu > li > a:hover, .navbar-custom .navbar-nav .open .dropdown-menu > li > a:focus {
+        color: #cdcdcd;
+    }
+    .navbar-custom .navbar-nav .open .dropdown-menu > .active > a, .navbar-custom .navbar-nav .open .dropdown-menu > .active > a:hover, .navbar-custom .navbar-nav .open .dropdown-menu > .active > a:focus {
+        color: #cdcdcd;
+        background-color: #00bcd5;
+    }
+
+    .allButFooter {
+        min-height: calc(100vh - 41px);
+    }
+}
+
+
+/* Boostrap 4 */
+/* change the background color */
+.navbar-custom, 
+.header-top,
+.ccm-page #header .header-top.header-top-colored{
+    /*background-color: #264a7c !important;
+    border-top-color: #5b7dad !important;*/
+
+    background-color: #00bcd5 !important;
+    border-top-color: #00a5bb !important;
+    /*border-color: #5b7dad;*/
+
+}
+
+
+/* change the brand and text color */
+.navbar-custom .navbar-brand,
+.navbar-custom .navbar-text {
+    color: #ffffff;
+}
+/* change the link color */
+.navbar-custom .navbar-nav .nav-link,
+.header-top .nav-link {
+    color: #ffffff;
+}
+/* change the color of active or hovered links */
+.navbar-custom .nav-item.active .nav-link,
+.navbar-custom .nav-item:focus .nav-link,
+.navbar-custom .nav-item:hover .nav-link,
+.header-top a:hover {
+    color: #cdcdcd !important;
+    background-color: #264a7c !important;
+}
+
+ccm-page #header .header-top.header-top-primary {
+    background: #00bcd4;
+    border-top-color: #00a5bb;
+}
