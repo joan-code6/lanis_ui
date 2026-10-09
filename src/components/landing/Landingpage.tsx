@@ -361,7 +361,13 @@ const SchoolMapPanel: React.FC<{ state: SchoolMapState }> = ({ state }) => {
 
 /* ─── Landingpage ─── */
 
-const Landingpage: React.FC = () => {
+interface LandingpageProps {
+  /** Replaces the navbar and hero. Everything below the hero stays the homepage. */
+  hero?: React.ReactNode;
+  seo?: { title: string; description: string; path: string; noindex?: boolean; structuredData?: Record<string, unknown> };
+}
+
+const Landingpage: React.FC<LandingpageProps> = ({ hero, seo }) => {
   const navigate = useNavigate();
   const [sliderPos, setSliderPos] = useState(50);
   const [isDragging, setIsDragging] = useState(false);
@@ -413,12 +419,16 @@ const Landingpage: React.FC = () => {
   return (
     <div className="min-h-screen bg-[#fcfcf9] dark:bg-surface-950 text-[#1a1a1a] dark:text-surface-100 overflow-x-hidden transition-colors duration-300">
       <SEO
-        title="Das Schulportal Hessen, neu gedacht"
-        description="Lanis ist die modernere, inoffizielle Oberfläche für das Schulportal Hessen: Hausaufgaben direkt im Stundenplan, Push-Benachrichtigungen und Ladezeiten unter 50 Millisekunden."
-        path="/"
+        title={seo?.title ?? 'Das Schulportal Hessen, neu gedacht'}
+        description={seo?.description ?? 'Lanis ist die modernere, inoffizielle Oberfläche für das Schulportal Hessen: Hausaufgaben direkt im Stundenplan, Push-Benachrichtigungen und Ladezeiten unter 50 Millisekunden.'}
+        path={seo?.path ?? '/'}
+        noindex={seo?.noindex}
+        structuredData={seo?.structuredData}
       />
 
       <div className="relative z-10">
+        {hero ?? (
+          <>
         {/* ═══ Navigation ═══ */}
         <nav className="flex items-center justify-between px-6 py-6 max-w-6xl mx-auto">
           <div className="flex items-center gap-2.5">
@@ -458,6 +468,8 @@ const Landingpage: React.FC = () => {
             </button>
           </div>
         </section>
+          </>
+        )}
 
         {/* ═══ Comparison Slider ═══ */}
         <section id="compare" className="max-w-6xl mx-auto px-6 pb-10">

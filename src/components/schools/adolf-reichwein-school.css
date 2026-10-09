@@ -133,3 +133,9 @@
 @media (prefers-reduced-motion: reduce) {
   .school-page *, .school-page *::before, .school-page *::after { scroll-behavior: auto !important; animation: none !important; transition-duration: .01ms !important; }
 }
+
+.school-hero-only { min-height: 0; padding-bottom: 28px; }
+.v2-login-card .input { max-width: 100%; }
+@media (max-width: 680px) {
+  .school-hero-only .v2-overlay { background: linear-gradient(180deg, rgba(9,37,42,.78), rgba(9,37,42,.45) 45%, rgba(9,37,42,.65)); }
+}

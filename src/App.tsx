@@ -77,8 +77,7 @@ const AppRoutes: React.FC = () => {
         <Route path="/impressum" element={<Impressum />} />
         <Route path="/privacy-policy" element={<PrivacyPolicy />} />
         <Route path="/set-custom-backend" element={<CustomBackend />} />
-        <Route path="/schulen/adolf-reichwein-gymnasium" element={<AdolfReichweinSchoolPage />} />
-        <Route path="/schulen/adolf-reichwein-gymnasium/:version" element={<AdolfReichweinSchoolPage />} />
+        <Route path="/schule/adolf-reichwein-gymnasium" element={<AdolfReichweinSchoolPage />} />
         <Route path="/demo" element={<DemoRoute />}>
           <Route index element={<Navigate to="/demo/dashboard" replace />} />
           <Route path="dashboard" element={<Dashboard />} />
