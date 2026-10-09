@@ -36,21 +36,23 @@ const SchoolHero: React.FC = () => {
               src={ARG.bg.lg}
               srcSet={`${ARG.bg.xs} 768w, ${ARG.bg.sm} 990w, ${ARG.bg.md} 1200w, ${ARG.bg.lg} 1600w`}
               sizes="(min-width: 1024px) 58vw, 100vw"
-              alt={ARG.name}
+              alt={`Schulportal ${ARG.name} in ${ARG.city}`}
               className="absolute inset-0 h-full w-full object-cover opacity-70"
             />
             <div className="absolute inset-0" style={{ background: `linear-gradient(to top, #07090c 5%, transparent 60%), linear-gradient(90deg, ${c.bg}55, transparent)` }} />
             <div className="relative flex h-full min-h-[26rem] flex-col justify-end p-6 sm:p-8">
               <div className="mb-5 flex items-center gap-3">
-                <div className="w-fit rounded-xl bg-white p-2"><img src={ARG.logo} alt="" className="h-10" /></div>
+                <div className="w-fit rounded-xl bg-white p-2"><img src={ARG.logo} alt={`Schulportal ${ARG.name} Logo`} className="h-10" /></div>
                 <div className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-white/80">
                   <span className="h-2 w-2 rounded-full" style={{ background: c.bg, animation: 'v2-pulse 2s infinite' }} />
                   <span className="hidden sm:inline">{ARG.name} · </span>{ARG.city}
                 </div>
               </div>
               <h1 className="text-4xl font-black leading-[0.95] tracking-tight sm:text-6xl">
-                Dein Schulportal am ARG.
-                <span className="block" style={{ color: c.bg }}>Sofort da, auch bei Störung.</span>
+                Deine Schule.
+                <br />
+                Dein Tag.
+                <span className="block" style={{ color: c.bg }}>Modern</span>
               </h1>
               <p className="mt-4 max-w-xl text-base text-white/80 sm:text-lg">
                 Die gleichen Daten, die gleichen Funktionen - nur schneller, klarer und angenehmer zu bedienen.
@@ -78,10 +80,18 @@ const SchoolPage: React.FC = () => {
     <Landingpage
       hero={<SchoolHero />}
       seo={{
-        title: `Lanis Login – ${ARG.name}, ${ARG.city}`,
-        description: `Schulportal Hessen Login für das ${ARG.name} in ${ARG.city}: Vertretungsplan, Stundenplan und Nachrichten in Lanis.`,
+        // Target query: "schulportal <school name>"
+        title: `Schulportal ${ARG.name} ${ARG.city} – Login, Vertretungsplan & Stundenplan`,
+        description: `Das Schulportal vom ${ARG.name} in ${ARG.city}: Login mit deinen Schulportal-Hessen-Daten, Vertretungsplan, Stundenplan und Nachrichten - schneller, klarer und angenehmer in Lanis.`,
         path: `/schule/${ARG.slug}`,
-        noindex: true,
+        noindex: true, // POC: flip to false when the page should be indexed
+        structuredData: {
+          '@context': 'https://schema.org',
+          '@type': 'WebPage',
+          name: `Schulportal ${ARG.name} ${ARG.city}`,
+          about: { '@type': 'School', name: ARG.name, address: { '@type': 'PostalAddress', addressLocality: ARG.city, addressRegion: 'Hessen', addressCountry: 'DE' } },
+          inLanguage: 'de',
+        },
       }}
     />
   );

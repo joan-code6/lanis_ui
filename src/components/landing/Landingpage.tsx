@@ -364,7 +364,7 @@ const SchoolMapPanel: React.FC<{ state: SchoolMapState }> = ({ state }) => {
 interface LandingpageProps {
   /** Replaces the navbar and hero. Everything below the hero stays the homepage. */
   hero?: React.ReactNode;
-  seo?: { title: string; description: string; path: string; noindex?: boolean };
+  seo?: { title: string; description: string; path: string; noindex?: boolean; structuredData?: Record<string, unknown> };
 }
 
 const Landingpage: React.FC<LandingpageProps> = ({ hero, seo }) => {
@@ -423,6 +423,7 @@ const Landingpage: React.FC<LandingpageProps> = ({ hero, seo }) => {
         description={seo?.description ?? 'Lanis ist die modernere, inoffizielle Oberfläche für das Schulportal Hessen: Hausaufgaben direkt im Stundenplan, Push-Benachrichtigungen und Ladezeiten unter 50 Millisekunden.'}
         path={seo?.path ?? '/'}
         noindex={seo?.noindex}
+        structuredData={seo?.structuredData}
       />
 
       <div className="relative z-10">
