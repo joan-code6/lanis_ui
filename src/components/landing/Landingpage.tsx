@@ -362,7 +362,7 @@ const SchoolMapPanel: React.FC<{ state: SchoolMapState }> = ({ state }) => {
 /* ─── Landingpage ─── */
 
 interface LandingpageProps {
-  /** Replaces the hero section only. Everything else on the page stays the homepage. */
+  /** Replaces the navbar and hero. Everything below the hero stays the homepage. */
   hero?: React.ReactNode;
   seo?: { title: string; description: string; path: string; noindex?: boolean };
 }
@@ -426,6 +426,8 @@ const Landingpage: React.FC<LandingpageProps> = ({ hero, seo }) => {
       />
 
       <div className="relative z-10">
+        {hero ?? (
+          <>
         {/* ═══ Navigation ═══ */}
         <nav className="flex items-center justify-between px-6 py-6 max-w-6xl mx-auto">
           <div className="flex items-center gap-2.5">
@@ -441,8 +443,6 @@ const Landingpage: React.FC<LandingpageProps> = ({ hero, seo }) => {
           </div>
         </nav>
 
-        {hero ?? (
-          <>
         {/* ═══ Hero ═══ */}
         <section className="max-w-6xl mx-auto px-6 pt-16 md:pt-28 pb-16">
           <h1 className={`text-[clamp(2.5rem,6vw,5rem)] font-bold tracking-tighter leading-[0.95] max-w-4xl transition-all duration-1000 delay-100 ease-[cubic-bezier(0.16,1,0.3,1)] ${heroVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
