@@ -362,7 +362,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ fixedSchool }) => {
               </Link>.
             </p>
 
-            <p className="text-center whitespace-nowrap w-max mx-auto text-[9px] sm:text-[10px] tracking-tight text-surface-400 dark:text-surface-500 leading-none">
+            <p className={fixedSchool ? 'text-center text-[10px] tracking-tight text-surface-400 dark:text-surface-500 leading-snug break-words' : 'text-center whitespace-nowrap w-max mx-auto text-[9px] sm:text-[10px] tracking-tight text-surface-400 dark:text-surface-500 leading-none'}>
               Beim Anmelden werden deine Anmeldedaten an{' '}
               <span className="font-medium">
                 {API_BASE_URL.replace(/^https?:\/\//, '')}

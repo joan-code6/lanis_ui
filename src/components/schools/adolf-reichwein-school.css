@@ -139,3 +139,9 @@
 @media (max-width: 680px) {
   .school-hero-only .v2-overlay { background: linear-gradient(180deg, rgba(9,37,42,.78), rgba(9,37,42,.45) 45%, rgba(9,37,42,.65)); }
 }
+/* hero follows the page background (light and dark) */
+.school-hero-only, .school-hero-only.school-v2 { background: transparent; }
+.dark .school-hero-only { color: #f3f3f0; }
+.dark .school-hero-only .lanis-brand, .dark .school-hero-only .school-brand strong { color: #fff; }
+.dark .school-hero-only .school-brand span { color: rgba(255,255,255,.6); }
+.dark .school-hero-only .school-brand > img { border-color: rgba(255,255,255,.12); }
