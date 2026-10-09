@@ -25,20 +25,21 @@ const SchoolBrand = () => (
   </div>
 );
 
-// School palette (colors from the school's Schulportal Hessen scheme: #00bcd5 / #00a5bb) as the
-// primary colour ramp for the whole page. Icon: the matching cyan Lanis icon.
-const SCHOOL_PALETTE = {
-  '--color-primary-50': '236 252 254',
-  '--color-primary-100': '207 246 250',
-  '--color-primary-200': '160 236 245',
-  '--color-primary-300': '100 224 238',
-  '--color-primary-400': '0 188 213',
-  '--color-primary-500': '0 165 187',
-  '--color-primary-600': '0 142 161',
-  '--color-primary-700': '0 116 133',
-  '--color-primary-800': '0 92 106',
-  '--color-primary-900': '0 70 80',
-  '--color-primary-950': '0 40 48',
+// The school's Schulportal Hessen colours (#00bcd5 / #00a5bb) are cyan, so the page uses the Lanis
+// "cyan" theme as ONE consistent palette: the exact ramp from index.css, applied to the page root
+// (scoped, nothing is persisted). The login card icon is the cyan theme icon.
+const CYAN_THEME = {
+  '--color-primary-50': '236 254 255',
+  '--color-primary-100': '207 250 254',
+  '--color-primary-200': '165 243 252',
+  '--color-primary-300': '103 232 249',
+  '--color-primary-400': '34 211 238',
+  '--color-primary-500': '6 182 212',
+  '--color-primary-600': '8 145 178',
+  '--color-primary-700': '14 116 144',
+  '--color-primary-800': '21 94 117',
+  '--color-primary-900': '22 78 99',
+  '--color-primary-950': '8 51 68',
 } as React.CSSProperties;
 
 // Navbar + hero: the "Willkommen am ARG" design (version 2) of the concept page, with the
@@ -71,7 +72,7 @@ const AdolfReichweinSchoolPage: React.FC = () => {
   return (
     <Landingpage
       hero={<Hero />}
-      themeVars={SCHOOL_PALETTE}
+      themeVars={CYAN_THEME}
       seo={{
         // Target query: "schulportal <school name>"
         title: `Schulportal ${SCHOOL_NAME} ${SCHOOL_CITY} – Login, Vertretungsplan & Stundenplan`,
