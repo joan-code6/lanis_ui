@@ -361,7 +361,13 @@ const SchoolMapPanel: React.FC<{ state: SchoolMapState }> = ({ state }) => {
 
 /* ─── Landingpage ─── */
 
-const Landingpage: React.FC = () => {
+interface LandingpageProps {
+  /** Replaces the hero section only. Everything else on the page stays the homepage. */
+  hero?: React.ReactNode;
+  seo?: { title: string; description: string; path: string; noindex?: boolean };
+}
+
+const Landingpage: React.FC<LandingpageProps> = ({ hero, seo }) => {
   const navigate = useNavigate();
   const [sliderPos, setSliderPos] = useState(50);
   const [isDragging, setIsDragging] = useState(false);
@@ -413,9 +419,10 @@ const Landingpage: React.FC = () => {
   return (
     <div className="min-h-screen bg-[#fcfcf9] dark:bg-surface-950 text-[#1a1a1a] dark:text-surface-100 overflow-x-hidden transition-colors duration-300">
       <SEO
-        title="Das Schulportal Hessen, neu gedacht"
-        description="Lanis ist die modernere, inoffizielle Oberfläche für das Schulportal Hessen: Hausaufgaben direkt im Stundenplan, Push-Benachrichtigungen und Ladezeiten unter 50 Millisekunden."
-        path="/"
+        title={seo?.title ?? 'Das Schulportal Hessen, neu gedacht'}
+        description={seo?.description ?? 'Lanis ist die modernere, inoffizielle Oberfläche für das Schulportal Hessen: Hausaufgaben direkt im Stundenplan, Push-Benachrichtigungen und Ladezeiten unter 50 Millisekunden.'}
+        path={seo?.path ?? '/'}
+        noindex={seo?.noindex}
       />
 
       <div className="relative z-10">
@@ -434,6 +441,8 @@ const Landingpage: React.FC = () => {
           </div>
         </nav>
 
+        {hero ?? (
+          <>
         {/* ═══ Hero ═══ */}
         <section className="max-w-6xl mx-auto px-6 pt-16 md:pt-28 pb-16">
           <h1 className={`text-[clamp(2.5rem,6vw,5rem)] font-bold tracking-tighter leading-[0.95] max-w-4xl transition-all duration-1000 delay-100 ease-[cubic-bezier(0.16,1,0.3,1)] ${heroVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
@@ -458,6 +467,8 @@ const Landingpage: React.FC = () => {
             </button>
           </div>
         </section>
+          </>
+        )}
 
         {/* ═══ Comparison Slider ═══ */}
         <section id="compare" className="max-w-6xl mx-auto px-6 pb-10">

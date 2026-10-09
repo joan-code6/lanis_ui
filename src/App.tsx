@@ -74,8 +74,7 @@ const AppRoutes: React.FC = () => {
         <Route path="/" element={<LandingRoot />} />
         <Route path="/landing" element={<Navigate to="/" replace />} />
         <Route path="/status" element={<StatusPage />} />
-        <Route path="/schulen/:slug" element={<SchoolPage />} />
-        <Route path="/schulen/:slug/:variant" element={<SchoolPage />} />
+        <Route path="/schule/:slug" element={<SchoolPage />} />
         <Route path="/impressum" element={<Impressum />} />
         <Route path="/privacy-policy" element={<PrivacyPolicy />} />
         <Route path="/set-custom-backend" element={<CustomBackend />} />
