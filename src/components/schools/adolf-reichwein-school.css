@@ -145,3 +145,10 @@
 .dark .school-hero-only .lanis-brand, .dark .school-hero-only .school-brand strong { color: #fff; }
 .dark .school-hero-only .school-brand span { color: rgba(255,255,255,.6); }
 .dark .school-hero-only .school-brand > img { border-color: rgba(255,255,255,.12); }
+@media (max-width: 680px) {
+  .school-hero-only .v2-top { gap: 12px; }
+  .school-hero-only .v2-top .school-brand { min-width: 0; gap: 9px; }
+  .school-hero-only .v2-top .school-brand > img { width: 48px; height: 32px; flex: none; }
+  .school-hero-only .v2-top .school-brand > div { display: flex; min-width: 0; }
+  .school-hero-only .v2-top .school-brand strong { font-size: 12px; line-height: 1.2; text-align: left; max-width: 128px; }
+}
