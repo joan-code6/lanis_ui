@@ -225,7 +225,11 @@ const LoginForm: React.FC<LoginFormProps> = ({ fixedSchool }) => {
   const card = (
         <div className="w-full max-w-sm mx-auto">
           <div className="text-center mb-10">
+              {fixedSchool ? (
+              <img src="/favicon/themes/cyan/android-chrome-192x192.png" alt="Schulportal" className="mx-auto h-14 w-14 rounded-2xl mb-6 shadow-soft-md" />
+            ) : (
               <AppIcon alt="Schulportal" className="mx-auto h-14 w-14 rounded-2xl mb-6 shadow-soft-md" />
+            )}
             <h2 className="text-3xl font-bold text-surface-900 dark:text-surface-100 tracking-tight">
               Schulportal Hessen
             </h2>

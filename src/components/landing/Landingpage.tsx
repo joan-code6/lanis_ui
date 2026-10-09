@@ -364,10 +364,12 @@ const SchoolMapPanel: React.FC<{ state: SchoolMapState }> = ({ state }) => {
 interface LandingpageProps {
   /** Replaces the navbar and hero. Everything below the hero stays the homepage. */
   hero?: React.ReactNode;
+  /** Inline CSS variable overrides for the page root (used for a per-school colour palette). */
+  themeVars?: React.CSSProperties;
   seo?: { title: string; description: string; path: string; noindex?: boolean; structuredData?: Record<string, unknown> };
 }
 
-const Landingpage: React.FC<LandingpageProps> = ({ hero, seo }) => {
+const Landingpage: React.FC<LandingpageProps> = ({ hero, seo, themeVars }) => {
   const navigate = useNavigate();
   const [sliderPos, setSliderPos] = useState(50);
   const [isDragging, setIsDragging] = useState(false);
@@ -417,7 +419,7 @@ const Landingpage: React.FC<LandingpageProps> = ({ hero, seo }) => {
   }, [isDragging, handleMove]);
 
   return (
-    <div className="min-h-screen bg-[#fcfcf9] dark:bg-surface-950 text-[#1a1a1a] dark:text-surface-100 overflow-x-hidden transition-colors duration-300">
+    <div style={themeVars} className="min-h-screen bg-[#fcfcf9] dark:bg-surface-950 text-[#1a1a1a] dark:text-surface-100 overflow-x-hidden transition-colors duration-300">
       <SEO
         title={seo?.title ?? 'Das Schulportal Hessen, neu gedacht'}
         description={seo?.description ?? 'Lanis ist die modernere, inoffizielle Oberfläche für das Schulportal Hessen: Hausaufgaben direkt im Stundenplan, Push-Benachrichtigungen und Ladezeiten unter 50 Millisekunden.'}

@@ -25,6 +25,22 @@ const SchoolBrand = () => (
   </div>
 );
 
+// School palette (colors from the school's Schulportal Hessen scheme: #00bcd5 / #00a5bb) as the
+// primary colour ramp for the whole page. Icon: the matching cyan Lanis icon.
+const SCHOOL_PALETTE = {
+  '--color-primary-50': '236 252 254',
+  '--color-primary-100': '207 246 250',
+  '--color-primary-200': '160 236 245',
+  '--color-primary-300': '100 224 238',
+  '--color-primary-400': '0 188 213',
+  '--color-primary-500': '0 165 187',
+  '--color-primary-600': '0 142 161',
+  '--color-primary-700': '0 116 133',
+  '--color-primary-800': '0 92 106',
+  '--color-primary-900': '0 70 80',
+  '--color-primary-950': '0 40 48',
+} as React.CSSProperties;
+
 // Navbar + hero: the "Willkommen am ARG" design (version 2) of the concept page, with the
 // requested copy and the real login card. Everything below is the homepage.
 const Hero: React.FC = () => (
@@ -55,6 +71,7 @@ const AdolfReichweinSchoolPage: React.FC = () => {
   return (
     <Landingpage
       hero={<Hero />}
+      themeVars={SCHOOL_PALETTE}
       seo={{
         // Target query: "schulportal <school name>"
         title: `Schulportal ${SCHOOL_NAME} ${SCHOOL_CITY} – Login, Vertretungsplan & Stundenplan`,
