@@ -81,11 +81,18 @@ function fuzzyScore(query: string, target: string): number {
   return total / qTokens.length;
 }
 
-const LoginForm: React.FC = () => {
+export interface FixedSchool { id: string; name: string; location: string }
+
+interface LoginFormProps {
+  /** Embedded card mode: school is preselected (search field hidden) and no page chrome is rendered. */
+  fixedSchool?: FixedSchool;
+}
+
+const LoginForm: React.FC<LoginFormProps> = ({ fixedSchool }) => {
   const { login } = useAuth();
   const { isDark, isOled, themeMode, setThemeMode } = useTheme();
   const [formData, setFormData] = useState({
-    school_id: '',
+    school_id: fixedSchool?.id ?? '',
     username: '',
     password: '',
   });
@@ -101,6 +108,7 @@ const LoginForm: React.FC = () => {
   const [error, setError] = useState('');
 
   useEffect(() => {
+    if (fixedSchool) return;
     const savedSchoolId = getCookie('lastSchoolId');
     const savedSchoolName = getCookie('lastSchoolName');
     const savedSchoolLocation = getCookie('lastSchoolLocation');
@@ -127,6 +135,7 @@ const LoginForm: React.FC = () => {
   };
 
   useEffect(() => {
+    if (fixedSchool) return;
     const abortController = new AbortController();
     schoolListAPI.getAllSchools(abortController.signal).then(res => {
       setAllDistricts(Array.isArray(res?.districts) ? res.districts : []);
@@ -192,6 +201,11 @@ const LoginForm: React.FC = () => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
+    if (fixedSchool) {
+      setCookie('lastSchoolId', fixedSchool.id);
+      setCookie('lastSchoolName', fixedSchool.name);
+      setCookie('lastSchoolLocation', fixedSchool.location);
+    }
     const success = await login(formData);
     if (!success) {
       setError('Anmeldung fehlgeschlagen. Bitte überprüfen Sie Ihre Anmeldedaten.');
@@ -207,6 +221,159 @@ const LoginForm: React.FC = () => {
         : 'light';
     setThemeMode(nextMode);
   };
+
+  const card = (
+        <div className="w-full max-w-sm mx-auto">
+          <div className="text-center mb-10">
+              <AppIcon alt="Schulportal" className="mx-auto h-14 w-14 rounded-2xl mb-6 shadow-soft-md" />
+            <h2 className="text-3xl font-bold text-surface-900 dark:text-surface-100 tracking-tight">
+              Schulportal Hessen
+            </h2>
+            <p className="mt-2 text-sm text-surface-500 dark:text-surface-400">
+              Inoffizielle, moderne Benutzeroberfläche
+            </p>
+          </div>
+
+          <form className="space-y-5" onSubmit={handleSubmit} autoComplete="off">
+            <div className="space-y-4">
+              {!fixedSchool && (
+              <div className="relative">
+                <label htmlFor="school_search" className="label">
+                  Schule suchen
+                </label>
+                <input
+                  id="school_search"
+                  name="school_search"
+                  type="text"
+                  className="input"
+                  placeholder="Schulname oder Ort eingeben..."
+                  value={schoolSearch}
+                  onChange={handleSchoolSearch}
+                  autoComplete="off"
+                  ref={schoolInputRef}
+                  required
+                  onFocus={() => { if (schoolSearch.trim().length >= 2 && allDistricts.length > 0) setShowSchoolDropdown(true); }}
+                />
+                {showSchoolDropdown && allDistricts.length > 0 && (
+                  <div className="absolute left-0 right-0 z-10 mt-1.5 bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-xl shadow-soft-lg max-h-60 overflow-y-auto">
+                    {schoolResults.length === 0 ? (
+                      <div className="px-4 py-3 text-surface-400 dark:text-surface-500 text-sm">Keine Schulen gefunden</div>
+                    ) : (
+                      <>
+                        {schoolResults.map((school, idx) => (
+                          <div
+                            key={school.id + idx}
+                            className="px-4 py-2.5 hover:bg-primary-50 dark:hover:bg-primary-950 cursor-pointer text-sm transition-colors first:rounded-t-xl"
+                            onMouseDown={e => { e.preventDefault(); handleSelectSchool(school); }}
+                          >
+                            <span className="font-medium text-surface-900 dark:text-surface-100">{school.name}</span>
+                            <span className="text-surface-400"> ({school.location})</span>
+                            {school.district_name && (
+                              <span className="ml-2 text-xs text-surface-400">{school.district_name}</span>
+                            )}
+                          </div>
+                        ))}
+                        {resultTruncated && (
+                          <div className="px-4 py-2 text-xs text-surface-400 italic rounded-b-xl">
+                            Zeige die besten {MAX_RESULTS} Treffer. Bitte genauer suchen.
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+              )}
+
+              <div>
+                <label htmlFor="username" className="label">
+                  Benutzername
+                </label>
+                <input
+                  id="username"
+                  name="username"
+                  type="text"
+                  required
+                  className="input"
+                  placeholder="vorname.nachname"
+                  value={formData.username}
+                  onChange={handleChange}
+                />
+              </div>
+
+              <div>
+                <label htmlFor="password" className="label">
+                  Passwort
+                </label>
+                <div className="relative">
+                  <input
+                    id="password"
+                    name="password"
+                    type={showPassword ? 'text' : 'password'}
+                    required
+                    className="input pr-11"
+                    placeholder="Passwort eingeben"
+                    value={formData.password}
+                    onChange={handleChange}
+                  />
+                  <button
+                    type="button"
+                    className="absolute inset-y-0 right-0 flex items-center pr-3.5 text-surface-400 hover:text-surface-600 transition-colors"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? (
+                      <EyeSlashIcon className="h-5 w-5" />
+                    ) : (
+                      <EyeIcon className="h-5 w-5" />
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {error && (
+                <div className="bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-900 text-red-600 dark:text-red-400 px-4 py-3 rounded-xl text-sm animate-scale-in">
+                  {error}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={isLoading || !formData.school_id}
+                className="btn btn-primary w-full h-11 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100"
+              >
+                {isLoading ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <span className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+                    Anmelden...
+                  </span>
+                ) : (
+                  'Anmelden'
+                )}
+              </button>
+            </div>
+
+            <p className="text-center whitespace-nowrap text-[9px] sm:text-[10px] tracking-tight text-surface-400 dark:text-surface-500 leading-none">
+              Mit der Anmeldung akzeptierst du unsere{' '}
+              <Link
+                to="/privacy-policy"
+                className="underline underline-offset-2 hover:text-surface-600 dark:hover:text-surface-300 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 rounded-sm"
+              >
+                Datenschutzerklärung
+              </Link>.
+            </p>
+
+            <p className={fixedSchool ? 'text-center text-[10px] tracking-tight text-surface-400 dark:text-surface-500 leading-snug break-words' : 'text-center whitespace-nowrap w-max mx-auto text-[9px] sm:text-[10px] tracking-tight text-surface-400 dark:text-surface-500 leading-none'}>
+              Beim Anmelden werden deine Anmeldedaten an{' '}
+              <span className="font-medium">
+                {API_BASE_URL.replace(/^https?:\/\//, '')}
+              </span>{' '}
+              übertragen.
+            </p>
+          </form>
+        </div>
+  );
+
+  if (fixedSchool) return card;
 
   return (
     <div className="min-h-[100dvh] bg-surface-50 dark:bg-surface-950 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 relative">
@@ -225,152 +392,7 @@ const LoginForm: React.FC = () => {
         {isOled ? 'OLED' : isDark ? 'Dunkel' : 'Hell'}
       </button>
       {/* The custom-backend selector is intentionally hidden from the login page. */}
-      <div className="w-full max-w-sm">
-        <div className="text-center mb-10">
-            <AppIcon alt="Schulportal" className="mx-auto h-14 w-14 rounded-2xl mb-6 shadow-soft-md" />
-          <h2 className="text-3xl font-bold text-surface-900 dark:text-surface-100 tracking-tight">
-            Schulportal Hessen
-          </h2>
-          <p className="mt-2 text-sm text-surface-500 dark:text-surface-400">
-            Inoffizielle, moderne Benutzeroberfläche
-          </p>
-        </div>
-
-        <form className="space-y-5" onSubmit={handleSubmit} autoComplete="off">
-          <div className="space-y-4">
-            <div className="relative">
-              <label htmlFor="school_search" className="label">
-                Schule suchen
-              </label>
-              <input
-                id="school_search"
-                name="school_search"
-                type="text"
-                className="input"
-                placeholder="Schulname oder Ort eingeben..."
-                value={schoolSearch}
-                onChange={handleSchoolSearch}
-                autoComplete="off"
-                ref={schoolInputRef}
-                required
-                onFocus={() => { if (schoolSearch.trim().length >= 2 && allDistricts.length > 0) setShowSchoolDropdown(true); }}
-              />
-              {showSchoolDropdown && allDistricts.length > 0 && (
-                <div className="absolute left-0 right-0 z-10 mt-1.5 bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-xl shadow-soft-lg max-h-60 overflow-y-auto">
-                  {schoolResults.length === 0 ? (
-                    <div className="px-4 py-3 text-surface-400 dark:text-surface-500 text-sm">Keine Schulen gefunden</div>
-                  ) : (
-                    <>
-                      {schoolResults.map((school, idx) => (
-                        <div
-                          key={school.id + idx}
-                          className="px-4 py-2.5 hover:bg-primary-50 dark:hover:bg-primary-950 cursor-pointer text-sm transition-colors first:rounded-t-xl"
-                          onMouseDown={e => { e.preventDefault(); handleSelectSchool(school); }}
-                        >
-                          <span className="font-medium text-surface-900 dark:text-surface-100">{school.name}</span>
-                          <span className="text-surface-400"> ({school.location})</span>
-                          {school.district_name && (
-                            <span className="ml-2 text-xs text-surface-400">{school.district_name}</span>
-                          )}
-                        </div>
-                      ))}
-                      {resultTruncated && (
-                        <div className="px-4 py-2 text-xs text-surface-400 italic rounded-b-xl">
-                          Zeige die besten {MAX_RESULTS} Treffer. Bitte genauer suchen.
-                        </div>
-                      )}
-                    </>
-                  )}
-                </div>
-              )}
-            </div>
-
-            <div>
-              <label htmlFor="username" className="label">
-                Benutzername
-              </label>
-              <input
-                id="username"
-                name="username"
-                type="text"
-                required
-                className="input"
-                placeholder="vorname.nachname"
-                value={formData.username}
-                onChange={handleChange}
-              />
-            </div>
-
-            <div>
-              <label htmlFor="password" className="label">
-                Passwort
-              </label>
-              <div className="relative">
-                <input
-                  id="password"
-                  name="password"
-                  type={showPassword ? 'text' : 'password'}
-                  required
-                  className="input pr-11"
-                  placeholder="Passwort eingeben"
-                  value={formData.password}
-                  onChange={handleChange}
-                />
-                <button
-                  type="button"
-                  className="absolute inset-y-0 right-0 flex items-center pr-3.5 text-surface-400 hover:text-surface-600 transition-colors"
-                  onClick={() => setShowPassword(!showPassword)}
-                >
-                  {showPassword ? (
-                    <EyeSlashIcon className="h-5 w-5" />
-                  ) : (
-                    <EyeIcon className="h-5 w-5" />
-                  )}
-                </button>
-              </div>
-            </div>
-
-            {error && (
-              <div className="bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-900 text-red-600 dark:text-red-400 px-4 py-3 rounded-xl text-sm animate-scale-in">
-                {error}
-              </div>
-            )}
-
-            <button
-              type="submit"
-              disabled={isLoading || !formData.school_id}
-              className="btn btn-primary w-full h-11 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100"
-            >
-              {isLoading ? (
-                <span className="flex items-center justify-center gap-2">
-                  <span className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
-                  Anmelden...
-                </span>
-              ) : (
-                'Anmelden'
-              )}
-            </button>
-          </div>
-
-          <p className="text-center whitespace-nowrap text-[9px] sm:text-[10px] tracking-tight text-surface-400 dark:text-surface-500 leading-none">
-            Mit der Anmeldung akzeptierst du unsere{' '}
-            <Link
-              to="/privacy-policy"
-              className="underline underline-offset-2 hover:text-surface-600 dark:hover:text-surface-300 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 rounded-sm"
-            >
-              Datenschutzerklärung
-            </Link>.
-          </p>
-
-          <p className="text-center whitespace-nowrap w-max mx-auto text-[9px] sm:text-[10px] tracking-tight text-surface-400 dark:text-surface-500 leading-none">
-            Beim Anmelden werden deine Anmeldedaten an{' '}
-            <span className="font-medium">
-              {API_BASE_URL.replace(/^https?:\/\//, '')}
-            </span>{' '}
-            übertragen.
-          </p>
-        </form>
-      </div>
+      {card}
     </div>
   );
 };
