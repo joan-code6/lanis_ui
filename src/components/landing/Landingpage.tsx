@@ -1,3 +1,4 @@
+import DemoPreview from './DemoPreview';
 import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import * as L from 'leaflet';
@@ -473,7 +474,8 @@ const Landingpage: React.FC<LandingpageProps> = ({ hero, seo, themeVars }) => {
           </>
         )}
 
-        {/* ═══ Comparison Slider ═══ */}
+        {/* ═══ Comparison Slider (school pages show the inline live demo here instead) ═══ */}
+        {hero ? <DemoPreview /> : (
         <section id="compare" className="max-w-6xl mx-auto px-6 pb-10">
           <Reveal delay={150}>
             <div
@@ -517,6 +519,7 @@ const Landingpage: React.FC<LandingpageProps> = ({ hero, seo, themeVars }) => {
             </div>
           </Reveal>
         </section>
+        )}
 
         {/* ═══ Stats bar ═══ */}
         <section className="max-w-6xl mx-auto px-6 pb-24">
@@ -601,38 +604,6 @@ const Landingpage: React.FC<LandingpageProps> = ({ hero, seo, themeVars }) => {
             delay={700}
           />
         </section>
-
-        {/* ═══ Demo strip (only when the hero is replaced, e.g. school pages, where the hero has no demo button) ═══ */}
-        {hero ? (
-          <section className="max-w-6xl mx-auto px-6 pb-24">
-            <Reveal>
-              <div className="rounded-3xl bg-[#f5f5f2] dark:bg-surface-900 border border-black/[0.04] dark:border-white/[0.07] overflow-hidden grid md:grid-cols-2 items-center">
-                <div className="p-8 md:p-14">
-                  <h2 className="text-2xl md:text-3xl font-bold text-[#111] dark:text-surface-100 tracking-tight mb-3">
-                    Erst reinschauen?
-                  </h2>
-                  <p className="text-[#888] dark:text-surface-500 text-sm max-w-sm mb-8">
-                    Probier Lanis in der Demo aus, ganz ohne Login und mit Beispieldaten.
-                  </p>
-                  <button
-                    onClick={() => navigate('/demo')}
-                    className="px-9 py-4 rounded-xl bg-primary-500 hover:bg-primary-400 text-white font-semibold text-sm transition-all duration-300 active:scale-[0.97] shadow-[0_4px_20px_rgb(var(--color-primary-500)/0.25)]"
-                  >
-                    Demo starten
-                  </button>
-                </div>
-                <div className="px-8 pb-0 md:p-0 md:pt-10 md:pr-0">
-                  <img
-                    src="/landing/lanis-dashboard.png"
-                    alt="Lanis Demo: Dashboard"
-                    loading="lazy"
-                    className="w-full rounded-t-2xl md:rounded-tr-none md:rounded-tl-2xl border border-black/[0.06] dark:border-white/[0.08] border-b-0 shadow-xl"
-                  />
-                </div>
-              </div>
-            </Reveal>
-          </section>
-        ) : null}
 
         {/* ═══ Bottom CTA ═══ */}
         <section className="max-w-6xl mx-auto px-6 pb-24">
