@@ -500,7 +500,8 @@ function getMockDashboardNotifications() {
       created_at: message.date,
       read: mockDashboardReadIds.has(`demo-message-${message.Uniquid}`),
       read_at: mockDashboardReadIds.has(`demo-message-${message.Uniquid}`) ? now.toISOString() : null,
-    }));
+    }))
+    .slice(0, 1);
   const nativeItems = mockVertretungsplan.days.flatMap((day, dayIndex) => day.substitutions.map((entry, entryIndex) => {
     const id = `demo-native-${dayIndex}-${entryIndex}`;
     return {
@@ -514,7 +515,7 @@ function getMockDashboardNotifications() {
       read: mockDashboardReadIds.has(id),
       read_at: mockDashboardReadIds.has(id) ? now.toISOString() : null,
     };
-  }));
+  })).slice(0, 1);
   const dsbItems = mockDsbData.tables.flatMap((table, tableIndex) => table.rows.map((row, rowIndex) => {
     const id = `demo-dsb-${tableIndex}-${rowIndex}`;
     return {
@@ -528,7 +529,7 @@ function getMockDashboardNotifications() {
       read: mockDashboardReadIds.has(id),
       read_at: mockDashboardReadIds.has(id) ? now.toISOString() : null,
     };
-  }));
+  })).slice(0, 1);
   return [...messageItems, ...nativeItems, ...dsbItems].sort(
     (left, right) => new Date(right.created_at).getTime() - new Date(left.created_at).getTime(),
   );
