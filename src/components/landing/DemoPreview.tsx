@@ -12,16 +12,8 @@ type Phase = 'idle' | 'start' | 'grow';
 const DemoPreview: React.FC = () => {
   const navigate = useNavigate();
   const cardRef = useRef<HTMLDivElement>(null);
-  const frameRef = useRef<HTMLIFrameElement>(null);
   const [phase, setPhase] = useState<Phase>('idle');
   const [rect, setRect] = useState<DOMRect | null>(null);
-
-  // The preview follows the page palette (cyan on school pages) instead of the visitor's saved theme.
-  const syncTheme = () => {
-    const doc = frameRef.current?.contentDocument;
-    const page = document.documentElement.getAttribute('data-theme');
-    if (doc && page) doc.documentElement.setAttribute('data-theme', 'cyan');
-  };
 
   const open = () => {
     if (phase !== 'idle' || !cardRef.current) return;
@@ -66,12 +58,10 @@ const DemoPreview: React.FC = () => {
           className={`relative overflow-hidden rounded-3xl bg-[#f5f5f2] dark:bg-surface-900 border border-black/[0.06] dark:border-white/[0.08] shadow-xl ${expanding ? 'transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]' : 'h-full w-full'}`}
         >
           <iframe
-            ref={frameRef}
             src="/demo/dashboard"
             title="Lanis Demo"
             tabIndex={-1}
             loading="lazy"
-            onLoad={syncTheme}
             className="h-full w-full border-0 bg-white dark:bg-surface-950"
           />
           <button

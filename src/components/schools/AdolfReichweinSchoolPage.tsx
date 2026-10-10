@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { useTheme } from '../../contexts/ThemeContext';
 import Landingpage from '../landing/Landingpage';
 import LoginForm from '../auth/LoginForm';
 import './adolf-reichwein-school.css';
@@ -25,22 +26,10 @@ const SchoolBrand = () => (
   </div>
 );
 
-// The school's Schulportal Hessen colours (#00bcd5 / #00a5bb) are cyan, so the page uses the Lanis
-// "cyan" theme as ONE consistent palette: the exact ramp from index.css, applied to the page root
-// (scoped, nothing is persisted). The login card icon is the cyan theme icon.
-const CYAN_THEME = {
-  '--color-primary-50': '236 254 255',
-  '--color-primary-100': '207 250 254',
-  '--color-primary-200': '165 243 252',
-  '--color-primary-300': '103 232 249',
-  '--color-primary-400': '34 211 238',
-  '--color-primary-500': '6 182 212',
-  '--color-primary-600': '8 145 178',
-  '--color-primary-700': '14 116 144',
-  '--color-primary-800': '21 94 117',
-  '--color-primary-900': '22 78 99',
-  '--color-primary-950': '8 51 68',
-} as React.CSSProperties;
+// The school's Schulportal Hessen colours (#00bcd5 / #00a5bb) are cyan, so first-time visitors get the
+// Lanis "cyan" theme as their default. Anyone who already has a saved theme keeps it.
+const SCHOOL_THEME = 'cyan' as const;
+const THEME_COLOR_KEY = 'lanis_theme_color';
 
 // Navbar + hero: the "Willkommen am ARG" design (version 2) of the concept page, with the
 // requested copy and the real login card. Everything below is the homepage.
@@ -68,11 +57,14 @@ const Hero: React.FC = () => (
 
 const AdolfReichweinSchoolPage: React.FC = () => {
   const { isAuthenticated } = useAuth();
+  const { setThemeColor } = useTheme();
+  useEffect(() => {
+    if (!localStorage.getItem(THEME_COLOR_KEY)) setThemeColor(SCHOOL_THEME);
+  }, [setThemeColor]);
   if (isAuthenticated) return <Navigate to="/dashboard" replace />;
   return (
     <Landingpage
       hero={<Hero />}
-      themeVars={CYAN_THEME}
       seo={{
         // Target query: "schulportal <school name>"
         title: `Schulportal ${SCHOOL_NAME} ${SCHOOL_CITY} – Login, Vertretungsplan & Stundenplan`,
