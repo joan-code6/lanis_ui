@@ -10,6 +10,7 @@ import Dashboard from './components/dashboard/Dashboard';
 import Messages from './components/messages/Messages';
 import Courses from './components/courses/Courses';
 import AttendanceOverview from './components/courses/AttendanceOverview';
+import Submissions from './components/submissions/Submissions';
 import Kalender from './components/calendar/Kalender';
 import Profile from './components/profile/Profile';
 import Settings from './components/settings/Settings';
@@ -81,6 +82,8 @@ const AppRoutes: React.FC = () => {
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="messages" element={<Messages />} />
           <Route path="courses" element={<Courses />} />
+          <Route path="courses/submissions" element={<Submissions />} />
+          <Route path="courses/submissions/:id" element={<Submissions />} />
           <Route path="courses/attendance" element={<AttendanceOverview />} />
           <Route path="courses/:id" element={<Courses />} />
           <Route path="calendar" element={<Kalender />} />
@@ -118,6 +121,8 @@ const AppRoutes: React.FC = () => {
                     <Route path="/dashboard" element={<Dashboard />} />
                     <Route path="/messages" element={<Messages />} />
                     <Route path="/courses" element={<Courses />} />
+                    <Route path="/courses/submissions" element={<Submissions />} />
+                    <Route path="/courses/submissions/:id" element={<Submissions />} />
                     <Route path="/courses/attendance" element={<AttendanceOverview />} />
                     <Route path="/courses/:id" element={<Courses />} />
                     <Route path="/calendar" element={<Kalender />} />
