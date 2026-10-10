@@ -62,7 +62,9 @@ const DemoPreview: React.FC = () => {
             title="Lanis Demo"
             tabIndex={-1}
             loading="lazy"
-            className="h-full w-full border-0 bg-white dark:bg-surface-950"
+            // Shifted up so the demo's own 40px "Interaktive Vorschau" bar is cropped out of view
+            style={{ marginTop: -41, height: 'calc(100% + 41px)' }}
+            className="w-full border-0 bg-white dark:bg-surface-950"
           />
           <button
             type="button"
