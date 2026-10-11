@@ -4,7 +4,7 @@ import axios from 'axios';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { DEFAULT_API_BASE_URL } from '../../utils/backendConfig';
-import { THEME_COLOR_HEX } from '../../utils/themeAssets';
+import { THEME_COLOR_HEX, getThemeIconUrl } from '../../utils/themeAssets';
 import type { ThemeColor } from '../../types';
 import Landingpage from '../landing/Landingpage';
 import LoginForm from '../auth/LoginForm';
@@ -56,11 +56,14 @@ function themeForColor(hex: string | null): ThemeColor {
   return best;
 }
 
-const LanisBrand = () => (
-  <a className="lanis-brand" href="/" aria-label="Lanis Startseite">
-    <img src="/favicon/themes/cyan/android-chrome-192x192.png" alt="" /><strong>Lanis</strong>
-  </a>
-);
+const LanisBrand = () => {
+  const { themeColor } = useTheme();
+  return (
+    <a className="lanis-brand" href="/" aria-label="Lanis Startseite">
+      <img src={getThemeIconUrl(themeColor)} alt="" /><strong>Lanis</strong>
+    </a>
+  );
+};
 
 const SchoolBrand: React.FC<{ school: SchoolProfile }> = ({ school }) => (
   <div className="school-brand is-compact">
