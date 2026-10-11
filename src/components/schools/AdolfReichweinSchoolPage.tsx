@@ -48,7 +48,7 @@ function themeForColor(hex: string | null): ThemeColor {
   const c = hexToRgb(hex);
   let best: ThemeColor = 'cyan';
   let bestD = Infinity;
-  (Object.keys(THEME_COLOR_HEX) as ThemeColor[]).forEach((k) => {
+  (Object.keys(THEME_COLOR_HEX) as ThemeColor[]).filter((k) => k !== 'moss').forEach((k) => {
     const t = hexToRgb(THEME_COLOR_HEX[k]);
     const d = c.reduce((acc, v, i) => acc + (v - t[i]) ** 2, 0);
     if (d < bestD) { bestD = d; best = k; }
