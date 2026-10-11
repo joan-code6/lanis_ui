@@ -93,7 +93,7 @@ const Hero: React.FC<{ school: SchoolProfile }> = ({ school }) => {
       />
       <div className="v2-overlay" />
       <div className="v2-school">
-        <h1>Deine Schule.<br />Dein Tag.<br /><span>Modern</span></h1>
+        <h1>Deine Schule.<br />Dein Tag.<br /><span>Neu gedacht.</span></h1>
         <p>Die gleichen Daten, die gleichen Funktionen - nur schneller, klarer und angenehmer zu bedienen.</p>
       </div>
       <aside className="v2-login-card dark:!bg-surface-900">
