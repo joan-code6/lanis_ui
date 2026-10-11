@@ -9,7 +9,8 @@
 .school-brand { display: flex; align-items: center; gap: 14px; }
 .school-brand > img { width: 72px; height: 44px; object-fit: contain; mix-blend-mode: multiply; }
 /* School logos are opaque white-background images: blend the white away instead of boxing it. */
-.dark .school-brand > img { filter: invert(1) hue-rotate(180deg); mix-blend-mode: screen; }
+.dark .school-brand > img { filter: invert(1) hue-rotate(180deg) contrast(.9); mix-blend-mode: normal; }
+.oled .school-brand > img { filter: invert(1) hue-rotate(180deg); }
 .school-brand > div { display: flex; flex-direction: column; }
 .school-brand strong { font-size: 14px; line-height: 1.15; }
 .school-brand span { margin-top: 4px; color: #7b7b7b; font-size: 9px; letter-spacing: .08em; text-transform: uppercase; }
