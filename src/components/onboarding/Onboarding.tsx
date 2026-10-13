@@ -4,15 +4,14 @@ import {
   AcademicCapIcon,
   ArrowLeftIcon,
   ArrowRightIcon,
-  Bars3Icon,
   BookOpenIcon,
   CalendarDaysIcon,
   CheckCircleIcon,
   CheckIcon,
-  CloudArrowUpIcon,
   Cog6ToothIcon,
+  CloudArrowUpIcon,
+  ChatBubbleLeftRightIcon,
   EyeSlashIcon,
-  MagnifyingGlassIcon,
   PaintBrushIcon,
   SparklesIcon,
   Squares2X2Icon,
@@ -27,13 +26,12 @@ import SEO from '../seo/SEO';
 import ModuleIcon from '../dashboard/ModuleIcon';
 import AppIcon from '../AppIcon';
 
-const steps: Array<{ id: Exclude<OnboardingStep, 'complete'>; label: string }> = [
+const baseSteps: Array<{ id: Exclude<OnboardingStep, 'complete'>; label: string }> = [
   { id: 'welcome', label: 'Start' },
   { id: 'appearance', label: 'Aussehen' },
   { id: 'dashboard', label: 'Favoriten' },
   { id: 'timetable', label: 'Stundenplan' },
   { id: 'homework', label: 'Hausaufgaben' },
-  { id: 'guide', label: 'Loslegen' },
 ];
 
 const themeModes: Array<{ id: ThemeMode; label: string; note: string }> = [
@@ -63,12 +61,16 @@ const recommendedModule = (name: string) => {
 const Onboarding: React.FC = () => {
   const navigate = useNavigate();
   const { token, user } = useAuth();
+  // Keep the persisted guide ID compatible with onboarding already in progress.
+  const steps = user?.is_first_school_user === 'true'
+    ? [...baseSteps, { id: 'guide' as const, label: 'Deine Schule' }]
+    : baseSteps;
   const { preferences, updatePreferences, isLoading, syncError } = usePreferences();
   const { setThemeColor, setThemeMode } = useTheme();
   const resumedStep = preferences.onboarding.status === 'in_progress'
     ? steps.findIndex(step => step.id === preferences.onboarding.last_step)
     : 0;
-  const [stepIndex, setStepIndex] = useState(resumedStep >= 0 ? resumedStep : 0);
+  const [stepIndex, setStepIndex] = useState(resumedStep >= 0 ? resumedStep : steps.length - 1);
   const [themeMode, setDraftThemeMode] = useState(preferences.appearance.theme_mode);
   const [themeColor, setDraftThemeColor] = useState(preferences.appearance.theme_color);
   const [pinnedModules, setPinnedModules] = useState(preferences.dashboard.pinned_modules);
@@ -90,13 +92,13 @@ const Onboarding: React.FC = () => {
     const savedStep = preferences.onboarding.status === 'in_progress'
       ? steps.findIndex(step => step.id === preferences.onboarding.last_step)
       : 0;
-    setStepIndex(savedStep >= 0 ? savedStep : 0);
+    setStepIndex(savedStep >= 0 ? savedStep : steps.length - 1);
     setDraftThemeMode(preferences.appearance.theme_mode);
     setDraftThemeColor(preferences.appearance.theme_color);
     setPinnedModules(preferences.dashboard.pinned_modules);
     setTimetableMode(preferences.timetable.view_mode);
     setCompletedHomeworkDisplay(preferences.homework.completed_display);
-  }, [isLoading, preferences]);
+  }, [isLoading, preferences, user?.is_first_school_user]);
 
   useEffect(() => {
     if (isLoading) return;
@@ -369,17 +371,13 @@ const Onboarding: React.FC = () => {
 
             {activeStep.id === 'guide' && (
               <div className="max-w-2xl sm:grid sm:max-w-none sm:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] sm:items-start sm:gap-8 min-[900px]:gap-16 xl:gap-24">
-                <StepHeading icon={AcademicCapIcon} eyebrow="Gut zu wissen" title="So findest du dich sofort zurecht." description="Vier Dinge reichen für den Start. Alles Weitere entdeckst du dort, wo du es brauchst." />
-                <div className="mt-7 sm:mt-0">
-                  <div className="grid gap-3 sm:grid-cols-1 min-[900px]:grid-cols-2 min-[900px]:gap-4">
-                    <GuideCard icon={Bars3Icon} title="Bereiche wechseln" text="Die Navigation bringt dich zu Nachrichten, Kursen, Stundenplan und Kalender." />
-                    <GuideCard icon={MagnifyingGlassIcon} title="Alles durchsuchen" text="Öffne die Suche in der Navigation oder mit Strg/⌘ + K." />
-                    <GuideCard icon={CalendarDaysIcon} title="Stunden korrigieren" text="Unter Einstellungen › Stundenplan kannst du wiederkehrende Stunden ändern oder ausblenden." />
-                    <GuideCard icon={Cog6ToothIcon} title="Später weiter anpassen" text="Farben, Benachrichtigungen, Installation und weitere Optionen bleiben in den Einstellungen." />
-                  </div>
-                  <div className="mt-6 rounded-2xl border border-primary-200 bg-primary-50 p-4 text-sm text-primary-800 dark:border-primary-900 dark:bg-primary-950/30 dark:text-primary-200 min-[900px]:p-5">
-                    Benachrichtigungen fragen wir erst an, wenn du sie selbst aktivierst. So behältst du die Kontrolle über Browser-Berechtigungen.
-                  </div>
+                <StepHeading icon={AcademicCapIcon} eyebrow="Als Erstes an deiner Schule" title="Du machst den Anfang." description="Du bist die erste Person an deiner Schule, die Lanis nutzt. Deshalb kann es sein, dass noch nicht alle Funktionen bei dir perfekt laufen." />
+                <div className="mt-7 rounded-2xl border border-primary-200 bg-primary-50 p-6 dark:border-primary-900 dark:bg-primary-950/30 sm:mt-0 min-[900px]:p-8">
+                  <ChatBubbleLeftRightIcon className="h-8 w-8 text-primary-600 dark:text-primary-400" />
+                  <h2 className="mt-4 text-xl font-semibold">Dein Feedback hilft uns weiter.</h2>
+                  <p className="mt-3 leading-7 text-surface-600 dark:text-surface-300">Wenn etwas nicht funktioniert oder dir etwas fehlt, sag uns Bescheid. So können wir Lanis für dich und deine Schule verbessern.</p>
+                  <p className="mt-3 text-sm leading-6 text-surface-500 dark:text-surface-400">Beschreibe kurz, was du machen wolltest und was passiert ist. Ein Screenshot hilft uns, das Problem zu verstehen.</p>
+                  <a href="mailto:lanis-impressum@joancode.dev?subject=Feedback%20zu%20Lanis" className="btn btn-secondary mt-5 inline-flex">Feedback geben<ArrowRightIcon className="ml-2 h-4 w-4" /></a>
                 </div>
               </div>
             )}
@@ -388,7 +386,7 @@ const Onboarding: React.FC = () => {
 
             <div className="mt-8 flex items-center justify-between gap-3 sm:mt-10 min-[900px]:mt-12">
               <button type="button" onClick={goBack} className={`btn btn-ghost ${stepIndex === 0 ? 'invisible' : ''}`} disabled={stepIndex === 0}><ArrowLeftIcon className="mr-2 h-4 w-4" />Zurück</button>
-              {activeStep.id === 'guide' ? (
+              {stepIndex === steps.length - 1 ? (
                 <button type="button" onClick={complete} className="btn btn-primary px-6">Zum Dashboard<ArrowRightIcon className="ml-2 h-4 w-4" /></button>
               ) : (
                 <button type="button" onClick={() => saveCurrentStep(stepIndex + 1)} className="btn btn-primary px-6">{activeStep.id === 'welcome' ? 'Lanis einrichten' : 'Weiter'}<ArrowRightIcon className="ml-2 h-4 w-4" /></button>
@@ -442,14 +440,6 @@ const HomeworkChoice: React.FC<{
     <p className="font-semibold">{title}</p>
     <p className="mt-1 text-sm leading-5 text-surface-500">{description}</p>
   </button>
-);
-
-const GuideCard: React.FC<{ icon: React.ComponentType<React.SVGProps<SVGSVGElement>>; title: string; text: string }> = ({ icon: Icon, title, text }) => (
-  <div className="rounded-2xl border border-surface-200 bg-white p-4 dark:border-surface-800 dark:bg-surface-900 min-[900px]:p-5">
-    <Icon className="h-5 w-5 text-primary-600" />
-    <p className="mt-3 font-semibold">{title}</p>
-    <p className="mt-1 text-sm leading-5 text-surface-500">{text}</p>
-  </div>
 );
 
 export default Onboarding;

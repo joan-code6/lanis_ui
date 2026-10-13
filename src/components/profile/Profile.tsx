@@ -170,7 +170,7 @@ const Profile: React.FC = () => {
                 {renderUserField('Schul-ID', userDetails?.school_id, BuildingOfficeIcon)}
 
                 {userDetails && Object.entries(userDetails).map(([key, value]) => {
-                  if (['username', 'firstname', 'lastname', 'email', 'school_id', 'encryption_ready'].includes(key)) {
+                  if (['username', 'firstname', 'lastname', 'email', 'school_id', 'encryption_ready', 'is_first_school_user'].includes(key)) {
                     return null;
                   }
                   if (!value || value === '') {

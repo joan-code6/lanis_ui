@@ -50,6 +50,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         username: response.username,
         school_id: response.school_id,
         encryption_ready: response.encryption_ready.toString(),
+        is_first_school_user: String(response.is_first_school_user === true),
       };
       setToken(response.access_token);
       setUser(basicUser);
@@ -64,21 +65,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         const userResponse = await authAPI.getUserProfile(response.access_token);
         if (userResponse.success) {
           const accountUser = {
+            ...basicUser,
             ...userResponse.data,
             username: response.username,
             school_id: response.school_id,
             encryption_ready: response.encryption_ready.toString(),
+            is_first_school_user: basicUser.is_first_school_user,
           };
           setUser(accountUser);
           localStorage.setItem(USER_KEY, JSON.stringify(accountUser));
         }
       } catch (error) {
         console.warn('Failed to fetch user profile:', error);
-        setUser({
-          username: response.username,
-          school_id: response.school_id,
-          encryption_ready: response.encryption_ready.toString(),
-        });
+        setUser(basicUser);
       }
 
       return true;

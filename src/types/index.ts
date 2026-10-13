@@ -65,6 +65,7 @@ export interface LoginResponse {
   school_id: string;
   username: string;
   encryption_ready: boolean;
+  is_first_school_user?: boolean;
   expires_in: number;
 }
 
