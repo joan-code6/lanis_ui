@@ -370,8 +370,7 @@ const Onboarding: React.FC = () => {
 
             {activeStep.id === 'guide' && (
               <div className="max-w-2xl">
-                <StepHeading icon={AcademicCapIcon} eyebrow="Deine Schule" title="Du machst den Anfang." description="Du bist an deiner Schule zuerst dabei. Noch läuft vielleicht nicht alles rund – dein Feedback hilft uns weiter." />
-                <a href="mailto:lanis-impressum@joancode.dev?subject=Feedback%20zu%20Lanis" className="btn btn-secondary mt-6 inline-flex">Feedback geben<ArrowRightIcon className="ml-2 h-4 w-4" /></a>
+                <StepHeading icon={AcademicCapIcon} eyebrow="Deine Schule" title="Du machst den Anfang." description="Du bist an deiner Schule zuerst dabei – deshalb läuft vielleicht noch nicht alles rund. Melde später Probleme und Feedback über „Feedback geben“ in der Seitenleiste." />
               </div>
             )}
 
