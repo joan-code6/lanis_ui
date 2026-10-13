@@ -370,7 +370,7 @@ const Onboarding: React.FC = () => {
 
             {activeStep.id === 'guide' && (
               <div className="max-w-2xl">
-                <StepHeading icon={AcademicCapIcon} eyebrow="Deine Schule" title="Du machst den Anfang." description="Du bist an deiner Schule zuerst dabei – deshalb läuft vielleicht noch nicht alles rund. Melde später Probleme und Feedback über „Feedback geben“ in der Seitenleiste." />
+                <StepHeading icon={AcademicCapIcon} eyebrow="Deine Schule" title="Du machst den Anfang." description="Du bist der erste Nutzer an deiner Schule. Deshalb läuft vielleicht noch nicht alles rund. Melde später Probleme und Feedback über „Feedback geben“ in der Seitenleiste." />
               </div>
             )}
 
