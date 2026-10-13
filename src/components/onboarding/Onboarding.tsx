@@ -10,7 +10,6 @@ import {
   CheckIcon,
   Cog6ToothIcon,
   CloudArrowUpIcon,
-  ChatBubbleLeftRightIcon,
   EyeSlashIcon,
   PaintBrushIcon,
   SparklesIcon,
@@ -370,15 +369,9 @@ const Onboarding: React.FC = () => {
             )}
 
             {activeStep.id === 'guide' && (
-              <div className="max-w-2xl sm:grid sm:max-w-none sm:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] sm:items-start sm:gap-8 min-[900px]:gap-16 xl:gap-24">
-                <StepHeading icon={AcademicCapIcon} eyebrow="Als Erstes an deiner Schule" title="Du machst den Anfang." description="Du bist die erste Person an deiner Schule, die Lanis nutzt. Deshalb kann es sein, dass noch nicht alle Funktionen bei dir perfekt laufen." />
-                <div className="mt-7 rounded-2xl border border-primary-200 bg-primary-50 p-6 dark:border-primary-900 dark:bg-primary-950/30 sm:mt-0 min-[900px]:p-8">
-                  <ChatBubbleLeftRightIcon className="h-8 w-8 text-primary-600 dark:text-primary-400" />
-                  <h2 className="mt-4 text-xl font-semibold">Dein Feedback hilft uns weiter.</h2>
-                  <p className="mt-3 leading-7 text-surface-600 dark:text-surface-300">Wenn etwas nicht funktioniert oder dir etwas fehlt, sag uns Bescheid. So können wir Lanis für dich und deine Schule verbessern.</p>
-                  <p className="mt-3 text-sm leading-6 text-surface-500 dark:text-surface-400">Beschreibe kurz, was du machen wolltest und was passiert ist. Ein Screenshot hilft uns, das Problem zu verstehen.</p>
-                  <a href="mailto:lanis-impressum@joancode.dev?subject=Feedback%20zu%20Lanis" className="btn btn-secondary mt-5 inline-flex">Feedback geben<ArrowRightIcon className="ml-2 h-4 w-4" /></a>
-                </div>
+              <div className="max-w-2xl">
+                <StepHeading icon={AcademicCapIcon} eyebrow="Deine Schule" title="Du machst den Anfang." description="Du bist an deiner Schule zuerst dabei. Noch läuft vielleicht nicht alles rund – dein Feedback hilft uns weiter." />
+                <a href="mailto:lanis-impressum@joancode.dev?subject=Feedback%20zu%20Lanis" className="btn btn-secondary mt-6 inline-flex">Feedback geben<ArrowRightIcon className="ml-2 h-4 w-4" /></a>
               </div>
             )}
 
