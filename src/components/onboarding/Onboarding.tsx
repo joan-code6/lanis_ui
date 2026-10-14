@@ -51,12 +51,6 @@ const themeColors: Array<{ id: ThemeColor; label: string; hex: string; checkClas
   { id: 'blush', label: 'Blush', hex: '#fee3ea', checkClass: 'text-surface-800' },
 ];
 
-const recommendedModule = (name: string) => {
-  const normalized = name.toLowerCase();
-  return ['nachrichten', 'stundenplan', 'mein unterricht', 'kalender']
-    .some(candidate => normalized.includes(candidate));
-};
-
 const Onboarding: React.FC = () => {
   const navigate = useNavigate();
   const { token, user } = useAuth();
@@ -71,10 +65,10 @@ const Onboarding: React.FC = () => {
     : 0;
   const [stepIndex, setStepIndex] = useState(resumedStep >= 0 ? resumedStep : steps.length - 1);
   const [themeMode, setDraftThemeMode] = useState(preferences.appearance.theme_mode);
-  const [themeColor, setDraftThemeColor] = useState(preferences.appearance.theme_color);
-  const [pinnedModules, setPinnedModules] = useState(preferences.dashboard.pinned_modules);
-  const [timetableMode, setTimetableMode] = useState<TimetableViewMode>(preferences.timetable.view_mode);
-  const [completedHomeworkDisplay, setCompletedHomeworkDisplay] = useState<CompletedHomeworkDisplay>(preferences.homework.completed_display);
+  const [themeColor, setDraftThemeColor] = useState<ThemeColor | null>(null);
+  const [pinnedModules, setPinnedModules] = useState<string[]>([]);
+  const [timetableMode, setTimetableMode] = useState<TimetableViewMode | null>(null);
+  const [completedHomeworkDisplay, setCompletedHomeworkDisplay] = useState<CompletedHomeworkDisplay | null>(null);
   const [modules, setModules] = useState<Module[]>([]);
   const [modulesLoading, setModulesLoading] = useState(true);
   const [localError, setLocalError] = useState('');
@@ -93,16 +87,16 @@ const Onboarding: React.FC = () => {
       : 0;
     setStepIndex(savedStep >= 0 ? savedStep : steps.length - 1);
     setDraftThemeMode(preferences.appearance.theme_mode);
-    setDraftThemeColor(preferences.appearance.theme_color);
-    setPinnedModules(preferences.dashboard.pinned_modules);
-    setTimetableMode(preferences.timetable.view_mode);
-    setCompletedHomeworkDisplay(preferences.homework.completed_display);
+    setDraftThemeColor(null);
+    setPinnedModules([]);
+    setTimetableMode(null);
+    setCompletedHomeworkDisplay(null);
   }, [isLoading, preferences, user?.is_first_school_user]);
 
   useEffect(() => {
     if (isLoading) return;
     setThemeMode(themeMode);
-    setThemeColor(themeColor);
+    setThemeColor(themeColor || appearanceToRestoreRef.current.theme_color);
   }, [isLoading, setThemeColor, setThemeMode, themeColor, themeMode]);
 
   useEffect(() => () => {
@@ -123,9 +117,6 @@ const Onboarding: React.FC = () => {
       .then(response => {
         if (!response.success) return;
         setModules(response.modules);
-        if (!preferences.dashboard.pinned_modules.length) {
-          setPinnedModules(response.modules.filter(module => recommendedModule(module.name)).slice(0, 4).map(module => module.name));
-        }
       })
       .catch(error => {
         if (!controller.signal.aborted) console.warn('Onboarding modules could not be loaded:', error);
@@ -142,16 +133,16 @@ const Onboarding: React.FC = () => {
     setLocalError('');
     const nextStep = steps[nextIndex]?.id || 'complete';
     const patch: UserPreferencesPatch = activeStep.id === 'appearance'
-      ? { appearance: { theme_mode: themeMode, theme_color: themeColor } }
+      ? { appearance: { theme_mode: themeMode, ...(themeColor ? { theme_color: themeColor } : {}) } }
       : activeStep.id === 'dashboard'
         ? { dashboard: { pinned_modules: pinnedModules } }
         : activeStep.id === 'timetable'
-          ? { timetable: { view_mode: timetableMode } }
+          ? timetableMode ? { timetable: { view_mode: timetableMode } } : {}
           : activeStep.id === 'homework'
-            ? { homework: { completed_display: completedHomeworkDisplay } }
+            ? completedHomeworkDisplay ? { homework: { completed_display: completedHomeworkDisplay } } : {}
             : {};
     if (activeStep.id === 'appearance') {
-      appearanceToRestoreRef.current = { theme_mode: themeMode, theme_color: themeColor };
+      appearanceToRestoreRef.current = { theme_mode: themeMode, theme_color: themeColor || appearanceToRestoreRef.current.theme_color };
     }
     void updatePreferences({
       ...patch,
@@ -187,12 +178,12 @@ const Onboarding: React.FC = () => {
   };
 
   const complete = () => {
-    appearanceToRestoreRef.current = { theme_mode: themeMode, theme_color: themeColor };
+    appearanceToRestoreRef.current = { theme_mode: themeMode, theme_color: themeColor || originalPreferencesRef.current?.appearance.theme_color || preferences.appearance.theme_color };
     void updatePreferences({
-      appearance: { theme_mode: themeMode, theme_color: themeColor },
+      appearance: { theme_mode: themeMode, ...(themeColor ? { theme_color: themeColor } : {}) },
       dashboard: { pinned_modules: pinnedModules },
-      timetable: { view_mode: timetableMode },
-      homework: { completed_display: completedHomeworkDisplay },
+      ...(timetableMode ? { timetable: { view_mode: timetableMode } } : {}),
+      ...(completedHomeworkDisplay ? { homework: { completed_display: completedHomeworkDisplay } } : {}),
       onboarding: { version: CURRENT_ONBOARDING_VERSION, status: 'completed', last_step: 'complete' },
     });
     navigate('/dashboard', { replace: true });
