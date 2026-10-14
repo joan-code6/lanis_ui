@@ -66,7 +66,8 @@ const Onboarding: React.FC = () => {
   const [stepIndex, setStepIndex] = useState(resumedStep >= 0 ? resumedStep : steps.length - 1);
   const [themeMode, setDraftThemeMode] = useState(preferences.appearance.theme_mode);
   const [themeColor, setDraftThemeColor] = useState<ThemeColor | null>(null);
-  const [pinnedModules, setPinnedModules] = useState<string[]>([]);
+  const [pinnedModules, setPinnedModules] = useState(preferences.dashboard.pinned_modules);
+  const [favoritesTouched, setFavoritesTouched] = useState(false);
   const [timetableMode, setTimetableMode] = useState<TimetableViewMode | null>(null);
   const [completedHomeworkDisplay, setCompletedHomeworkDisplay] = useState<CompletedHomeworkDisplay | null>(null);
   const [modules, setModules] = useState<Module[]>([]);
@@ -88,7 +89,8 @@ const Onboarding: React.FC = () => {
     setStepIndex(savedStep >= 0 ? savedStep : steps.length - 1);
     setDraftThemeMode(preferences.appearance.theme_mode);
     setDraftThemeColor(null);
-    setPinnedModules([]);
+    setPinnedModules(preferences.dashboard.pinned_modules);
+    setFavoritesTouched(false);
     setTimetableMode(null);
     setCompletedHomeworkDisplay(null);
   }, [isLoading, preferences, user?.is_first_school_user]);
@@ -135,7 +137,7 @@ const Onboarding: React.FC = () => {
     const patch: UserPreferencesPatch = activeStep.id === 'appearance'
       ? { appearance: { theme_mode: themeMode, ...(themeColor ? { theme_color: themeColor } : {}) } }
       : activeStep.id === 'dashboard'
-        ? { dashboard: { pinned_modules: pinnedModules } }
+        ? favoritesTouched ? { dashboard: { pinned_modules: pinnedModules } } : {}
         : activeStep.id === 'timetable'
           ? timetableMode ? { timetable: { view_mode: timetableMode } } : {}
           : activeStep.id === 'homework'
@@ -181,7 +183,7 @@ const Onboarding: React.FC = () => {
     appearanceToRestoreRef.current = { theme_mode: themeMode, theme_color: themeColor || originalPreferencesRef.current?.appearance.theme_color || preferences.appearance.theme_color };
     void updatePreferences({
       appearance: { theme_mode: themeMode, ...(themeColor ? { theme_color: themeColor } : {}) },
-      dashboard: { pinned_modules: pinnedModules },
+      ...(favoritesTouched ? { dashboard: { pinned_modules: pinnedModules } } : {}),
       ...(timetableMode ? { timetable: { view_mode: timetableMode } } : {}),
       ...(completedHomeworkDisplay ? { homework: { completed_display: completedHomeworkDisplay } } : {}),
       onboarding: { version: CURRENT_ONBOARDING_VERSION, status: 'completed', last_step: 'complete' },
@@ -191,6 +193,7 @@ const Onboarding: React.FC = () => {
 
   const toggleModule = (name: string) => {
     setLocalError('');
+    setFavoritesTouched(true);
     setPinnedModules(current => {
       if (current.includes(name)) return current.filter(item => item !== name);
       if (current.length >= 6) {
