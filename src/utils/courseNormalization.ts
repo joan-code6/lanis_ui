@@ -11,6 +11,16 @@ export const normalizeCourseList = (response: CoursesResponse): CourseEntry[] =>
     }
   }
 
+  const activitySearchTextByCourse = new Map<string, string[]>();
+  for (const entry of entries) {
+    if (!entry.book_id) continue;
+    const searchableText = [entry.thema, entry.homework].filter(Boolean).join(' ');
+    if (!searchableText) continue;
+    const courseSearchText = activitySearchTextByCourse.get(entry.book_id) || [];
+    courseSearchText.push(searchableText);
+    activitySearchTextByCourse.set(entry.book_id, courseSearchText);
+  }
+
   return response.courses.map((course) => {
     const activity = latestEntryByCourse.get(course.book_id);
     return {
@@ -25,6 +35,7 @@ export const normalizeCourseList = (response: CoursesResponse): CourseEntry[] =>
       datum: activity?.datum || '',
       homework: activity?.homework || '',
       homework_done: activity?.homework_done || false,
+      search_text: activitySearchTextByCourse.get(course.book_id)?.join(' ') || '',
     };
   });
 };

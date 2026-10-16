@@ -470,6 +470,7 @@ export interface CourseEntry {
   datum: string;
   homework: string;
   homework_done: boolean;
+  search_text?: string;
 }
 
 export interface CoursesResponse {
