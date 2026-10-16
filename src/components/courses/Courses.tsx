@@ -56,6 +56,35 @@ const courseDetailTabs: Array<{
   { id: 'exams', label: 'Klausuren', icon: DocumentTextIcon },
 ];
 
+const normalizeCourseList = (response: CoursesResponse): CourseEntry[] => {
+  const entries = response.entries || [];
+  if (!Array.isArray(response.courses)) return entries;
+
+  const latestEntryByCourse = new Map<string, CourseEntry>();
+  for (const entry of entries) {
+    if (entry.book_id && !latestEntryByCourse.has(entry.book_id)) {
+      latestEntryByCourse.set(entry.book_id, entry);
+    }
+  }
+
+  return response.courses.map((course) => {
+    const activity = latestEntryByCourse.get(course.book_id);
+    return {
+      entry_id: activity?.entry_id ?? null,
+      book_id: course.book_id,
+      name: course.name || activity?.name || '',
+      course_link: course.course_link || activity?.course_link || '',
+      teacher_full_name: course.teacher_full_name || activity?.teacher_full_name || '',
+      teacher_short: course.teacher_short || activity?.teacher_short || '',
+      teacher_message_link: activity?.teacher_message_link || '',
+      thema: activity?.thema || '',
+      datum: activity?.datum || '',
+      homework: activity?.homework || '',
+      homework_done: activity?.homework_done || false,
+    };
+  });
+};
+
 const EmptyCourseTab: React.FC<{
   icon: React.ReactNode;
   title: string;
@@ -358,33 +387,7 @@ const Courses: React.FC = () => {
       const response = await coursesAPI.getCourses(token, signal);
       if (signal?.aborted) return;
       if (response.success) {
-        const entries = response.entries || [];
-        const latestEntryByCourse = new Map<string, CourseEntry>();
-        for (const entry of entries) {
-          if (entry.book_id && !latestEntryByCourse.has(entry.book_id)) {
-            latestEntryByCourse.set(entry.book_id, entry);
-          }
-        }
-
-        const courseList: CourseEntry[] = Array.isArray(response.courses)
-          ? response.courses.map((course) => {
-              const activity = latestEntryByCourse.get(course.book_id);
-              return {
-                entry_id: activity?.entry_id ?? null,
-                book_id: course.book_id,
-                name: course.name || activity?.name || '',
-                course_link: course.course_link || activity?.course_link || '',
-                teacher_full_name: course.teacher_full_name || activity?.teacher_full_name || '',
-                teacher_short: course.teacher_short || activity?.teacher_short || '',
-                teacher_message_link: activity?.teacher_message_link || '',
-                thema: activity?.thema || '',
-                datum: activity?.datum || '',
-                homework: activity?.homework || '',
-                homework_done: activity?.homework_done || false,
-              };
-            })
-          : entries;
-
+        const courseList = normalizeCourseList(response);
         setCourses(courseList);
         if (canWriteAccountData(writeGeneration)) {
           const cachedCourses = JSON.stringify(courseList);
@@ -420,13 +423,14 @@ const Courses: React.FC = () => {
           const overview = await coursesAPI.getCourses(token, signal);
           if (signal?.aborted) return;
           if (overview.success) {
-            setCourses(overview.entries);
+            const courseList = normalizeCourseList(overview);
+            setCourses(courseList);
             if (canWriteAccountData(writeGeneration)) {
-              const cachedCourses = JSON.stringify(overview.entries);
+              const cachedCourses = JSON.stringify(courseList);
               notifyDemoCacheWrite('courses_cache', cachedCourses);
               localStorage.setItem('courses_cache', cachedCourses);
             }
-            const matchingCourse = overview.entries.find(course => course.book_id === courseId);
+            const matchingCourse = courseList.find(course => course.book_id === courseId);
             if (matchingCourse?.name?.trim()) {
               resolvedCourse = { ...response, course_name: matchingCourse.name.trim() };
             }
