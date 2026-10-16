@@ -8,7 +8,7 @@ The Android app packages the existing React/Vite interface with Capacitor 8. It 
 - Encrypted Android Keystore-backed login and personal timetable snapshot in `noBackupFilesDir`. Tokens are held in memory in JavaScript, with encrypted native persistence, instead of WebView localStorage.
 - Cached personal timetable fallback when a request fails due to connectivity or server errors, visibly dated and marked as cached. Authentication failures do not fall back to private data.
 - Three resizable native home-screen widgets: next lesson, today's lessons, and changes/notices from the resolved personal timetable. These use Android RemoteViews so they work without a running WebView.
-- WorkManager refresh at a 15-minute minimum interval when connected, app resume refresh, widget refresh button, and cached lesson-boundary updates. These are best-effort; Android can delay them. No foreground service or exact-alarm permission is used.
+- WorkManager refresh at a 15-minute minimum interval when connected, app resume refresh, widget refresh button, and cached lesson-boundary updates. These are best-effort; Android can delay them. The app does not start foreground services or request exact alarms. WorkManager contributes its own library manifest declarations.
 - FCM notifications, permission handling, category/window/preview preferences, device-token rotation, and session binding to reject queued notifications from a previous login.
 - Launcher shortcuts, a timetable Quick Settings tile, and native file sharing/saving through the Android chooser.
 - On logout, encrypted snapshots and credentials are deleted, scheduled work and displayed notifications are cancelled, and widgets are cleared. Existing backend logout revokes subscriptions.
@@ -19,18 +19,22 @@ Substitution widgets show resolved personal-timetable changes and unmatched noti
 
 Use Node 22+, JDK 21, Android SDK platform 36 and its build tools. Android 8 (API 26) or later is supported. Install Android Studio and set `ANDROID_HOME`, or use the manual GitHub Actions workflow.
 
-This repository's `AGENT.md` says not to run builds. The implementation was checked with TypeScript, source tests, XML checks, and browser preview. An APK/native compile and real-device verification are still required before release. Do not describe the app as release-verified until these have passed.
+The user explicitly authorized Android builds and local build-tool installation on 2026-10-16, overriding this repository's general `AGENT.md` no-build instruction for this Android work. See [android-verification.md](android-verification.md) for actual validation results and device-test limitations.
 
-When builds are authorized:
+Build a debug APK:
 
 ```sh
 npm ci
 npm run android:apk
+# Build, run native unit tests, and run Android lint:
+npm run android:verify
 ```
 
 This creates the shared web bundle in `dist-android`, syncs Capacitor assets/plugins, and runs Gradle. The debug APK is at `android/app/build/outputs/apk/debug/app-debug.apk`. `npm run android:open` opens Android Studio; `npm run android:run` syncs and runs on a connected device. No website prerender runs for the Android target.
 
 The default Android backend is `https://lanis-backend.joancode.dev`. Override `VITE_API_URL` at build time or use the existing custom-backend screen. Native background sync requires HTTPS. The web development default remains unchanged. Do not put production credentials in build variables or app assets.
+
+On Linux ARM64, Google's distributed Linux `aapt2` is an x86-64 executable. Set `LANIS_ANDROID_AAPT2` to a compatible packager or executable wrapper. The build script also recognizes this host's task-local wrapper at `~/.local/share/lanis-android-tools/aapt2`, then `/usr/bin/aapt2`. Debian's `aapt2` 2.19 cannot read the SDK 36 resource table; the configured local wrapper runs Google's SDK 36 packager through QEMU with isolated x86-64 runtime libraries. This override affects only the LANIS build invocation. Machine SDK paths are in ignored `android/local.properties`.
 
 For a signed Play Store bundle, configure these environment variables and run `npm run android:bundle`:
 

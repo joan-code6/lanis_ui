@@ -9,3 +9,6 @@ android/app/google-services.json
 *.keystore
 *.jks
 android/key.properties
+
+# Local installable Android artifacts
+artifacts/android/
