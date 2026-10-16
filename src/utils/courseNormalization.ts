@@ -1,5 +1,6 @@
 import type { CourseEntry, CoursesResponse } from '../types';
 
+/** Keep every course folder, attach its latest activity, and index older activity for search. */
 export const normalizeCourseList = (response: CoursesResponse): CourseEntry[] => {
   const entries = response.entries || [];
   if (!Array.isArray(response.courses)) return entries;
