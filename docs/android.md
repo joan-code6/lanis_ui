@@ -84,7 +84,9 @@ Run `npm run dev -- --port 3017`, then open `/demo/settings/android?android-prev
 
 ### Android 1.0.1 refinements
 
-The bottom bar supports any number of unique shortcuts under **Settings → Android und Widgets → Deine Navigationsleiste**. Add, remove, or reorder entries; selecting another slot's shortcut swaps them. The bar scrolls horizontally when needed, and removing every shortcut hides it. The existing header toggle still opens the sidebar; there is no redundant **Mehr** button. Choices are saved on this device and update immediately. Unsupported school modules are hidden without erasing saved choices.
+The bottom bar supports any number of unique shortcuts under **Settings → Android und Widgets → Navigationsleiste**. Add, remove, or reorder entries; selecting another slot's shortcut swaps them. The bar scrolls horizontally when needed and reveals the active shortcut after navigation. Removing every shortcut hides it. The existing header toggle still opens the sidebar; there is no redundant **Mehr** button. Choices are saved on this device and update immediately. Unsupported school modules are hidden without erasing saved choices.
+
+See [device verification](android-device-verification.md) for the Windows build fix, phone/tablet checks, compact widget sizing, and remaining authenticated release checks.
 
 The Android launcher switches activity aliases to follow the selected app colour.
 All six variants reuse the exact generated PNGs in `public/favicon/themes`; launchers

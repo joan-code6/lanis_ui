@@ -23,10 +23,16 @@ if (aapt2) {
   if (!existsSync(aapt2)) throw new Error('LANIS_ANDROID_AAPT2 does not exist.');
   args.push(`-Pandroid.aapt2FromMavenOverride=${aapt2}`);
 }
-const result = spawnSync(process.platform === 'win32' ? 'gradlew.bat' : './gradlew', args, {
-  cwd: fileURLToPath(new URL('../android/', import.meta.url)),
+const androidDir = fileURLToPath(new URL('../android/', import.meta.url));
+// Invoke the wrapper directly on Windows: cmd AutoRun hooks can change cwd,
+// and shell execution also breaks SDK/tool paths containing spaces.
+const windows = process.platform === 'win32';
+const command = windows ? (process.env.JAVA_HOME ? join(process.env.JAVA_HOME, 'bin/java.exe') : 'java.exe') : './gradlew';
+const wrapperArgs = windows ? ['-classpath', join(androidDir, 'gradle/wrapper/gradle-wrapper.jar'), 'org.gradle.wrapper.GradleWrapperMain', ...args] : args;
+const result = spawnSync(command, wrapperArgs, {
+  cwd: androidDir,
   stdio: 'inherit',
-  shell: process.platform === 'win32',
+  shell: false,
 });
 if (result.error) throw result.error;
 process.exitCode = result.status ?? 1;

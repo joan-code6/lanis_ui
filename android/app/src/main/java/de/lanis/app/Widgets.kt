@@ -130,9 +130,9 @@ object Widgets {
         views.setViewVisibility(R.id.widget_refresh, if (signedIn) View.VISIBLE else View.GONE)
         when {
             !signedIn -> {
-                views.setTextViewText(R.id.widget_headline, "Dein Schultag beginnt hier.")
-                views.setTextViewText(R.id.widget_detail, "Öffne LANIS und melde dich an.")
-                views.setTextViewText(R.id.widget_updated, "Zum Anmelden tippen")
+                views.setTextViewText(R.id.widget_headline, "Noch nicht angemeldet")
+                views.setTextViewText(R.id.widget_detail, "Zum Anmelden tippen")
+                views.setTextViewText(R.id.widget_updated, "")
             }
             data == null -> {
                 views.setTextViewText(R.id.widget_headline, "Stundenplan wird geladen")
