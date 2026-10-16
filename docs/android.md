@@ -89,6 +89,7 @@ The bottom bar supports any number of unique shortcuts under **Settings → Andr
 See [device verification](android-device-verification.md) for the Windows build fix, phone/tablet checks, compact widget sizing, and remaining authenticated release checks.
 
 The Android launcher switches activity aliases to follow the selected app colour.
+Those aliases forward through a separate, nonvisual activity so changing the icon cannot remove the running app task. Native bridge payload logging is disabled, including in debug APKs, because session calls carry credentials.
 All six variants reuse the exact generated PNGs in `public/favicon/themes`; launchers
 may take a moment to refresh their icon cache. Widgets use these same assets,
 Outfit typography, neutral card surfaces, and the selected accent and OLED mode.

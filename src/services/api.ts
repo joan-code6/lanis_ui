@@ -493,8 +493,14 @@ export const messagesAPI = {
 // Browser push notification API
 export const notificationsAPI = {
   async getAndroidConfig(token: string): Promise<{ success: boolean; configured: boolean }> {
-    const response = await apiClient.get('/notifications/android/config', { headers: { 'X-Session-Token': token } });
-    return response.data;
+    try {
+      const response = await apiClient.get('/notifications/android/config', { headers: { 'X-Session-Token': token } });
+      return response.data;
+    } catch (error) {
+      // Older backends can serve the app without native push support.
+      if (axios.isAxiosError(error) && error.response?.status === 404) return { success: true, configured: false };
+      throw error;
+    }
   },
   async getConfig(token: string, signal?: AbortSignal): Promise<NotificationConfigResponse> {
     const response = await apiClient.get<NotificationConfigResponse>('/notifications/config', {

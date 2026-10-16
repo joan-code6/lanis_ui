@@ -44,7 +44,7 @@ export default function AndroidSettings({ notificationsOnly = false }: { notific
       setServerPush(config.configured); setPrefs(preferences.preferences); setLoaded(true);
     } else {
       setServerPush(false); setLoaded(false);
-      setError('Benachrichtigungen nicht erreichbar. Bitte erneut versuchen.');
+      setError('Benachrichtigungen nicht erreichbar.');
     }
     const today = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Berlin', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
     const lesson = snapshot.data?.days.find(day => day.date >= today)?.lessons.find(lesson => !lesson.cancelled);

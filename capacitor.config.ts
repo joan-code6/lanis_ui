@@ -5,6 +5,8 @@ const config: CapacitorConfig = {
   appName: 'LANIS',
   webDir: 'dist-android',
   backgroundColor: '#0a0a0a',
+  // Native bridge payloads include session credentials; never send them to Logcat.
+  loggingBehavior: 'none',
   android: {
     allowMixedContent: false,
     captureInput: true,

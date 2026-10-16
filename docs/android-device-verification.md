@@ -26,8 +26,21 @@ Device Hub devices:
 
 The default Device Hub boot attempts failed. Starting the emulators with software graphics (`-gpu swiftshader -feature -Vulkan -no-snapshot`) and accepting the local ADB authorization allowed both to attach to the hub. The phone also needed Gboard selected instead of the automation helper's invisible input method for a real keyboard check.
 
+## Authenticated continuation
+
+The user supplied the test account separately after the first pass. Credentials are excluded from this repository and report.
+
+- Login succeeded on the Pixel 7. Native background sync populated a five-day timetable and both pinned next-lesson widgets with real account data.
+- WebView local storage contained no `auth_` keys. The encrypted native session and timetable remained available after force-stopping and restarting the app with Wi-Fi and mobile data disabled.
+- The offline timetable displayed both the offline banner and the dated saved-copy warning.
+- Authenticated testing exposed a launcher-alias lifecycle issue: changing colour could remove the running task. Launcher aliases now target a separate, nonvisual forwarding activity with no task affinity; the real MainActivity owns the app task. Alternating colours retained the foreground authenticated app, and a fresh tablet install retained the login screen after changing the alias.
+- Capacitor debug logs included sensitive native bridge payloads. Native bridge logging is now disabled for all build types. The rebuilt app produced zero credential/payload log entries during session restoration and native calls.
+- The current backend returns 404 for the optional Android push-config endpoint while notification preferences are available. Only that 404 now resolves to push-unconfigured; other failures still propagate. This keeps normal settings available on older backends.
+- Confirmed the rebuilt Android settings show no general error, load editable preferences, and explicitly show push as unconfigured against that backend.
+- Confirmed logout returns to login, leaves zero native session keys and no native timetable or update timestamp, and clears both populated widgets back to their signed-out state. No account credentials remain in WebView local storage.
+
 ## Remaining release checks
 
-The configured `~/.config/lanis/test-account.md` is absent on this Windows machine. Login success, account switching/logout cleanup, authenticated timetable caching, populated widgets, and background refresh were not verified on devices. Demo screens are presentation checks only.
+Switching between different accounts, expired/revoked sessions, scheduled WorkManager execution under battery restrictions, and long-duration notification/background delivery still need device coverage. Demo checks above are presentation checks only.
 
 Firebase configuration remains absent, so real push registration/delivery is untested. iOS simulators are unavailable on Windows. This continuation does not integrate the PR's older branch with current `main`; review that integration before merging.
