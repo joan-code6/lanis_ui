@@ -2,7 +2,15 @@ import type { CourseEntry, CoursesResponse } from '../types';
 
 const MAX_COURSE_SEARCH_TEXT_LENGTH = 8192;
 
-/** Keep all course folders, merge latest activity, and retain a bounded activity search index. */
+/**
+ * Normalize a Mein Unterricht overview into one record per course.
+ *
+ * Course folders are authoritative when present; recent activities supply card details, while
+ * searchable text is collected from all activities and bounded per course.
+ *
+ * @param response - The overview response from the LANIS API.
+ * @returns Normalized course records, or legacy activity entries when folders are unavailable.
+ */
 export const normalizeCourseList = (response: CoursesResponse): CourseEntry[] => {
   const entries = response.entries || [];
   if (!Array.isArray(response.courses)) return entries;
