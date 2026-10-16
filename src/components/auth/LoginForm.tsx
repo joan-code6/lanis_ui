@@ -92,10 +92,15 @@ const LoginForm: React.FC = () => {
   const [schoolSearch, setSchoolSearch] = useState('');
   const [schoolResults, setSchoolResults] = useState<School[]>([]);
   const [allDistricts, setAllDistricts] = useState<District[]>([]);
-  const [selectedSchool, setSelectedSchool] = useState<School | null>(null);
   const [showSchoolDropdown, setShowSchoolDropdown] = useState(false);
+  const [activeSchoolIndex, setActiveSchoolIndex] = useState(-1);
+  const [schoolsLoading, setSchoolsLoading] = useState(true);
+  const [schoolsFailed, setSchoolsFailed] = useState(false);
+  const [schoolReload, setSchoolReload] = useState(0);
   const [resultTruncated, setResultTruncated] = useState(false);
   const schoolInputRef = useRef<HTMLInputElement>(null);
+  const schoolFieldRef = useRef<HTMLDivElement>(null);
+  const usernameInputRef = useRef<HTMLInputElement>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -122,19 +127,23 @@ const LoginForm: React.FC = () => {
     const value = e.target.value;
     setSchoolSearch(value);
     setShowSchoolDropdown(value.trim().length >= 2);
-    setSelectedSchool(null);
+    setSchoolResults([]);
+    setActiveSchoolIndex(-1);
     setFormData((prev) => ({ ...prev, school_id: '' }));
   };
 
   useEffect(() => {
     const abortController = new AbortController();
+    setSchoolsLoading(true);
+    setSchoolsFailed(false);
     schoolListAPI.getAllSchools(abortController.signal).then(res => {
       setAllDistricts(Array.isArray(res?.districts) ? res.districts : []);
     }).catch((err) => {
       if (axios.isCancel(err)) return;
-    });
+      setSchoolsFailed(true);
+    }).finally(() => { if (!abortController.signal.aborted) setSchoolsLoading(false); });
     return () => abortController.abort();
-  }, []);
+  }, [schoolReload]);
 
   const MAX_RESULTS = 50;
 
@@ -150,7 +159,7 @@ const LoginForm: React.FC = () => {
         for (const school of Array.isArray(district.schools) ? district.schools : []) {
           const s1 = fuzzyScore(q, school.name);
           const s2 = fuzzyScore(q, school.location);
-          const bestScore = Math.max(s1, s2);
+          const bestScore = String(school.id) === q ? 10 : /^\d+$/.test(q) ? 0 : Math.max(s1, s2);
           if (bestScore > 0) {
             scored.push({ school: { ...school, district_id: district.id, district_name: district.name }, score: bestScore });
           }
@@ -160,25 +169,25 @@ const LoginForm: React.FC = () => {
       setResultTruncated(scored.length > MAX_RESULTS);
       const results = scored.slice(0, MAX_RESULTS);
       setSchoolResults(results.map(s => s.school));
+      setActiveSchoolIndex(-1);
     }, 150);
 
     return () => clearTimeout(timer);
   }, [schoolSearch, allDistricts]);
 
   const handleSelectSchool = (school: School & { district_id?: string; district_name?: string }) => {
-    setSelectedSchool(school);
-    setSchoolSearch(`${school.name} (${school.location})${school.district_name ? ' – ' + school.district_name : ''}`);
+    setSchoolSearch(`${school.name} (${school.location})`);
     setFormData((prev) => ({ ...prev, school_id: school.id }));
     setShowSchoolDropdown(false);
     setCookie('lastSchoolId', school.id);
     setCookie('lastSchoolName', school.name);
     setCookie('lastSchoolLocation', school.location);
-    if (schoolInputRef.current) schoolInputRef.current.blur();
+    usernameInputRef.current?.focus();
   };
 
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
-      if (schoolInputRef.current && !schoolInputRef.current.contains(e.target as Node)) {
+      if (schoolFieldRef.current && !schoolFieldRef.current.contains(e.target as Node)) {
         setShowSchoolDropdown(false);
       }
     };
@@ -188,13 +197,25 @@ const LoginForm: React.FC = () => {
     return () => document.removeEventListener('mousedown', handleClick);
   }, [showSchoolDropdown]);
 
+  useEffect(() => {
+    if (!showSchoolDropdown) return;
+    const close = (event: Event) => { event.preventDefault(); setShowSchoolDropdown(false); };
+    window.addEventListener('lanis:back', close);
+    return () => window.removeEventListener('lanis:back', close);
+  }, [showSchoolDropdown]);
+
+  useEffect(() => {
+    if (activeSchoolIndex >= 0) document.getElementById(`school-option-${activeSchoolIndex}`)?.scrollIntoView({ block: 'nearest' });
+  }, [activeSchoolIndex]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isLoading || !formData.school_id) return;
     setIsLoading(true);
     setError('');
     const success = await login(formData);
     if (!success) {
-      setError('Anmeldung fehlgeschlagen. Bitte überprüfen Sie Ihre Anmeldedaten.');
+      setError(navigator.onLine ? 'Anmeldung fehlgeschlagen. Prüfe deine Zugangsdaten.' : 'Offline. Prüfe deine Verbindung.');
     }
     setIsLoading(false);
   };
@@ -218,7 +239,7 @@ const LoginForm: React.FC = () => {
       />
       <button
         onClick={cycleTheme}
-        className="absolute top-4 right-4 flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-surface-500 dark:text-surface-400 hover:text-surface-700 dark:hover:text-surface-300 hover:bg-surface-100 dark:hover:bg-surface-800 rounded-xl transition-all duration-200 active:scale-95"
+        className="absolute top-4 right-4 flex min-h-11 items-center gap-1.5 px-3 py-2 text-xs font-medium text-surface-500 dark:text-surface-400 hover:text-surface-700 dark:hover:text-surface-300 hover:bg-surface-100 dark:hover:bg-surface-800 rounded-xl transition-all duration-200 active:scale-95"
         title="Design wechseln"
       >
         {isOled ? <MoonIcon className="h-4 w-4" /> : isDark ? <SunIcon className="h-4 w-4" /> : <MoonIcon className="h-4 w-4" />}
@@ -236,9 +257,11 @@ const LoginForm: React.FC = () => {
           </p>
         </div>
 
-        <form className="space-y-5" onSubmit={handleSubmit} autoComplete="off">
+        <form className="space-y-5" onSubmit={handleSubmit} aria-busy={isLoading}>
           <div className="space-y-4">
-            <div className="relative">
+            <div ref={schoolFieldRef} className="relative" onBlur={event => {
+              if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setShowSchoolDropdown(false);
+            }}>
               <label htmlFor="school_search" className="label">
                 Schule suchen
               </label>
@@ -246,37 +269,66 @@ const LoginForm: React.FC = () => {
                 id="school_search"
                 name="school_search"
                 type="text"
-                className="input"
-                placeholder="Schulname oder Ort eingeben..."
+                className="input placeholder:text-surface-500 dark:placeholder:text-surface-400"
+                placeholder="Name, Ort oder Schul-ID"
                 value={schoolSearch}
                 onChange={handleSchoolSearch}
                 autoComplete="off"
+                autoCapitalize="none"
+                spellCheck={false}
+                role="combobox"
+                aria-autocomplete="list"
+                aria-controls="school-options"
+                aria-expanded={showSchoolDropdown && allDistricts.length > 0}
+                aria-activedescendant={showSchoolDropdown && activeSchoolIndex >= 0 ? `school-option-${activeSchoolIndex}` : undefined}
+                aria-describedby={schoolsLoading || schoolsFailed ? 'school-search-status' : undefined}
                 ref={schoolInputRef}
                 required
-                onFocus={() => { if (schoolSearch.trim().length >= 2 && allDistricts.length > 0) setShowSchoolDropdown(true); }}
+                disabled={isLoading}
+                enterKeyHint={showSchoolDropdown ? 'next' : 'done'}
+                onKeyDown={event => {
+                  if (event.key === 'Escape') { event.preventDefault(); setShowSchoolDropdown(false); }
+                  if ((event.key === 'ArrowDown' || event.key === 'ArrowUp') && schoolResults.length) {
+                    event.preventDefault();
+                    setShowSchoolDropdown(true);
+                    setActiveSchoolIndex(index => event.key === 'ArrowDown' ? (index + 1) % schoolResults.length : (index <= 0 ? schoolResults.length : index) - 1);
+                  }
+                  if (event.key === 'Enter' && showSchoolDropdown && schoolResults.length) {
+                    event.preventDefault();
+                    handleSelectSchool(schoolResults[Math.max(activeSchoolIndex, 0)]);
+                  }
+                }}
+                onFocus={() => { if (!formData.school_id && schoolSearch.trim().length >= 2 && allDistricts.length > 0) setShowSchoolDropdown(true); }}
               />
+              {(schoolsLoading || schoolsFailed) && <div id="school-search-status" role="status" className="mt-1 flex items-center gap-2 text-xs text-surface-500 dark:text-surface-400">
+                {schoolsLoading ? 'Schulen werden geladen …' : <>Schulsuche nicht erreichbar.<button type="button" className="min-h-11 font-medium text-primary-600 dark:text-primary-400" onClick={() => setSchoolReload(value => value + 1)}>Erneut versuchen</button></>}
+              </div>}
               {showSchoolDropdown && allDistricts.length > 0 && (
-                <div className="absolute left-0 right-0 z-10 mt-1.5 bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-xl shadow-soft-lg max-h-60 overflow-y-auto">
+                <div id="school-options" role="listbox" aria-label="Schulen" className="absolute left-0 right-0 z-10 mt-1.5 bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-xl shadow-soft-lg max-h-60 overflow-y-auto overscroll-contain">
                   {schoolResults.length === 0 ? (
                     <div className="px-4 py-3 text-surface-400 dark:text-surface-500 text-sm">Keine Schulen gefunden</div>
                   ) : (
                     <>
                       {schoolResults.map((school, idx) => (
                         <div
+                          id={`school-option-${idx}`}
+                          role="option"
+                          aria-selected={activeSchoolIndex === idx}
                           key={school.id + idx}
-                          className="px-4 py-2.5 hover:bg-primary-50 dark:hover:bg-primary-950 cursor-pointer text-sm transition-colors first:rounded-t-xl"
-                          onMouseDown={e => { e.preventDefault(); handleSelectSchool(school); }}
+                          className={`min-h-11 px-4 py-2.5 hover:bg-primary-50 dark:hover:bg-primary-950 cursor-pointer text-sm transition-colors first:rounded-t-xl ${activeSchoolIndex === idx ? 'bg-primary-50 dark:bg-primary-950' : ''}`}
+                          onMouseDown={e => e.preventDefault()}
+                          onClick={() => handleSelectSchool(school)}
                         >
                           <span className="font-medium text-surface-900 dark:text-surface-100">{school.name}</span>
                           <span className="text-surface-400"> ({school.location})</span>
                           {school.district_name && (
-                            <span className="ml-2 text-xs text-surface-400">{school.district_name}</span>
+                            <span className="mt-0.5 block text-xs text-surface-500 dark:text-surface-400">{school.district_name}</span>
                           )}
                         </div>
                       ))}
                       {resultTruncated && (
                         <div className="px-4 py-2 text-xs text-surface-400 italic rounded-b-xl">
-                          Zeige die besten {MAX_RESULTS} Treffer. Bitte genauer suchen.
+                          Weitere Treffer · Suche eingrenzen
                         </div>
                       )}
                     </>
@@ -291,13 +343,20 @@ const LoginForm: React.FC = () => {
               </label>
               <input
                 id="username"
+                ref={usernameInputRef}
                 name="username"
                 type="text"
                 required
-                className="input"
+                className="input placeholder:text-surface-500 dark:placeholder:text-surface-400"
                 placeholder="vorname.nachname"
                 value={formData.username}
                 onChange={handleChange}
+                autoComplete="username"
+                autoCapitalize="none"
+                spellCheck={false}
+                enterKeyHint="next"
+                disabled={isLoading}
+                onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); document.getElementById('password')?.focus(); } }}
               />
             </div>
 
@@ -311,14 +370,19 @@ const LoginForm: React.FC = () => {
                   name="password"
                   type={showPassword ? 'text' : 'password'}
                   required
-                  className="input pr-11"
+                  className="input pr-11 placeholder:text-surface-500 dark:placeholder:text-surface-400"
                   placeholder="Passwort eingeben"
                   value={formData.password}
                   onChange={handleChange}
+                  autoComplete="current-password"
+                  enterKeyHint="go"
+                  disabled={isLoading}
                 />
                 <button
                   type="button"
-                  className="absolute inset-y-0 right-0 flex items-center pr-3.5 text-surface-400 hover:text-surface-600 transition-colors"
+                  className="absolute inset-y-0 right-0 flex min-w-11 items-center justify-center text-surface-500 hover:text-surface-700 dark:text-surface-400 dark:hover:text-surface-200 transition-colors"
+                  aria-label={showPassword ? 'Passwort verbergen' : 'Passwort anzeigen'}
+                  aria-pressed={showPassword}
                   onClick={() => setShowPassword(!showPassword)}
                 >
                   {showPassword ? (
@@ -331,7 +395,7 @@ const LoginForm: React.FC = () => {
             </div>
 
             {error && (
-              <div className="bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-900 text-red-600 dark:text-red-400 px-4 py-3 rounded-xl text-sm animate-scale-in">
+              <div role="alert" className="bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-900 text-red-600 dark:text-red-400 px-4 py-3 rounded-xl text-sm animate-scale-in">
                 {error}
               </div>
             )}
@@ -352,8 +416,7 @@ const LoginForm: React.FC = () => {
             </button>
           </div>
 
-          <p className="text-center whitespace-nowrap text-[9px] sm:text-[10px] tracking-tight text-surface-400 dark:text-surface-500 leading-none">
-            Mit der Anmeldung akzeptierst du unsere{' '}
+          <p className="text-center text-xs leading-relaxed text-surface-500 dark:text-surface-400">
             <Link
               to="/privacy-policy"
               className="underline underline-offset-2 hover:text-surface-600 dark:hover:text-surface-300 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 rounded-sm"

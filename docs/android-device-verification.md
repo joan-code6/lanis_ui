@@ -39,6 +39,15 @@ The user supplied the test account separately after the first pass. Credentials 
 - Confirmed the rebuilt Android settings show no general error, load editable preferences, and explicitly show push as unconfigured against that backend.
 - Confirmed logout returns to login, leaves zero native session keys and no native timetable or update timestamp, and clears both populated widgets back to their signed-out state. No account credentials remain in WebView local storage.
 
+## Sign-in usability continuation
+
+- Added exact school-ID search alongside name/place search. Device input `5201` returns the correct school, and Down/Enter selects it without submitting credentials.
+- School results now expose combobox/listbox/option semantics, an active keyboard selection, Escape/native-Back dismissal, and loading/retry states.
+- Selecting a school focuses username; Enter advances from username to password. Username/current-password autocomplete hints support password managers without saving credentials in app code.
+- Password visibility has a named toggle and a 44px touch width. Login errors announce themselves; duplicate submits and edits during a pending login are blocked.
+- Reduced the footer to the privacy link, shortened selected-school text, and improved placeholder contrast.
+- Android verification and all 12 existing tests passed; the scoped design detector reported no findings.
+
 ## Remaining release checks
 
 Switching between different accounts, expired/revoked sessions, scheduled WorkManager execution under battery restrictions, and long-duration notification/background delivery still need device coverage. Demo checks above are presentation checks only.
