@@ -5,6 +5,7 @@ import android.app.NotificationManager
 import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.Color
 import android.os.Build
 import android.provider.Settings
@@ -117,19 +118,37 @@ class LanisNativePlugin : Plugin() {
     }
     @PluginMethod fun setAppearance(call: PluginCall) = task(call) {
         val dark = call.getBoolean("dark", false) ?: false
+        val oled = call.getBoolean("oled", false) ?: false
+        val theme = call.getString("theme", "ruby") ?: "ruby"
+        val themes = listOf("ruby", "emerald", "sapphire", "amethyst", "amber", "cyan")
+        if (theme !in themes) return@task call.reject("Unbekanntes Design.")
         val accent = call.getString("accent", "#e11d48") ?: "#e11d48"
         if (!accent.matches(Regex("^#[A-Fa-f0-9]{6}$"))) return@task call.reject("Ungültige Farbe.")
         synchronized(NativeStore.lock) {
-            val state = NativeStore.read(context).put("dark", dark).put("accent", accent)
+            val state = NativeStore.read(context).put("dark", dark).put("oled", oled).put("accent", accent).put("theme", theme)
             NativeStore.write(context, state)
             Widgets.updateAll(context)
         }
+        // Enable the selected launcher before disabling the others. The actual activity
+        // stays enabled, so existing shortcuts and already-running tasks keep working.
+        val manager = context.packageManager
+        fun select(name: String, enabled: Boolean) {
+            val component = ComponentName(context.packageName, "${context.packageName}.Launcher_$name")
+            val desired = if (enabled) PackageManager.COMPONENT_ENABLED_STATE_ENABLED else PackageManager.COMPONENT_ENABLED_STATE_DISABLED
+            if (manager.getComponentEnabledSetting(component) != desired) {
+                manager.setComponentEnabledSetting(component, desired, PackageManager.DONT_KILL_APP)
+            }
+        }
+        select(theme, true)
+        for (other in themes.filter { it != theme }) select(other, false)
         activity.runOnUiThread {
             WindowInsetsControllerCompat(activity.window, activity.window.decorView).apply {
                 isAppearanceLightStatusBars = !dark
                 isAppearanceLightNavigationBars = !dark
             }
-            activity.window.decorView.setBackgroundColor(Color.parseColor(if (dark) "#0f172a" else "#f8fafc"))
+            val background = Color.parseColor(if (oled) "#000000" else if (dark) "#0a0a0a" else "#fafafa")
+            activity.window.decorView.setBackgroundColor(background)
+            bridge.webView.setBackgroundColor(background)
             call.resolve()
         }
     }

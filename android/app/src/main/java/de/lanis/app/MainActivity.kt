@@ -19,10 +19,10 @@ class MainActivity : BridgeActivity() {
             val keyboard = insets.getInsets(WindowInsetsCompat.Type.ime())
             view.setPadding(bars.left, bars.top, bars.right, maxOf(bars.bottom, keyboard.bottom))
             bridge.webView.evaluateJavascript("document.documentElement.classList.toggle('android-keyboard', ${keyboard.bottom > bars.bottom})", null)
-            insets
+            WindowInsetsCompat.CONSUMED
         }
         ViewCompat.requestApplyInsets(root)
-        bridge.webView.setBackgroundColor(Color.parseColor("#0f172a"))
+        bridge.webView.setBackgroundColor(Color.parseColor("#0a0a0a"))
         if (BuildConfig.DEBUG) android.webkit.WebView.setWebContentsDebuggingEnabled(true)
     }
 }

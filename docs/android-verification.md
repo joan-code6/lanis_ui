@@ -1,5 +1,7 @@
 # Android implementation verification
 
+Latest: [Android 1.0.1 verification](android-1.0.1-verification.md). The original 1.0.0 baseline follows.
+
 Verified on the development worktrees, 2026-10-16. No production deployment or service restart was performed by this task.
 
 The user explicitly authorized Android builds and local tool installation, overriding the repository's general no-build instruction for this Android work.

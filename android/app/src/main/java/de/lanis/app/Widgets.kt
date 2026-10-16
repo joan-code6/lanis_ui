@@ -90,14 +90,23 @@ object Widgets {
         val state = try { NativeStore.read(context) } catch (_: Exception) { JSONObject() }
         val next = provider == NextLessonWidget::class.java
         val changes = provider == ChangesWidget::class.java
-        val title = if (next) "NÄCHSTE STUNDE" else if (changes) "VERTRETUNGEN" else "DEIN SCHULTAG"
+        val title = if (next) "Nächste Stunde" else if (changes) "Vertretungen" else "Dein Schultag"
         val dark = state.optBoolean("dark")
-        val foreground = Color.parseColor(if (dark) "#f1f5f9" else "#0f172a")
-        val muted = Color.parseColor(if (dark) "#a9b6ca" else "#53627a")
+        val foreground = Color.parseColor(if (dark) "#f5f5f5" else "#171717")
+        val muted = Color.parseColor(if (dark) "#a3a3a3" else "#737373")
         val accent = try { Color.parseColor(state.optString("accent", "#e11d48")) } catch (_: Exception) { Color.parseColor("#e11d48") }
         val views = RemoteViews(context.packageName, R.layout.lanis_widget)
-        views.setInt(R.id.widget_root, "setBackgroundResource", if (dark) R.drawable.widget_background_dark else R.drawable.widget_background)
-        views.setTextViewText(R.id.widget_title, "LANIS · $title")
+        views.setInt(R.id.widget_root, "setBackgroundResource", if (state.optBoolean("oled")) R.drawable.widget_background_oled else if (dark) R.drawable.widget_background_dark else R.drawable.widget_background)
+        views.setTextViewText(R.id.widget_title, title)
+        val icon = when (state.optString("theme", "ruby")) {
+            "cyan" -> R.drawable.ic_lanis_cyan
+            "emerald" -> R.drawable.ic_lanis_emerald
+            "sapphire" -> R.drawable.ic_lanis_sapphire
+            "amethyst" -> R.drawable.ic_lanis_amethyst
+            "amber" -> R.drawable.ic_lanis_amber
+            else -> R.drawable.ic_lanis_ruby
+        }
+        views.setImageViewResource(R.id.widget_logo, icon)
         views.setTextColor(R.id.widget_title, accent)
         views.setTextColor(R.id.widget_headline, foreground)
         views.setTextColor(R.id.widget_detail, muted)

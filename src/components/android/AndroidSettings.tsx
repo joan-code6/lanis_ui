@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ArrowPathIcon, ArrowTopRightOnSquareIcon, BellIcon, CalendarDaysIcon, CheckCircleIcon, ClockIcon, ShieldCheckIcon, Squares2X2Icon } from '@heroicons/react/24/outline';
+import { ArrowPathIcon, ArrowUpIcon, ArrowDownIcon, XMarkIcon, ArrowTopRightOnSquareIcon, BellIcon, CalendarDaysIcon, CheckCircleIcon, ClockIcon, ShieldCheckIcon, Squares2X2Icon } from '@heroicons/react/24/outline';
+import { ANDROID_TAB_IDS, DEFAULT_ANDROID_TABS, useAndroidTabs } from '../../platform/androidNavigation';
+import { getSidebarLabel } from '../../utils/sidebarNavigation';
 import { useAuth } from '../../contexts/AuthContext';
 import { notificationsAPI } from '../../services/api';
 import { isAndroid, LanisNative, type DeviceStatus, type WidgetKind } from '../../platform/native';
@@ -14,6 +16,7 @@ const defaults: NotificationPreferences = { enabled: false, messages_enabled: tr
 
 export default function AndroidSettings({ notificationsOnly = false }: { notificationsOnly?: boolean }) {
   const { token } = useAuth();
+  const [tabs, setTabs] = useAndroidTabs();
   const nativeAvailable = isAndroid && !window.location.pathname.startsWith('/demo');
   const [status, setStatus] = useState<DeviceStatus | null>(null);
   const [kind, setKind] = useState<WidgetKind>('next');
@@ -78,6 +81,27 @@ export default function AndroidSettings({ notificationsOnly = false }: { notific
 
   const buttonClass = 'btn btn-secondary inline-flex min-h-11 items-center justify-center gap-2 disabled:opacity-50';
   return <div className="space-y-6">
+    {!notificationsOnly && <section id="navigation" className="card scroll-mt-6">
+      <h2 className="text-base font-semibold">Deine Navigationsleiste</h2>
+      <p className="mt-1 text-sm text-surface-500">Füge beliebig viele Bereiche hinzu und ändere ihre Reihenfolge. Wenn der Platz nicht reicht, kannst du die Leiste seitlich wischen. Die Seitenleiste bleibt über die Menütaste erreichbar.</p>
+      <div className="mt-5 space-y-3">{tabs.map((tab, index) => <div key={tab} className="flex items-center gap-1.5">
+        <label className="min-w-0 flex-1"><span className="sr-only">Verknüpfung {index + 1}</span>
+          <select className="input" value={tab} onChange={event => {
+            const next = [...tabs];
+            const existing = next.indexOf(event.target.value);
+            if (existing >= 0) next[existing] = tab;
+            next[index] = event.target.value;
+            setTabs(next);
+          }}>{ANDROID_TAB_IDS.map(id => <option key={id} value={id}>{getSidebarLabel(id)}</option>)}</select>
+        </label>
+        <button type="button" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-surface-500 hover:bg-surface-100 disabled:opacity-25 dark:hover:bg-surface-800" disabled={index === 0} aria-label={`${getSidebarLabel(tab)} nach links verschieben`} onClick={() => { const next = [...tabs]; [next[index - 1], next[index]] = [next[index], next[index - 1]]; setTabs(next); }}><ArrowUpIcon className="h-4 w-4" /></button>
+        <button type="button" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-surface-500 hover:bg-surface-100 disabled:opacity-25 dark:hover:bg-surface-800" disabled={index === tabs.length - 1} aria-label={`${getSidebarLabel(tab)} nach rechts verschieben`} onClick={() => { const next = [...tabs]; [next[index + 1], next[index]] = [next[index], next[index + 1]]; setTabs(next); }}><ArrowDownIcon className="h-4 w-4" /></button>
+        <button type="button" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-surface-500 hover:bg-surface-100 dark:hover:bg-surface-800" aria-label={`${getSidebarLabel(tab)} entfernen`} onClick={() => setTabs(tabs.filter(id => id !== tab))}><XMarkIcon className="h-4 w-4" /></button>
+      </div>)}</div>
+      {tabs.length < ANDROID_TAB_IDS.length && <label className="mt-4 block text-sm font-medium">Verknüpfung hinzufügen<select className="input mt-1.5" value="" onChange={event => { if (event.target.value) setTabs([...tabs, event.target.value]); }}><option value="" disabled>Bereich auswählen …</option>{ANDROID_TAB_IDS.filter(id => !tabs.includes(id)).map(id => <option key={id} value={id}>{getSidebarLabel(id)}</option>)}</select></label>}
+      {!tabs.length && <p role="status" className="mt-3 text-sm text-surface-500">Die untere Leiste ist ausgeblendet. Alle Bereiche bleiben in der Seitenleiste erreichbar.</p>}
+      <div className="mt-4 flex items-center justify-between gap-3"><p className="text-xs text-surface-500">Auf diesem Gerät gespeichert. Schulmodule erscheinen, sobald sie verfügbar sind.</p><button type="button" className="btn btn-secondary shrink-0" onClick={() => setTabs(DEFAULT_ANDROID_TABS)}>Zurücksetzen</button></div>
+    </section>}
     {!nativeAvailable && <p role="status" className="rounded-2xl border border-primary-200 bg-primary-50 p-4 text-sm text-primary-900 dark:border-primary-800 dark:bg-primary-950 dark:text-primary-200">Android-Vorschau · Widgets und Berechtigungen kannst du in der installierten App einrichten.</p>}
     {error && <div role="alert" className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-200">{error}<button className="ml-2 underline" disabled={busy} onClick={() => void run(load)}>Erneut versuchen</button></div>}
     {message && <p role="status" className="flex items-center gap-2 rounded-2xl bg-emerald-50 p-4 text-sm text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200"><CheckCircleIcon className="h-5 w-5 shrink-0" />{message}</p>}

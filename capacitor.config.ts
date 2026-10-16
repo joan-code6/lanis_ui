@@ -4,7 +4,7 @@ const config: CapacitorConfig = {
   appId: 'de.lanis.app',
   appName: 'LANIS',
   webDir: 'dist-android',
-  backgroundColor: '#0f172a',
+  backgroundColor: '#0a0a0a',
   android: {
     allowMixedContent: false,
     captureInput: true,
@@ -12,6 +12,8 @@ const config: CapacitorConfig = {
   },
   server: { androidScheme: 'https', hostname: 'localhost' },
   plugins: {
+    // MainActivity owns both system-bar and IME insets.
+    SystemBars: { insetsHandling: 'disable' },
     CapacitorHttp: { enabled: true },
     CapacitorCookies: { enabled: true },
   },

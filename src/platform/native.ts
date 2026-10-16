@@ -24,7 +24,7 @@ interface LanisNativePlugin {
   clearSession(): Promise<void>;
   getStatus(): Promise<DeviceStatus>;
   sync(): Promise<DeviceStatus>;
-  setAppearance(options: { dark: boolean; accent: string }): Promise<void>;
+  setAppearance(options: { dark: boolean; oled: boolean; accent: string; theme: string }): Promise<void>;
   pinWidget(options: { kind: WidgetKind }): Promise<{ requested: boolean }>;
   saveTimetable(options: { data: TimetableResponse; owner: string }): Promise<void>;
   getTimetable(): Promise<{ data?: TimetableResponse; updatedAt: number }>;

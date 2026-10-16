@@ -81,3 +81,17 @@ Before releasing on a phone/emulator, verify:
 ## Local presentation preview
 
 Run `npm run dev -- --port 3017`, then open `/demo/settings/android?android-preview=1`. The development-only flag changes the UI presentation; it does not enable native APIs or simulate successful permissions/registration. It is ignored in production web builds.
+
+### Android 1.0.1 refinements
+
+The bottom bar supports any number of unique shortcuts under **Settings → Android und Widgets → Deine Navigationsleiste**. Add, remove, or reorder entries; selecting another slot's shortcut swaps them. The bar scrolls horizontally when needed, and removing every shortcut hides it. The existing header toggle still opens the sidebar; there is no redundant **Mehr** button. Choices are saved on this device and update immediately. Unsupported school modules are hidden without erasing saved choices.
+
+The Android launcher switches activity aliases to follow the selected app colour.
+All six variants reuse the exact generated PNGs in `public/favicon/themes`; launchers
+may take a moment to refresh their icon cache. Widgets use these same assets,
+Outfit typography, neutral card surfaces, and the selected accent and OLED mode.
+Outfit's upstream license is included in `docs/licenses/Outfit-OFL.txt`.
+
+`MainActivity` owns system-bar and keyboard insets. Capacitor SystemBars inset
+handling is disabled, and consumed insets prevent the WebView from applying the
+keyboard space a second time.

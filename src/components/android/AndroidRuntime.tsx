@@ -12,7 +12,7 @@ import { THEME_COLOR_HEX } from '../../utils/themeAssets';
 
 export default function AndroidRuntime() {
   const { isAuthenticated, token } = useAuth();
-  const { isDark, themeColor } = useTheme();
+  const { isDark, isOled, themeColor } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
   const currentPath = useRef(location.pathname);
@@ -78,8 +78,8 @@ export default function AndroidRuntime() {
   }, [isAuthenticated, token, navigate]);
 
   useEffect(() => {
-    if (isAndroid) void LanisNative.setAppearance({ dark: isDark, accent: THEME_COLOR_HEX[themeColor] }).catch(() => {});
-  }, [isDark, themeColor]);
+    if (isAndroid) void LanisNative.setAppearance({ dark: isDark, oled: isOled, accent: THEME_COLOR_HEX[themeColor], theme: themeColor }).catch(() => {});
+  }, [isDark, isOled, themeColor]);
 
   if (!isAndroid || !failure) return null;
   return <button type="button" role="status" className="native-toast" onClick={() => setFailure('')}>{failure}<span className="sr-only"> Schließen</span></button>;
