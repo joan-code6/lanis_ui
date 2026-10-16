@@ -1,0 +1,14 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">LANIS</string>
+    <string name="title_activity_main">LANIS</string>
+    <string name="package_name">de.lanis.app</string>
+    <string name="custom_url_scheme">de.lanis.app</string>
+    <string name="widget_next">Nächste Stunde</string>
+    <string name="widget_today">Dein Schultag</string>
+    <string name="widget_changes">Vertretungen</string>
+    <string name="widget_next_description">Dein nächster Unterricht mit Raum und Uhrzeit.</string>
+    <string name="widget_today_description">Dein heutiger Stundenplan mit Ausfällen und Änderungen.</string>
+    <string name="widget_changes_description">Änderungen und Hinweise aus deinem persönlichen Stundenplan.</string>
+    <string name="widget_refresh">Stundenplan aktualisieren</string>
+</resources>

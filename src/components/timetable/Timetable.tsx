@@ -43,6 +43,7 @@ const Timetable: React.FC = () => {
   const [selectedWeek, setSelectedWeek] = useState<'A' | 'B' | undefined>();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [cachedAt, setCachedAt] = useState<number>();
   const [reloadKey, setReloadKey] = useState(0);
   const [exams, setExams] = useState<StudyGroupExam[]>([]);
   const [timeSlots, setTimeSlots] = useState<NonNullable<TimetableResponse['time_slots']>>([]);
@@ -67,6 +68,7 @@ const Timetable: React.FC = () => {
         if (!response.success) throw new Error(response.message || 'Der Stundenplan konnte nicht geladen werden.');
         refreshTracker.current.markSuccessful(reloadKey);
         setVisibleDays(response.days || []);
+        setCachedAt(response.offline_cached_at);
         setHasAlternatingWeeks(Boolean(response.has_alternating_weeks));
         setSubstitutionSources(response.substitution_sources || []);
         setActiveWeek(response.active_week);
@@ -85,6 +87,13 @@ const Timetable: React.FC = () => {
 
     return () => controller.abort();
   }, [token, reloadKey, timetableViewMode, planMode, selectedWeek, preferences.vertretungsplan.class_override]);
+
+  useEffect(() => {
+    const refresh = () => setReloadKey(value => value + 1);
+    window.addEventListener('lanis:resume', refresh);
+    window.addEventListener('online', refresh);
+    return () => { window.removeEventListener('lanis:resume', refresh); window.removeEventListener('online', refresh); };
+  }, []);
 
   const weekOverride = timetableViewMode === 'week' && hasAlternatingWeeks ? selectedWeek : undefined;
   const displayedExams = preferences.timetable.show_exams ? exams : [];
@@ -149,6 +158,7 @@ const Timetable: React.FC = () => {
           )}
         </div>
 
+        {cachedAt && <p role="status" className="mb-4 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-200">Gespeicherter Stundenplan · Stand {new Date(cachedAt).toLocaleString('de-DE')}. Neuere Änderungen können fehlen.</p>}
         <div role="status" className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-surface-500 dark:text-surface-400">
           {substitutionSources.map(source => <span key={source.name} className={source.error ? 'text-amber-700 dark:text-amber-300' : ''}>
             {source.name}: {source.error ? 'nicht geladen – Änderungen können fehlen' : source.updated ? `Stand ${formatSourceDate(source.updated)}` : 'abgeglichen'}

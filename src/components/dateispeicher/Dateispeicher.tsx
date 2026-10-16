@@ -1,3 +1,4 @@
+import { saveBlob } from '../../platform/files';
 import React, { FormEvent, useEffect, useRef, useState } from 'react';
 import axios from 'axios';
 import {
@@ -270,14 +271,7 @@ const Dateispeicher: React.FC = () => {
     setDownloadError('');
     try {
       const blob = await dateispeicherAPI.downloadFile(token, file.id, controller.signal);
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = file.name;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      await saveBlob(blob, file.name);
     } catch (err) {
       if (axios.isCancel(err)) return;
       setDownloadError(err instanceof Error ? err.message : 'Die Datei konnte nicht heruntergeladen werden.');

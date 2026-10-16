@@ -1,3 +1,6 @@
+import { saveBlob } from '../../platform/files';
+import AndroidSettings from '../android/AndroidSettings';
+import { androidPresentation } from '../../platform/native';
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTheme, ThemeColor } from '../../contexts/ThemeContext';
@@ -108,7 +111,7 @@ const pushSubscriptionToPayload = (subscription: PushSubscription): PushSubscrip
   };
 };
 
-type SettingsSection = 'home' | 'account' | 'appearance' | 'dashboard' | 'timetable' | 'homework' | 'vertretungsplan' | 'notifications' | 'whatsapp' | 'app' | 'sidebar';
+type SettingsSection = 'home' | 'account' | 'appearance' | 'dashboard' | 'timetable' | 'homework' | 'vertretungsplan' | 'notifications' | 'whatsapp' | 'app' | 'sidebar' | 'android';
 
 const settingsSections: Array<{
   id: Exclude<SettingsSection, 'home'>;
@@ -116,6 +119,7 @@ const settingsSections: Array<{
   description: string;
   icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
 }> = [
+  { id: 'android', title: 'Android und Widgets', description: 'Homescreen, Offline-Stundenplan und Benachrichtigungen.', icon: DevicePhoneMobileIcon },
   {
     id: 'account',
     title: 'Datenschutz und Konto',
@@ -179,6 +183,7 @@ const settingsSections: Array<{
 ];
 
 const sectionMeta: Record<SettingsSection, { title: string; subtitle: string }> = {
+  android: { title: 'Android und Widgets', subtitle: 'Dein Schulalltag, direkt auf deinem Handy.' },
   home: { title: 'Einstellungen', subtitle: 'Passe dein Schulportal an.' },
   account: { title: 'Datenschutz und Konto', subtitle: 'Exportiere deine LANIS-Daten oder lösche dein LANIS-Konto.' },
   appearance: { title: 'Erscheinungsbild', subtitle: 'Farben und Oberfläche an deine Gewohnheiten anpassen.' },
@@ -186,7 +191,7 @@ const sectionMeta: Record<SettingsSection, { title: string; subtitle: string }> 
   timetable: { title: 'Stundenplan', subtitle: 'Anzeige und eigene Stundenplanänderungen verwalten.' },
   homework: { title: 'Hausaufgaben', subtitle: 'Lege fest, ob erledigte Aufgaben in „Mein Unterricht“ erscheinen.' },
   vertretungsplan: { title: 'Vertretungsplan', subtitle: 'Die passende Klasse automatisch auswählen oder selbst festlegen.' },
-  notifications: { title: 'Benachrichtigungen', subtitle: 'Nachrichten und neue Vertretungsplan-Einträge per Web-Push mitbekommen.' },
+  notifications: { title: 'Benachrichtigungen', subtitle: androidPresentation ? 'Nachrichten und Vertretungen direkt auf deinem Handy.' : 'Nachrichten und neue Vertretungsplan-Einträge per Web-Push mitbekommen.' },
   whatsapp: { title: 'WhatsApp-Assistent', subtitle: 'Dein LANIS-Konto sicher mit dem WhatsApp-Chat verbinden.' },
   app: { title: 'App & Installation', subtitle: 'Lanis auf deinem Gerät griffbereit halten.' },
   sidebar: { title: 'Seitenleiste', subtitle: 'Ordne die Einträge in der Seitenleiste nach deinen Wünschen.' },
@@ -207,15 +212,8 @@ const AccountSettings: React.FC = () => {
     setError('');
     try {
       const blob = await authAPI.exportAccount(token);
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = 'lanis-account-export.json';
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      URL.revokeObjectURL(url);
-      setMessage('Der Export wurde heruntergeladen.');
+      await saveBlob(blob, 'lanis-account-export.json');
+      setMessage(androidPresentation ? 'Der Export kann jetzt gespeichert oder geteilt werden.' : 'Der Export wurde heruntergeladen.');
     } catch {
       setError('Der Datenexport konnte nicht erstellt werden. Bitte versuche es später erneut.');
     } finally {
@@ -565,7 +563,9 @@ const Settings: React.FC = () => {
     return availability.hasNativeSubstitutionPlan || availability.hasDsbModule;
   });
   const visibleSettingsSections = settingsSections.filter(item => (
-    (item.id !== 'vertretungsplan' || hasNativeSubstitutionPlan)
+    (item.id !== 'android' || androidPresentation)
+    && (item.id !== 'app' || !androidPresentation)
+    && (item.id !== 'vertretungsplan' || hasNativeSubstitutionPlan)
     && (item.id !== 'account' || basePath !== '/demo')
   ));
   const requestedSection = location.pathname.slice(settingsRoot.length).split('/').filter(Boolean)[0] as SettingsSection | undefined;
@@ -693,7 +693,7 @@ const Settings: React.FC = () => {
     setVertretungsplanOptionsStatus('idle');
     setVertretungsplanOptionsError('');
 
-    if (section !== 'notifications') {
+    if (androidPresentation || section !== 'notifications') {
       setNotificationsLoading(false);
       return;
     }
@@ -1056,6 +1056,8 @@ const Settings: React.FC = () => {
       {section === 'whatsapp' && <WhatsAppSettings />}
       {section === 'sidebar' && <SidebarSettings />}
       {section === 'account' && <AccountSettings />}
+      {section === 'android' && <AndroidSettings />}
+      {section === 'notifications' && androidPresentation && <AndroidSettings notificationsOnly />}
 
       <div className="space-y-6">
         {section === 'appearance' && (
@@ -1121,7 +1123,7 @@ const Settings: React.FC = () => {
         )}
 
         {/* Push-Benachrichtigungen */}
-        {section === 'notifications' && (
+        {section === 'notifications' && !androidPresentation && (
         <>
         <div className="card">
           <div className="flex items-start justify-between gap-4">
@@ -1554,7 +1556,7 @@ const Settings: React.FC = () => {
             Erscheinungsbild wird lokal gespeichert.
           </div>
         )}
-        {section === 'notifications' && (
+        {section === 'notifications' && !androidPresentation && (
           <div className="text-center text-xs text-surface-400">
             Benachrichtigungen werden mit deinem Konto synchronisiert.
           </div>

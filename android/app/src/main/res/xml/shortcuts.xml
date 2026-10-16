@@ -1,0 +1,4 @@
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+<shortcut android:shortcutId="timetable" android:enabled="true" android:icon="@drawable/ic_stat_lanis" android:shortcutShortLabel="@string/widget_today"><intent android:action="android.intent.action.VIEW" android:targetPackage="de.lanis.app" android:targetClass="de.lanis.app.MainActivity" android:data="https://lanis.arg-server.de/timetable" /></shortcut>
+<shortcut android:shortcutId="changes" android:enabled="true" android:icon="@drawable/ic_stat_lanis" android:shortcutShortLabel="@string/widget_changes"><intent android:action="android.intent.action.VIEW" android:targetPackage="de.lanis.app" android:targetClass="de.lanis.app.MainActivity" android:data="https://lanis.arg-server.de/vertretungsplan" /></shortcut>
+</shortcuts>

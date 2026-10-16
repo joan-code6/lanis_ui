@@ -69,7 +69,7 @@ const CustomBackend: React.FC = () => {
     } catch (error) {
       console.warn('Failed to remove push subscription before switching backend:', error);
     }
-    clearBackendScopedStorage();
+    await clearBackendScopedStorage();
   };
 
   const handleSave = async (event: React.FormEvent) => {

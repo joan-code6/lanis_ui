@@ -1,3 +1,4 @@
+import { openExternal } from '../../platform/files';
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -158,10 +159,10 @@ const Dashboard: React.FC = () => {
     }
     if (module.proxy_app) {
       const proxyUrl = `${API_BASE_URL}/app/${encodeURIComponent(module.name)}?token=${encodeURIComponent(token)}`;
-      window.open(proxyUrl, '_blank', 'noopener,noreferrer');
+      void openExternal(proxyUrl);
       return;
     }
-    window.open(module.direct_url || module.url, '_blank', 'noopener,noreferrer');
+    void openExternal(module.direct_url || module.url);
   };
 
   useEffect(() => {

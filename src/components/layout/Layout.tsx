@@ -1,3 +1,6 @@
+import AndroidNavigation from '../android/AndroidNavigation';
+import AndroidConnectivity from '../android/AndroidConnectivity';
+import { androidPresentation } from '../../platform/native';
 import React from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { usePreferences } from '../../contexts/PreferencesContext';
@@ -65,6 +68,16 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
   const [hasWahlenModule, setHasWahlenModule] = React.useState(false);
   const mainRef = React.useRef<HTMLElement>(null);
   const pwaRef = React.useRef<any>(null);
+
+  React.useEffect(() => {
+    const back = (event: Event) => {
+      if (isSearchOpen) { event.preventDefault(); setIsSearchOpen(false); }
+      else if (showLogoutConfirmation) { event.preventDefault(); setShowLogoutConfirmation(false); }
+      else if (isSidebarOpen) { event.preventDefault(); setIsSidebarOpen(false); }
+    };
+    window.addEventListener('lanis:back', back);
+    return () => window.removeEventListener('lanis:back', back);
+  }, [isSearchOpen, showLogoutConfirmation, isSidebarOpen]);
 
   const appIconUrl = getThemeIconUrl(themeColor);
   const manifestUrl = getThemeManifestUrl(themeColor);
@@ -182,6 +195,7 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
               <button
                 type="button"
                 className="flex items-center justify-center h-10 w-10 rounded-full focus:outline-none focus:ring-2 focus:ring-white/50"
+                aria-label="Menü schließen"
                 onClick={() => setIsSidebarOpen(false)}
               >
                 <XMarkIcon className="h-6 w-6 text-white" />
@@ -202,6 +216,7 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
         <button
           type="button"
           className="flex items-center justify-center h-9 w-9 rounded-lg text-surface-500 dark:text-surface-400 hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors"
+          aria-label="Menü öffnen"
           onClick={() => setIsSidebarOpen(true)}
         >
           <Bars3Icon className="h-5 w-5" />
@@ -225,11 +240,13 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
       <main ref={mainRef} className={'flex-1 min-h-0 overflow-y-auto focus:outline-none pt-14 md:pt-0 transition-[margin] duration-300 ease-out ' + (isSidebarCollapsed ? 'md:ml-[60px]' : 'md:ml-64')}>
         <BasePathProvider basePath={basePath}>
           <div className="animate-fade-in">
+            <AndroidConnectivity />
             {!isDemo && <OutageNotice />}
             {children}
           </div>
         </BasePathProvider>
       </main>
+      <AndroidNavigation basePath={basePath} onMore={() => setIsSidebarOpen(true)} />
       <GlobalSearch
         isOpen={isSearchOpen}
         onClose={() => setIsSearchOpen(false)}
@@ -238,7 +255,7 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
         hasNativeSubstitutionPlan={hasNativeSubstitutionPlan}
         hasDsbModule={hasDsbModule}
       />
-      <pwa-install
+      {!androidPresentation && <><pwa-install
         ref={pwaRef}
         manifest-url={manifestUrl}
         name="Lanis"
@@ -246,7 +263,7 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
         description="Moderne Benutzeroberfläche für das Schulportal Hessen"
         install-description="Direkt vom Homescreen öffnen — wie eine echte App."
       ></pwa-install>
-      <InstallPrompt />
+      <InstallPrompt /></>}
     </div>
   );
 
