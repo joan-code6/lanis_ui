@@ -88,7 +88,7 @@ const Hero: React.FC<{ school: SchoolProfile }> = ({ school }) => {
       <img
         src={c.lg || c.md || c.sm || c.xs || undefined}
         srcSet={srcSet || undefined}
-        sizes="100vw"
+        sizes="(min-width: 1440px) 1404px, (max-width: 680px) calc(100vw - 20px), calc(100vw - 36px)"
         alt={`Schulportal ${school.name} in ${school.city}`}
       />
       <div className="v2-overlay" />

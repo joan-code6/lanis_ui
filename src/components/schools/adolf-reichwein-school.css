@@ -137,7 +137,7 @@
   .school-page *, .school-page *::before, .school-page *::after { scroll-behavior: auto !important; animation: none !important; transition-duration: .01ms !important; }
 }
 
-.school-hero-only { min-height: 0; padding-bottom: 28px; }
+.school-hero-only { width: 100%; max-width: 1440px; margin-inline: auto; min-height: 0; padding-bottom: 28px; }
 .v2-login-card .input { max-width: 100%; }
 @media (max-width: 680px) {
   .school-hero-only .v2-overlay { background: linear-gradient(180deg, rgb(var(--color-primary-950) / .6), rgb(var(--color-primary-950) / .2) 30%, rgb(var(--color-primary-950) / 0) 55%); }
