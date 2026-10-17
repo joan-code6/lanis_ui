@@ -1,34 +1,48 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile, readdir, rm } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createHash } from 'node:crypto';
 import { createServer } from 'vite';
+import { loadSchools } from './school-cache.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const dist = join(root, 'dist');
+const cacheDir = join(root, '.cache/school-pages');
+const origin = 'https://lanis.arg-server.de';
+const hash = (value) => createHash('sha256').update(value).digest('hex');
+const serialize = (value) => JSON.stringify(value).replace(/</g, '\\u003c');
+
+async function rendererFingerprint(apiBase) {
+  const digest = createHash('sha256').update(`renderer-v1:${process.versions.node.split('.')[0]}:${apiBase}`);
+  async function visit(directory) {
+    const files = await readdir(join(root, directory), { withFileTypes: true });
+    for (const file of files.sort((a, b) => a.name.localeCompare(b.name, 'en'))) {
+      const name = join(directory, file.name);
+      if (file.isDirectory()) await visit(name);
+      else if (/\.(tsx?|css)$/.test(name)) digest.update(name).update(await readFile(join(root, name)));
+    }
+  }
+  await visit('src');
+  for (const name of ['package-lock.json', 'scripts/prerender.mjs', 'scripts/school-cache.mjs', 'vite.config.ts']) {
+    digest.update(name).update(await readFile(join(root, name)));
+  }
+  return digest.digest('hex');
+}
 
 async function prerender() {
   if (process.env.SKIP_PRERENDER === '1') {
     console.log('SKIP_PRERENDER=1, skipping prerender step.');
     return;
   }
-
-  // Use Vite only to load TSX and resolve the same imports as the client build.
-  // Middleware mode opens no HTTP port; no browser or network data is needed.
+  // Vite loads the real TSX components without an HTTP listener or browser.
   const vite = await createServer({
-    root,
-    mode: 'production',
-    appType: 'custom',
+    root, mode: 'production', appType: 'custom',
     server: { middlewareMode: true, hmr: false, watch: null },
   });
   try {
-    const { routes, render } = await vite.ssrLoadModule('/src/entry-prerender.tsx');
+    const { routes, render, DEFAULT_API_BASE_URL: apiBase, ...validators } = await vite.ssrLoadModule('/src/entry-prerender.tsx');
     const template = await readFile(join(dist, 'index.html'), 'utf8');
-    if (!template.includes('<div id="root"></div>')) {
-      throw new Error('Expected an empty React root in dist/index.html; run after Vite.');
-    }
-
-    // Replace metadata owned by SEO.tsx rather than duplicating canonical,
-    // Open Graph and Twitter tags from the generic app shell.
+    if (!template.includes('<div id="root"></div>')) throw new Error('Expected an empty React root; run after Vite.');
     const shell = template
       .replace(/<title\b[^>]*>[\s\S]*?<\/title>/gi, '')
       .replace(/<meta\b[^>]*>/gi, (tag) => (
@@ -36,28 +50,63 @@ async function prerender() {
       ))
       .replace(/<link\b[^>]*\brel=["']canonical["'][^>]*>/gi, '');
 
-    // Render every route before writing. Errors fail the build rather than
-    // silently deploying empty pages or separate fallback templates.
-    const pages = routes.map((route) => {
-      const { body, head } = render(route.path);
-      if (!body.includes('<h1') || !head.includes('rel="canonical"')) {
+    async function writePage(route, result, bootstrap = '') {
+      if (!result.body.includes('<h1') || !result.head.includes('rel="canonical"')) {
         throw new Error(`Missing public content or canonical metadata for ${route.path}`);
       }
-      return {
-        ...route,
-        html: shell.replace('</head>', () => `${head}\n</head>`)
-          .replace('<div id="root"></div>', () => `<div id="root">${body}</div>`),
-      };
-    });
-    for (const page of pages) {
-      const output = join(dist, page.file);
+      // The shell is always from THIS build. Only asset-independent React
+      // markup is cached, so old JS/CSS filenames cannot leak across releases.
+      const html = shell.replace('<html lang="de">', () => `<html lang="de" data-theme="${result.theme}">`)
+        .replace('</head>', () => `${result.head}\n</head>`)
+        .replace('<div id="root"></div>', () => `${bootstrap}<div id="root">${result.body}</div>`);
+      const output = join(dist, route.file);
       await mkdir(dirname(output), { recursive: true });
-      await writeFile(output, page.html);
-      console.log(`Prerendered ${page.path} -> dist/${page.file}`);
+      await writeFile(output, html);
     }
-  } finally {
-    await vite.close();
-  }
+
+    // Fail on component/import problems before fetching thousands of profiles.
+    for (const route of routes.filter((route) => route.path !== '/schulen')) {
+      await writePage(route, render(route.path));
+      console.log(`Prerendered ${route.path} -> dist/${route.file}`);
+    }
+    const { schools, entries } = await loadSchools({ cacheDir, apiBase, ...validators });
+    const directoryRoute = routes.find((route) => route.path === '/schulen');
+    await writePage(directoryRoute, render('/schulen', { schools }),
+      `<script id="school-directory-data" type="application/json">${serialize({ success: true, schools })}</script>`);
+
+    const fingerprint = await rendererFingerprint(apiBase);
+    const markupDir = join(cacheDir, 'markup');
+    let previousFingerprint;
+    try { previousFingerprint = await readFile(join(cacheDir, 'renderer'), 'utf8'); } catch { /* Cache miss. */ }
+    if (previousFingerprint !== fingerprint) await rm(markupDir, { recursive: true, force: true });
+    await mkdir(markupDir, { recursive: true });
+    await writeFile(join(cacheDir, 'renderer'), fingerprint);
+    let rendered = 0, reused = 0;
+    const sitemap = [`<url><loc>${origin}/</loc></url>`, `<url><loc>${origin}/status</loc></url>`, `<url><loc>${origin}/schulen</loc></url>`];
+    // Sequential rendering keeps peak memory bounded to one school's markup.
+    for (const entry of entries) {
+      const { school } = entry;
+      const route = { path: `/schule/${school.school_id}`, file: `schule/${school.school_id}/index.html` };
+      const key = hash(`${fingerprint}:${JSON.stringify(school)}`);
+      const cachedFile = join(markupDir, `${school.school_id}.json`);
+      let result;
+      try {
+        const cached = JSON.parse(await readFile(cachedFile, 'utf8'));
+        if (cached.key === key && typeof cached.body === 'string' && typeof cached.head === 'string'
+          && ['cyan', 'emerald', 'sapphire', 'amethyst', 'ruby', 'amber', 'coral', 'blush', 'moss'].includes(cached.theme)) result = cached;
+      } catch { /* Corrupt/missing cache entries are rendered again. */ }
+      if (result) reused++;
+      else {
+        result = render(route.path, { school });
+        await writeFile(cachedFile, JSON.stringify({ key, ...result }));
+        rendered++;
+      }
+      await writePage(route, result, `<script id="school-page-data" type="application/json">${serialize(school)}</script>`);
+      sitemap.push(`<url><loc>${origin}${route.path}</loc><lastmod>${new Date(entry.changedAt).toISOString()}</lastmod></url>`);
+    }
+    await writeFile(join(dist, 'sitemap.xml'), `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${sitemap.join('\n')}\n</urlset>\n`);
+    console.log(`Prerendered ${schools.length} school pages: ${rendered} rendered, ${reused} markup cache hits; sitemap written.`);
+  } finally { await vite.close(); }
 }
 
 prerender().catch((error) => {

@@ -235,7 +235,8 @@ const LoginForm: React.FC<LoginFormProps> = ({ fixedSchool }) => {
             </p>
           </div>
 
-          <form className="space-y-5" onSubmit={handleSubmit} autoComplete="off">
+          <noscript><p className="mb-4 text-sm">Zum Anmelden bitte JavaScript aktivieren.</p></noscript>
+          <form className="space-y-5" method="post" onSubmit={handleSubmit} autoComplete="off">
             <div className="space-y-4">
               {!fixedSchool && (
               <div className="relative">
@@ -346,7 +347,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ fixedSchool }) => {
 
               <button
                 type="submit"
-                disabled={isLoading || !formData.school_id || hasAccountDataDeletionMarker()}
+                disabled={import.meta.env.SSR || isLoading || !formData.school_id || hasAccountDataDeletionMarker()}
                 className="btn btn-primary w-full h-11 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100"
               >
                 {isLoading ? (

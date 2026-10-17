@@ -3,7 +3,7 @@ function selectTarget(run, repository, mainSha, pulls) {
   if (run.repository?.full_name !== repository || run.path !== '.github/workflows/build.yml'
       || run.conclusion !== 'success' || !/^[a-f0-9]{40}$/.test(run.head_sha)) return null;
 
-  if (run.event === 'push') {
+  if (run.event === 'push' || run.event === 'schedule') {
     return run.head_branch === 'main' && run.head_repository?.full_name === repository
       && run.head_sha === mainSha ? {kind: 'production', sha: run.head_sha, pr: ''} : null;
   }

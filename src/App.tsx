@@ -26,7 +26,8 @@ import CustomBackend from './components/settings/CustomBackend';
 import Onboarding from './components/onboarding/Onboarding';
 import Wahlen from './components/wahlen/Wahlen';
 import StatusPage from './components/status/StatusPage';
-import AdolfReichweinSchoolPage from './components/schools/AdolfReichweinSchoolPage';
+import SchoolPage from './components/schools/SchoolPage';
+import SchoolDirectoryPage from './components/schools/SchoolDirectoryPage';
 
 const LandingRoot: React.FC = () => {
   const { isAuthenticated } = useAuth();
@@ -77,7 +78,8 @@ const AppRoutes: React.FC = () => {
         <Route path="/impressum" element={<Impressum />} />
         <Route path="/privacy-policy" element={<PrivacyPolicy />} />
         <Route path="/set-custom-backend" element={<CustomBackend />} />
-        <Route path="/schule/:schoolId" element={<AdolfReichweinSchoolPage />} />
+        <Route path="/schule/:schoolId" element={<SchoolPage />} />
+        <Route path="/schulen" element={<SchoolDirectoryPage />} />
         <Route path="/demo" element={<DemoRoute />}>
           <Route index element={<Navigate to="/demo/dashboard" replace />} />
           <Route path="dashboard" element={<Dashboard />} />

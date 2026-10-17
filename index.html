@@ -43,7 +43,7 @@
           : storedDark === 'true');
         document.documentElement.classList.toggle('dark', dark);
         document.documentElement.classList.toggle('oled', oled);
-        document.documentElement.dataset.theme = localStorage.getItem('lanis_theme_color') || 'ruby';
+        document.documentElement.dataset.theme = localStorage.getItem('lanis_theme_color') || document.documentElement.dataset.theme || 'ruby';
       } catch (_) {
         // Storage may be unavailable in privacy-restricted contexts; React applies the fallback.
       }
@@ -103,7 +103,7 @@
       try {
         const supportedThemes = ['cyan', 'emerald', 'sapphire', 'amethyst', 'ruby', 'amber', 'coral', 'blush', 'moss'];
         const storedTheme = localStorage.getItem('lanis_theme_color');
-        const theme = supportedThemes.includes(storedTheme) ? storedTheme : 'ruby';
+        const theme = supportedThemes.includes(storedTheme) ? storedTheme : (document.documentElement.dataset.theme || 'ruby');
         document.querySelectorAll('link[data-theme-icon]').forEach((link) => {
           link.href = `/favicon/themes/${theme}/${link.dataset.themeIcon}`;
         });

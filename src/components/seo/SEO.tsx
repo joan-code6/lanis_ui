@@ -34,7 +34,7 @@ const SEO: React.FC<SEOProps> = ({
     <Helmet>
       <title>{fullTitle}</title>
       <meta name="description" content={description} />
-      {structuredData && <script type="application/ld+json">{JSON.stringify(structuredData)}</script>}
+      {structuredData && <script type="application/ld+json">{JSON.stringify(structuredData).replace(/</g, '\\u003c')}</script>}
 
       <link rel="canonical" href={url} />
 

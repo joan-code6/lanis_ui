@@ -38,7 +38,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [token, setToken] = useState<string | null>(null);
   const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  // Build-time public pages have no saved session; browser restoration still
+  // blocks mounting until the account lifecycle checks have completed.
+  const [isLoading, setIsLoading] = useState(!import.meta.env.SSR);
 
   useEffect(() => {
     let mounted = true;

@@ -93,10 +93,11 @@ npm run preview
 ```
 
 The build runs TypeScript checking and Vite, then npm automatically runs `postbuild`.
-That step renders the actual `/` and `/status` React components directly into
+That step renders the actual public and school React components directly into
 `dist/` using React's server renderer. Vite loads the TSX in middleware mode;
 there is no HTTP listener, Chrome installation, browser automation, fixed delay,
-or request to the live backend.
+or browser navigation. School metadata is fetched with bounded concurrency
+and cached between builds, as described below.
 
 The page components and their `SEO` metadata are the source of the generated
 HTML; there is no second hand-written version of either page. Static content is
@@ -131,8 +132,9 @@ The host is **Cloudflare Workers Static Assets** (configured by
 PR previews use versions of the separate `lanis-ui-preview` Worker, with
 `noindex, nofollow` headers. Superseded builds are rejected before publishing.
 
-Both workflows cache **npm downloads**, not `node_modules`, generated HTML or
-build artifacts. Frontend cache keys include the lockfile hash, Node version,
+Both workflows cache **npm downloads**, not `node_modules` or complete build
+artifacts. The separate school cache described below stores public data and
+asset-independent markup. Frontend cache keys include the lockfile hash, Node version,
 OS and event type, keeping PR and main caches separate. Deployment uses its own
 cache prefix and lockfile. No fallback keys are used. A cache miss only requires
 downloading packages again; installs still use lockfile integrity checks.
@@ -143,6 +145,50 @@ This keeps the privileged deployment tool separate from frontend dependencies
 and untrusted artifact contents. To update Wrangler, update that manifest and
 lockfile together; keep the root manifest's local Wrangler version aligned.
 The checked-in Actions are pinned to commit SHAs.
+
+## School pages and SEO generation
+
+`/schulen` links to every school from the live lanis_api directory. Canonical
+school URLs are `/schule/<numeric-school-id>`: IDs avoid duplicate-name clashes
+and keep links stable when schools change names. Old unambiguous name URLs
+continue to resolve in the browser and navigate to the canonical ID URL.
+
+After Vite, `scripts/prerender.mjs` renders the real React school pages into
+`dist/schule/<id>/index.html`, including school identity, login card, proxied
+images when available, SEO metadata and structured data. The directory and all
+generated school URLs are written to `dist/sitemap.xml`. The source sitemap in
+`public/` covers the fixed public routes for local development. School pages
+are indexable in production; the existing preview deployment adds `noindex`.
+
+Public profile data and asset-independent rendered markup are cached in
+`.cache/school-pages/`, restored by Actions between builds. School data comes
+from lanis_api (`GET /schools`, `GET /schools/<id>/data`); image traffic uses its
+`/logo` and `/campus` endpoints. There are no bundled school-specific fixtures.
+
+- Directory freshness: 12 hours. Profile freshness: 20 hours.
+- Cold/expired profiles: at most two concurrent requests, 20 seconds each, with
+  a seven-minute overall refresh budget. Browser rendering never runs in CI.
+- Temporary profile failures reuse the previous profile for up to seven days.
+  A newly discovered school whose profile is unavailable still gets a page
+  with its real directory name/city and no invented image or palette. These
+  directory-only records retry after one hour; the browser also refreshes its
+  displayed profile independently.
+- Markup is reused only when the school data, renderer source, dependencies,
+  API base and Node major version match. Every page is assembled with the
+  **current build's** HTML shell and hashed JS/CSS links. Changing source code
+  may regenerate markup; unrelated identical builds reuse it.
+- Browser-safe JSON bootstrap data lets school pages mount with their content
+  immediately. React still restores account state and saved themes normally.
+  Login requires JavaScript; static forms cannot submit credentials with GET.
+- A daily Actions run at **03:17 UTC** refreshes and deploys public data even
+  without a code change. The deployment validator accepts only a successful
+  scheduled run for the current main commit and the trusted repository.
+- PR and main cache prefixes are separate; untrusted PRs cannot write the
+  default branch's cache. Missing/corrupt cache entries are rebuilt.
+
+No runtime rendering service, headless browser, or school-by-school image
+download is needed for generation. Source code is in
+`src/components/schools/`, `src/entry-prerender.tsx`, and `scripts/school-cache.mjs`.
 
 ## Where to make changes
 
