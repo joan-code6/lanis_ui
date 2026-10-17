@@ -21,13 +21,13 @@ const Impressum: React.FC = () => {
         </Link>
 
         <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-[#111] mb-2">Impressum</h1>
-        <p className="text-sm text-[#999] mb-16">Anbieterinformationen gemäß § 5 DDG</p>
+        <p className="text-sm text-[#999] mb-16">Anbieter- und Kontaktinformationen</p>
 
         <section className="space-y-12 text-[14px] leading-relaxed text-[#555]">
           <div>
             <h2 className="text-base font-semibold text-[#111] mb-3">Diensteanbieter</h2>
             <p>Bennet Joan Wegener</p>
-            <p>60599 Heusenstamm</p>
+            <p>63150 Heusenstamm</p>
             <p>Deutschland</p>
             <p className="mt-3">
               E-Mail:{' '}
@@ -46,12 +46,11 @@ const Impressum: React.FC = () => {
             <p>
               Dieses Impressum gilt für Lanis UI sowie für das bereitgestellte Standard-Backend unter{' '}
               <span className="text-[#333] break-all">{DEFAULT_API_BASE_URL}</span>.
-              Benutzeroberfläche und Backend sind eigenständige Softwareprojekte, werden auf getrennter
-              Infrastruktur betrieben und haben denselben oben genannten Diensteanbieter.
+              Die Benutzeroberfläche (Lanis UI) und das Backend (lanis_api) sind getrennte
+              Softwareprojekte des oben genannten Diensteanbieters.
             </p>
             <p className="mt-2">
-              Wird auf einem Gerät ein eigenes Backend eingestellt, ist dessen jeweiliger Betreiber für
-              diesen Dienst verantwortlich. Dieses Impressum erstreckt sich nicht auf fremde Backends.
+              Dieses Impressum gilt nicht für Backends anderer Betreiber.
             </p>
           </div>
 
@@ -73,28 +72,18 @@ const Impressum: React.FC = () => {
           <div>
             <h2 className="text-base font-semibold text-[#111] mb-3">Inhalte und Verfügbarkeit</h2>
             <p>
-              Eigene Inhalte werden mit angemessener Sorgfalt erstellt und gepflegt. Eine Gewähr für
-              jederzeitige Verfügbarkeit sowie für die Vollständigkeit, Aktualität oder Fehlerfreiheit
-              angezeigter Informationen wird nicht übernommen, soweit dies gesetzlich zulässig ist. Dies
-              gilt insbesondere für Daten und Funktionen, die vom Schulportal Hessen oder anderen externen
-              Systemen abhängen.
-            </p>
-            <p className="mt-2">
-              Die Haftung des Diensteanbieters richtet sich nach den gesetzlichen Vorschriften. Zwingende
-              gesetzliche Haftung, insbesondere bei Vorsatz, grober Fahrlässigkeit sowie bei Verletzung von
-              Leben, Körper oder Gesundheit, bleibt unberührt.
+              Die angezeigten schulischen Inhalte stammen aus dem Schulportal Hessen. Ihre Aktualität
+              und die Verfügbarkeit der zugehörigen Funktionen hängen auch vom Schulportal und den
+              angebundenen Diensten ab.
             </p>
           </div>
 
           <div>
             <h2 className="text-base font-semibold text-[#111] mb-3">Externe Dienste und Links</h2>
             <p>
-              Das Angebot kommuniziert funktionsbedingt mit externen Diensten und kann Links zu Angeboten
-              Dritter enthalten. Auf deren Inhalte, Verfügbarkeit und Datenverarbeitung hat der
-              Diensteanbieter keinen unmittelbaren Einfluss. Für externe Inhalte ist der jeweilige
-              Anbieter verantwortlich. Erlangt der Diensteanbieter Kenntnis von einer konkreten
-              Rechtsverletzung, werden zumutbare Maßnahmen zur Entfernung oder Sperrung des betreffenden
-              Verweises ergriffen.
+              Das Angebot bindet externe Dienste ein und enthält Links zu Angeboten Dritter.
+              Informationen zu den eingebundenen Diensten und zur Datenverarbeitung stehen in der
+              unten verlinkten Datenschutzerklärung.
             </p>
           </div>
 
@@ -111,8 +100,8 @@ const Impressum: React.FC = () => {
           <div>
             <h2 className="text-base font-semibold text-[#111] mb-3">Datenschutz</h2>
             <p>
-              Informationen zur Verarbeitung personenbezogener Daten durch die getrennten UI- und
-              Backend-Systeme stehen in der{' '}
+              Informationen zur Verarbeitung personenbezogener Daten, zur Speicherung von Zugangsdaten
+              und zur Einbindung externer Dienste stehen in der{' '}
               <Link to="/privacy-policy" className="text-[#00a0c0] underline underline-offset-2 hover:text-[#00c0e0] transition-colors">
                 Datenschutzerklärung
               </Link>.
@@ -127,14 +116,13 @@ const Impressum: React.FC = () => {
               <a href="mailto:lanis-impressum@joancode.dev" className="text-[#00a0c0] underline underline-offset-2 hover:text-[#00c0e0] transition-colors">
                 lanis-impressum@joancode.dev
               </a>{' '}
-              gesendet werden. Berechtigte Beanstandungen werden geprüft und erforderliche Maßnahmen
-              zeitnah veranlasst.
+              gesendet werden.
             </p>
           </div>
 
           <hr className="border-black/[0.06]" />
 
-          <p className="text-xs text-[#bbb] pt-2">Stand: August 2026</p>
+          <p className="text-xs text-[#bbb] pt-2">Stand: 17. Oktober 2026</p>
         </section>
       </div>
     </div>

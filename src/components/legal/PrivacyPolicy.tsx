@@ -24,13 +24,23 @@ const PrivacyPolicy: React.FC = () => {
         </Link>
 
         <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-[#111] mb-2">Datenschutzerklärung</h1>
-        <p className="text-sm text-[#999] mb-16">Informationen zur Datenverarbeitung durch Lanis UI</p>
+        <p className="text-sm text-[#999] mb-16">Informationen zur Datenverarbeitung durch Lanis UI und lanis_api</p>
 
         <section className="space-y-12 text-[14px] leading-relaxed text-[#555]">
           <div>
+            <h2 className="text-base font-semibold text-[#111] mb-3">Das Wichtigste vor der Anmeldung</h2>
+            <ul className="list-disc space-y-2 pl-5">
+              <li>Lanis UI und das Standard-Backend sind ein privates, inoffizielles Angebot desselben Betreibers. Sie gehören nicht zum Schulportal Hessen oder zum Land Hessen.</li>
+              <li>Bei Nutzung des Standard-Backends erhält dieses dein Schulportal-Passwort und speichert es verschlüsselt, aber wieder entschlüsselbar, für erneute Anmeldungen beim Schulportal.</li>
+              <li>Das Standard-Backend speichert auch Profil- und kontobezogene Nutzungsdaten. Der Betreiber kann auf serverseitig verarbeitete Daten zugreifen; die Verschlüsselung schließt diesen Zugriff nicht aus.</li>
+              <li>Bereits beim Seitenaufruf werden externe Schriftarten und Symbol-Stylesheets geladen. Weitere externe Dienste kommen je nach Funktion hinzu.</li>
+            </ul>
+          </div>
+
+          <div>
             <h2 className="text-base font-semibold text-[#111] mb-3">1. Verantwortlicher und Kontakt</h2>
             <p>Bennet Joan Wegener</p>
-            <p>60599 Heusenstamm</p>
+            <p>63150 Heusenstamm</p>
             <p>Deutschland</p>
             <p className="mt-3">
               E-Mail:{' '}
@@ -45,9 +55,9 @@ const PrivacyPolicy: React.FC = () => {
             <p>
               Lanis UI ist eine inoffizielle Benutzeroberfläche für das Schulportal Hessen. Sie stellt
               Inhalte und Funktionen bereit, die über ein gesondertes Backend vom Schulportal abgerufen
-              werden. Benutzeroberfläche und Backend sind zwei eigenständige Softwareprojekte und werden
-              auf voneinander getrennter Infrastruktur betrieben. Für die Benutzeroberfläche und das
-              bereitgestellte Standard-Backend ist die unter Abschnitt 1 genannte Person verantwortlich.
+              werden. Die Benutzeroberfläche (Lanis UI) und das Backend (lanis_api) sind getrennte
+              Softwareprojekte. Für beide Dienste, einschließlich der serverseitigen Verarbeitung im
+              bereitgestellten Standard-Backend, ist die unter Abschnitt 1 genannte Person verantwortlich.
               Bei einem selbst eingestellten Backend ist dessen jeweiliger Betreiber verantwortlich. Lanis
               UI ist weder ein Angebot des Landes Hessen noch des Schulportals Hessen.
             </p>
@@ -63,21 +73,20 @@ const PrivacyPolicy: React.FC = () => {
               <span className="text-[#333] break-all">{API_BASE_URL}</span>.
             </p>
             <p className="mt-2">
-              Aufgrund dieser technischen Trennung hat die im Browser ausgeführte Benutzeroberfläche
-              keinen Zugriff auf serverseitige Protokolle, Datenbanken oder Speicherfristen des Backends
-              und kann dessen Verarbeitung weder einsehen noch steuern. Die konkrete serverseitige
-              Verarbeitung wird durch die Implementierung und Konfiguration des separaten
-              Backend-Projekts bestimmt. Für das bereitgestellte Standard-Backend unter{' '}
-              <span className="text-[#333] break-all">{DEFAULT_API_BASE_URL}</span> ist ebenfalls die in
-              Abschnitt 1 genannte Person verantwortlich; die dort gespeicherten Daten und Fristen sind
-              in Abschnitt 9 beschrieben. Bei einem selbst eingestellten Backend ist dessen jeweiliger
-              Betreiber für die dortige Verarbeitung verantwortlich.
+              Das Standard-Backend unter{' '}
+              <span className="text-[#333] break-all">{DEFAULT_API_BASE_URL}</span> verwendet deine
+              Zugangsdaten zur Anmeldung beim Schulportal. Es speichert das Passwort serverseitig
+              verschlüsselt und kann es wieder entschlüsseln, um deine Schulportal-Sitzung erneut
+              herzustellen. Es handelt sich damit nicht um eine reine Weiterleitung ohne Speicherung
+              und nicht um eine Ende-zu-Ende-Verschlüsselung gegenüber dem Betreiber. Die
+              Sitzungsgültigkeit und die weiteren Speicherfristen stehen in Abschnitt 9.
             </p>
             <p className="mt-2">
-              Mit dem Start der Anmeldung veranlasst du die Übermittlung deiner Eingaben an diese Adresse.
-              Das Backend verwendet die erforderlichen Angaben, um die von dir angeforderten Funktionen
-              gegenüber dem Schulportal Hessen auszuführen. Diese Beschreibung ist keine Aussage darüber,
-              dass UI und Backend auf demselben Server laufen oder Daten gemeinsam speichern.
+              Das Backend verarbeitet außerdem die von dir abgerufenen schulischen Inhalte, etwa
+              Nachrichten, Kurse, Aufgaben und Pläne, und hält je nach Funktion Zwischenspeicher vor.
+              Die technische Trennung von UI und Backend begrenzt nicht die Verantwortung des gemeinsamen
+              Betreibers. Bei einem selbst eingestellten Backend erhält dessen Betreiber deine
+              Zugangsdaten und Anfragen; für seine Verarbeitung gelten seine eigenen Angaben.
             </p>
             <p className="mt-2">
               Unabhängig von einem selbst eingestellten Backend ruft die Startseite beim Öffnen öffentliche,
@@ -116,8 +125,19 @@ const PrivacyPolicy: React.FC = () => {
           </div>
 
           <div>
-            <h2 className="text-base font-semibold text-[#111] mb-3">5. Schulkarte von OpenStreetMap</h2>
+            <h2 className="text-base font-semibold text-[#111] mb-3">5. Seitenaufruf und externe Ressourcen</h2>
             <p>
+              Beim Aufruf der Website erhalten die Server, die Benutzeroberfläche und Backend
+              bereitstellen, technisch erforderliche Verbindungsdaten wie IP-Adresse, Zeitpunkt,
+              angeforderte Adresse und Browserinformationen.
+              Die Website bindet außerdem Schriftarten von Google Fonts (fonts.googleapis.com und
+              fonts.gstatic.com) und Symbol-Stylesheets von cdnjs (cdnjs.cloudflare.com) ein.
+              Diese Anfragen erfolgen automatisch beim Seitenaufruf, auch ohne Anmeldung und ohne
+              Aktivierung der Schulkarte. Die jeweiligen Anbieter erhalten dabei insbesondere deine
+              IP-Adresse und die technischen Anfragedaten. Je nach Browserrichtlinie kann auch die
+              Herkunftsseite übermittelt werden.
+            </p>
+            <p className="mt-2">
               Die Startseite enthält eine Schulkarte, die erst nach einem Klick auf „Karte laden“
               Kartenbilder direkt von OpenStreetMap abruft. Dabei stellt dein Browser eine Verbindung
               zu Servern der OpenStreetMap Foundation her und übermittelt technisch erforderliche Daten,
@@ -157,12 +177,15 @@ const PrivacyPolicy: React.FC = () => {
             </p>
             <p className="mt-2">
               Nachrichten, die du an den Assistenten sendest, und seine Antworten werden über die
-              WhatsApp Business Platform von Meta sowie – sofern eingerichtet – den vom Betreiber eingerichteten KI-Anbieter
-              verarbeitet. Beim bereitgestellten Standard-Backend werden dem KI-Anbieter deine Frage und nur die LANIS-Daten,
-              die zur Bearbeitung benötigt werden, übermittelt; dein Schulportal-Passwort und deine WhatsApp-Nummer
-              werden nicht übermittelt. Beim bereitgestellten Standard-Backend wird der begrenzte
-              Gesprächsverlauf verschlüsselt gespeichert, nach 24 Stunden verworfen und beim Trennen
-              der Verbindung gelöscht. Bei einem selbst eingestellten Backend richten sich Schutzmaßnahmen
+              WhatsApp Business Platform von Meta verarbeitet. Wenn ein KI-Anbieter eingerichtet ist,
+              erhält dieser deine Frage, den zur Verarbeitung verwendeten Gesprächsverlauf und die
+              Ergebnisse der vom Assistenten abgerufenen LANIS-Funktionen. Darin können personenbezogene
+              schulische Inhalte enthalten sein. Gespeicherte Schulportal-Zugangsdaten und die
+              WhatsApp-Nummer werden nicht automatisch als Kontodaten an den KI-Anbieter übergeben.
+              Angaben, die du selbst in eine Nachricht schreibst, sind jedoch Teil dieser Nachricht.
+              Beim bereitgestellten Standard-Backend wird der begrenzte Gesprächsverlauf verschlüsselt
+              gespeichert. Seine Frist läuft 24 Stunden nach der letzten Aktualisierung ab und beginnt
+              bei weiteren Nachrichten erneut. Beim Trennen der Verbindung wird er gelöscht. Bei einem selbst eingestellten Backend richten sich Schutzmaßnahmen
               und Speicherfristen nach den Angaben seines Betreibers.
               Antworten können von dir angeforderte
               schulische Angaben enthalten, etwa Stundenplan, Vertretungen, Aufgaben, Termine oder – nur
@@ -175,6 +198,20 @@ const PrivacyPolicy: React.FC = () => {
           <div>
             <h2 className="text-base font-semibold text-[#111] mb-3">8. Zwecke und Rechtsgrundlagen</h2>
             <p>
+              Das Backend erfasst nach der Anmeldung Profildaten aus dem Schulportal, darunter die dort
+              verfügbaren Angaben zu Name, Login, Schule, E-Mail-Adresse und Klasse. Es protokolliert
+              außerdem kontobezogen Anmeldungen, letzte Aktivität, Sitzungsanzahl, geschätzte aktive
+              Nutzungszeit und das Öffnen von Modulen. Diese Daten dienen der Kontoverwaltung,
+              Betriebsübersicht und Nutzungsstatistik. Sie sind dem jeweiligen Konto zugeordnet und
+              können von berechtigten Administratoren im privaten Verwaltungsportal eingesehen werden.
+              Öffentlich angezeigte Konto- und Schulzahlen sind dagegen zusammengefasste Angaben.
+            </p>
+            <p className="mt-2">
+              Wenn der Betreiber einen Discord-Webhook für neue Konten konfiguriert hat, übermittelt
+              das Backend bei der ersten erfassten Anmeldung den Benutzernamen und die Schulkennung
+              an Discord. Dies dient einer Betreiberbenachrichtigung und ist keine anonyme Statistik.
+            </p>
+            <p className="mt-2">
               Soweit ein Nutzungsverhältnis besteht, erfolgt die für die angeforderten Funktionen
               erforderliche Verarbeitung auf Grundlage von Art. 6 Abs. 1 lit. b DSGVO. Im Übrigen stützt
               sie sich auf Art. 6 Abs. 1 lit. f DSGVO; das berechtigte Interesse liegt in der sicheren und
@@ -191,24 +228,28 @@ const PrivacyPolicy: React.FC = () => {
                 ? 'Das oben angezeigte Backend ist ein getrennt betriebenes System des von dir ausgewählten Betreibers.'
                 : 'Das oben angezeigte Backend ist ein getrennt betriebenes System desselben Verantwortlichen.'}{' '}
               Zur Bereitstellung der angeforderten schulischen Funktionen kommuniziert es mit dem
-              Schulportal Hessen. Nach dem Laden der Schulkarte empfängt die OpenStreetMap Foundation die
+              Schulportal Hessen. Google Fonts und cdnjs erhalten bereits beim Seitenaufruf die in
+              Abschnitt 5 beschriebenen Anfragedaten. Nach dem Laden der Schulkarte empfängt die OpenStreetMap Foundation die
               in Abschnitt 5 beschriebenen Verbindungsdaten. Bei Nutzung von Push-Benachrichtigungen wird außerdem der Push-Dienst des
               Browsers oder Betriebssystems einbezogen. Beim freiwilligen WhatsApp-Assistenten wird
-              außerdem die WhatsApp Business Platform von Meta einbezogen. Lokal gespeicherte Daten bleiben
-              grundsätzlich erhalten, bis du dich abmeldest, sie durch die Anwendung ersetzt werden, eine
-              vorgesehene Cache-Frist abläuft oder du die Website-Daten im Browser löschst.
+              außerdem die WhatsApp Business Platform von Meta und gegebenenfalls der konfigurierte
+              KI-Anbieter einbezogen. Bei konfigurierten Betreiberbenachrichtigungen wird Discord wie in
+              Abschnitt 8 beschrieben einbezogen. Lokal gespeicherte Daten bleiben erhalten, bis sie
+              durch die Anwendung entfernt oder ersetzt werden oder du die Website-Daten im Browser
+              löschst. Eine Abmeldung entfernt nicht automatisch sämtliche lokalen Einstellungen und Caches.
             </p>
             <div className="mt-3 space-y-2">
                 <p>Beim bereitgestellten Standard-Backend gelten derzeit folgende Kategorien und Fristen:</p>
                 <ul className="list-disc space-y-1 pl-5">
-                  <li>verschlüsselt gespeicherte Schulportal-Zugangsdaten und LANIS-Aktualisierungssitzungen: bis zu 90 Tage nach der Anmeldung;</li>
+                  <li>Schulportal-Zugangsdaten werden wieder entschlüsselbar gespeichert; LANIS-Aktualisierungssitzungen sind bis zu 90 Tage nach der Anmeldung gültig. Abgelaufene Sitzungen und zugehörige Zugangsdaten werden bei der serverseitigen Bereinigung entfernt;</li>
                   <li>Profil, Einstellungen, eigene Stunden, Klassenverknüpfungen, Push-Abos sowie Login- und Aktivitätsdaten: bis zur Löschung des LANIS-Kontos;</li>
                   <li>gewöhnliche Antwort-Caches: regelmäßig 10 Minuten; Profil-, App- und Moduldaten höchstens 30 Tage;</li>
                   <li>private Ausfall-Snapshots: höchstens 24 Stunden; gemeinsam genutzte heruntergeladene Unterrichtsdateien: höchstens 30 Tage;</li>
-                  <li>WhatsApp-Gesprächsverlauf: höchstens 24 Stunden; Einmalcodes und ausstehende Bestätigungen: 10 Minuten;</li>
+                  <li>WhatsApp-Gesprächsverlauf: 24 Stunden nach der letzten Aktualisierung; Einmalcodes und ausstehende Bestätigungen: 10 Minuten;</li>
                   <li>externe WhatsApp-Nachrichten-IDs zur Verhinderung doppelter Verarbeitung: 7 Tage.</li>
                 </ul>
-                <p>Beim Löschen des LANIS-Kontos werden die kontobezogenen Daten und Sitzungen beim Standard-Backend entfernt. Daten im Schulportal Hessen selbst werden dadurch nicht gelöscht. Gemeinsam genutzte Unterrichtsdateien werden nicht einem einzelnen Konto zugeordnet und deshalb erst nach Ablauf ihrer Cache-Frist entfernt.</p>
+                <p>Die Fristen für Caches und kurzlebige Daten beschreiben deren vorgesehene Gültigkeit. Die physische Entfernung erfolgt durch die jeweilige Bereinigung und kann zeitlich nachgelagert sein.</p>
+                <p>Beim Löschen des LANIS-Kontos werden die kontobezogenen Daten und Sitzungen in den aktiven Kontodatenbanken und kontobezogenen Zwischenspeichern beim Standard-Backend entfernt. Daten im Schulportal Hessen selbst werden dadurch nicht gelöscht. Gemeinsam genutzte Unterrichtsdateien werden nicht einem einzelnen Konto zugeordnet und deshalb erst nach Ablauf ihrer Cache-Frist entfernt.</p>
             </div>
             {usesCustomBackend && (
               <p className="mt-2">Bei einem selbst eingestellten Backend richten sich Speicherkategorien und Löschfristen nach den Angaben und der Konfiguration seines Betreibers.</p>
@@ -226,7 +267,10 @@ const PrivacyPolicy: React.FC = () => {
             <p className="mt-2">
               Beim bereitgestellten Standard-Backend kannst du in den Einstellungen unter „Datenschutz und
               Konto“ deine von LANIS gespeicherten Daten als JSON exportieren oder alle kontobezogenen
-              LANIS-Daten löschen. Sicherheitsgeheimnisse wie Passwörter, Tokens, Cookies und
+              LANIS-Daten in den aktiven Kontodatenbanken und kontobezogenen Zwischenspeichern löschen.
+              Diese Funktion löscht keine bereits an externe Anbieter übermittelten Daten und keine
+              Betriebsprotokolle. Für Auskunft oder Löschanfragen darüber hinaus nutze den Kontakt in
+              Abschnitt 1. Sicherheitsgeheimnisse wie Passwörter, Tokens, Cookies und
               kryptografische Schlüssel sind nicht Bestandteil des Exports.
             </p>
           </div>
@@ -244,7 +288,7 @@ const PrivacyPolicy: React.FC = () => {
           <hr className="border-black/[0.06]" />
 
           <p className="text-xs text-[#bbb] pt-2">
-            Stand: September 2026
+            Stand: 17. Oktober 2026
           </p>
         </section>
       </div>
