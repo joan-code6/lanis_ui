@@ -203,20 +203,27 @@ const PrivacyPolicy: React.FC = () => {
               verfügbaren Angaben zu Name, Login, Schule, E-Mail-Adresse und Klasse. Es protokolliert
               außerdem kontobezogen Anmeldungen, letzte Aktivität, Sitzungsanzahl, geschätzte aktive
               Nutzungszeit und das Öffnen von Modulen. Diese Daten dienen der Kontoverwaltung,
-              Betriebsübersicht und Nutzungsstatistik. Sie sind dem jeweiligen Konto zugeordnet und
+              Betriebsübersicht und der Ermittlung der Größe der Nutzerbasis. Kontobezogene Sitzungs-
+              und Aktivitätsdaten unterstützen außerdem die Fehleranalyse bei gemeldeten Problemen;
+              Benutzername und Schulkennung ermöglichen die Zuordnung zum betroffenen Konto.
+              Die Daten sind dem jeweiligen Konto zugeordnet und
               können von berechtigten Administratoren im privaten Verwaltungsportal eingesehen werden.
               Öffentlich angezeigte Konto- und Schulzahlen sind dagegen zusammengefasste Angaben.
             </p>
             <p className="mt-2">
               Wenn der Betreiber einen Discord-Webhook für neue Konten konfiguriert hat, übermittelt
               das Backend bei der ersten erfassten Anmeldung den Benutzernamen und die Schulkennung
-              an Discord. Dies dient einer Betreiberbenachrichtigung und ist keine anonyme Statistik.
+              an Discord. Die Benachrichtigungen ermöglichen unter anderem die Überprüfung, ob eine
+              bestimmte eingeladene Testperson erfolgreich auf LANIS zugreifen konnte. Sie werden für
+              jedes erstmals erfasste Konto ausgelöst und enthalten personenbezogene Kennungen.
             </p>
             <p className="mt-2">
               Soweit ein Nutzungsverhältnis besteht, erfolgt die für die angeforderten Funktionen
               erforderliche Verarbeitung auf Grundlage von Art. 6 Abs. 1 lit. b DSGVO. Im Übrigen stützt
               sie sich auf Art. 6 Abs. 1 lit. f DSGVO; das berechtigte Interesse liegt in der sicheren und
-              funktionsfähigen Bereitstellung der Anwendung. Freiwillige Push-Benachrichtigungen und die
+              funktionsfähigen Bereitstellung der Anwendung, der Ermittlung der Größe der Nutzerbasis,
+              der Fehleranalyse bei Supportanfragen sowie der Überprüfung des erfolgreichen Zugangs
+              eingeladener Testpersonen. Freiwillige Push-Benachrichtigungen und die
               WhatsApp-Verknüpfung werden nur nach deiner ausdrücklichen Aktivierung eingerichtet; soweit
               eine Einwilligung erforderlich ist, gilt Art. 6 Abs. 1 lit. a DSGVO.
             </p>
