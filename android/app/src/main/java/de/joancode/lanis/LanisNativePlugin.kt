@@ -1,4 +1,4 @@
-package de.lanis.app
+package de.joancode.lanis
 
 import android.Manifest
 import android.app.NotificationManager

@@ -1,4 +1,4 @@
-package de.lanis.app
+package de.joancode.lanis
 
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
@@ -117,7 +117,7 @@ object Widgets {
         views.setInt(R.id.widget_refresh, "setColorFilter", muted)
         views.setOnClickPendingIntent(R.id.widget_root, open(context, "/timetable", id))
         views.setOnClickPendingIntent(R.id.widget_refresh, PendingIntent.getBroadcast(context, id,
-            Intent(context, provider).setAction("de.lanis.app.REFRESH"), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE))
+            Intent(context, provider).setAction("de.joancode.lanis.REFRESH"), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE))
         views.removeAllViews(R.id.widget_rows)
         val now = Instant.now()
         val today = now.atZone(WidgetModel.zone).toLocalDate()
@@ -188,7 +188,7 @@ open class LanisWidgetProvider : AppWidgetProvider() {
     }
     override fun onReceive(context: Context, intent: Intent) {
         super.onReceive(context, intent)
-        if (intent.action == "de.lanis.app.REFRESH") DeviceSync.enqueue(context)
+        if (intent.action == "de.joancode.lanis.REFRESH") DeviceSync.enqueue(context)
     }
 }
 class NextLessonWidget : LanisWidgetProvider()

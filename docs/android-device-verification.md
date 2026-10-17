@@ -106,6 +106,11 @@ The inherited Cloudflare deployment checks passed 5 of 6 checks on Windows. The 
 - Added a separately padded splash drawable so the system's circular mask has room around the logo. The generator owns the padding, keeping regeneration consistent.
 - Installed the rebuilt APK and compared the Moss launcher icon on the phone before and after: the cap now has visible space around it instead of nearly filling the mask. Native assembly, unit tests and lint passed; lint reported no errors. The APK also includes the latest Dashboard navigation label.
 
+## Application ID and physical installation — 17 October
+
+- Renamed the application ID, Capacitor config, Kotlin namespace/packages, widget refresh action and launcher shortcut targets to `de.joancode.lanis`.
+- Full Android verification and frontend regression checks passed. Confirmed the APK declares the new package, installed it on the connected Nothing A065 running Android 16, and verified it launched. Removed the old `de.lanis.app` installation under the user's replacement authorization.
+
 ## Remaining release checks
 
 Switching between different accounts, expired/revoked sessions, scheduled WorkManager execution under battery restrictions, and long-duration notification/background delivery still need device coverage. Demo checks above are presentation checks only.

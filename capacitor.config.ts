@@ -1,7 +1,7 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'de.lanis.app',
+  appId: 'de.joancode.lanis',
   appName: 'LANIS',
   webDir: 'dist-android',
   backgroundColor: '#0a0a0a',

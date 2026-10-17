@@ -1,4 +1,4 @@
-package de.lanis.app
+package de.joancode.lanis
 
 import android.annotation.SuppressLint
 import android.app.PendingIntent

@@ -9,7 +9,7 @@ The user explicitly authorized Android builds and local tool installation, overr
 ## Installable artifact
 
 - APK: `artifacts/android/lanis-1.0.0-debug.apk`
-- Application ID: `de.lanis.app`
+- Application ID: `de.joancode.lanis`
 - Version: `1.0.0` (version code 1)
 - Variant: debug, signed with the local Android debug certificate
 - Android minimum: API 26 / Android 8

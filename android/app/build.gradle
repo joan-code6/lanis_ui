@@ -2,10 +2,10 @@ apply plugin: 'com.android.application'
 apply plugin: 'org.jetbrains.kotlin.android'
 
 android {
-    namespace = "de.lanis.app"
+    namespace = "de.joancode.lanis"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "de.lanis.app"
+        applicationId "de.joancode.lanis"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 2

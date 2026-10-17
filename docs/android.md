@@ -49,7 +49,7 @@ Without signing variables, release bundles remain unsigned. Preserve your releas
 
 Widgets and normal app use do not require Firebase configuration.
 
-1. In a Firebase project, register the Android package `de.lanis.app`.
+1. In a Firebase project, register the Android package `de.joancode.lanis`.
 2. Place its `google-services.json` at `android/app/google-services.json` (ignored by Git). Rebuild the app to enable registration. Only Firebase Messaging is included; no Analytics dependency is added.
 3. Deploy the companion `lanis_api` changes from its `feat/android-app` branch through your normal approved production process.
 4. On the backend, install its updated requirements. Set `LANIS_FIREBASE_PROJECT_ID` and `GOOGLE_APPLICATION_CREDENTIALS` to the path of the server-side service-account file with permission to send FCM messages. The service-account private key belongs only on the server, never in the APK or frontend.
@@ -59,7 +59,7 @@ The backend still polls SPH at the account's configured interval and within its 
 
 ## Links
 
-Launcher shortcuts/widget intents open explicit app activities. Website App Links additionally need the website operator to publish `/.well-known/assetlinks.json` for `de.lanis.app` and the release signing certificate's SHA-256 fingerprint. This file cannot be finalized before choosing the signing certificate. Without verification, explicit widget/notification intents still work; ordinary website links depend on Android's link-handling settings.
+Launcher shortcuts/widget intents open explicit app activities. Website App Links additionally need the website operator to publish `/.well-known/assetlinks.json` for `de.joancode.lanis` and the release signing certificate's SHA-256 fingerprint. This file cannot be finalized before choosing the signing certificate. Without verification, explicit widget/notification intents still work; ordinary website links depend on Android's link-handling settings.
 
 ## Verification
 

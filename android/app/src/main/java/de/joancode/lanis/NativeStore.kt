@@ -1,4 +1,4 @@
-package de.lanis.app
+package de.joancode.lanis
 
 import android.content.Context
 import android.security.keystore.KeyGenParameterSpec

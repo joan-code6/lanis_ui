@@ -1,4 +1,4 @@
-package de.lanis.app
+package de.joancode.lanis
 
 import org.json.JSONObject
 import org.junit.Assert.*
