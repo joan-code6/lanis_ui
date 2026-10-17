@@ -1,6 +1,6 @@
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
-import { nativeRoute } from '../src/platform/links';
+import { nativeRoute, nativeBackFallback } from '../src/platform/links';
 
 test('native links preserve supported content destinations', () => {
   assert.equal(nativeRoute('https://lanis.arg-server.de/timetable'), '/timetable');
@@ -36,4 +36,12 @@ test('saved Android shortcuts recover from invalid or old preferences', () => {
   assert.deepEqual(normalizeAndroidTabs(['calendar', 'calendar', 'unknown', 3]), ['calendar']);
   assert.deepEqual(normalizeAndroidTabs(['settings', 'courses', 'search', 'messages']), ['settings', 'courses', 'search', 'messages']);
   assert.deepEqual(normalizeAndroidTabs([]), []);
+});
+
+test('Android Back preserves demo mode when there is no browser history', () => {
+  assert.equal(nativeBackFallback('/demo/settings/android'), '/demo/dashboard');
+  assert.equal(nativeBackFallback('/demo/timetable'), '/demo/dashboard');
+  assert.equal(nativeBackFallback('/demo/dashboard'), null);
+  assert.equal(nativeBackFallback('/messages'), '/dashboard');
+  for (const path of ['/dashboard', '/login', '/onboarding']) assert.equal(nativeBackFallback(path), null);
 });

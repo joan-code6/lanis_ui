@@ -68,6 +68,15 @@ The user supplied the test account separately after the first pass. Credentials 
 - Real-account sign-in succeeded after integration, populated five native timetable days, and left zero authentication/recovery keys in WebView storage. Authenticated settings loaded with one account row and no general error. Logout returned to login with zero native session keys, no cache, and a zero update timestamp.
 - `npm run android:verify`, the five frontend tests, account lifecycle regression checks, encrypted native-storage regression checks, and `git diff --check` passed. Both Device Hub emulators ran the rebuilt APK.
 
+## Navigation accessibility continuation — 17 October
+
+- Mobile menu is a named modal with initial close-button focus, keyboard cycling, background inertness, Escape/Android-Back dismissal, and opener focus restoration. Its trigger exposes expanded state; current sidebar links expose page state.
+- Opening search, feedback, or logout closes the drawer first. Device verification caught and fixed the menu-search overlap; the rebuilt app exposes one search dialog and focuses its input.
+- Replaced duplicate sidebar logout popovers with one concise modal. Cancel receives initial focus, both controls are 44px high, background content is inert, and pending logout prevents repeated submission or dismissal.
+- Android Back with no browser history returns demo pages to the demo dashboard. A device check from the demo timetable confirmed the mode is preserved.
+- Phone and tablet checks covered focus cycling, Back dismissal, and logout controls. Final phone checks confirmed menu-to-search/logout transitions and Escape restoring focus with background inertness removed.
+- Android build/unit tests/lint, six frontend regression tests, encrypted-session checks, and account-lifecycle checks passed. The scoped design detector reported no findings.
+
 ## Remaining release checks
 
 Switching between different accounts, expired/revoked sessions, scheduled WorkManager execution under battery restrictions, and long-duration notification/background delivery still need device coverage. Demo checks above are presentation checks only.

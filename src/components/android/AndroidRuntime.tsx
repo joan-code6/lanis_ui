@@ -7,7 +7,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { isAndroid, LanisNative } from '../../platform/native';
 import { authStorage, flushAuthStorage, reloadNativeCredentials } from '../../platform/authStorage';
-import { nativeRoute } from '../../platform/links';
+import { nativeRoute, nativeBackFallback } from '../../platform/links';
 import { THEME_COLOR_HEX } from '../../utils/themeAssets';
 
 export default function AndroidRuntime() {
@@ -45,8 +45,11 @@ export default function AndroidRuntime() {
       if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
       const idx = window.history.state?.idx;
       if (typeof idx === 'number' && idx > 0) navigate(-1);
-      else if (!['/dashboard', '/login', '/onboarding'].includes(currentPath.current)) navigate('/dashboard', { replace: true });
-      else void App.minimizeApp();
+      else {
+        const fallback = nativeBackFallback(currentPath.current);
+        if (fallback) navigate(fallback, { replace: true });
+        else void App.minimizeApp();
+      }
     }));
     void track(App.addListener('appStateChange', async ({ isActive }) => {
       if (!isActive || !authenticated.current || currentPath.current.startsWith('/demo')) return;

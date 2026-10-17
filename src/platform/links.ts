@@ -8,3 +8,9 @@ export function nativeRoute(value: string): string | null {
     return url.pathname + url.search + url.hash;
   } catch { return null; }
 }
+
+/** Android Back at a history root stays within the current app mode. */
+export function nativeBackFallback(pathname: string): string | null {
+  const home = pathname.startsWith('/demo/') ? '/demo/dashboard' : '/dashboard';
+  return [home, '/login', '/onboarding'].includes(pathname) ? null : home;
+}
