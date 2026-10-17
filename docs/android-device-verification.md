@@ -111,6 +111,12 @@ The inherited Cloudflare deployment checks passed 5 of 6 checks on Windows. The 
 - Renamed the application ID, Capacitor config, Kotlin namespace/packages, widget refresh action and launcher shortcut targets to `de.joancode.lanis`.
 - Full Android verification and frontend regression checks passed. Confirmed the APK declares the new package, installed it on the connected Nothing A065 running Android 16, and verified it launched. Removed the old `de.lanis.app` installation under the user's replacement authorization.
 
+## Recent Apps icon — 17 October
+
+- MainActivity now restores the saved theme's task icon at startup, and native appearance changes update it immediately.
+- Device testing found that Pixel recents ignored the resource-only task-icon API. Rendering the adaptive artwork into a launcher-sized bitmap made the selected Cyan icon appear, including after a cold start. Its wrapper uses the same theme colour; the launcher controls normalization.
+- Android assembly, native tests and lint passed. The application-level icon remains fixed, so App Info and some other system-owned surfaces may still use Ruby.
+
 ## Remaining release checks
 
 Switching between different accounts, expired/revoked sessions, scheduled WorkManager execution under battery restrictions, and long-duration notification/background delivery still need device coverage. Demo checks above are presentation checks only.

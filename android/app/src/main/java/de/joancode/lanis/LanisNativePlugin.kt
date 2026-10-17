@@ -179,6 +179,7 @@ class LanisNativePlugin : Plugin() {
         select(theme, true)
         for (other in themes.filter { it != theme }) select(other, false)
         activity.runOnUiThread {
+            (activity as? MainActivity)?.updateTaskAppearance(theme)
             WindowInsetsControllerCompat(activity.window, activity.window.decorView).apply {
                 isAppearanceLightStatusBars = !dark
                 isAppearanceLightNavigationBars = !dark

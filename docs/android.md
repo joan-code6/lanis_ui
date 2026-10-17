@@ -95,6 +95,8 @@ may take a moment to refresh their icon cache. Widgets use these same assets,
 Outfit typography, neutral card surfaces, and the selected accent and OLED mode.
 Outfit's upstream license is included in `docs/licenses/Outfit-OFL.txt`.
 
+Recent Apps receives a task icon matching the selected colour, restored at startup and updated when the theme changes. It uses a rendered bitmap because Launcher3/Pixel recents still ignore resource-only task icons. Android may normalize its shape and size. System screens that read the fixed application icon, such as App Info, can still show Ruby.
+
 `MainActivity` owns system-bar and keyboard insets. Capacitor SystemBars inset
 handling is disabled, and consumed insets prevent the WebView from applying the
 keyboard space a second time.
