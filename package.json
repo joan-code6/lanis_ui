@@ -39,6 +39,7 @@
     "postbuild": "node scripts/prerender.mjs",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
+    "test:push": "node --test scripts/test-browser-push.cjs",
     "deploy": "wrangler deploy",
     "deploy:preview": "wrangler versions upload"
   },

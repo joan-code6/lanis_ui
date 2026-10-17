@@ -570,9 +570,10 @@ export const notificationsAPI = {
     return response.data;
   },
 
-  async registerSubscription(token: string, subscription: PushSubscriptionPayload): Promise<{ success: boolean }> {
+  async registerSubscription(token: string, subscription: PushSubscriptionPayload, signal?: AbortSignal): Promise<{ success: boolean }> {
     const response = await apiClient.post<{ success: boolean }>('/notifications/subscription', subscription, {
       headers: { 'X-Session-Token': token },
+      signal,
     });
     return response.data;
   },
