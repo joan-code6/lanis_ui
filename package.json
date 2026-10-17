@@ -34,7 +34,7 @@
     "dev": "vite",
     "images:optimize": "node scripts/optimize-landing-images.mjs",
     "prebuild": "npm run images:optimize",
-    "test": "node scripts/test-account-data.cjs && node scripts/test-timetable-colours.cjs && node scripts/test-timetable-exams.cjs && node scripts/test-timetable-refresh.cjs && node --test scripts/optimize-landing-images.test.mjs scripts/cloudflare/*.test.cjs",
+    "test": "node scripts/test-safe-http-url.cjs && node scripts/test-download-filename.cjs && node scripts/test-account-data.cjs && node scripts/test-timetable-colours.cjs && node scripts/test-timetable-exams.cjs && node scripts/test-timetable-refresh.cjs && node --test scripts/optimize-landing-images.test.mjs scripts/cloudflare/*.test.cjs",
     "build": "tsc && vite build",
     "postbuild": "node scripts/prerender.mjs",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",

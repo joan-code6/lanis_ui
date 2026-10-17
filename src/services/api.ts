@@ -148,6 +148,7 @@ export const schoolListAPI = {
   },
 };
 import axios, { AxiosInstance } from 'axios';
+import { downloadFilename } from '../utils/downloadFilename';
 import {
   LoginRequest,
   LoginResponse,
@@ -188,6 +189,7 @@ import {
   ClassLinksResponse,
   DateispeicherNodeResponse,
   DateispeicherSearchResponse,
+  DateiverteilungResponse,
   StudyGroupsResponse,
   NotificationConfigResponse,
   DashboardNotificationsResponse,
@@ -907,6 +909,31 @@ export const dateispeicherAPI = {
       signal,
     });
     return response.data;
+  },
+};
+
+// Native Schulportal targeted file-distribution API
+export const dateiverteilungAPI = {
+  async getOverview(token: string, refresh = false, signal?: AbortSignal): Promise<DateiverteilungResponse> {
+    const response = await apiClient.get<DateiverteilungResponse>('/dateiverteilung', {
+      headers: { 'X-Session-Token': token },
+      params: { refresh },
+      signal,
+    });
+    return response.data;
+  },
+
+  async downloadFile(token: string, downloadUrl: string, signal?: AbortSignal): Promise<{ blob: Blob; filename: string | null }> {
+    const response = await apiClient.get<Blob>('/dateiverteilung/file', {
+      headers: { 'X-Session-Token': token },
+      params: { url: downloadUrl },
+      responseType: 'blob',
+      signal,
+    });
+    return {
+      blob: response.data,
+      filename: downloadFilename(response.headers['content-disposition']),
+    };
   },
 };
 
