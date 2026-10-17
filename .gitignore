@@ -4,5 +4,15 @@ node_modules/
 .env.local
 node_modules
 nul
+dist-android/
+android/app/google-services.json
+*.keystore
+*.jks
+android/key.properties
+
+# Local installable Android artifacts
+artifacts/android/
+
+# Cloudflare local state and secrets
 .wrangler/
 .dev.vars*

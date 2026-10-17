@@ -165,27 +165,21 @@ const DashboardNotifications: React.FC = () => {
   if (visibleNotifications.length === 0 && errors.length === 0) return null;
 
   return (
-    <aside className="mb-6 overflow-hidden rounded-2xl border border-surface-200 bg-white shadow-soft dark:border-surface-700 dark:bg-surface-900" aria-labelledby="dashboard-notifications-title">
-      <div className="flex items-center gap-3 border-b border-surface-100 px-4 py-4 dark:border-surface-800 sm:px-5">
-        <span className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-surface-900 text-white dark:bg-surface-100 dark:text-surface-900">
+    <aside className="mb-6 overflow-hidden rounded-2xl border border-surface-200 bg-white dark:border-surface-700 dark:bg-surface-900" aria-labelledby="dashboard-notifications-title">
+      <div className="flex items-center gap-3 border-b border-surface-100 px-4 py-3 dark:border-surface-800 sm:px-5">
+        <span className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-surface-900 text-white dark:bg-surface-100 dark:text-surface-900">
           <BellAlertIcon className="h-5 w-5" aria-hidden="true" />
-          {unreadCount > 0 && (
-            <span className="absolute -right-1.5 -top-1.5 flex min-h-5 min-w-5 items-center justify-center rounded-full bg-primary-500 px-1 text-[10px] font-bold text-white ring-2 ring-white dark:ring-surface-900">
-              {unreadCount > 99 ? '99+' : unreadCount}
-            </span>
-          )}
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-surface-400 dark:text-surface-500">Neu für dich</p>
           <h2 id="dashboard-notifications-title" className="truncate text-base font-semibold text-surface-900 dark:text-surface-100">
-            {unreadCount === 1 ? '1 ungelesener Hinweis' : `${unreadCount} ungelesene Hinweise`}
+            {unreadCount === 0 ? 'Hinweise' : unreadCount === 1 ? '1 neuer Hinweis' : `${unreadCount} neue Hinweise`}
           </h2>
         </div>
         <button
           type="button"
           onClick={() => setReloadKey(value => value + 1)}
           disabled={loading}
-          className="rounded-lg p-2 text-surface-400 transition-colors hover:bg-surface-100 hover:text-surface-700 disabled:cursor-wait dark:hover:bg-surface-800 dark:hover:text-surface-200"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-surface-400 transition-colors hover:bg-surface-100 hover:text-surface-700 disabled:cursor-wait dark:hover:bg-surface-800 dark:hover:text-surface-200"
           aria-label="Hinweise aktualisieren"
           title="Aktualisieren"
         >
@@ -206,7 +200,7 @@ const DashboardNotifications: React.FC = () => {
       {errors.length > 0 && (
         <div className="flex items-start gap-2 border-b border-amber-100 bg-amber-50/70 px-4 py-2.5 text-xs text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/20 dark:text-amber-200 sm:px-5">
           <ExclamationTriangleIcon className="mt-0.5 h-4 w-4 shrink-0" />
-          <span>Einige Quellen konnten gerade nicht aktualisiert werden.</span>
+          <span>Einige Quellen sind gerade nicht erreichbar.</span>
         </div>
       )}
 
@@ -253,7 +247,7 @@ const DashboardNotifications: React.FC = () => {
           className="flex w-full items-center justify-center gap-1.5 border-t border-surface-100 px-4 py-3 text-xs font-medium text-surface-500 hover:bg-surface-50 dark:border-surface-800 dark:text-surface-400 dark:hover:bg-surface-800/60 sm:hidden"
         >
           <CheckIcon className="h-4 w-4" />
-          Alle als gelesen markieren
+          Alle gelesen
         </button>
       )}
     </aside>

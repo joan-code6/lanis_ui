@@ -754,6 +754,7 @@ export interface TimetableDay {
 }
 
 export interface TimetableResponse {
+  offline_cached_at?: number;
   has_alternating_weeks?: boolean;
   substitution_sources?: Array<{ name: string; error: boolean; updated?: string | null }>;
   exams?: StudyGroupExam[];

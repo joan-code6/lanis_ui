@@ -1,3 +1,4 @@
+import { authStorage, flushAuthStorage } from '../platform/authStorage';
 import { CUSTOM_BACKEND_STORAGE_KEY, clearBackendScopedStorage } from './backendConfig';
 
 export const ACCOUNT_DATA_GENERATION_KEY = '__lanis_account_data_generation';
@@ -243,7 +244,7 @@ export const canWriteAccountData = (generation: number): boolean => {
 export const beginAccountDataDeletion = (accessToken: string, refreshToken: string): number => {
   // Persist recovery identity before sending DELETE. Keep it through browser
   // cleanup so a crash or a failed confirmation write remains recoverable.
-  window.localStorage.setItem(ACCOUNT_DATA_DELETION_RECOVERY_KEY, JSON.stringify({ accessToken, refreshToken }));
+  authStorage.setItem(ACCOUNT_DATA_DELETION_RECOVERY_KEY, JSON.stringify({ accessToken, refreshToken }));
   const generation = captureAccountDataGeneration() + 1;
   window.localStorage.setItem(ACCOUNT_DATA_GENERATION_KEY, `${generation}:deleting:${Date.now() + DELETION_LEASE_MS}`);
   deletionInProgress = true;
@@ -290,7 +291,7 @@ export const finishAccountDataDeletion = (generation: number): void => {
       ACCOUNT_DATA_GENERATION_KEY,
       `${nextGeneration}:active`,
     );
-    window.localStorage.removeItem(ACCOUNT_DATA_DELETION_RECOVERY_KEY);
+    authStorage.removeItem(ACCOUNT_DATA_DELETION_RECOVERY_KEY);
   } catch {
     // Keep the in-memory state aligned when local storage is unavailable.
   }
@@ -305,7 +306,7 @@ export const completeAccountDataDeletion = (expectedGeneration: number): boolean
   deletionInProgress = false;
   try {
     window.localStorage.removeItem(ACCOUNT_DATA_DELETION_CONFIRMED_KEY);
-    window.localStorage.removeItem(ACCOUNT_DATA_DELETION_RECOVERY_KEY);
+    authStorage.removeItem(ACCOUNT_DATA_DELETION_RECOVERY_KEY);
     window.localStorage.setItem(
       ACCOUNT_DATA_GENERATION_KEY,
       `${generation}:login`,
@@ -322,7 +323,15 @@ export const purgeDeletedAccountBrowserData = async (): Promise<boolean> => {
   // Keep recovery identity and coordination until every cleanup step succeeds.
   let storageClean = false;
   try {
-    clearBackendScopedStorage();
+    const recovery = authStorage.getItem(ACCOUNT_DATA_DELETION_RECOVERY_KEY);
+    try {
+      await clearBackendScopedStorage();
+    } finally {
+      if (recovery) {
+        authStorage.setItem(ACCOUNT_DATA_DELETION_RECOVERY_KEY, recovery);
+        await flushAuthStorage();
+      }
+    }
     const preserved = new Set([
       CUSTOM_BACKEND_STORAGE_KEY, ACCOUNT_DATA_GENERATION_KEY,
       ACCOUNT_DATA_DELETION_EPOCH_KEY, ACCOUNT_DATA_DELETION_CONFIRMED_KEY,

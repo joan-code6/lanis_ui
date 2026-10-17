@@ -175,3 +175,7 @@ Work in a dedicated Git worktree when contributing in the combined LANIS workspa
 - **Prerendering fails:** inspect the Node/Vite error from `scripts/prerender.mjs`. Public page imports and render-time code must work without browser globals; keep browser-only work in effects or lazy components. A missing `dist/index.html` means the Vite build has not completed.
 
 Authentication tokens, preferences, and some module data are stored in the browser. Use test accounts for authenticated development, and keep credentials, tokens, `.env.local`, and personal school data out of commits and bug reports.
+
+## Android app
+
+The Capacitor Android app uses encrypted native session storage, offline timetable data, widgets, and configurable navigation. Setup and release instructions: [docs/android.md](docs/android.md).

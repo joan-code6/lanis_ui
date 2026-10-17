@@ -1,3 +1,7 @@
+import { authStorage, flushAuthStorage } from '../../platform/authStorage';
+import { saveBlob } from '../../platform/files';
+import AndroidSettings from '../android/AndroidSettings';
+import { androidPresentation } from '../../platform/native';
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTheme, ThemeColor } from '../../contexts/ThemeContext';
@@ -123,7 +127,7 @@ const pushSubscriptionToPayload = (subscription: PushSubscription): PushSubscrip
   };
 };
 
-type SettingsSection = 'home' | 'account' | 'appearance' | 'dashboard' | 'timetable' | 'homework' | 'vertretungsplan' | 'notifications' | 'whatsapp' | 'app' | 'sidebar';
+type SettingsSection = 'home' | 'account' | 'appearance' | 'dashboard' | 'timetable' | 'homework' | 'vertretungsplan' | 'notifications' | 'whatsapp' | 'app' | 'sidebar' | 'android';
 
 const settingsSections: Array<{
   id: Exclude<SettingsSection, 'home'>;
@@ -131,52 +135,53 @@ const settingsSections: Array<{
   description: string;
   icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
 }> = [
+  { id: 'android', title: 'Android und Widgets', description: 'Widgets, Offline-Daten und Kurzbefehle.', icon: DevicePhoneMobileIcon },
   {
     id: 'account',
     title: 'Datenschutz und Konto',
-    description: 'Deine LANIS-Daten exportieren oder dein LANIS-Konto löschen.',
+    description: 'Daten exportieren oder Konto löschen.',
     icon: ServerStackIcon,
   },
   {
     id: 'appearance',
     title: 'Erscheinungsbild',
-    description: 'Farben, Dark Mode und die Oberfläche von Lanis.',
+    description: 'Farben und Dark Mode.',
     icon: PaintBrushIcon,
   },
   {
     id: 'dashboard',
     title: 'Dashboard',
-    description: 'Hinweisbanner, Quellen und gelesene Einträge verwalten.',
+    description: 'Module und Hinweise.',
     icon: Squares2X2Icon,
   },
   {
     id: 'timetable',
     title: 'Stundenplan',
-    description: 'Anzeige wählen, Stunden ändern und Kurse verknüpfen.',
+    description: 'Ansicht, Stunden und Kurszuordnung.',
     icon: CalendarDaysIcon,
   },
   {
     id: 'homework',
     title: 'Hausaufgaben',
-    description: 'Festlegen, ob erledigte Aufgaben in der Übersicht erscheinen.',
+    description: 'Erledigte Aufgaben ein- oder ausblenden.',
     icon: BookOpenIcon,
   },
   {
     id: 'vertretungsplan',
     title: 'Vertretungsplan',
-    description: 'Automatische Klassenerkennung und Standardfilter anpassen.',
+    description: 'Klasse und Filter.',
     icon: ClipboardDocumentListIcon,
   },
   {
     id: 'notifications',
     title: 'Benachrichtigungen',
-    description: 'Push-Mitteilungen für Nachrichten und den Vertretungsplan verwalten.',
+    description: 'Nachrichten und Vertretungen.',
     icon: BellAlertIcon,
   },
   {
     id: 'whatsapp',
     title: 'WhatsApp-Assistent',
-    description: 'Stundenplan, Vertretungen und Aufgaben direkt im Chat abrufen.',
+    description: 'Schulinfos im Chat.',
     icon: ChatBubbleLeftRightIcon,
   },
   {
@@ -188,23 +193,24 @@ const settingsSections: Array<{
   {
     id: 'sidebar',
     title: 'Seitenleiste',
-    description: 'Reihenfolge der Einträge in der Seitenleiste anpassen.',
+    description: 'Reihenfolge und sichtbare Einträge.',
     icon: Bars3Icon,
   },
 ];
 
 const sectionMeta: Record<SettingsSection, { title: string; subtitle: string }> = {
+  android: { title: 'Android und Widgets', subtitle: '' },
   home: { title: 'Einstellungen', subtitle: 'Passe dein Schulportal an.' },
   account: { title: 'Datenschutz und Konto', subtitle: 'Exportiere deine LANIS-Daten oder lösche dein LANIS-Konto.' },
-  appearance: { title: 'Erscheinungsbild', subtitle: 'Farben und Oberfläche an deine Gewohnheiten anpassen.' },
-  dashboard: { title: 'Dashboard', subtitle: 'Lege fest, welche Hinweise auf deinem Dashboard erscheinen.' },
+  appearance: { title: 'Erscheinungsbild', subtitle: '' },
+  dashboard: { title: 'Dashboard', subtitle: '' },
   timetable: { title: 'Stundenplan', subtitle: 'Anzeige und eigene Stundenplanänderungen verwalten.' },
   homework: { title: 'Hausaufgaben', subtitle: 'Lege fest, ob erledigte Aufgaben in „Mein Unterricht“ erscheinen.' },
   vertretungsplan: { title: 'Vertretungsplan', subtitle: 'Die passende Klasse automatisch auswählen oder selbst festlegen.' },
-  notifications: { title: 'Benachrichtigungen', subtitle: 'Nachrichten und neue Vertretungsplan-Einträge per Web-Push mitbekommen.' },
+  notifications: { title: 'Benachrichtigungen', subtitle: androidPresentation ? 'Nachrichten und Vertretungen direkt auf deinem Handy.' : 'Nachrichten und neue Vertretungsplan-Einträge per Web-Push mitbekommen.' },
   whatsapp: { title: 'WhatsApp-Assistent', subtitle: 'Dein LANIS-Konto sicher mit dem WhatsApp-Chat verbinden.' },
   app: { title: 'App & Installation', subtitle: 'Lanis auf deinem Gerät griffbereit halten.' },
-  sidebar: { title: 'Seitenleiste', subtitle: 'Passe die Navigation an deine Gewohnheiten an.' },
+  sidebar: { title: 'Seitenleiste', subtitle: '' },
 };
 
 const AccountSettings: React.FC = () => {
@@ -222,15 +228,8 @@ const AccountSettings: React.FC = () => {
     setError('');
     try {
       const blob = await authAPI.exportAccount(token);
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = 'lanis-account-export.json';
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      URL.revokeObjectURL(url);
-      setMessage('Der Export wurde heruntergeladen.');
+      await saveBlob(blob, 'lanis-account-export.json');
+      setMessage(androidPresentation ? 'Der Export kann jetzt gespeichert oder geteilt werden.' : 'Der Export wurde heruntergeladen.');
     } catch {
       setError('Der Datenexport konnte nicht erstellt werden. Bitte versuche es später erneut.');
     } finally {
@@ -248,8 +247,9 @@ const AccountSettings: React.FC = () => {
       setDeleting(false);
       return;
     }
-    const deletionGeneration = beginAccountDataDeletion(freshToken, localStorage.getItem('auth_refresh_token') || '');
+    const deletionGeneration = beginAccountDataDeletion(freshToken, authStorage.getItem('auth_refresh_token') || '');
     try {
+      await flushAuthStorage();
       const result = await authAPI.deleteAccount(freshToken);
       if (!result.success) {
         throw new Error('Account deletion was not confirmed by the server.');
@@ -698,7 +698,9 @@ const Settings: React.FC = () => {
     return availability.hasNativeSubstitutionPlan || availability.hasDsbModule;
   });
   const visibleSettingsSections = settingsSections.filter(item => (
-    (item.id !== 'vertretungsplan' || hasNativeSubstitutionPlan)
+    (item.id !== 'android' || androidPresentation)
+    && (item.id !== 'app' || !androidPresentation)
+    && (item.id !== 'vertretungsplan' || hasNativeSubstitutionPlan)
     && (item.id !== 'account' || basePath !== '/demo')
     && (item.id !== 'app' || !isDemo)
   ));
@@ -785,7 +787,7 @@ const Settings: React.FC = () => {
     setVertretungsplanOptionsStatus('idle');
     setVertretungsplanOptionsError('');
 
-    if (section !== 'notifications') {
+    if (androidPresentation || section !== 'notifications') {
       setNotificationsLoading(false);
       return;
     }
@@ -1131,7 +1133,7 @@ const Settings: React.FC = () => {
           </Link>
         )}
         <h1 className="page-title">{sectionMeta[section].title}</h1>
-        <p className="page-subtitle">{sectionMeta[section].subtitle}</p>
+        {sectionMeta[section].subtitle && <p className="page-subtitle">{sectionMeta[section].subtitle}</p>}
       </div>
 
       {section === 'home' && <SettingsIndex basePath={basePath} sections={visibleSettingsSections} />}
@@ -1147,6 +1149,8 @@ const Settings: React.FC = () => {
       {section === 'whatsapp' && <WhatsAppSettings />}
       {section === 'sidebar' && <SidebarSettings isDemo={isDemo} />}
       {section === 'account' && <AccountSettings />}
+      {section === 'android' && <AndroidSettings />}
+      {section === 'notifications' && androidPresentation && <AndroidSettings notificationsOnly />}
 
       <div className="space-y-6">
         {section === 'appearance' && (
@@ -1154,7 +1158,7 @@ const Settings: React.FC = () => {
         {/* Display mode */}
         <div className="card">
           <h3 className="text-base font-semibold text-surface-900 dark:text-surface-100">Darstellung</h3>
-          <p className="mt-0.5 text-sm text-surface-500">Wird mit deinem Lanis-Konto synchronisiert.</p>
+          <p className="mt-0.5 text-sm text-surface-500">Mit deinem Konto synchronisiert.</p>
           <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
             {([
               { id: 'system' as const, label: 'Automatisch', icon: DevicePhoneMobileIcon },
@@ -1179,12 +1183,13 @@ const Settings: React.FC = () => {
 
         {/* Primary Color */}
         <div className="card">
-          <h3 className="text-base font-semibold text-surface-900 dark:text-surface-100 mb-1">Primärfarbe</h3>
-          <p className="text-sm text-surface-500 mb-5">Wähle eine Farbe für das Design</p>
+          <h3 className="text-base font-semibold text-surface-900 dark:text-surface-100 mb-5">Primärfarbe</h3>
           <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-7">
             {themeColors.map((c) => (
               <button
                 key={c.key}
+                type="button"
+                aria-pressed={themeColor === c.key}
                 onClick={() => changeThemeColor(c.key)}
                 className="flex flex-col items-center gap-2 p-3 rounded-xl border transition-all duration-200 ease-out-expo active:scale-95"
                 style={{
@@ -1212,7 +1217,7 @@ const Settings: React.FC = () => {
         )}
 
         {/* Push-Benachrichtigungen */}
-        {section === 'notifications' && (
+        {section === 'notifications' && !androidPresentation && (
         <>
         <div className="card">
           <div className="flex items-start justify-between gap-4">
@@ -1664,7 +1669,7 @@ const Settings: React.FC = () => {
             Erscheinungsbild wird lokal gespeichert.
           </div>
         )}
-        {section === 'notifications' && (
+        {section === 'notifications' && !androidPresentation && (
           <div className="text-center text-xs text-surface-400">
             Benachrichtigungen werden mit deinem Konto synchronisiert.
           </div>

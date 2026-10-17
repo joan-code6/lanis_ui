@@ -19,6 +19,7 @@ import {
   ArrowPathIcon,
   ClockIcon,
   UserGroupIcon,
+  XMarkIcon,
 } from '@heroicons/react/24/outline';
 
 interface SearchItem {
@@ -60,6 +61,9 @@ function moduleInAppHref(
 ): string | undefined {
   const moduleLinks = `${module.url || ''} ${module.direct_url || ''}`.toLowerCase();
   const moduleName = String(module.name || '').toLowerCase();
+  const coreRoutes = [['/nachrichten.php', 'messages'], ['/meinunterricht.php', 'courses'], ['/kalender.php', 'calendar'], ['/stundenplan.php', 'timetable'], ['/lerngruppen.php', 'study-groups']] as const;
+  const coreRoute = coreRoutes.find(([source]) => moduleLinks.includes(source))?.[1];
+  if (coreRoute) return `${basePath}/${coreRoute}`;
   const isDateispeicher = moduleName.includes('dateispeicher') || moduleLinks.includes('/dateispeicher.php');
   const isWahlen = moduleName.includes('wahlen') || moduleLinks.includes('/oberstufenwahl.php');
   const isDsbModule = moduleName.includes('dsb') || moduleLinks.includes('dsb');
@@ -183,10 +187,10 @@ function searchCacheData(
       results.push({
         id: `mod-${module.url || module.name}`,
         title: module.name,
-        subtitle: module.url || module.folders?.join(', ') || '',
+        subtitle: module.folders?.join(' · ') || 'Schulportal',
         category: 'Module',
         icon: HomeIcon,
-        href: moduleInAppHref(module, planNavigation, basePath) || '/dashboard',
+        href: moduleInAppHref(module, planNavigation, basePath) || `${basePath}/dashboard?module=${encodeURIComponent(module.name)}`,
       });
     }
   }
@@ -282,6 +286,9 @@ export default function GlobalSearch({
   const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
   const timerRef = useRef<ReturnType<typeof setTimeout>>();
   const abortedRef = useRef(false);
 
@@ -316,18 +323,22 @@ export default function GlobalSearch({
   const combinedResults = useMemo(() => {
     const seen = new Set<string>();
     const all: SearchItem[] = [];
-    // First: keyword results (cache + API)
+    const keyFor = (item: SearchItem) => {
+      const href = item.href && basePath && item.href.startsWith('/') && !item.href.startsWith(`${basePath}/`) ? `${basePath}${item.href}` : item.href;
+      return href ? `${href}|${item.title.trim().toLocaleLowerCase('de')}` : item.id + item.title;
+    };
+    // Merge the same destination from cache, navigation, API, and semantic results.
     for (const r of [...cacheResults, ...apiResults]) {
-      const key = r.id + r.title;
+      const key = keyFor(r);
       if (!seen.has(key)) { seen.add(key); all.push(r); }
     }
     // Second: semantic results that weren't already found by keyword
     for (const r of semanticResults) {
-      const key = r.id + r.title;
+      const key = keyFor(r);
       if (!seen.has(key)) { seen.add(key); all.push(r); }
     }
     return all;
-  }, [cacheResults, apiResults, semanticResults]);
+  }, [cacheResults, apiResults, semanticResults, basePath]);
 
   const groupedResults = useMemo(() => {
     const groups: Record<string, SearchItem[]> = {};
@@ -336,6 +347,8 @@ export default function GlobalSearch({
     }
     return Object.entries(groups);
   }, [combinedResults]);
+  // Keyboard selection must follow the same category order as the rendered list.
+  const orderedResults = useMemo(() => groupedResults.flatMap(([, items]) => items), [groupedResults]);
 
   // reset on open
   useEffect(() => {
@@ -346,16 +359,38 @@ export default function GlobalSearch({
       setSemanticResults([]);
       setTier(0);
       abortedRef.current = false;
-      setTimeout(() => inputRef.current?.focus(), 50);
+      const previousFocus = document.activeElement as HTMLElement | null;
+      const focusTimer = setTimeout(() => inputRef.current?.focus(), 50);
+      const trapFocus = (event: KeyboardEvent) => {
+        if (event.key === 'Escape') { event.preventDefault(); closeRef.current(); return; }
+        if (event.key !== 'Tab') return;
+        const controls = [...(dialogRef.current?.querySelectorAll<HTMLElement>('input, button:not([tabindex="-1"])') || [])];
+        const first = controls[0];
+        const last = controls[controls.length - 1];
+        if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+        else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+      };
+      document.addEventListener('keydown', trapFocus);
+      return () => {
+        clearTimeout(focusTimer);
+        document.removeEventListener('keydown', trapFocus);
+        if (previousFocus?.isConnected && previousFocus.getClientRects().length) previousFocus.focus();
+      };
     }
   }, [isOpen]);
 
   useEffect(() => { setSelectedIndex(0); }, [query]);
+  useEffect(() => {
+    setSelectedIndex(index => Math.max(0, Math.min(index, orderedResults.length - 1)));
+  }, [orderedResults.length]);
+  useEffect(() => {
+    listRef.current?.querySelector<HTMLElement>('[aria-selected="true"]')?.scrollIntoView({ block: 'nearest' });
+  }, [selectedIndex, query]);
 
   // ── Tier 2: auto API search (debounced) ─────────────────────────
 
   useEffect(() => {
-    if (!token || query.length < 1) {
+    if (!isOpen || !token || query.trim().length < 2) {
       setTier(0);
       setApiResults([]);
       return;
@@ -366,7 +401,7 @@ export default function GlobalSearch({
 
     if (timerRef.current) clearTimeout(timerRef.current);
     timerRef.current = setTimeout(async () => {
-      if (abortedRef.current || query.length < 1) return;
+      if (abortedRef.current || query.trim().length < 2) return;
       setTier(2);
       setApiResults([]);
 
@@ -403,7 +438,7 @@ export default function GlobalSearch({
         appsAPI.getModules(token, controller.signal).then(res =>
           !res.success ? [] : res.modules.filter(module => searchText(query, module)).map(module => ({
             id: `api-mod-${module.url}`, title: module.name, subtitle: module.folders?.join(' · ') || 'Modul',
-            category: 'Module', icon: HomeIcon, href: moduleInAppHref(module, planNavigation, basePath) || '/dashboard',
+            category: 'Module', icon: HomeIcon, href: moduleInAppHref(module, planNavigation, basePath) || `${basePath}/dashboard?module=${encodeURIComponent(module.name)}`,
           }))),
         timetableAPI.getTimetable(token, controller.signal).then(res => {
           if (!res.success) return [];
@@ -450,24 +485,26 @@ export default function GlobalSearch({
       controller.abort();
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [query, token]);
+  }, [query, token, isOpen]);
 
   // ── Semantic search (parallel to Tier 2) ────────────────────────
 
   const semanticTimerRef = useRef<ReturnType<typeof setTimeout>>();
 
   useEffect(() => {
-    if (!token || query.length < 2) {
+    setSemanticResults([]);
+    if (!isOpen || !token || query.trim().length < 2) {
       setSemanticResults([]);
       return;
     }
 
+    const controller = new AbortController();
     if (semanticTimerRef.current) clearTimeout(semanticTimerRef.current);
     semanticTimerRef.current = setTimeout(async () => {
       if (abortedRef.current) return;
       try {
-        const res = await searchAPI.semanticSearch(token, query, 15);
-        if (!abortedRef.current && res.success && res.results) {
+        const res = await searchAPI.semanticSearch(token, query, 15, controller.signal);
+        if (!abortedRef.current && !controller.signal.aborted && res.success && res.results) {
           const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
             ChatBubbleLeftRightIcon,
             AcademicCapIcon,
@@ -494,8 +531,8 @@ export default function GlobalSearch({
       }
     }, 600);
 
-    return () => { if (semanticTimerRef.current) clearTimeout(semanticTimerRef.current); };
-  }, [query, token]);
+    return () => { controller.abort(); if (semanticTimerRef.current) clearTimeout(semanticTimerRef.current); };
+  }, [query, token, isOpen]);
 
   // cleanup on unmount
   useEffect(() => {
@@ -509,52 +546,60 @@ export default function GlobalSearch({
 
   const executeAction = useCallback((item: SearchItem) => {
     onClose();
-    if (item.href) navigate(item.href);
+    if (item.href) navigate(basePath && item.href.startsWith('/') && !item.href.startsWith('//') && !item.href.startsWith(`${basePath}/`) ? `${basePath}${item.href}` : item.href);
     item.action?.();
-  }, [onClose, navigate]);
+  }, [onClose, navigate, basePath]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Escape') { e.preventDefault(); onClose(); return; }
 
-    const flat = [...combinedResults];
+    const flat = orderedResults;
 
-    if (e.key === 'ArrowDown') { e.preventDefault(); setSelectedIndex(prev => Math.min(prev + 1, flat.length - 1)); }
+    if (e.key === 'ArrowDown') { e.preventDefault(); setSelectedIndex(prev => Math.max(0, Math.min(prev + 1, flat.length - 1))); }
     else if (e.key === 'ArrowUp') { e.preventDefault(); setSelectedIndex(prev => Math.max(prev - 1, 0)); }
     else if (e.key === 'Enter') {
       e.preventDefault();
       const sel = flat[selectedIndex];
       if (sel) executeAction(sel);
     }
-  }, [onClose, combinedResults, selectedIndex, executeAction]);
+  }, [onClose, orderedResults, selectedIndex, executeAction]);
 
   if (!isOpen) return null;
 
   const showLoading = tier === 2;
-  const showEmpty = tier >= 3 && query.length >= 1 && combinedResults.length === 0;
+  const showEmpty = query.trim().length > 0 && combinedResults.length === 0 && (query.trim().length < 2 || tier >= 3);
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-start justify-center pt-[15vh] sm:pt-[20vh] px-4">
+    <div className="fixed inset-0 z-[100] flex items-start justify-center px-3 pt-3 sm:px-4 sm:pt-[12vh]">
       <div className="fixed inset-0 bg-surface-950/50 backdrop-blur-md" onClick={onClose} />
-      <div className="relative w-full max-w-xl backdrop-blur-xl bg-white/80 dark:bg-surface-900/80 rounded-2xl shadow-soft-lg border border-white/30 dark:border-surface-700/40 overflow-hidden animate-scale-in" style={{ boxShadow: '0 4px 40px -8px rgba(0, 0, 0, 0.12), 0 12px 50px -12px rgba(0, 0, 0, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.5)' }}>
-        <div className="flex items-center gap-3 px-4 py-3 border-b border-surface-100/80 dark:border-surface-800/60">
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Suche" className="relative flex max-h-[calc(100dvh-1.5rem)] w-full max-w-xl flex-col overflow-hidden rounded-2xl bg-white shadow-soft-lg dark:bg-surface-900 sm:max-h-[76dvh]">
+        <div className="flex shrink-0 items-center gap-3 border-b border-surface-100 px-4 py-2 dark:border-surface-800">
           <MagnifyingGlassIcon className="h-5 w-5 text-primary-500 dark:text-primary-400 flex-shrink-0" />
           <input
             ref={inputRef}
             type="text"
+            role="combobox"
+            aria-label="Suche"
+            aria-autocomplete="list"
+            aria-expanded={orderedResults.length > 0}
+            aria-controls="global-search-results"
+            aria-activedescendant={orderedResults[selectedIndex] ? `search-result-${selectedIndex}` : undefined}
+            autoComplete="off"
+            autoCapitalize="none"
             value={query}
             onChange={e => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Suchen..."
-            className="flex-1 bg-transparent text-surface-900 dark:text-surface-100 text-[15px] placeholder:text-surface-400 dark:placeholder:text-surface-500 focus:outline-none"
+            placeholder="Suchen"
+            className="min-h-11 min-w-0 flex-1 bg-transparent text-base text-surface-900 placeholder:text-surface-500 focus:outline-none dark:text-surface-100 dark:placeholder:text-surface-400"
           />
-          <kbd className="hidden sm:inline-flex items-center justify-center min-w-[20px] h-[20px] px-1 rounded text-[11px] font-medium text-surface-400 bg-surface-100 dark:bg-surface-800/80 dark:text-surface-500 border border-surface-200/60 dark:border-surface-700/60">esc</kbd>
+          <button type="button" aria-label={query ? 'Suche leeren' : 'Suche schließen'} onClick={() => { if (query) { setQuery(''); inputRef.current?.focus(); } else onClose(); }} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-surface-500 hover:bg-surface-100 dark:text-surface-400 dark:hover:bg-surface-800"><XMarkIcon className="h-5 w-5" /></button>
         </div>
 
-        <div ref={listRef} className="max-h-80 overflow-y-auto p-2">
+        <div id="global-search-results" ref={listRef} role="listbox" aria-label="Suchergebnisse" aria-busy={showLoading} className="min-h-0 overflow-y-auto overscroll-contain p-2">
           {query.length === 0 && (
             <div className="py-12 text-center">
               <MagnifyingGlassIcon className="h-8 w-8 text-surface-300 dark:text-surface-600 mx-auto mb-3 opacity-60" />
-              <p className="text-sm text-surface-400 dark:text-surface-500">Tippe um die Suche zu starten</p>
+              <p className="text-sm text-surface-500 dark:text-surface-400">Seiten, Nachrichten und Unterricht</p>
             </div>
           )}
 
@@ -581,7 +626,7 @@ export default function GlobalSearch({
               before += g[1].length;
             }
             return (
-              <div key={category} className="mb-1">
+              <div key={category} role="group" aria-label={category} className="mb-1">
                 <div className="flex items-center gap-2 px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-surface-400 dark:text-surface-500">
                   <CatIcon className="h-3.5 w-3.5 text-primary-500 dark:text-primary-400" />
                   {category}
@@ -589,6 +634,11 @@ export default function GlobalSearch({
                 </div>
                 {items.map((item, idx) => (
                   <button
+                    type="button"
+                    id={`search-result-${before + idx}`}
+                    role="option"
+                    aria-selected={before + idx === selectedIndex}
+                    tabIndex={-1}
                     key={item.id}
                     onClick={() => executeAction(item)}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all duration-150 text-sm ${
@@ -612,7 +662,7 @@ export default function GlobalSearch({
 
         </div>
 
-        <div className="flex items-center justify-center gap-4 px-5 py-2 border-t border-surface-100/80 dark:border-surface-800/60 text-[11px] text-surface-400 dark:text-surface-500">
+        <div className="hidden shrink-0 items-center justify-center gap-4 border-t border-surface-100/80 px-5 py-2 text-[11px] text-surface-500 dark:border-surface-800/60 dark:text-surface-400 sm:flex">
           <span className="flex items-center gap-1"><kbd className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded text-[10px] font-medium bg-surface-100 dark:bg-surface-800/80 border border-surface-200/60 dark:border-surface-700/60">↑↓</kbd> navigieren</span>
           <span className="flex items-center gap-1"><kbd className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded text-[10px] font-medium bg-surface-100 dark:bg-surface-800/80 border border-surface-200/60 dark:border-surface-700/60">↵</kbd> wählen</span>
           <span className="flex items-center gap-1"><kbd className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded text-[10px] font-medium bg-surface-100 dark:bg-surface-800/80 border border-surface-200/60 dark:border-surface-700/60">esc</kbd> schließen</span>
