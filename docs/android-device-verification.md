@@ -50,6 +50,15 @@ The user supplied the test account separately after the first pass. Credentials 
 
 ## Remaining release checks
 
+## Timetable and search continuation — 17 October
+
+- Added phone day buttons to jump directly to a timetable day. Selecting Thursday moved the card scroller to Thursday; scrolling back updated the selected day, and refreshing preserved the chosen day. The tablet keeps its existing grid without the phone picker.
+- Search now uses a named dialog/combobox, traps and restores focus, follows the displayed category order with arrow keys/Enter, and scrolls the active result into view. The phone dialog fits above Gboard; the tablet dialog remains within its viewport.
+- Server search waits for two nonblank characters. Closing search or changing the query cancels outstanding keyword and semantic requests, preventing stale semantic results.
+- Cache/API/navigation copies of a destination are deduplicated, module URLs are replaced by concise subtitles, and core module results route to their native pages. One-letter demo search produced 12 distinct destinations without raw URLs; keyboard selection opened the expected demo timetable.
+- Other module results use the dashboard's existing module-opening handler. The Klassenbuch demo result opened its external-module preview, consumed its query parameter, and Android Back closed the preview without leaving the demo dashboard.
+- Android verification, the 7 native model tests, the 5 frontend tests, and `git diff --check` passed. The scoped detector found only the existing timetable accent border.
+
 Switching between different accounts, expired/revoked sessions, scheduled WorkManager execution under battery restrictions, and long-duration notification/background delivery still need device coverage. Demo checks above are presentation checks only.
 
 Firebase configuration remains absent, so real push registration/delivery is untested. iOS simulators are unavailable on Windows. This continuation does not integrate the PR's older branch with current `main`; review that integration before merging.

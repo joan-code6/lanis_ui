@@ -1,6 +1,6 @@
 import { openExternal } from '../../platform/files';
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useBasePath } from '../../contexts/BasePathContext';
 import { usePreferences } from '../../contexts/PreferencesContext';
@@ -40,6 +40,9 @@ const Dashboard: React.FC = () => {
   const { token, user } = useAuth();
   const { preferences, updatePreferences } = usePreferences();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedModule = searchParams.get('module');
+  const openedModuleRef = useRef<string | null>(null);
   const basePath = useBasePath();
   const [modules, setModules] = useState<Module[]>(() => readModulesCache(user));
   const [isUpdating, setIsUpdating] = useState(false);
@@ -106,8 +109,8 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  const handleModuleClick = (module: Module) => {
-    if (isEditMode) return;
+  const handleModuleClick = (module: Module, fromSearch = false) => {
+    if (isEditMode && !fromSearch) return;
     if (module.url.includes('/nachrichten.php')) {
       navigate(`${basePath}/messages`);
       return;
@@ -166,12 +169,24 @@ const Dashboard: React.FC = () => {
   };
 
   useEffect(() => {
+    if (!requestedModule) { openedModuleRef.current = null; return; }
+    if (isLoading || openedModuleRef.current === requestedModule) return;
+    const module = modules.find(item => item.name === requestedModule);
+    if (!module) return;
+    openedModuleRef.current = requestedModule;
+    setSearchParams(current => { const next = new URLSearchParams(current); next.delete('module'); return next; }, { replace: true });
+    handleModuleClick(module, true);
+  }, [requestedModule, isLoading, modules]);
+
+  useEffect(() => {
     if (!externalModule) return;
     const handleEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape') setExternalModule(null);
     };
+    const handleNativeBack = (event: Event) => { event.preventDefault(); setExternalModule(null); };
     document.addEventListener('keydown', handleEscape);
-    return () => document.removeEventListener('keydown', handleEscape);
+    window.addEventListener('lanis:back', handleNativeBack, true);
+    return () => { document.removeEventListener('keydown', handleEscape); window.removeEventListener('lanis:back', handleNativeBack, true); };
   }, [externalModule]);
 
   const externalDestination = externalModule
