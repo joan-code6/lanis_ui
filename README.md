@@ -107,7 +107,9 @@ browser. The client mounts normally, preserving stored themes and backend
 selection. This is build-time generation, not a server needed at runtime.
 
 Rendering failures fail the build. `SKIP_PRERENDER=1` explicitly skips generation
-for local troubleshooting; CI requires the generated public pages for deployment.
+for local troubleshooting and PR previews. CI prerenders only production builds
+from pushes and scheduled runs on `main`; PRs still run TypeScript and Vite and
+deploy a client-rendered preview without fetching or caching school data.
 `PRERENDER_STRICT` is no longer needed or used.
 
 Host the contents of **`dist/`** as a static site over HTTPS. Configure the host to serve existing assets and prerendered pages first, then fall back to **`/index.html`** for client-side routes such as `/login`, `/dashboard`, and `/demo/messages`. The app uses root-relative routes and assets, so deploy it at the domain root unless you also adapt those paths.
@@ -183,8 +185,8 @@ from lanis_api (`GET /schools`, `GET /schools/<id>/data`); image traffic uses it
 - A daily Actions run at **03:17 UTC** refreshes and deploys public data even
   without a code change. The deployment validator accepts only a successful
   scheduled run for the current main commit and the trusted repository.
-- PR and main cache prefixes are separate; untrusted PRs cannot write the
-  default branch's cache. Missing/corrupt cache entries are rebuilt.
+- Only production builds on `main` restore and save the school-page cache;
+  PR previews skip it. Missing/corrupt cache entries are rebuilt.
 
 No runtime rendering service, headless browser, or school-by-school image
 download is needed for generation. Source code is in
