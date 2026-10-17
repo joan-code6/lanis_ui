@@ -26,14 +26,17 @@
     "tailwindcss": "^3.3.5",
     "to-ico": "^1.0.1",
     "typescript": "^5.2.2",
-    "vite": "^7.3.6"
+    "vite": "^7.3.6",
+    "wrangler": "4.151.1"
   },
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
     "postbuild": "node scripts/prerender.mjs",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "deploy": "wrangler deploy",
+    "deploy:preview": "wrangler versions upload"
   },
   "browserslist": {
     "production": [
