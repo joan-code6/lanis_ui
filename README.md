@@ -115,6 +115,35 @@ Set `VITE_API_URL` **before building** for the target environment. Changing serv
 
 The service worker is registered automatically in production and caches the app shell. PWA and push behavior should be checked in a secure browser context with a compatible backend; shell caching does not make every module fully usable offline.
 
+## GitHub Actions deployment
+
+The pipeline has two workflows:
+
+1. **Frontend build** (`.github/workflows/build.yml`) checks out the change,
+   installs dependencies with `npm ci`, builds the static site, runs the existing
+   deployment checks, and uploads `frontend-dist`.
+2. **Cloudflare deployment** (`.github/workflows/deploy.yml`) runs trusted code
+   from the default branch, validates the source run and current commit, and
+   publishes the static artifact. PR builds never receive Cloudflare credentials.
+
+The host is **Cloudflare Workers Static Assets** (configured by
+`scripts/cloudflare/deploy.cjs`), not Cloudflare Pages. Production uses `lanis-ui`;
+PR previews use versions of the separate `lanis-ui-preview` Worker, with
+`noindex, nofollow` headers. Superseded builds are rejected before publishing.
+
+Both workflows cache **npm downloads**, not `node_modules`, generated HTML or
+build artifacts. Frontend cache keys include the lockfile hash, Node version,
+OS and event type, keeping PR and main caches separate. Deployment uses its own
+cache prefix and lockfile. No fallback keys are used. A cache miss only requires
+downloading packages again; installs still use lockfile integrity checks.
+
+The deployment workflow copies the dedicated manifest and lockfile from
+`scripts/cloudflare/tooling/` into a temporary directory and runs `npm ci` there.
+This keeps the privileged deployment tool separate from frontend dependencies
+and untrusted artifact contents. To update Wrangler, update that manifest and
+lockfile together; keep the root manifest's local Wrangler version aligned.
+The checked-in Actions are pinned to commit SHAs.
+
 ## Where to make changes
 
 ```text
