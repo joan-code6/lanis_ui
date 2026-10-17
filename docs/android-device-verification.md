@@ -77,6 +77,15 @@ The user supplied the test account separately after the first pass. Credentials 
 - Phone and tablet checks covered focus cycling, Back dismissal, and logout controls. Final phone checks confirmed menu-to-search/logout transitions and Escape restoring focus with background inertness removed.
 - Android build/unit tests/lint, six frontend regression tests, encrypted-session checks, and account-lifecycle checks passed. The scoped design detector reported no findings.
 
+## Dashboard and copy continuation — 17 October
+
+- Phone module cards use two columns with smaller artwork and shorter spacing; tablets keep four columns at 1280 CSS pixels. Removed repeated module labels and the duplicate notification heading/count treatment.
+- Module cards expose named keyboard links. Enter opened the demo Klassenbuch dialog, focus moved to its close control, and Escape restored focus to the module.
+- Dashboard search has a label, a clear control, and an empty-state reset action. No-match search and reset were verified; leading/trailing query whitespace is ignored.
+- Grid/list/customize controls are named and 44px high. Both list and card customization layouts stayed within the phone viewport. Edit mode retains wider cards for its controls.
+- Shortened settings-index descriptions and redundant appearance text. Fixed selected-view icon contrast in dark themes, including Moss.
+- Six frontend tests, encrypted-session and account-lifecycle checks, Android assembly/unit tests/lint, and the scoped design detector passed. Phone/tablet dashboard checks measured no page overflow or unnamed visible buttons.
+
 ## Remaining release checks
 
 Switching between different accounts, expired/revoked sessions, scheduled WorkManager execution under battery restrictions, and long-duration notification/background delivery still need device coverage. Demo checks above are presentation checks only.

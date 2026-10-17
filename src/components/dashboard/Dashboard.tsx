@@ -1,3 +1,4 @@
+import { useDialogFocus } from '../../hooks/useDialogFocus';
 import { openExternal } from '../../platform/files';
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -54,6 +55,8 @@ const Dashboard: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFolder, setSelectedFolder] = useState<string>('all');
   const [externalModule, setExternalModule] = useState<Module | null>(null);
+  const externalDialogRef = useRef<HTMLDivElement>(null);
+  useDialogFocus(Boolean(externalModule), externalDialogRef, () => setExternalModule(null));
   const viewMode = preferences.dashboard.view_mode;
   const showSearch = preferences.dashboard.show_search;
   const showSubtitle = preferences.dashboard.show_subtitle;
@@ -185,13 +188,9 @@ const Dashboard: React.FC = () => {
 
   useEffect(() => {
     if (!externalModule) return;
-    const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setExternalModule(null);
-    };
     const handleNativeBack = (event: Event) => { event.preventDefault(); setExternalModule(null); };
-    document.addEventListener('keydown', handleEscape);
     window.addEventListener('lanis:back', handleNativeBack, true);
-    return () => { document.removeEventListener('keydown', handleEscape); window.removeEventListener('lanis:back', handleNativeBack, true); };
+    return () => { window.removeEventListener('lanis:back', handleNativeBack, true); };
   }, [externalModule]);
 
   const externalDestination = externalModule
@@ -269,7 +268,7 @@ const Dashboard: React.FC = () => {
 
   const filteredModules = modules.filter((module) => {
     if (!isEditMode && hiddenModules.includes(module.name)) return false;
-    const matchesSearch = !showSearch || module.name.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = !showSearch || module.name.toLowerCase().includes(searchTerm.trim().toLowerCase());
     const moduleFolders = module.folders.map(f => f.trim());
     const matchesFolder = selectedFolder === 'all' || moduleFolders.includes(selectedFolder);
     return matchesSearch && matchesFolder;
@@ -318,13 +317,13 @@ const Dashboard: React.FC = () => {
         {(showSubtitle || isEditMode) && (
           <div className="flex items-center gap-2">
             <p className={clsx('page-subtitle', !showSubtitle && 'opacity-50')}>
-              Alle verfügbaren Apps und Module
+              Deine Apps und Module
             </p>
             {isEditMode && (
               <button
                 type="button"
                 onClick={() => void updatePreferences({ dashboard: { show_subtitle: !showSubtitle } })}
-                className="shrink-0 rounded-lg p-1.5 text-surface-500 transition-colors hover:bg-surface-100 hover:text-primary-600 dark:text-surface-400 dark:hover:bg-surface-700 dark:hover:text-primary-400"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-surface-500 transition-colors hover:bg-surface-100 hover:text-primary-600 dark:text-surface-400 dark:hover:bg-surface-700 dark:hover:text-primary-400"
                 aria-label={showSubtitle ? 'Dashboard-Untertitel ausblenden' : 'Dashboard-Untertitel einblenden'}
                 aria-pressed={showSubtitle}
                 title={showSubtitle ? 'Untertitel ausblenden' : 'Untertitel einblenden'}
@@ -352,13 +351,15 @@ const Dashboard: React.FC = () => {
             <>
               <MagnifyingGlassIcon className={clsx('absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2', showSearch ? 'text-surface-400' : 'text-surface-300 dark:text-surface-600')} />
               <input
-                type="text"
-                placeholder={showSearch ? 'Apps und Module durchsuchen...' : 'Suche ausgeblendet'}
-                className={clsx('input w-full pl-10 text-sm', isEditMode && 'pr-12', !showSearch && 'cursor-not-allowed bg-surface-200 text-surface-500 opacity-50 dark:bg-surface-700 dark:text-surface-400')}
+                type="search"
+                aria-label="Module suchen"
+                placeholder={showSearch ? 'Module suchen' : 'Suche ausgeblendet'}
+                className={clsx('input w-full pl-10 text-sm [&::-webkit-search-cancel-button]:hidden', (isEditMode || searchTerm) && 'pr-12', !showSearch && 'cursor-not-allowed bg-surface-200 text-surface-500 opacity-50 dark:bg-surface-700 dark:text-surface-400')}
                 value={showSearch ? searchTerm : ''}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 disabled={!showSearch}
               />
+              {!isEditMode && searchTerm && <button type="button" aria-label="Suche leeren" onClick={() => setSearchTerm('')} className="absolute right-0 top-0 flex h-full w-11 items-center justify-center rounded-lg text-surface-500 hover:text-surface-800 dark:text-surface-400 dark:hover:text-surface-100"><XMarkIcon className="h-4 w-4" /></button>}
               {isEditMode && (
                 <button
                   type="button"
@@ -396,9 +397,9 @@ const Dashboard: React.FC = () => {
               aria-label="Kartenansicht"
               aria-pressed={viewMode === 'grid'}
               className={clsx(
-                'p-2 rounded-md transition-all duration-200',
+                'flex h-11 w-11 items-center justify-center rounded-md transition-all duration-200',
                 viewMode === 'grid'
-                  ? 'bg-white dark:bg-surface-700 text-primary-600 shadow-soft'
+                  ? 'bg-white dark:bg-surface-700 text-primary-600 dark:text-primary-300 shadow-soft'
                   : 'text-surface-400 dark:text-surface-400 hover:text-surface-600 dark:hover:text-surface-200'
               )}
             >
@@ -410,9 +411,9 @@ const Dashboard: React.FC = () => {
               aria-label="Listenansicht"
               aria-pressed={viewMode === 'list'}
               className={clsx(
-                'p-2 rounded-md transition-all duration-200',
+                'flex h-11 w-11 items-center justify-center rounded-md transition-all duration-200',
                 viewMode === 'list'
-                  ? 'bg-white dark:bg-surface-700 text-primary-600 shadow-soft'
+                  ? 'bg-white dark:bg-surface-700 text-primary-600 dark:text-primary-300 shadow-soft'
                   : 'text-surface-400 dark:text-surface-400 hover:text-surface-600 dark:hover:text-surface-200'
               )}
             >
@@ -424,15 +425,16 @@ const Dashboard: React.FC = () => {
             type="button"
             onClick={() => setIsEditMode(!isEditMode)}
             className={clsx(
-              'h-9 px-3 rounded-lg transition-all duration-200 flex flex-shrink-0 items-center gap-2 text-sm font-medium',
+              'h-11 px-3 rounded-lg transition-all duration-200 flex flex-shrink-0 items-center gap-2 text-sm font-medium',
               isEditMode
                 ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400'
                 : 'bg-surface-100 dark:bg-surface-800 text-surface-400 hover:text-surface-600 dark:hover:text-surface-200'
             )}
+            aria-label={isEditMode ? 'Anpassung beenden' : 'Dashboard anpassen'}
             aria-pressed={isEditMode}
           >
             <PencilIcon className="h-4 w-4" />
-            <span className="hidden sm:inline">{isEditMode ? 'Fertig' : 'Anpassen'}</span>
+            <span>{isEditMode ? 'Fertig' : 'Anpassen'}</span>
           </button>
         </div>
       </div>
@@ -445,7 +447,7 @@ const Dashboard: React.FC = () => {
               {pinnedModules.length} {pinnedModules.length === 1 ? 'Favorit' : 'Favoriten'} zuerst
             </p>
             <p className="mt-0.5 text-xs leading-5 text-primary-700/80 dark:text-primary-300/80">
-              Favoriten lassen sich am Griff ziehen. Die Pfeile funktionieren auch auf Touch-Geräten und mit der Tastatur.
+              Mit Griff oder Pfeilen sortieren.
             </p>
           </div>
         </div>
@@ -455,14 +457,14 @@ const Dashboard: React.FC = () => {
         <div className="empty-state">
           <FolderIcon className="empty-state-icon" />
           <h3 className="empty-state-title">Keine Module gefunden</h3>
-          <p className="empty-state-text">Versuchen Sie, Ihre Suchkriterien zu ändern.</p>
+          {searchTerm && <button type="button" className="btn btn-secondary mt-4" onClick={() => setSearchTerm('')}>Suche zurücksetzen</button>}
         </div>
       ) : (
         <div
           className={clsx(
             'grid gap-4',
             viewMode === 'grid'
-              ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
+              ? (isEditMode ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4' : 'grid-cols-2 lg:grid-cols-3 xl:grid-cols-4')
               : 'grid-cols-1'
           )}
         >
@@ -477,8 +479,8 @@ const Dashboard: React.FC = () => {
                 key={module.name}
                 className={clsx(
                   'card group relative transition-[opacity,transform,box-shadow] duration-150',
-                  !isEditMode && 'card-hover',
-                  viewMode === 'grid' ? 'p-5' : 'flex items-center gap-3 p-3 sm:gap-4 sm:p-4',
+                  !isEditMode && 'card-hover cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500',
+                  viewMode === 'grid' ? 'p-3 sm:p-5' : 'flex items-center gap-3 p-3 sm:gap-4 sm:p-4',
                   isEditMode && isHidden && 'opacity-50',
                   draggedModule === module.name && 'scale-[0.98] opacity-40'
                 )}
@@ -487,6 +489,12 @@ const Dashboard: React.FC = () => {
                   if (!event.currentTarget.contains(event.relatedTarget as Node)) setDropTarget(null);
                 }}
                 onDrop={(event) => handleDrop(event, module.name)}
+                role={!isEditMode ? 'link' : undefined}
+                tabIndex={!isEditMode ? 0 : undefined}
+                aria-label={!isEditMode ? module.name : undefined}
+                onKeyDown={event => {
+                  if (!isEditMode && event.key === 'Enter') { event.preventDefault(); handleModuleClick(module); }
+                }}
                 onClick={() => handleModuleClick(module)}
               >
                 {activeDropTarget && (
@@ -506,11 +514,10 @@ const Dashboard: React.FC = () => {
                 )}
 
                 {viewMode === 'grid' ? (
-                  <div className="flex min-h-[168px] flex-col items-center text-center">
+                  <div className="flex min-h-[132px] min-w-0 flex-col items-center text-center sm:min-h-[168px]">
                     {isPinned && (
-                      <span className="absolute left-3 top-3 flex items-center gap-1 rounded-full bg-primary-50 px-2 py-1 text-[10px] font-semibold text-primary-700 dark:bg-primary-950/50 dark:text-primary-300">
-                        <StarIcon className="h-3 w-3 fill-current" />
-                        Favorit
+                      <span className="absolute left-3 top-3 text-primary-600 dark:text-primary-400" aria-label="Favorit" title="Favorit">
+                        <StarIcon className="h-4 w-4 fill-current" />
                       </span>
                     )}
                     {isEditMode && isPinned && (
@@ -532,7 +539,7 @@ const Dashboard: React.FC = () => {
                     )}
 
                     <ModuleIcon name={module.name} logo={module.logo} color={module.color} size="grid" />
-                    <h3 className="mt-4 text-sm font-medium text-surface-900 transition-colors group-hover:text-primary-600 dark:text-surface-100">
+                    <h3 className="mt-3 break-words text-sm font-medium sm:mt-4 text-surface-900 transition-colors group-hover:text-primary-600 dark:text-surface-100 dark:group-hover:text-primary-300">
                       {module.name}
                     </h3>
                     {module.folders.length > 0 && (
@@ -542,10 +549,9 @@ const Dashboard: React.FC = () => {
                         ))}
                       </div>
                     )}
-                    <span className="mt-2 text-[11px] font-medium text-surface-400">Modul</span>
 
                     {isEditMode && (
-                      <div className="mt-auto flex w-full items-center gap-1 border-t border-surface-100 pt-3 dark:border-surface-800">
+                      <div className="mt-auto flex w-full flex-wrap items-center gap-1 border-t border-surface-100 pt-3 dark:border-surface-800">
                         <button
                           type="button"
                           onClick={(event) => {
@@ -554,7 +560,7 @@ const Dashboard: React.FC = () => {
                           }}
                           disabled={isHidden && !isPinned}
                           className={clsx(
-                            'flex h-8 items-center gap-1.5 rounded-lg px-2 text-xs font-medium transition-colors',
+                            'flex min-h-11 items-center gap-1.5 rounded-lg px-2 text-xs font-medium transition-colors',
                             isPinned
                               ? 'bg-primary-50 text-primary-700 dark:bg-primary-950/40 dark:text-primary-300'
                               : 'text-surface-500 hover:bg-surface-100 hover:text-primary-600 disabled:opacity-30 dark:text-surface-400 dark:hover:bg-surface-800'
@@ -570,7 +576,7 @@ const Dashboard: React.FC = () => {
                             event.stopPropagation();
                             toggleHidden(module.name);
                           }}
-                          className="flex h-8 items-center gap-1.5 rounded-lg px-2 text-xs font-medium text-surface-500 transition-colors hover:bg-surface-100 hover:text-red-600 dark:text-surface-400 dark:hover:bg-surface-800 dark:hover:text-red-400"
+                          className="flex min-h-11 items-center gap-1.5 rounded-lg px-2 text-xs font-medium text-surface-500 transition-colors hover:bg-surface-100 hover:text-red-600 dark:text-surface-400 dark:hover:bg-surface-800 dark:hover:text-red-400"
                           aria-label={isHidden ? `${module.name} einblenden` : `${module.name} ausblenden`}
                         >
                           {isHidden ? <EyeIcon className="h-4 w-4" /> : <EyeSlashIcon className="h-4 w-4" />}
@@ -585,7 +591,7 @@ const Dashboard: React.FC = () => {
                                 movePinned(module.name, -1);
                               }}
                               disabled={pinnedIndex === 0}
-                              className="rounded-md p-1 text-surface-500 hover:bg-white hover:text-primary-600 disabled:opacity-25 dark:hover:bg-surface-700"
+                              className="flex h-11 w-11 items-center justify-center rounded-md text-surface-500 hover:bg-white hover:text-primary-600 disabled:opacity-25 dark:hover:bg-surface-700"
                               aria-label={`${module.name} nach vorne verschieben`}
                             >
                               <ChevronLeftIcon className="h-4 w-4" />
@@ -597,7 +603,7 @@ const Dashboard: React.FC = () => {
                                 movePinned(module.name, 1);
                               }}
                               disabled={pinnedIndex === pinnedModules.length - 1}
-                              className="rounded-md p-1 text-surface-500 hover:bg-white hover:text-primary-600 disabled:opacity-25 dark:hover:bg-surface-700"
+                              className="flex h-11 w-11 items-center justify-center rounded-md text-surface-500 hover:bg-white hover:text-primary-600 disabled:opacity-25 dark:hover:bg-surface-700"
                               aria-label={`${module.name} nach hinten verschieben`}
                             >
                               <ChevronRightIcon className="h-4 w-4" />
@@ -683,7 +689,7 @@ const Dashboard: React.FC = () => {
                                 movePinned(module.name, -1);
                               }}
                               disabled={pinnedIndex === 0}
-                              className="rounded-md p-1 text-surface-500 hover:bg-white hover:text-primary-600 disabled:opacity-25 dark:hover:bg-surface-700"
+                              className="flex h-11 w-11 items-center justify-center rounded-md text-surface-500 hover:bg-white hover:text-primary-600 disabled:opacity-25 dark:hover:bg-surface-700"
                               aria-label={`${module.name} nach oben verschieben`}
                             >
                               <ChevronUpIcon className="h-4 w-4" />
@@ -695,7 +701,7 @@ const Dashboard: React.FC = () => {
                                 movePinned(module.name, 1);
                               }}
                               disabled={pinnedIndex === pinnedModules.length - 1}
-                              className="rounded-md p-1 text-surface-500 hover:bg-white hover:text-primary-600 disabled:opacity-25 dark:hover:bg-surface-700"
+                              className="flex h-11 w-11 items-center justify-center rounded-md text-surface-500 hover:bg-white hover:text-primary-600 disabled:opacity-25 dark:hover:bg-surface-700"
                               aria-label={`${module.name} nach unten verschieben`}
                             >
                               <ChevronDownIcon className="h-4 w-4" />
@@ -714,6 +720,8 @@ const Dashboard: React.FC = () => {
 
       {externalModule && (
         <div
+          ref={externalDialogRef}
+          tabIndex={-1}
           className="fixed inset-0 z-50 flex items-center justify-center bg-surface-950/50 p-4 backdrop-blur-sm"
           onMouseDown={(event) => {
             if (event.target === event.currentTarget) setExternalModule(null);
@@ -735,14 +743,14 @@ const Dashboard: React.FC = () => {
                     Externes Modul
                   </h2>
                   <p className="mt-1 text-sm leading-5 text-surface-600 dark:text-surface-300">
-                    „{externalModule.name}“ würde eine externe Seite öffnen. In der Demo bleibt diese Seite geschlossen.
+                    „{externalModule.name}“ würde eine externe Seite öffnen. In der Demo bleibt die Seite geschlossen.
                   </p>
                 </div>
               </div>
               <button
                 type="button"
                 aria-label="Hinweis schließen"
-                className="rounded-lg p-1.5 text-surface-400 transition-colors hover:bg-surface-100 hover:text-surface-700 dark:hover:bg-surface-800 dark:hover:text-surface-200"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-surface-500 transition-colors hover:bg-surface-100 hover:text-surface-700 dark:hover:bg-surface-800 dark:hover:text-surface-200"
                 onClick={() => setExternalModule(null)}
               >
                 <XMarkIcon className="h-5 w-5" />
