@@ -143,6 +143,29 @@ const mockDateispeicherNodes = {
   },
 };
 
+const mockVideoRooms = [
+  {
+    id: 'mathematik-9c',
+    name: 'Mathematik 9C',
+    teachers: ['Herr Vogel'],
+    status: 'open',
+    status_label: 'Raum betreten',
+    join_url: 'https://example.invalid/video/mathematik-9c',
+    can_join: true,
+    links: [{ label: 'Raumregeln', url: 'https://example.invalid/video/regeln' }],
+  },
+  {
+    id: 'klassenrat-9c',
+    name: 'Klassenrat 9C',
+    teachers: ['Frau Neumann'],
+    status: 'waiting',
+    status_label: 'Raum nicht offen',
+    join_url: 'https://example.invalid/video/klassenrat-9c',
+    can_join: false,
+    links: [],
+  },
+];
+
 const mockDateiverteilungen = [
   {
     id: 'klassenfahrt-2026',
@@ -832,6 +855,9 @@ export function getMockResponse(url: string, method: string, config: any): { dat
   if (u.startsWith('/dateispeicher/file/') && method === 'get') {
     const fileId = u.split('/').pop();
     return { status: 200, data: new Blob([`Demo-Datei ${fileId}`], { type: 'text/plain' }) };
+  }
+  if (u === '/videokonferenz' && method === 'get') {
+    return { status: 200, data: { success: true, available: true, source: 'schulportal', status_live: true, rooms: mockVideoRooms, count: mockVideoRooms.length, open_count: 1, updated_label: 'vor wenigen Sekunden' } };
   }
   if (u === '/dateiverteilung' && method === 'get') {
     return { status: 200, data: { success: true, distributions: mockDateiverteilungen, distribution_count: mockDateiverteilungen.length, file_count: mockDateiverteilungen.reduce((count, item) => count + item.files.length, 0), unread_count: mockDateiverteilungen.filter(item => item.unread).length } };

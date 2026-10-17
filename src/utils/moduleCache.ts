@@ -10,6 +10,7 @@ export interface ModuleAvailability {
   hasNativeDateiverteilung: boolean;
   hasNativeSubstitutionPlan: boolean;
   hasWahlenModule: boolean;
+  hasVideokonferenzModule: boolean;
 }
 
 export function getModuleAvailability(modules: CachedModule[]): ModuleAvailability {
@@ -18,6 +19,7 @@ export function getModuleAvailability(modules: CachedModule[]): ModuleAvailabili
   let hasNativeDateiverteilung = false;
   let hasNativeSubstitutionPlan = false;
   let hasWahlenModule = false;
+  let hasVideokonferenzModule = false;
 
   for (const module of modules) {
     const links = `${module.url} ${module.direct_url || ''}`.toLowerCase();
@@ -31,9 +33,10 @@ export function getModuleAvailability(modules: CachedModule[]): ModuleAvailabili
       links.includes('/vertretungsplan.php') || name.includes('vertretungsplan')
     );
     hasWahlenModule ||= links.includes('/oberstufenwahl.php') || name.includes('wahlen');
+    hasVideokonferenzModule ||= links.includes('/videokonferenz.php') || name.includes('videokonferenz');
   }
 
-  return { hasDsbModule, hasNativeDateispeicher, hasNativeDateiverteilung, hasNativeSubstitutionPlan, hasWahlenModule };
+  return { hasDsbModule, hasNativeDateispeicher, hasNativeDateiverteilung, hasNativeSubstitutionPlan, hasWahlenModule, hasVideokonferenzModule };
 }
 
 interface ModuleCacheOwner {

@@ -189,6 +189,7 @@ import {
   ClassLinksResponse,
   DateispeicherNodeResponse,
   DateispeicherSearchResponse,
+  VideoRoomsResponse,
   DateiverteilungResponse,
   StudyGroupsResponse,
   NotificationConfigResponse,
@@ -964,6 +965,18 @@ export const vertretungsplanAPI = {
       const response = await apiClient.get<VertretungsplanOptionsResponse>('/vertretungsplan/options', config);
       return response.data;
     }
+  },
+};
+
+// Native Schulportal video rooms. Join links may be short-lived and user-bound.
+export const videokonferenzAPI = {
+  async getRooms(token: string, refresh = false, signal?: AbortSignal): Promise<VideoRoomsResponse> {
+    const response = await apiClient.get<VideoRoomsResponse>('/videokonferenz', {
+      headers: { 'X-Session-Token': token },
+      params: { refresh },
+      signal,
+    });
+    return response.data;
   },
 };
 
