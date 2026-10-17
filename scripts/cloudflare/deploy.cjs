@@ -26,8 +26,12 @@ function validateFiles(directory) {
   }
 }
 validateFiles(assets);
-for (const file of ['index.html', 'status/index.html', 'sw.js']) {
-  if (!fs.statSync(path.join(assets, file)).isFile()) throw new Error(`Missing ${file}`);
+// PR previews use the SPA fallback; only production requires prerendered HTML.
+const requiredFiles = ['index.html', 'sw.js'];
+if (kind === 'production') requiredFiles.push('status/index.html');
+for (const file of requiredFiles) {
+  const target = path.join(assets, file);
+  if (!fs.existsSync(target) || !fs.statSync(target).isFile()) throw new Error(`Missing ${file}`);
 }
 // Preserve previews from branches predating school pages. For school builds,
 // ensure every URL advertised in the sitemap has a static page before publishing.
