@@ -27,7 +27,8 @@ jobs:
           # Deliberately no shared cache between untrusted PRs and main.
       - run: npm ci
       - name: Install Chrome for prerendering
-        run: npx puppeteer browsers install chrome --install-deps
+        # Ubuntu hosted runners already include Chrome's runtime libraries.
+        run: npx puppeteer browsers install chrome
       - name: Build and prerender
         run: npm run build
         env:
