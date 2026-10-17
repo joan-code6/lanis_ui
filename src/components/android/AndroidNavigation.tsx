@@ -31,8 +31,8 @@ export default function AndroidNavigation({ items, onSearch }: { basePath: strin
   return <nav ref={bar} className="native-navigation md:hidden" aria-label="Hauptnavigation">
     {shown.map(({ id, href, name, icon: Icon }) => id === 'search'
       ? <button key={id} type="button" className="native-nav-item" onClick={onSearch}><span className="native-nav-icon"><Icon aria-hidden="true" className="h-6 w-6" /></span><span>{name}</span></button>
-      : <NavLink key={id} to={href} title={name} aria-label={id === 'dashboard' ? 'Heute' : name} className={({ isActive }) => `native-nav-item ${isActive ? 'native-nav-active' : ''}`}>
-        <span className="native-nav-icon"><Icon aria-hidden="true" className="h-6 w-6" /></span><span>{id === 'dashboard' ? 'Heute' : name}</span>
+      : <NavLink key={id} to={href} title={name} aria-label={name} className={({ isActive }) => `native-nav-item ${isActive ? 'native-nav-active' : ''}`}>
+        <span className="native-nav-icon"><Icon aria-hidden="true" className="h-6 w-6" /></span><span>{name}</span>
       </NavLink>)}
 
   </nav>;
