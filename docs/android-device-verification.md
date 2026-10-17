@@ -100,6 +100,12 @@ The inherited Cloudflare deployment checks passed 5 of 6 checks on Windows. The 
 - Signed in with the supplied test account, opened a real course PDF from the phone UI, confirmed it rendered in the PDF viewer, and returned to the course without an error. Signed out afterward. No account content was changed.
 - Added native-file regression checks for private cache writes, viewer handoff, missing-viewer fallback, visible failures, and the existing export/share flow. Android verification (TypeScript, APK, native unit tests and lint) and frontend regression checks passed.
 
+## Android icon scale — 17 October
+
+- Added a 16.667% foreground inset to all nine generated adaptive launcher icons and both default aliases, compensating for Android's expanded adaptive layers. The web artwork and widget image scale stay unchanged.
+- Added a separately padded splash drawable so the system's circular mask has room around the logo. The generator owns the padding, keeping regeneration consistent.
+- Installed the rebuilt APK and compared the Moss launcher icon on the phone before and after: the cap now has visible space around it instead of nearly filling the mask. Native assembly, unit tests and lint passed; lint reported no errors. The APK also includes the latest Dashboard navigation label.
+
 ## Remaining release checks
 
 Switching between different accounts, expired/revoked sessions, scheduled WorkManager execution under battery restrictions, and long-duration notification/background delivery still need device coverage. Demo checks above are presentation checks only.

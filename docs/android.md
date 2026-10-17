@@ -90,7 +90,7 @@ See [device verification](android-device-verification.md) for the Windows build 
 
 The Android launcher switches activity aliases to follow the selected app colour.
 Those aliases forward through a separate, nonvisual activity so changing the icon cannot remove the running app task. Native bridge payload logging is disabled, including in debug APKs, because session calls carry credentials.
-All six variants reuse the exact generated PNGs in `public/favicon/themes`; launchers
+All nine variants reuse the generated PNGs in `public/favicon/themes`, with a 16.667% foreground inset to compensate for Android's adaptive-icon cropping. The splash icon has matching padding. Regenerate the resources with `node scripts/generate-android-icons.mjs`; launchers
 may take a moment to refresh their icon cache. Widgets use these same assets,
 Outfit typography, neutral card surfaces, and the selected accent and OLED mode.
 Outfit's upstream license is included in `docs/licenses/Outfit-OFL.txt`.

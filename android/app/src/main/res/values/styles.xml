@@ -13,7 +13,7 @@
     </style>
     <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
         <item name="windowSplashScreenBackground">#0a0a0a</item>
-        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_lanis</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_lanis_splash</item>
         <item name="postSplashScreenTheme">@style/AppTheme.NoActionBar</item>
     </style>
 </resources>
