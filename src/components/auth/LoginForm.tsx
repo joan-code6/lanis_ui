@@ -5,6 +5,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { EyeIcon, EyeSlashIcon, SunIcon, MoonIcon } from '@heroicons/react/24/outline';
 import SEO from '../seo/SEO';
 import AppIcon from '../AppIcon';
+import { hasAccountDataDeletionMarker } from '../../utils/accountDataWrites';
 
 import { schoolListAPI, API_BASE_URL } from '../../services/api';
 import axios from 'axios';
@@ -330,6 +331,13 @@ const LoginForm: React.FC<LoginFormProps> = ({ fixedSchool }) => {
                 </div>
               </div>
 
+            {hasAccountDataDeletionMarker() && (
+              <div role="status" className="rounded-xl border border-surface-200 bg-surface-50 px-4 py-3 text-sm text-surface-700 dark:border-surface-700 dark:bg-surface-900 dark:text-surface-200">
+                Ein unterbrochener Löschvorgang muss zuerst geprüft werden. Deine gespeicherten Daten bleiben bis zur Klärung geschützt.
+                <button type="button" onClick={() => window.location.reload()} className="mt-2 block font-medium text-primary-600 dark:text-primary-400">Erneut prüfen</button>
+              </div>
+            )}
+
               {error && (
                 <div className="bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-900 text-red-600 dark:text-red-400 px-4 py-3 rounded-xl text-sm animate-scale-in">
                   {error}
@@ -338,7 +346,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ fixedSchool }) => {
 
               <button
                 type="submit"
-                disabled={isLoading || !formData.school_id}
+                disabled={isLoading || !formData.school_id || hasAccountDataDeletionMarker()}
                 className="btn btn-primary w-full h-11 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100"
               >
                 {isLoading ? (

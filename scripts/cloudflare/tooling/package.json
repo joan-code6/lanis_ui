@@ -1,0 +1,9 @@
+{
+  "name": "lanis-ui-deployment-tool",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Locked deployment-only dependencies installed outside the frontend artifact",
+  "dependencies": {
+    "wrangler": "4.151.1"
+  }
+}

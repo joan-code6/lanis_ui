@@ -500,7 +500,8 @@ function getMockDashboardNotifications() {
       created_at: message.date,
       read: mockDashboardReadIds.has(`demo-message-${message.Uniquid}`),
       read_at: mockDashboardReadIds.has(`demo-message-${message.Uniquid}`) ? now.toISOString() : null,
-    }));
+    }))
+    .slice(0, 1);
   const nativeItems = mockVertretungsplan.days.flatMap((day, dayIndex) => day.substitutions.map((entry, entryIndex) => {
     const id = `demo-native-${dayIndex}-${entryIndex}`;
     return {
@@ -514,7 +515,7 @@ function getMockDashboardNotifications() {
       read: mockDashboardReadIds.has(id),
       read_at: mockDashboardReadIds.has(id) ? now.toISOString() : null,
     };
-  }));
+  })).slice(0, 1);
   const dsbItems = mockDsbData.tables.flatMap((table, tableIndex) => table.rows.map((row, rowIndex) => {
     const id = `demo-dsb-${tableIndex}-${rowIndex}`;
     return {
@@ -528,7 +529,7 @@ function getMockDashboardNotifications() {
       read: mockDashboardReadIds.has(id),
       read_at: mockDashboardReadIds.has(id) ? now.toISOString() : null,
     };
-  }));
+  })).slice(0, 1);
   return [...messageItems, ...nativeItems, ...dsbItems].sort(
     (left, right) => new Date(right.created_at).getTime() - new Date(left.created_at).getTime(),
   );
@@ -770,13 +771,13 @@ export function getMockResponse(url: string, method: string, config: any): { dat
     const hasAlternatingWeeks = weekTypes.has('A') || weekTypes.has('B');
     // Fictional resolved response; production matching belongs to lanis_api.
     const firstDay = days.find(day => day.lessons.length);
-    if (firstDay && !config?.params?.week_type) {
+    if (firstDay && !config?.params?.week_type && config?.params?.show_substitutions !== false) {
       const lesson = firstDay.lessons[firstDay.lessons.length - 1];
       lesson.original_lesson = { subject: lesson.subject, teacher: lesson.teacher, room: lesson.room };
       lesson.substitution = { source: 'Schulportal', date: firstDay.date, periods: [], classes: '9C', subject: lesson.subject, oldSubject: lesson.subject, teacher: lesson.teacher || '', oldTeacher: lesson.teacher || '', room: 'B105', kind: 'Raumwechsel', info: '', group: '', cancelled: false };
       lesson.room = 'B105';
     }
-    return { status: 200, data: { success: true, days, week_start: template[0].date, active_week: 'A', has_alternating_weeks: hasAlternatingWeeks, exams: mockStudyGroupExams, substitution_sources: [{ name: 'Schulportal', error: false, updated: now.toISOString() }, { name: 'DSB', error: false, updated: now.toISOString() }] } };
+    return { status: 200, data: { success: true, days, week_start: template[0].date, active_week: 'A', has_alternating_weeks: hasAlternatingWeeks, exams: mockStudyGroupExams, substitution_sources: config?.params?.show_substitutions === false ? [] : [{ name: 'Schulportal', error: false, updated: now.toISOString() }, { name: 'DSB', error: false, updated: now.toISOString() }] } };
   }
   if (u === '/stundenplan' && method === 'get') {
     const days = getMockTimetable();

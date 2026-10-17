@@ -65,6 +65,7 @@ export interface LoginResponse {
   school_id: string;
   username: string;
   encryption_ready: boolean;
+  is_first_school_user?: boolean;
   expires_in: number;
 }
 
@@ -75,6 +76,19 @@ export interface TokenRefreshRequest {
 export interface TokenRefreshResponse {
   access_token: string;
   expires_in: number;
+}
+
+export interface AccountExport {
+  schema_version: number;
+  generated_at: string;
+  account: {
+    school_id: string | null;
+    username: string | null;
+    credential_stored: boolean;
+    credential_created_at: string | null;
+    credential_expires_at: string | null;
+  };
+  [key: string]: unknown;
 }
 
 export interface User {
@@ -104,6 +118,8 @@ export interface UserPreferences {
     pinned_modules: string[];
     hidden_modules: string[];
     view_mode: DashboardViewMode;
+    show_search: boolean;
+    show_subtitle: boolean;
     notifications_enabled: boolean;
     notification_messages_enabled: boolean;
     notification_native_enabled: boolean;
@@ -114,6 +130,7 @@ export interface UserPreferences {
   timetable: {
     view_mode: TimetableViewMode;
     layout_mode: TimetableLayoutMode;
+    show_substitutions: boolean;
     show_homework: boolean;
     show_exams: boolean;
     class_colors: Record<string, string>;
@@ -456,12 +473,21 @@ export interface CourseEntry {
   datum: string;
   homework: string;
   homework_done: boolean;
+  search_text?: string;
 }
 
 export interface CoursesResponse {
   success: boolean;
   entries: CourseEntry[];
   entry_count: number;
+  courses?: Array<{
+    book_id: string;
+    name?: string;
+    course_link?: string;
+    teacher_full_name?: string;
+    teacher_short?: string;
+  }>;
+  course_count?: number;
 }
 
 export interface AttendanceCourse {
@@ -592,7 +618,7 @@ export interface AuthContextType {
   token: string | null;
   user: User | null;
   login: (credentials: LoginRequest) => Promise<boolean>;
-  logout: () => Promise<void>;
+  logout: (shouldClearStorage?: () => boolean) => Promise<void>;
   refreshToken: () => Promise<boolean>;
 }
 

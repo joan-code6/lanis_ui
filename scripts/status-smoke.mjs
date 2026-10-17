@@ -1,6 +1,7 @@
 // Run against the dev server: STATUS_UI_URL=http://127.0.0.1:5193 node scripts/status-smoke.mjs
 import assert from 'node:assert/strict';
-import puppeteer from 'puppeteer';
+import puppeteer from 'puppeteer-core';
+if (!process.env.CHROME_BIN) throw new Error('Set CHROME_BIN to an installed Chrome executable for this manual smoke check.');
 const browser = await puppeteer.launch({ headless: true, executablePath: process.env.CHROME_BIN, args: ['--no-sandbox'] });
 const origin = process.env.STATUS_UI_URL || 'http://127.0.0.1:5193';
 let mode = 'up';

@@ -28,9 +28,10 @@ import {
 } from '@heroicons/react/24/outline';
 import { Link, useLocation } from 'react-router-dom';
 import GlobalSearch from '../search/GlobalSearch';
-import InstallPrompt from '../pwa/InstallPrompt';
 import OutageNotice from '../status/OutageNotice';
+import { PwaInstallProvider } from '../../contexts/PwaInstallContext';
 import { getModuleAvailability, readModulesCache, writeModulesCache } from '../../utils/moduleCache';
+import { captureAccountDataGeneration } from '../../utils/accountDataWrites';
 import type { CachedModule } from '../../utils/moduleCache';
 import { getThemeIconUrl, getThemeManifestUrl, THEME_COLOR_HEX } from '../../utils/themeAssets';
 import AppIcon from '../AppIcon';
@@ -101,6 +102,7 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
 
   React.useEffect(() => {
     if (!token) return;
+    const writeGeneration = captureAccountDataGeneration();
     const abortController = new AbortController();
     const applyModuleAvailability = (modules: CachedModule[]) => {
       const availability = getModuleAvailability(modules);
@@ -118,7 +120,7 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
         if (abortController.signal.aborted) return;
         if (response.success) {
           applyModuleAvailability(response.modules);
-          writeModulesCache(user, response.modules);
+          writeModulesCache(user, response.modules, writeGeneration);
         }
       } catch (error) {
         if (axios.isCancel(error)) return;
@@ -178,7 +180,8 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
   const isDemo = basePath === '/demo';
 
   return (
-    <div className="flex h-[100dvh] flex-col overflow-hidden bg-surface-50 dark:bg-surface-950">
+    <PwaInstallProvider automaticPromotion={!isDemo}>
+      <div className="flex h-[100dvh] flex-col overflow-hidden bg-surface-50 dark:bg-surface-950">
       {isDemo && <DemoBar />}
       {isSidebarOpen && (
         <div className={'fixed inset-x-0 bottom-0 flex z-40 md:hidden ' + (isDemo ? 'top-10' : 'inset-0')}>
@@ -205,11 +208,11 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
         </button>
         <Link
           to={`${basePath}/dashboard`}
-          className="flex items-center gap-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500/50"
+          className="flex items-center gap-2 rounded-lg focus:outline-none"
           aria-label="Zum Dashboard"
         >
           <AppIcon alt="Schulportal" className="h-7 w-7 rounded-lg" />
-          <span className="text-sm font-semibold text-surface-900 dark:text-surface-100">Schulportal</span>
+          <span className="text-sm font-semibold text-surface-900 dark:text-surface-100">Lanis</span>
         </Link>
         <button
           onClick={() => setIsSearchOpen(true)}
@@ -236,16 +239,23 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
         hasDsbModule={hasDsbModule}
       />
       {isFeedbackOpen && <FeedbackDialog token={token || ''} onClose={closeFeedbackDialog} openerRef={feedbackOpenerRef} />}
-      <pwa-install
-        ref={pwaRef}
-        manifest-url={manifestUrl}
-        name="Lanis"
-        icon={appIconUrl}
-        description="Moderne Benutzeroberfläche für das Schulportal Hessen"
-        install-description="Direkt vom Homescreen öffnen — wie eine echte App."
-      ></pwa-install>
-      <InstallPrompt />
-    </div>
+      {!isDemo && (
+        <pwa-install
+          ref={pwaRef}
+          manifest-url={manifestUrl}
+          manual-apple="true"
+          manual-chrome="true"
+          disable-chrome="true"
+          disable-android-fallback="true"
+          use-local-storage="true"
+          name="Lanis"
+          icon={appIconUrl}
+          description="Moderne Benutzeroberfläche für das Schulportal Hessen"
+          install-description="Direkt vom Homescreen öffnen — wie eine echte App."
+        ></pwa-install>
+      )}
+      </div>
+    </PwaInstallProvider>
   );
 
   function SidebarContent({

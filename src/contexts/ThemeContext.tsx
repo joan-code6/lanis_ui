@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { ThemeColor, ThemeMode } from '../types';
 import { applyThemeAssets, isThemeColor, THEME_COLOR_HEX } from '../utils/themeAssets';
+import { canWriteAccountData, captureAccountDataGeneration } from '../utils/accountDataWrites';
 
 export type { ThemeColor, ThemeMode } from '../types';
 
@@ -94,6 +95,7 @@ function applyPrimaryTheme(color: ThemeColor) {
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [themeMode, setThemeModeState] = useState<ThemeMode>(() => {
+    if (typeof window === 'undefined') return 'system';
     const storedMode = localStorage.getItem(THEME_MODE_KEY);
     if (storedMode === 'system' || storedMode === 'light' || storedMode === 'dark' || storedMode === 'oled') {
       return storedMode;
@@ -104,9 +106,10 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     if (storedDark === 'false') return 'light';
     return 'system';
   });
-  const [systemDark, setSystemDark] = useState(() => window.matchMedia('(prefers-color-scheme: dark)').matches);
+  const [systemDark, setSystemDark] = useState(() => typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches);
 
   const [themeColor, setThemeColorState] = useState<ThemeColor>(() => {
+    if (typeof window === 'undefined') return 'ruby';
     const storedTheme = localStorage.getItem(THEME_COLOR_KEY);
     return isThemeColor(storedTheme) ? storedTheme : 'ruby';
   });
@@ -116,6 +119,8 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const setThemeMode = useCallback((mode: ThemeMode) => {
     setThemeModeState(mode);
+    const generation = captureAccountDataGeneration();
+    if (!canWriteAccountData(generation)) return;
     localStorage.setItem(THEME_MODE_KEY, mode);
     localStorage.setItem(OLED_MODE_KEY, String(mode === 'oled'));
     if (mode === 'system') localStorage.removeItem(DARK_MODE_KEY);
@@ -132,6 +137,8 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const setThemeColor = useCallback((color: ThemeColor) => {
     setThemeColorState(color);
+    const generation = captureAccountDataGeneration();
+    if (!canWriteAccountData(generation)) return;
     localStorage.setItem(THEME_COLOR_KEY, color);
     applyPrimaryTheme(color);
   }, []);

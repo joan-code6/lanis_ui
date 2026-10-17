@@ -22,9 +22,10 @@ const SEO: React.FC<SEOProps> = ({
   noindex = false,
   structuredData,
 }) => {
-  const isStandalone =
+  const isStandalone = typeof window !== 'undefined' && (
     window.matchMedia('(display-mode: standalone)').matches ||
-    (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
+    (window.navigator as Navigator & { standalone?: boolean }).standalone === true
+  );
   const fullTitle = isStandalone ? title : `${title} | ${SITE_NAME}`;
   const url = `${BASE_URL}${path}`;
   const imageUrl = image.startsWith('http') ? image : `${BASE_URL}${image}`;

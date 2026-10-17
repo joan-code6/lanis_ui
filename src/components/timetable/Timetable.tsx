@@ -61,7 +61,7 @@ const Timetable: React.FC = () => {
     setSubstitutionSources([]);
 
     const refresh = refreshTracker.current.shouldRefresh(reloadKey);
-    timetableAPI.getResolvedTimetable(token, { view_mode: timetableViewMode, plan_mode: planMode, week_type: selectedWeek, refresh }, controller.signal)
+    timetableAPI.getResolvedTimetable(token, { view_mode: timetableViewMode, plan_mode: planMode, show_substitutions: preferences.timetable.show_substitutions, week_type: selectedWeek, refresh }, controller.signal)
       .then(response => {
         if (controller.signal.aborted) return;
         if (!response.success) throw new Error(response.message || 'Der Stundenplan konnte nicht geladen werden.');
@@ -84,7 +84,7 @@ const Timetable: React.FC = () => {
       });
 
     return () => controller.abort();
-  }, [token, reloadKey, timetableViewMode, planMode, selectedWeek, preferences.vertretungsplan.class_override]);
+  }, [token, reloadKey, timetableViewMode, planMode, selectedWeek, preferences.vertretungsplan.class_override, preferences.timetable.show_substitutions]);
 
   const weekOverride = timetableViewMode === 'week' && hasAlternatingWeeks ? selectedWeek : undefined;
   const displayedExams = preferences.timetable.show_exams ? exams : [];
@@ -127,7 +127,9 @@ const Timetable: React.FC = () => {
             {firstVisibleDate && lastVisibleDate && (
               <span>{format(firstVisibleDate, "d. MMMM", { locale: de })} – {format(lastVisibleDate, "d. MMMM yyyy", { locale: de })}</span>
             )}
-            {displayedWeekTypes.map(week => <span key={week} className="badge badge-primary">{week}-Woche</span>)}
+            {timetableViewMode === 'week' && displayedWeekTypes.map(week => (
+              <span key={week} className="badge badge-primary">{week}-Woche</span>
+            ))}
           </div>
 
         </header>

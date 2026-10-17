@@ -5,6 +5,7 @@ import { authAPI, messagesAPI, calendarAPI, coursesAPI, appsAPI, searchAPI, stud
 import type { SemanticSearchResult } from '../../services/api';
 import { readModulesCache } from '../../utils/moduleCache';
 import type { CachedModule } from '../../utils/moduleCache';
+import { normalizeCourseList } from '../../utils/courseNormalization';
 import {
   MagnifyingGlassIcon,
   HomeIcon,
@@ -394,7 +395,7 @@ export default function GlobalSearch({
             href: `/calendar?event=${encodeURIComponent(event.id)}`,
           }))),
         coursesAPI.getCourses(token, controller.signal).then(res =>
-          !res.success ? [] : res.entries.filter(entry => searchText(query, entry)).map(entry => ({
+          !res.success ? [] : normalizeCourseList(res).filter(entry => searchText(query, entry)).map(entry => ({
             id: `api-crs-${entry.entry_id || entry.book_id}`, title: entry.name,
             subtitle: entry.teacher_full_name || entry.teacher_short || entry.thema || '',
             category: 'Unterricht', icon: AcademicCapIcon, href: `/courses/${entry.book_id}`,
