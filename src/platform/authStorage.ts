@@ -1,6 +1,6 @@
 import { isAndroid, LanisNative, type NativeSession } from './native';
 
-const keys = ['auth_access_token', 'auth_refresh_token', 'auth_expires_at', 'auth_user'];
+const keys = ['auth_access_token', 'auth_refresh_token', 'auth_expires_at', 'auth_user', '__lanis_account_deletion_recovery'];
 let values: NativeSession = {};
 let writes: Promise<void> = Promise.resolve();
 let persistenceError: unknown;
@@ -49,11 +49,14 @@ export async function flushAuthStorage(): Promise<void> {
   if (persistenceError) throw new Error('Die Anmeldung konnte nicht sicher gespeichert werden. Bitte erneut versuchen.');
 }
 
-export async function clearNativeSession(): Promise<void> {
+export async function clearNativeSession(preserveDeletionRecovery = false): Promise<void> {
   if (!isAndroid) return;
-  values = {};
+  const recoveryKey = '__lanis_account_deletion_recovery';
+  const recovery = preserveDeletionRecovery ? values[recoveryKey] : undefined;
+  values = recovery ? { [recoveryKey]: recovery } : {};
   await writes;
   await LanisNative.clearSession();
+  if (recovery) await LanisNative.saveSession({ values: { ...values }, backend });
   persistenceError = undefined;
 }
 

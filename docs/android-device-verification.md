@@ -48,8 +48,6 @@ The user supplied the test account separately after the first pass. Credentials 
 - Reduced the footer to the privacy link, shortened selected-school text, and improved placeholder contrast.
 - Android verification and all 12 existing tests passed; the scoped design detector reported no findings.
 
-## Remaining release checks
-
 ## Timetable and search continuation — 17 October
 
 - Added phone day buttons to jump directly to a timetable day. Selecting Thursday moved the card scroller to Thursday; scrolling back updated the selected day, and refreshing preserved the chosen day. The tablet keeps its existing grid without the phone picker.
@@ -59,6 +57,19 @@ The user supplied the test account separately after the first pass. Credentials 
 - Other module results use the dashboard's existing module-opening handler. The Klassenbuch demo result opened its external-module preview, consumed its query parameter, and Android Back closed the preview without leaving the demo dashboard.
 - Android verification, the 7 native model tests, the 5 frontend tests, and `git diff --check` passed. The scoped detector found only the existing timetable accent border.
 
+## Current-main integration — 17 October
+
+- Integrated main at `3121cad6`, retaining its account-deletion lifecycle, onboarding, search-visibility preferences, timetable substitutions, PWA installation flow, and nine themes.
+- Account lifecycle operations use the Android encrypted vault. Deletion recovery proofs stay outside WebView storage, persist through partial cleanup, and block native background sync until resolved. Logout retains the generation guards and clears the native session/cache/widgets.
+- Added Android launcher aliases and widget artwork for Coral, Blush, and Moss. All three changed the launcher alias while the foreground app remained open.
+- Kept web installation prompts out of Android. Removed a duplicate account-settings row introduced by the automatic merge.
+- Increased mobile menu/search targets to 44px and exposed the selected colour to assistive technology. The login backend disclosure wraps at readable size.
+- Tablet timetable now uses three columns at 1280 CSS pixels, with five on wider screens. Short homework labels and wrapping lesson headers eliminate the clipped labels observed on the device; no text clipping or page overflow was measured after the fix.
+- Real-account sign-in succeeded after integration, populated five native timetable days, and left zero authentication/recovery keys in WebView storage. Authenticated settings loaded with one account row and no general error. Logout returned to login with zero native session keys, no cache, and a zero update timestamp.
+- `npm run android:verify`, the five frontend tests, account lifecycle regression checks, encrypted native-storage regression checks, and `git diff --check` passed. Both Device Hub emulators ran the rebuilt APK.
+
+## Remaining release checks
+
 Switching between different accounts, expired/revoked sessions, scheduled WorkManager execution under battery restrictions, and long-duration notification/background delivery still need device coverage. Demo checks above are presentation checks only.
 
-Firebase configuration remains absent, so real push registration/delivery is untested. iOS simulators are unavailable on Windows. This continuation does not integrate the PR's older branch with current `main`; review that integration before merging.
+Firebase configuration remains absent, so real push registration/delivery is untested. iOS simulators are unavailable on Windows.

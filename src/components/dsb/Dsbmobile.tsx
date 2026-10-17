@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { dsbAPI } from '../../services/api';
+import { dashboardAPI, dsbAPI } from '../../services/api';
 import axios from 'axios';
 import { DSBPlanTable } from '../../types';
 import SEO from '../seo/SEO';
@@ -20,6 +20,15 @@ const Dsbmobile: React.FC = () => {
   const [showAllClasses, setShowAllClasses] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
   const userClass = user?.klasse || user?.class || user?.Klasse || '';
+
+  useEffect(() => {
+    if (!token) return;
+    void dashboardAPI.getNotifications(token, true, ['dsb'], true)
+      .then(() => dashboardAPI.markAllNotificationsRead(token, ['dsb']))
+      .catch(error => {
+        console.error('Failed to mark DSB notifications as read:', error);
+      });
+  }, [token]);
 
   useEffect(() => {
     if (!token) return;

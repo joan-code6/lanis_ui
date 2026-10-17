@@ -1,6 +1,4 @@
 User-agent: *
 Allow: /
 Disallow: /login
-Disallow: /impressum
-
 Sitemap: https://lanis.arg-server.de/sitemap.xml

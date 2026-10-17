@@ -25,6 +25,16 @@ window.addEventListener('storage', (event) => {
   }
 })
 
+const appRoot = document.getElementById('root')!
+const bootObserver = new MutationObserver((mutations) => {
+  // Keep the cover during redirects, which can briefly leave the root empty.
+  if (mutations.some((mutation) => mutation.target === appRoot) && appRoot.childElementCount > 0) {
+    document.documentElement.classList.remove('js-booting')
+    bootObserver.disconnect()
+  }
+})
+bootObserver.observe(appRoot, { childList: true })
+
 async function start() {
   if (androidPresentation) document.documentElement.classList.add('android-app');
   if (isAndroid) {

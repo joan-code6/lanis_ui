@@ -64,7 +64,7 @@ const Timetable: React.FC = () => {
     setSubstitutionSources([]);
 
     const refresh = refreshTracker.current.shouldRefresh(reloadKey);
-    timetableAPI.getResolvedTimetable(token, { view_mode: timetableViewMode, plan_mode: planMode, week_type: selectedWeek, refresh }, controller.signal)
+    timetableAPI.getResolvedTimetable(token, { view_mode: timetableViewMode, plan_mode: planMode, show_substitutions: preferences.timetable.show_substitutions, week_type: selectedWeek, refresh }, controller.signal)
       .then(response => {
         if (controller.signal.aborted) return;
         if (!response.success) throw new Error(response.message || 'Der Stundenplan konnte nicht geladen werden.');
@@ -88,7 +88,7 @@ const Timetable: React.FC = () => {
       });
 
     return () => controller.abort();
-  }, [token, reloadKey, timetableViewMode, planMode, selectedWeek, preferences.vertretungsplan.class_override]);
+  }, [token, reloadKey, timetableViewMode, planMode, selectedWeek, preferences.vertretungsplan.class_override, preferences.timetable.show_substitutions]);
 
   useEffect(() => {
     const refresh = () => setReloadKey(value => value + 1);
@@ -156,7 +156,9 @@ const Timetable: React.FC = () => {
             {firstVisibleDate && lastVisibleDate && (
               <span>{format(firstVisibleDate, "d. MMMM", { locale: de })} – {format(lastVisibleDate, "d. MMMM yyyy", { locale: de })}</span>
             )}
-            {displayedWeekTypes.map(week => <span key={week} className="badge badge-primary">{week}-Woche</span>)}
+            {timetableViewMode === 'week' && displayedWeekTypes.map(week => (
+              <span key={week} className="badge badge-primary">{week}-Woche</span>
+            ))}
           </div>
 
         </header>
@@ -239,7 +241,7 @@ const Timetable: React.FC = () => {
             const nearest = [...scroller.querySelectorAll<HTMLElement>('[data-date]')].reduce<HTMLElement | undefined>((best, card) => !best || Math.abs(card.getBoundingClientRect().left - left) < Math.abs(best.getBoundingClientRect().left - left) ? card : best, undefined);
             const date = nearest?.dataset.date;
             if (date && date !== selectedDayRef.current) { selectedDayRef.current = date; setSelectedDay(date); }
-          }} className="scrollbar-hide -mx-3 flex snap-x snap-mandatory gap-3 overflow-x-auto px-3 pb-3 sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 sm:pb-0 md:gap-4 xl:grid-cols-5">
+          }} className="scrollbar-hide -mx-3 flex snap-x snap-mandatory gap-3 overflow-x-auto px-3 pb-3 sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 sm:pb-0 md:gap-4 xl:grid-cols-3 2xl:grid-cols-5">
             {visibleDays.map(day => {
               const date = new Date(`${day.date}T12:00:00`);
               const today = isToday(date);
@@ -262,7 +264,7 @@ const Timetable: React.FC = () => {
                     </div>)}
                     {timetableEntries(day.lessons, displayedExams.filter(exam => exam.date === day.date), timeSlots).map(({ lesson, exam, replaced }, index) => exam ? (
                       <article key={`exam-${exam.id}-${index}`} className="rounded-xl border border-violet-200 bg-violet-50 p-3 dark:border-violet-800 dark:bg-violet-950/40">
-                        <div className="mb-2 flex items-start justify-between gap-2">
+                        <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
                           <p className="flex items-center gap-1.5 text-xs font-semibold text-violet-700 dark:text-violet-300"><AcademicCapIcon className="h-4 w-4" aria-hidden="true" />{exam.type || 'Klausur'}</p>
                           {lesson.period != null && <span className="badge badge-surface">{lesson.period} Std.</span>}
                         </div>
@@ -296,7 +298,7 @@ const Timetable: React.FC = () => {
                           }
                         }}
                       >
-                        <div className="mb-2 flex items-start justify-between gap-2">
+                        <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
                           <div>
                             <p className={`font-semibold text-surface-900 dark:text-white ${lesson.cancelled ? 'line-through' : ''}`}>{lesson.subject}</p>
                             {lesson.class_name && <p className="text-xs text-surface-500">{lesson.class_name}</p>}
@@ -370,11 +372,11 @@ const HomeworkPreview: React.FC<{ homework?: TimetableLesson['homework']; compac
   const allDone = homework.every(item => item.done);
 
   return (
-    <div className={`${compact ? 'mt-1 p-1 sm:mt-2 sm:p-2' : 'mt-3 p-2.5'} rounded-lg border-l-4 text-left ${allDone ? 'border-emerald-400 bg-emerald-50 dark:border-emerald-500 dark:bg-emerald-950/35' : 'border-amber-400 bg-amber-50 dark:border-amber-500 dark:bg-amber-950/35'}`}>
-      <div className={`flex items-center justify-between gap-1 font-semibold uppercase tracking-wide ${allDone ? 'text-emerald-800 dark:text-emerald-200' : 'text-amber-800 dark:text-amber-200'} ${compact ? 'text-[8px] sm:text-[10px]' : 'text-[10px]'}`}>
-        <span className="flex items-center gap-1"><BookOpenIcon className={compact ? 'h-2.5 w-2.5 sm:h-3 sm:w-3' : 'h-3.5 w-3.5'} />{compact ? 'Hausaufgabe' : 'Hausaufgabe · nächste Stunde'}</span>
+    <div className={`${compact ? 'mt-1 p-1 sm:mt-2 sm:p-2' : 'mt-3 p-2.5'} min-w-0 rounded-lg border text-left ${allDone ? 'border-emerald-400 bg-emerald-50 dark:border-emerald-500 dark:bg-emerald-950/35' : 'border-amber-400 bg-amber-50 dark:border-amber-500 dark:bg-amber-950/35'}`}>
+      <div className={`flex flex-wrap items-center justify-between gap-x-2 gap-y-1 font-semibold ${allDone ? 'text-emerald-800 dark:text-emerald-200' : 'text-amber-800 dark:text-amber-200'} ${compact ? 'text-[8px] sm:text-[10px]' : 'text-xs'}`}>
+        <span className="flex items-center gap-1"><BookOpenIcon className={compact ? 'h-2.5 w-2.5 sm:h-3 sm:w-3' : 'h-3.5 w-3.5 shrink-0'} />Hausaufgabe</span>
         <span className={`flex items-center gap-0.5 ${allDone ? 'text-emerald-700 dark:text-emerald-300' : 'text-amber-700 dark:text-amber-300'}`}>
-          {allDone && <CheckCircleIcon className={compact ? 'h-2.5 w-2.5 sm:h-3 sm:w-3' : 'h-3.5 w-3.5'} />}
+          {allDone && <CheckCircleIcon className={compact ? 'h-2.5 w-2.5 sm:h-3 sm:w-3' : 'h-3.5 w-3.5 shrink-0'} />}
           {allDone ? 'Erledigt' : 'Offen'}
         </span>
       </div>

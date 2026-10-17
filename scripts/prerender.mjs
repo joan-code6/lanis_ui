@@ -37,6 +37,77 @@ function serveFile(filePath, res) {
   res.end(content);
 }
 
+function staticSeoRoutes() {
+  return [
+    {
+      path: '/',
+      file: 'index.html',
+      title: 'Das Schulportal Hessen, neu gedacht | Lanis',
+      description: 'Lanis ist die modernere, inoffizielle Oberfläche für das Schulportal Hessen: Hausaufgaben direkt im Stundenplan, Push-Benachrichtigungen und schnellere Ladezeiten.',
+      content: `<main style="max-width:72rem;margin:0 auto;padding:2rem 1.5rem 4rem;font-family:system-ui,sans-serif;color:#1a1a1a;line-height:1.65">
+        <nav style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5rem"><a href="/" style="font-weight:700;color:inherit;text-decoration:none">Lanis</a><a href="/login">Login</a></nav>
+        <header style="max-width:52rem;margin-bottom:5rem"><h1 style="font-size:clamp(2.5rem,7vw,5rem);line-height:1.05;letter-spacing:-.04em;margin:0 0 1.5rem">Schulportal 2.0 – modern und verlässlich</h1><p style="font-size:1.25rem;color:#555">Die gleichen Daten und Funktionen des Schulportals Hessen – mit einer klareren Oberfläche, schnellerem Zugriff und weniger Klicks.</p><p><a href="/login">Lanis jetzt nutzen</a> · <a href="/demo">Demo ansehen</a></p></header>
+        <section><h2>Hausaufgaben direkt im Stundenplan</h2><p>Sieh auf einen Blick, welche Aufgaben anstehen, und hake Erledigtes direkt ab.</p></section>
+        <section><h2>Wichtige Änderungen mitbekommen</h2><p>Web-Push-Benachrichtigungen informieren dich über neue Nachrichten und Änderungen am Vertretungsplan.</p></section>
+        <section><h2>Deine Daten bleiben verfügbar</h2><p>Bereits geladene Inhalte bleiben bei Störungen des Schulportals bis zu 24 Stunden verfügbar.</p></section>
+        <section><h2>Schneller zu deinen Modulen</h2><p>Direkte Navigation, globale Suche und anpinnbare Module bringen dich mit wenigen Klicks ans Ziel.</p></section>
+        <section><h2>Ein Design, das zu dir passt</h2><p>Dark Mode und sechs Farbthemen sorgen für eine aufgeräumte, anpassbare Oberfläche.</p></section>
+        <footer style="margin-top:5rem;border-top:1px solid #ddd;padding-top:1.5rem"><a href="/status">Status des Schulportals Hessen</a> · <a href="/impressum">Impressum</a> · <a href="/privacy-policy">Datenschutz</a></footer>
+      </main>`,
+    },
+    {
+      path: '/status',
+      file: 'status/index.html',
+      title: 'Schulportal Hessen Status & Uptime | Lanis',
+      description: 'Aktuelle Verfügbarkeit und Störungen des Schulportal Hessen. Beobachte den Status von Anmeldung und Modulen sowie den Verlauf der letzten 24 Stunden bis 90 Tage.',
+      structuredData: {
+        '@context': 'https://schema.org',
+        '@type': 'WebPage',
+        name: 'Schulportal Hessen Status & Uptime',
+        description: 'Uptime, Verfügbarkeit und aktuelle Störungen des Schulportal Hessen – ein Status-Feature von Lanis.',
+        url: 'https://lanis.arg-server.de/status',
+        isPartOf: { '@type': 'WebSite', name: 'Lanis', url: 'https://lanis.arg-server.de' },
+      },
+      content: `<main style="max-width:56rem;margin:0 auto;padding:2rem 1.5rem 4rem;font-family:system-ui,sans-serif;color:#1a1a1a;line-height:1.65">
+        <nav style="margin-bottom:4rem"><a href="/" style="font-weight:700;color:inherit;text-decoration:none">Lanis</a></nav>
+        <h1 style="font-size:clamp(2.25rem,6vw,3.5rem);line-height:1.1;letter-spacing:-.03em">Schulportal Hessen Status</h1>
+        <p>Diese Statusseite überwacht die Erreichbarkeit der Anmeldung und der Module des Schulportal Hessen.</p>
+        <h2>Verfügbarkeit und Verlauf</h2>
+        <p>Die Lanis-Statusseite zeigt aktuelle Verfügbarkeit, bestätigte Störungen und den Messverlauf für 24 Stunden, 7 Tage, 30 Tage und 90 Tage. Die Live-Messwerte werden nach dem Laden der Seite ergänzt.</p>
+        <p><a href="/">Mehr über Lanis</a> · <a href="/login">Zur App</a></p>
+      </main>`,
+    },
+  ];
+}
+
+function writeStaticSeoFallbacks() {
+  const baseHtml = readFileSync(join(distDir, 'index.html'), 'utf-8');
+  for (const route of staticSeoRoutes()) {
+    let html = baseHtml
+      .replace(/<title>[\s\S]*?<\/title>/i, `<title>${route.title}</title>`)
+      .replace(/<meta name="description" content="[^"]*"\s*\/>/i, `<meta name="description" content="${route.description}" />`)
+      .replace(/<link rel="canonical" href="[^"]*"\s*\/>/i, `<link rel="canonical" href="https://lanis.arg-server.de${route.path}" />`)
+      .replace(/<meta property="og:title" content="[^"]*"\s*\/>/i, `<meta property="og:title" content="${route.title}" />`)
+      .replace(/<meta property="og:description" content="[^"]*"\s*\/>/i, `<meta property="og:description" content="${route.description}" />`)
+      .replace(/<meta property="og:url" content="[^"]*"\s*\/>/i, `<meta property="og:url" content="https://lanis.arg-server.de${route.path}" />`)
+      .replace(/<meta name="twitter:title" content="[^"]*"\s*\/>/i, `<meta name="twitter:title" content="${route.title}" />`)
+      .replace(/<meta name="twitter:description" content="[^"]*"\s*\/>/i, `<meta name="twitter:description" content="${route.description}" />`);
+
+    if (!html.includes('<div id="root"></div>')) {
+      throw new Error(`Could not find the root mount in dist/${route.file}`);
+    }
+    html = html.replace('<div id="root"></div>', `<div id="root">${route.content}</div>`);
+    if (route.structuredData) {
+      html = html.replace('</head>', `    <script type="application/ld+json">${JSON.stringify(route.structuredData)}</script>\n  </head>`);
+    }
+
+    const outputPath = join(distDir, ...route.file.split('/'));
+    mkdirSync(dirname(outputPath), { recursive: true });
+    writeFileSync(outputPath, html, 'utf-8');
+    console.log(`  Wrote crawlable fallback for ${route.path} -> dist/${route.file}`);
+  }
+}
+
 const server = createServer((req, res) => {
   const url = new URL(req.url, `http://localhost:${port}`);
   let pathname = url.pathname;
@@ -106,7 +177,6 @@ async function prerender() {
   await new Promise((resolve) => server.listen(port, resolve));
   console.log(`Server running at http://localhost:${port}`);
 
-  const strictPrerender = process.env.PRERENDER_STRICT === '1';
   let browser;
 
   try {
@@ -116,10 +186,9 @@ async function prerender() {
     });
   } catch (error) {
     server.close();
-    if (!strictPrerender && hasUnavailableBrowser(error)) {
-      console.warn('\nSkipping prerender: Chrome or its runtime dependencies are unavailable in this build environment.');
-      console.warn('Install the Puppeteer browser and its system libraries to enable prerendering.');
-      console.warn('Set PRERENDER_STRICT=1 to fail the build instead.');
+    if (hasUnavailableBrowser(error)) {
+      console.warn('\nChrome is unavailable; writing static, route-specific SEO HTML instead.');
+      writeStaticSeoFallbacks();
       return;
     }
     throw error;

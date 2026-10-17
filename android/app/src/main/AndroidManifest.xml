@@ -64,6 +64,18 @@
             <intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter>
             <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />
         </activity-alias>
+        <activity-alias android:name=".Launcher_coral" android:targetActivity=".LauncherActivity" android:enabled="false" android:exported="true" android:icon="@mipmap/ic_launcher_coral" android:roundIcon="@mipmap/ic_launcher_coral" android:label="@string/app_name">
+            <intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter>
+            <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />
+        </activity-alias>
+        <activity-alias android:name=".Launcher_blush" android:targetActivity=".LauncherActivity" android:enabled="false" android:exported="true" android:icon="@mipmap/ic_launcher_blush" android:roundIcon="@mipmap/ic_launcher_blush" android:label="@string/app_name">
+            <intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter>
+            <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />
+        </activity-alias>
+        <activity-alias android:name=".Launcher_moss" android:targetActivity=".LauncherActivity" android:enabled="false" android:exported="true" android:icon="@mipmap/ic_launcher_moss" android:roundIcon="@mipmap/ic_launcher_moss" android:label="@string/app_name">
+            <intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter>
+            <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />
+        </activity-alias>
 
         <meta-data android:name="firebase_messaging_auto_init_enabled" android:value="false" />
         <meta-data android:name="firebase_analytics_collection_enabled" android:value="false" />

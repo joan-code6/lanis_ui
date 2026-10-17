@@ -1,4 +1,6 @@
 import type { Module } from '../types';
+import { canWriteAccountData, captureAccountDataGeneration } from './accountDataWrites';
+import { notifyDemoCacheWrite } from './demoMode';
 
 export type CachedModule = Module;
 
@@ -67,11 +69,18 @@ export function readModulesCache(owner: ModuleCacheOwner | null): CachedModule[]
   }
 }
 
-export function writeModulesCache(owner: ModuleCacheOwner | null, modules: CachedModule[]): void {
+export function writeModulesCache(
+  owner: ModuleCacheOwner | null,
+  modules: CachedModule[],
+  generation = captureAccountDataGeneration(),
+): void {
+  if (!canWriteAccountData(generation)) return;
   const key = cacheKey(owner);
   if (!key) return;
   try {
-    localStorage.setItem(key, JSON.stringify(modules));
+    const value = JSON.stringify(modules);
+    notifyDemoCacheWrite(key, value);
+    localStorage.setItem(key, value);
   } catch {
     // Caching is optional; live module discovery remains authoritative.
   }

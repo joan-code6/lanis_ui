@@ -26,6 +26,7 @@ test('revocation, validation errors and alternate plans never use cached persona
   assert.equal(canUseOfflineTimetable(undefined, { plan_mode: 'all' }, false), false);
   assert.equal(canUseOfflineTimetable(undefined, { plan_mode: 'personal', week_type: 'B' }, false), false);
   assert.equal(canUseOfflineTimetable(undefined, { plan_mode: 'personal' }, true), false);
+  assert.equal(canUseOfflineTimetable(undefined, { plan_mode: 'personal', show_substitutions: false }, false), false);
 });
 
 import { normalizeAndroidTabs } from '../src/platform/androidNavigation';

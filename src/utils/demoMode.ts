@@ -3,6 +3,20 @@ export const DEMO_TAB_ID_KEY = '__demo_tab_id';
 const DEMO_ACTIVE_SESSION_KEY = '__demo_active_session';
 const DEMO_HEARTBEAT_INTERVAL = 5000;
 const DEMO_HEARTBEAT_TTL = 15000;
+let demoCacheWriteListener: ((key: string, value: string) => void) | null = null;
+
+export const registerDemoCacheWriteListener = (
+  listener: (key: string, value: string) => void,
+): (() => void) => {
+  demoCacheWriteListener = listener;
+  return () => {
+    if (demoCacheWriteListener === listener) demoCacheWriteListener = null;
+  };
+};
+
+export const notifyDemoCacheWrite = (key: string, value: string): void => {
+  if (isDemoRoute()) demoCacheWriteListener?.(key, value);
+};
 
 export const isDemoRoute = (): boolean => {
   if (typeof window === 'undefined') return false;

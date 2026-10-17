@@ -99,6 +99,9 @@ object Widgets {
         views.setInt(R.id.widget_root, "setBackgroundResource", if (state.optBoolean("oled")) R.drawable.widget_background_oled else if (dark) R.drawable.widget_background_dark else R.drawable.widget_background)
         views.setTextViewText(R.id.widget_title, title)
         val icon = when (state.optString("theme", "ruby")) {
+            "coral" -> R.drawable.ic_lanis_coral
+            "blush" -> R.drawable.ic_lanis_blush
+            "moss" -> R.drawable.ic_lanis_moss
             "cyan" -> R.drawable.ic_lanis_cyan
             "emerald" -> R.drawable.ic_lanis_emerald
             "sapphire" -> R.drawable.ic_lanis_sapphire

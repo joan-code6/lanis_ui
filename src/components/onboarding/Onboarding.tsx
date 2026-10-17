@@ -4,15 +4,13 @@ import {
   AcademicCapIcon,
   ArrowLeftIcon,
   ArrowRightIcon,
-  Bars3Icon,
   BookOpenIcon,
   CalendarDaysIcon,
   CheckCircleIcon,
   CheckIcon,
-  CloudArrowUpIcon,
   Cog6ToothIcon,
+  CloudArrowUpIcon,
   EyeSlashIcon,
-  MagnifyingGlassIcon,
   PaintBrushIcon,
   SparklesIcon,
   Squares2X2Icon,
@@ -27,13 +25,12 @@ import SEO from '../seo/SEO';
 import ModuleIcon from '../dashboard/ModuleIcon';
 import AppIcon from '../AppIcon';
 
-const steps: Array<{ id: Exclude<OnboardingStep, 'complete'>; label: string }> = [
+const baseSteps: Array<{ id: Exclude<OnboardingStep, 'complete'>; label: string }> = [
   { id: 'welcome', label: 'Start' },
   { id: 'appearance', label: 'Aussehen' },
   { id: 'dashboard', label: 'Favoriten' },
   { id: 'timetable', label: 'Stundenplan' },
   { id: 'homework', label: 'Hausaufgaben' },
-  { id: 'guide', label: 'Loslegen' },
 ];
 
 const themeModes: Array<{ id: ThemeMode; label: string; note: string }> = [
@@ -43,35 +40,36 @@ const themeModes: Array<{ id: ThemeMode; label: string; note: string }> = [
   { id: 'oled', label: 'OLED', note: 'Echtes Schwarz' },
 ];
 
-const themeColors: Array<{ id: ThemeColor; label: string; hex: string }> = [
+const themeColors: Array<{ id: ThemeColor; label: string; hex: string; checkClass?: string }> = [
   { id: 'cyan', label: 'Cyan', hex: '#06b6d4' },
   { id: 'sapphire', label: 'Saphir', hex: '#3b82f6' },
   { id: 'emerald', label: 'Smaragd', hex: '#10b981' },
   { id: 'amethyst', label: 'Amethyst', hex: '#a855f7' },
   { id: 'ruby', label: 'Rubin', hex: '#f43f5e' },
   { id: 'amber', label: 'Bernstein', hex: '#f59e0b' },
+  { id: 'coral', label: 'Koralle', hex: '#f88379' },
+  { id: 'blush', label: 'Blush', hex: '#fee3ea', checkClass: 'text-surface-800' },
 ];
-
-const recommendedModule = (name: string) => {
-  const normalized = name.toLowerCase();
-  return ['nachrichten', 'stundenplan', 'mein unterricht', 'kalender']
-    .some(candidate => normalized.includes(candidate));
-};
 
 const Onboarding: React.FC = () => {
   const navigate = useNavigate();
   const { token, user } = useAuth();
+  // Keep the persisted guide ID compatible with onboarding already in progress.
+  const steps = user?.is_first_school_user === 'true'
+    ? [...baseSteps, { id: 'guide' as const, label: 'Deine Schule' }]
+    : baseSteps;
   const { preferences, updatePreferences, isLoading, syncError } = usePreferences();
   const { setThemeColor, setThemeMode } = useTheme();
   const resumedStep = preferences.onboarding.status === 'in_progress'
     ? steps.findIndex(step => step.id === preferences.onboarding.last_step)
     : 0;
-  const [stepIndex, setStepIndex] = useState(resumedStep >= 0 ? resumedStep : 0);
+  const [stepIndex, setStepIndex] = useState(resumedStep >= 0 ? resumedStep : steps.length - 1);
   const [themeMode, setDraftThemeMode] = useState(preferences.appearance.theme_mode);
-  const [themeColor, setDraftThemeColor] = useState(preferences.appearance.theme_color);
+  const [themeColor, setDraftThemeColor] = useState<ThemeColor | null>(null);
   const [pinnedModules, setPinnedModules] = useState(preferences.dashboard.pinned_modules);
-  const [timetableMode, setTimetableMode] = useState<TimetableViewMode>(preferences.timetable.view_mode);
-  const [completedHomeworkDisplay, setCompletedHomeworkDisplay] = useState<CompletedHomeworkDisplay>(preferences.homework.completed_display);
+  const [favoritesTouched, setFavoritesTouched] = useState(false);
+  const [timetableMode, setTimetableMode] = useState<TimetableViewMode | null>(null);
+  const [completedHomeworkDisplay, setCompletedHomeworkDisplay] = useState<CompletedHomeworkDisplay | null>(null);
   const [modules, setModules] = useState<Module[]>([]);
   const [modulesLoading, setModulesLoading] = useState(true);
   const [localError, setLocalError] = useState('');
@@ -88,18 +86,19 @@ const Onboarding: React.FC = () => {
     const savedStep = preferences.onboarding.status === 'in_progress'
       ? steps.findIndex(step => step.id === preferences.onboarding.last_step)
       : 0;
-    setStepIndex(savedStep >= 0 ? savedStep : 0);
+    setStepIndex(savedStep >= 0 ? savedStep : steps.length - 1);
     setDraftThemeMode(preferences.appearance.theme_mode);
-    setDraftThemeColor(preferences.appearance.theme_color);
+    setDraftThemeColor(null);
     setPinnedModules(preferences.dashboard.pinned_modules);
-    setTimetableMode(preferences.timetable.view_mode);
-    setCompletedHomeworkDisplay(preferences.homework.completed_display);
-  }, [isLoading, preferences]);
+    setFavoritesTouched(false);
+    setTimetableMode(null);
+    setCompletedHomeworkDisplay(null);
+  }, [isLoading, preferences, user?.is_first_school_user]);
 
   useEffect(() => {
     if (isLoading) return;
     setThemeMode(themeMode);
-    setThemeColor(themeColor);
+    setThemeColor(themeColor || appearanceToRestoreRef.current.theme_color);
   }, [isLoading, setThemeColor, setThemeMode, themeColor, themeMode]);
 
   useEffect(() => () => {
@@ -120,9 +119,6 @@ const Onboarding: React.FC = () => {
       .then(response => {
         if (!response.success) return;
         setModules(response.modules);
-        if (!preferences.dashboard.pinned_modules.length) {
-          setPinnedModules(response.modules.filter(module => recommendedModule(module.name)).slice(0, 4).map(module => module.name));
-        }
       })
       .catch(error => {
         if (!controller.signal.aborted) console.warn('Onboarding modules could not be loaded:', error);
@@ -139,16 +135,16 @@ const Onboarding: React.FC = () => {
     setLocalError('');
     const nextStep = steps[nextIndex]?.id || 'complete';
     const patch: UserPreferencesPatch = activeStep.id === 'appearance'
-      ? { appearance: { theme_mode: themeMode, theme_color: themeColor } }
+      ? { appearance: { theme_mode: themeMode, ...(themeColor ? { theme_color: themeColor } : {}) } }
       : activeStep.id === 'dashboard'
-        ? { dashboard: { pinned_modules: pinnedModules } }
+        ? favoritesTouched ? { dashboard: { pinned_modules: pinnedModules } } : {}
         : activeStep.id === 'timetable'
-          ? { timetable: { view_mode: timetableMode } }
+          ? timetableMode ? { timetable: { view_mode: timetableMode } } : {}
           : activeStep.id === 'homework'
-            ? { homework: { completed_display: completedHomeworkDisplay } }
+            ? completedHomeworkDisplay ? { homework: { completed_display: completedHomeworkDisplay } } : {}
             : {};
     if (activeStep.id === 'appearance') {
-      appearanceToRestoreRef.current = { theme_mode: themeMode, theme_color: themeColor };
+      appearanceToRestoreRef.current = { theme_mode: themeMode, theme_color: themeColor || appearanceToRestoreRef.current.theme_color };
     }
     void updatePreferences({
       ...patch,
@@ -184,12 +180,12 @@ const Onboarding: React.FC = () => {
   };
 
   const complete = () => {
-    appearanceToRestoreRef.current = { theme_mode: themeMode, theme_color: themeColor };
+    appearanceToRestoreRef.current = { theme_mode: themeMode, theme_color: themeColor || originalPreferencesRef.current?.appearance.theme_color || preferences.appearance.theme_color };
     void updatePreferences({
-      appearance: { theme_mode: themeMode, theme_color: themeColor },
-      dashboard: { pinned_modules: pinnedModules },
-      timetable: { view_mode: timetableMode },
-      homework: { completed_display: completedHomeworkDisplay },
+      appearance: { theme_mode: themeMode, ...(themeColor ? { theme_color: themeColor } : {}) },
+      ...(favoritesTouched ? { dashboard: { pinned_modules: pinnedModules } } : {}),
+      ...(timetableMode ? { timetable: { view_mode: timetableMode } } : {}),
+      ...(completedHomeworkDisplay ? { homework: { completed_display: completedHomeworkDisplay } } : {}),
       onboarding: { version: CURRENT_ONBOARDING_VERSION, status: 'completed', last_step: 'complete' },
     });
     navigate('/dashboard', { replace: true });
@@ -197,6 +193,7 @@ const Onboarding: React.FC = () => {
 
   const toggleModule = (name: string) => {
     setLocalError('');
+    setFavoritesTouched(true);
     setPinnedModules(current => {
       if (current.includes(name)) return current.filter(item => item !== name);
       if (current.length >= 6) {
@@ -289,7 +286,7 @@ const Onboarding: React.FC = () => {
                     <div className="flex flex-wrap gap-3">
                       {themeColors.map(color => (
                         <button key={color.id} type="button" onClick={() => setDraftThemeColor(color.id)} className={`group flex items-center gap-2 rounded-full border bg-white py-2 pl-2 pr-3 text-sm font-medium transition-all dark:bg-surface-900 min-[900px]:pr-4 min-[900px]:text-base ${themeColor === color.id ? 'border-primary-500 ring-2 ring-primary-500/15' : 'border-surface-200 dark:border-surface-800'}`} aria-pressed={themeColor === color.id}>
-                          <span className="flex h-7 w-7 items-center justify-center rounded-full min-[900px]:h-8 min-[900px]:w-8" style={{ backgroundColor: color.hex }}>{themeColor === color.id && <CheckIcon className="h-4 w-4 text-white" />}</span>
+                          <span className="flex h-7 w-7 items-center justify-center rounded-full min-[900px]:h-8 min-[900px]:w-8" style={{ backgroundColor: color.hex }}>{themeColor === color.id && <CheckIcon className={`h-4 w-4 ${color.checkClass || 'text-white'}`} />}</span>
                           {color.label}
                         </button>
                       ))}
@@ -366,19 +363,8 @@ const Onboarding: React.FC = () => {
             )}
 
             {activeStep.id === 'guide' && (
-              <div className="max-w-2xl sm:grid sm:max-w-none sm:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] sm:items-start sm:gap-8 min-[900px]:gap-16 xl:gap-24">
-                <StepHeading icon={AcademicCapIcon} eyebrow="Gut zu wissen" title="So findest du dich sofort zurecht." description="Vier Dinge reichen für den Start. Alles Weitere entdeckst du dort, wo du es brauchst." />
-                <div className="mt-7 sm:mt-0">
-                  <div className="grid gap-3 sm:grid-cols-1 min-[900px]:grid-cols-2 min-[900px]:gap-4">
-                    <GuideCard icon={Bars3Icon} title="Bereiche wechseln" text="Die Navigation bringt dich zu Nachrichten, Kursen, Stundenplan und Kalender." />
-                    <GuideCard icon={MagnifyingGlassIcon} title="Alles durchsuchen" text="Öffne die Suche in der Navigation oder mit Strg/⌘ + K." />
-                    <GuideCard icon={CalendarDaysIcon} title="Stunden korrigieren" text="Unter Einstellungen › Stundenplan kannst du wiederkehrende Stunden ändern oder ausblenden." />
-                    <GuideCard icon={Cog6ToothIcon} title="Später weiter anpassen" text="Farben, Benachrichtigungen, Installation und weitere Optionen bleiben in den Einstellungen." />
-                  </div>
-                  <div className="mt-6 rounded-2xl border border-primary-200 bg-primary-50 p-4 text-sm text-primary-800 dark:border-primary-900 dark:bg-primary-950/30 dark:text-primary-200 min-[900px]:p-5">
-                    Benachrichtigungen fragen wir erst an, wenn du sie selbst aktivierst. So behältst du die Kontrolle über Browser-Berechtigungen.
-                  </div>
-                </div>
+              <div className="max-w-2xl">
+                <StepHeading icon={AcademicCapIcon} eyebrow="Deine Schule" title="Du machst den Anfang." description="Du bist der erste Nutzer an deiner Schule. Deshalb läuft vielleicht noch nicht alles rund. Melde später Probleme und Feedback über „Feedback geben“ in der Seitenleiste." />
               </div>
             )}
 
@@ -386,7 +372,7 @@ const Onboarding: React.FC = () => {
 
             <div className="mt-8 flex items-center justify-between gap-3 sm:mt-10 min-[900px]:mt-12">
               <button type="button" onClick={goBack} className={`btn btn-ghost ${stepIndex === 0 ? 'invisible' : ''}`} disabled={stepIndex === 0}><ArrowLeftIcon className="mr-2 h-4 w-4" />Zurück</button>
-              {activeStep.id === 'guide' ? (
+              {stepIndex === steps.length - 1 ? (
                 <button type="button" onClick={complete} className="btn btn-primary px-6">Zum Dashboard<ArrowRightIcon className="ml-2 h-4 w-4" /></button>
               ) : (
                 <button type="button" onClick={() => saveCurrentStep(stepIndex + 1)} className="btn btn-primary px-6">{activeStep.id === 'welcome' ? 'Lanis einrichten' : 'Weiter'}<ArrowRightIcon className="ml-2 h-4 w-4" /></button>
@@ -440,14 +426,6 @@ const HomeworkChoice: React.FC<{
     <p className="font-semibold">{title}</p>
     <p className="mt-1 text-sm leading-5 text-surface-500">{description}</p>
   </button>
-);
-
-const GuideCard: React.FC<{ icon: React.ComponentType<React.SVGProps<SVGSVGElement>>; title: string; text: string }> = ({ icon: Icon, title, text }) => (
-  <div className="rounded-2xl border border-surface-200 bg-white p-4 dark:border-surface-800 dark:bg-surface-900 min-[900px]:p-5">
-    <Icon className="h-5 w-5 text-primary-600" />
-    <p className="mt-3 font-semibold">{title}</p>
-    <p className="mt-1 text-sm leading-5 text-surface-500">{text}</p>
-  </div>
 );
 
 export default Onboarding;

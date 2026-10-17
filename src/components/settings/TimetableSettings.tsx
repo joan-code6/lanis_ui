@@ -504,6 +504,7 @@ const TimetableSettings: React.FC = () => {
         <p className="mt-1 text-sm text-surface-500">Wähle, welche zusätzlichen Inhalte angezeigt werden. Wird mit deinem Lanis-Konto synchronisiert.</p>
         <div className="mt-4 space-y-4">
           {([
+            ['show_substitutions', 'Vertretungsplan anzeigen', 'Zeigt Vertretungen, Raumänderungen und Ausfälle aus Schulportal und DSB im Stundenplan.'],
             ['show_homework', 'Hausaufgaben anzeigen', 'Zeigt Hausaufgaben bei den zugehörigen Unterrichtsstunden.'],
             ['show_exams', 'Klausuren anzeigen', 'Zeigt Klausuren anstelle der betroffenen Unterrichtsstunden.'],
           ] as const).map(([key, label, description]) => (

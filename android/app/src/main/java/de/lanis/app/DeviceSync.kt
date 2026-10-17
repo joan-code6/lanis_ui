@@ -49,6 +49,7 @@ object DeviceSync {
     }
     fun sync(context: Context): Boolean = synchronized(NativeStore.lock) {
         var state = NativeStore.read(context)
+        if (state.optJSONObject("session")?.has("__lanis_account_deletion_recovery") == true) return@synchronized true
         if (state.optJSONObject("session")?.optString("auth_refresh_token").isNullOrEmpty()) return@synchronized true
         try {
             val backend = state.getString("backend")

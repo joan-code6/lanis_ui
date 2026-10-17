@@ -14,6 +14,11 @@ import {
 } from '../types';
 import { getMockResponse } from '../components/demo/mockApi';
 import { DEFAULT_API_BASE_URL, getApiBaseUrl } from '../utils/backendConfig';
+import {
+  canWriteAccountData,
+  captureAccountDataGeneration,
+  isAccountDataDeletionInProgress,
+} from '../utils/accountDataWrites';
 // School List API
 const SCHOOL_CACHE_KEY = 'school_cache';
 const SCHOOL_CACHE_TTL = 24 * 60 * 60 * 1000;
@@ -212,6 +217,14 @@ const apiClient: AxiosInstance = axios.create({
   },
 });
 
+// Startup deletion recovery must verify or refresh a session without the normal
+// auth interceptors clearing credentials before the result can be evaluated.
+const sessionRecoveryClient: AxiosInstance = axios.create({
+  baseURL: API_BASE_URL,
+  timeout: 30000,
+  headers: { 'Content-Type': 'application/json' },
+});
+
 // Public homepage data must not pass through the authenticated client's
 // interceptors, especially when a custom backend token is stored locally.
 const homepageClient: AxiosInstance = axios.create({
@@ -290,6 +303,7 @@ function isTokenExpiringSoon(thresholdMs: number = 5 * 60 * 1000): boolean {
 let refreshPromise: Promise<boolean> | null = null;
 
 async function refreshAccessToken(): Promise<boolean> {
+  const writeGeneration = captureAccountDataGeneration();
   const refreshTokenValue = getRefreshToken();
   if (!refreshTokenValue) return false;
 
@@ -298,6 +312,7 @@ async function refreshAccessToken(): Promise<boolean> {
       refresh_token: refreshTokenValue,
     } as TokenRefreshRequest);
 
+    if (!canWriteAccountData(writeGeneration)) return false;
     const expiresAt = Date.now() + response.data.expires_in * 1000;
     authStorage.setItem(ACCESS_TOKEN_KEY, response.data.access_token);
     authStorage.setItem(TOKEN_EXPIRES_KEY, expiresAt.toString());
@@ -324,6 +339,39 @@ async function ensureValidToken(): Promise<string | null> {
 }
 
 export const authAPI = {
+  async recoverAccountDeletion(accessToken: string, refreshToken: string): Promise<
+    { state: 'revoked' } | { state: 'cancelled'; access_token: string; expires_in: number }
+  > {
+    const response = await sessionRecoveryClient.post('/account/deletion/recover', {
+      access_token: accessToken, refresh_token: refreshToken,
+    });
+    if ((response.data.state !== 'revoked' && response.data.state !== 'cancelled')
+      || (response.data.state === 'cancelled' && (
+        typeof response.data.access_token !== 'string' || !response.data.access_token
+        || !Number.isFinite(response.data.expires_in) || response.data.expires_in <= 0
+      ))) {
+      throw new Error('Invalid deletion recovery response');
+    }
+    return response.data;
+  },
+  async verifySessionForRecovery(token: string): Promise<{ success: boolean; data: User }> {
+    const response = await sessionRecoveryClient.get<{ success: boolean; data: User }>('/benutzer', {
+      headers: { 'X-Session-Token': token },
+    });
+    return response.data;
+  },
+
+  async refreshSessionForRecovery(refreshToken: string): Promise<TokenRefreshResponse> {
+    const response = await sessionRecoveryClient.post<TokenRefreshResponse>('/auth/refresh', {
+      refresh_token: refreshToken,
+    } as TokenRefreshRequest);
+    return response.data;
+  },
+
+  async getValidSessionToken(): Promise<string | null> {
+    return ensureValidToken();
+  },
+
   async login(credentials: LoginRequest): Promise<LoginResponse> {
     const response = await apiClient.post<LoginResponse>('/login', credentials);
     return response.data;
@@ -665,6 +713,14 @@ export const coursesAPI = {
     return response.data;
   },
 
+  async downloadFile(token: string, fileHash: string): Promise<Blob> {
+    const response = await apiClient.get<Blob>(`/meinunterricht/file/${fileHash}`, {
+      headers: { 'X-Session-Token': token },
+      responseType: 'blob',
+    });
+    return response.data;
+  },
+
   async getEntryDetails(token: string, url: string, signal?: AbortSignal): Promise<EntryDetailsResponse> {
     const response = await apiClient.get<EntryDetailsResponse>('/meinunterricht/entry', {
       headers: { 'X-Session-Token': token },
@@ -752,20 +808,21 @@ export const calendarAPI = {
 
 // Timetable API
 export const timetableAPI = {
-  async getResolvedTimetable(token: string, options: { view_mode: string; plan_mode: string; week_type?: 'A' | 'B'; refresh?: boolean }, signal?: AbortSignal): Promise<TimetableResponse> {
+  async getResolvedTimetable(token: string, options: { view_mode: string; plan_mode: string; show_substitutions?: boolean; week_type?: 'A' | 'B'; refresh?: boolean }, signal?: AbortSignal): Promise<TimetableResponse> {
     const cacheOwner = authStorage.getItem(REFRESH_TOKEN_KEY);
+    const writeGeneration = captureAccountDataGeneration();
     try {
       const response = await apiClient.get<TimetableResponse>('/stundenplan/view', {
         headers: { 'X-Session-Token': token }, params: options, signal,
       });
-      if (isAndroid && !window.location.pathname.startsWith('/demo') && cacheOwner && response.data.success && options.plan_mode === 'personal' && options.view_mode === 'rolling' && !options.week_type) {
+      if (isAndroid && !window.location.pathname.startsWith('/demo') && cacheOwner && canWriteAccountData(writeGeneration) && options.show_substitutions !== false && response.data.success && options.plan_mode === 'personal' && options.view_mode === 'rolling' && !options.week_type) {
         void LanisNative.saveTimetable({ data: response.data, owner: cacheOwner }).catch(() => {});
       }
       return response.data;
     } catch (error) {
       if (isAndroid && !window.location.pathname.startsWith('/demo') && !axios.isCancel(error) && canUseOfflineTimetable(axios.isAxiosError(error) ? error.response?.status : undefined, options, Boolean(signal?.aborted))) {
         const cached = await LanisNative.getTimetable();
-        if (cached.data?.success) return { ...cached.data, offline_cached_at: cached.updatedAt };
+        if (cached.data?.success && canWriteAccountData(writeGeneration) && cacheOwner === authStorage.getItem(REFRESH_TOKEN_KEY)) return { ...cached.data, offline_cached_at: cached.updatedAt };
       }
       throw error;
     }
@@ -1107,6 +1164,7 @@ apiClient.interceptors.response.use(
   },
   async (error) => {
     if (error.response?.status === 401 && localStorage.getItem('__demo_mode') !== '1') {
+      if (isAccountDataDeletionInProgress()) return Promise.reject(error);
       // Don't try to refresh if the request was already to /auth/refresh
       const isRefreshRequest = error.config?.url === '/auth/refresh';
       const requestConfig = error.config as (typeof error.config & {
@@ -1117,6 +1175,7 @@ apiClient.interceptors.response.use(
         // Try refreshing the token once
         const refreshTokenValue = getRefreshToken();
         if (refreshTokenValue) {
+          const writeGeneration = captureAccountDataGeneration();
           if (requestConfig) requestConfig._authRetryAttempted = true;
 
           try {
@@ -1124,6 +1183,9 @@ apiClient.interceptors.response.use(
               refresh_token: refreshTokenValue,
             } as TokenRefreshRequest);
 
+            if (!canWriteAccountData(writeGeneration)) {
+              return Promise.reject(error);
+            }
             const expiresAt = Date.now() + refreshResponse.data.expires_in * 1000;
             authStorage.setItem(ACCESS_TOKEN_KEY, refreshResponse.data.access_token);
             authStorage.setItem(TOKEN_EXPIRES_KEY, expiresAt.toString());

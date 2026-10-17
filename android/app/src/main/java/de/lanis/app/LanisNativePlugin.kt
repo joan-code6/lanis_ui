@@ -65,7 +65,8 @@ class LanisNativePlugin : Plugin() {
             }
             updated.put("session", values).put("backend", backend)
             NativeStore.write(context, updated)
-            if (values.optString("auth_refresh_token").isNotEmpty()) DeviceSync.schedule(context)
+            if (values.has("__lanis_account_deletion_recovery")) DeviceSync.cancel(context)
+            else if (values.optString("auth_refresh_token").isNotEmpty()) DeviceSync.schedule(context)
             call.resolve()
         }
     }
@@ -120,7 +121,7 @@ class LanisNativePlugin : Plugin() {
         val dark = call.getBoolean("dark", false) ?: false
         val oled = call.getBoolean("oled", false) ?: false
         val theme = call.getString("theme", "ruby") ?: "ruby"
-        val themes = listOf("ruby", "emerald", "sapphire", "amethyst", "amber", "cyan")
+        val themes = listOf("ruby", "emerald", "sapphire", "amethyst", "amber", "cyan", "coral", "blush", "moss")
         if (theme !in themes) return@task call.reject("Unbekanntes Design.")
         val accent = call.getString("accent", "#e11d48") ?: "#e11d48"
         if (!accent.matches(Regex("^#[A-Fa-f0-9]{6}$"))) return@task call.reject("Ungültige Farbe.")

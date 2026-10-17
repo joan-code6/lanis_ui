@@ -2,6 +2,19 @@ import { authStorage, flushAuthStorage, clearNativeSession } from '../platform/a
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { AuthContextType, LoginRequest, User } from '../types';
 import { authAPI, notificationsAPI, unsubscribeBrowserPushSubscription } from '../services/api';
+import {
+  ACCOUNT_DATA_DELETION_RECOVERY_KEY,
+  ACCOUNT_DATA_GENERATION_KEY,
+  confirmAccountDataDeletion,
+  purgeDeletedAccountBrowserData,
+  canWriteAccountData,
+  captureAccountDataGeneration,
+  completeAccountDataDeletion,
+  finishAccountDataDeletion,
+  hasAccountDataDeletionMarker,
+  isAccountDataDeletionConfirmed,
+  withAccountDataLifecycleLock,
+} from '../utils/accountDataWrites';
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -29,19 +42,128 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const savedToken = authStorage.getItem(ACCESS_TOKEN_KEY);
-    const savedUser = authStorage.getItem(USER_KEY);
+    let mounted = true;
+    const initializeAuth = async () => {
+      try {
+        await withAccountDataLifecycleLock(async () => {
+          if (hasAccountDataDeletionMarker()) {
+            const deletionGeneration = captureAccountDataGeneration();
+            if (!isAccountDataDeletionConfirmed(deletionGeneration)) {
+              const savedRecovery = authStorage.getItem(ACCOUNT_DATA_DELETION_RECOVERY_KEY);
+              const recovery = savedRecovery ? JSON.parse(savedRecovery) as {
+                accessToken: string; refreshToken: string;
+              } : {
+                accessToken: authStorage.getItem(ACCESS_TOKEN_KEY),
+                refreshToken: authStorage.getItem(REFRESH_TOKEN_KEY) || '',
+              };
+              if (!recovery.accessToken) return;
+              const result = await authAPI.recoverAccountDeletion(recovery.accessToken, recovery.refreshToken);
+              if (result.state === 'cancelled') {
+                // The server rotated the original session while holding its
+                // lifecycle lock. The old DELETE can no longer complete.
+                authStorage.setItem(ACCESS_TOKEN_KEY, result.access_token);
+                authStorage.setItem(TOKEN_EXPIRES_KEY, String(Date.now() + result.expires_in * 1000));
+                await flushAuthStorage();
+                finishAccountDataDeletion(deletionGeneration);
+                const profile = await authAPI.verifySessionForRecovery(result.access_token);
+                if (profile.success !== true || !profile.data) return;
+                authStorage.setItem(USER_KEY, JSON.stringify(profile.data));
+                await flushAuthStorage();
+                if (!mounted) return;
+                setToken(result.access_token);
+                setUser(profile.data);
+                setIsAuthenticated(true);
+                return;
+              }
+              // The original persisted session is gone. This only authorizes
+              // local cleanup; it does not claim that upstream data was erased.
+              confirmAccountDataDeletion(deletionGeneration);
+            }
+            const cleanupComplete = await purgeDeletedAccountBrowserData();
+            if (cleanupComplete) finishAccountDataDeletion(deletionGeneration);
+            setToken(null);
+            setUser(null);
+            setIsAuthenticated(false);
+            return;
+          }
 
-    if (savedToken && savedUser) {
-      setToken(savedToken);
-      setUser(JSON.parse(savedUser));
-      setIsAuthenticated(true);
-    }
+          if (authStorage.getItem(ACCOUNT_DATA_DELETION_RECOVERY_KEY)) {
+            authStorage.removeItem(ACCOUNT_DATA_DELETION_RECOVERY_KEY);
+            await flushAuthStorage();
+          }
+          const savedToken = authStorage.getItem(ACCESS_TOKEN_KEY);
+          const savedUser = authStorage.getItem(USER_KEY);
+          if (savedToken && savedUser) {
+            setToken(savedToken);
+            setUser(JSON.parse(savedUser));
+            setIsAuthenticated(true);
+          }
+        });
+      } catch (error) {
+        console.warn('Failed to restore a safe authentication state:', error);
+        setToken(null);
+        setUser(null);
+        setIsAuthenticated(false);
+      } finally {
+        if (mounted) setIsLoading(false);
+      }
+    };
 
-    setIsLoading(false);
+    const recoverOnStorage = (event: StorageEvent) => {
+      if (event.key !== ACCOUNT_DATA_GENERATION_KEY) return;
+      if (hasAccountDataDeletionMarker()) {
+        setToken(null);
+        setUser(null);
+        setIsAuthenticated(false);
+        setIsLoading(true);
+      }
+      void initializeAuth();
+    };
+    const recoverOnline = () => {
+      if (!hasAccountDataDeletionMarker()) return;
+      setIsLoading(true);
+      void initializeAuth();
+    };
+    window.addEventListener('storage', recoverOnStorage);
+    window.addEventListener('online', recoverOnline);
+    void initializeAuth();
+    return () => {
+      window.removeEventListener('storage', recoverOnStorage);
+      window.removeEventListener('online', recoverOnline);
+      mounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleStorage = (event: StorageEvent) => {
+      const authKeys = [
+        ACCESS_TOKEN_KEY,
+        REFRESH_TOKEN_KEY,
+        TOKEN_EXPIRES_KEY,
+        USER_KEY,
+      ];
+      if (event.key !== null && !(authKeys.includes(event.key) && event.newValue === null)) {
+        return;
+      }
+      if (
+        authStorage.getItem(ACCESS_TOKEN_KEY)
+        && authStorage.getItem(REFRESH_TOKEN_KEY)
+        && authStorage.getItem(USER_KEY)
+      ) {
+        return;
+      }
+      setToken(null);
+      setUser(null);
+      setIsAuthenticated(false);
+    };
+
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
   }, []);
 
   const login = async (credentials: LoginRequest): Promise<boolean> => {
+    if (hasAccountDataDeletionMarker()) return false;
+    let writeGeneration = captureAccountDataGeneration();
     try {
       const response = await authAPI.login(credentials);
 
@@ -51,38 +173,55 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         username: response.username,
         school_id: response.school_id,
         encryption_ready: response.encryption_ready.toString(),
+        is_first_school_user: String(response.is_first_school_user === true),
       };
-      setUser(basicUser);
-      authStorage.setItem(ACCESS_TOKEN_KEY, response.access_token);
-      authStorage.setItem(REFRESH_TOKEN_KEY, response.refresh_token);
-      authStorage.setItem(TOKEN_EXPIRES_KEY, expiresAt.toString());
-      authStorage.setItem(USER_KEY, JSON.stringify(basicUser));
+      const loginPublished = await withAccountDataLifecycleLock(async () => {
+        if (!canWriteAccountData(writeGeneration)) return false;
+        if (!completeAccountDataDeletion(writeGeneration)) return false;
+        authStorage.setItem(ACCESS_TOKEN_KEY, response.access_token);
+        authStorage.setItem(REFRESH_TOKEN_KEY, response.refresh_token);
+        authStorage.setItem(TOKEN_EXPIRES_KEY, expiresAt.toString());
+        authStorage.setItem(USER_KEY, JSON.stringify(basicUser));
+        await flushAuthStorage();
+        setToken(response.access_token);
+        setUser(basicUser);
+        setIsAuthenticated(true);
+        return true;
+      });
+
+      if (!loginPublished) {
+        try {
+          await authAPI.logout(response.access_token);
+        } catch {
+          // The server may already have revoked this session during deletion.
+        }
+        return false;
+      }
+      writeGeneration = captureAccountDataGeneration();
 
       try {
         const userResponse = await authAPI.getUserProfile(response.access_token);
-        if (userResponse.success) {
+        if (userResponse.success && canWriteAccountData(writeGeneration)) {
           const accountUser = {
+            ...basicUser,
             ...userResponse.data,
             username: response.username,
             school_id: response.school_id,
             encryption_ready: response.encryption_ready.toString(),
+            is_first_school_user: basicUser.is_first_school_user,
           };
           setUser(accountUser);
           authStorage.setItem(USER_KEY, JSON.stringify(accountUser));
         }
       } catch (error) {
         console.warn('Failed to fetch user profile:', error);
-        setUser({
-          username: response.username,
-          school_id: response.school_id,
-          encryption_ready: response.encryption_ready.toString(),
-        });
+        if (canWriteAccountData(writeGeneration)) {
+          setUser(basicUser);
+        }
       }
 
       await flushAuthStorage();
-      setToken(response.access_token);
-      setIsAuthenticated(true);
-      return true;
+      return canWriteAccountData(writeGeneration);
     } catch (error) {
       console.error('Login failed:', error);
       return false;
@@ -90,11 +229,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const refreshToken = useCallback(async (): Promise<boolean> => {
+    const writeGeneration = captureAccountDataGeneration();
     const refreshTokenValue = authStorage.getItem(REFRESH_TOKEN_KEY);
     if (!refreshTokenValue) return false;
 
     try {
       const response = await authAPI.refreshToken(refreshTokenValue);
+
+      if (!canWriteAccountData(writeGeneration)) return false;
 
       const expiresAt = Date.now() + response.expires_in * 1000;
 
@@ -110,7 +252,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }, []);
 
-  const logout = async () => {
+  const logout = async (shouldClearStorage: () => boolean = () => true) => {
     try {
       if (token) {
         try {
@@ -145,11 +287,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setToken(null);
       setUser(null);
       setIsAuthenticated(false);
-      authStorage.removeItem(ACCESS_TOKEN_KEY);
-      authStorage.removeItem(REFRESH_TOKEN_KEY);
-      authStorage.removeItem(TOKEN_EXPIRES_KEY);
-      authStorage.removeItem(USER_KEY);
-      await clearNativeSession();
+      if (shouldClearStorage()) {
+        authStorage.removeItem(ACCESS_TOKEN_KEY);
+        authStorage.removeItem(REFRESH_TOKEN_KEY);
+        authStorage.removeItem(TOKEN_EXPIRES_KEY);
+        authStorage.removeItem(USER_KEY);
+        await clearNativeSession(hasAccountDataDeletionMarker());
+      }
     }
   };
 

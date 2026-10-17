@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { ThemeColor, ThemeMode } from '../types';
 import { applyThemeAssets, isThemeColor, THEME_COLOR_HEX } from '../utils/themeAssets';
+import { canWriteAccountData, captureAccountDataGeneration } from '../utils/accountDataWrites';
 
 export type { ThemeColor, ThemeMode } from '../types';
 
@@ -67,6 +68,24 @@ const THEMES: Record<ThemeColor, ColorScale> = {
     600: '8 145 178',   700: '14 116 144', 800: '21 94 117',
     900: '22 78 99',    950: '8 51 68',
   },
+  coral: {
+    50: '254 227 234', 100: '253 210 206', 200: '251 185 177',
+    300: '249 159 148', 400: '249 143 130', 500: '248 131 121',
+    600: '192 79 61',    700: '170 67 55',   800: '146 58 54',
+    900: '118 48 46',    950: '72 28 26',
+  },
+  blush: {
+    50: '255 249 250', 100: '254 227 234', 200: '249 208 222',
+    300: '240 179 203', 400: '221 145 179', 500: '201 111 152',
+    600: '169 84 125',   700: '135 67 101',  800: '109 53 83',
+    900: '86 43 67',     950: '51 26 42',
+  },
+  moss: {
+    50: '244 245 243', 100: '226 228 224', 200: '197 201 194',
+    300: '161 168 155', 400: '120 129 111', 500: '75 87 63',
+    600: '66 77 55',    700: '56 65 47',    800: '45 52 38',
+    900: '34 39 28',    950: '21 24 18',
+  },
 };
 
 function applyPrimaryTheme(color: ThemeColor) {
@@ -98,6 +117,8 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const setThemeMode = useCallback((mode: ThemeMode) => {
     setThemeModeState(mode);
+    const generation = captureAccountDataGeneration();
+    if (!canWriteAccountData(generation)) return;
     localStorage.setItem(THEME_MODE_KEY, mode);
     localStorage.setItem(OLED_MODE_KEY, String(mode === 'oled'));
     if (mode === 'system') localStorage.removeItem(DARK_MODE_KEY);
@@ -114,6 +135,8 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const setThemeColor = useCallback((color: ThemeColor) => {
     setThemeColorState(color);
+    const generation = captureAccountDataGeneration();
+    if (!canWriteAccountData(generation)) return;
     localStorage.setItem(THEME_COLOR_KEY, color);
     applyPrimaryTheme(color);
   }, []);

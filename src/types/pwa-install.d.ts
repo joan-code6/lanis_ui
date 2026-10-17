@@ -33,3 +33,21 @@ interface PwaInstallElement extends HTMLElement {
   externalPromptEvent: BeforeInstallPromptEvent | null;
   platforms: string[];
 }
+
+declare namespace React.JSX {
+  interface IntrinsicElements {
+    'pwa-install': React.DetailedHTMLProps<React.HTMLAttributes<PwaInstallElement>, PwaInstallElement> & {
+      ref?: React.Ref<PwaInstallElement>;
+      'manifest-url'?: string;
+      'manual-apple'?: 'true' | 'false';
+      'manual-chrome'?: 'true' | 'false';
+      'disable-chrome'?: 'true' | 'false';
+      'disable-android-fallback'?: 'true' | 'false';
+      'use-local-storage'?: 'true' | 'false';
+      name?: string;
+      icon?: string;
+      description?: string;
+      'install-description'?: string;
+    };
+  }
+}

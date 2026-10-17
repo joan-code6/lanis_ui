@@ -31,9 +31,10 @@ import {
 } from '@heroicons/react/24/outline';
 import { Link, useLocation } from 'react-router-dom';
 import GlobalSearch from '../search/GlobalSearch';
-import InstallPrompt from '../pwa/InstallPrompt';
 import OutageNotice from '../status/OutageNotice';
+import { PwaInstallProvider } from '../../contexts/PwaInstallContext';
 import { getModuleAvailability, readModulesCache, writeModulesCache } from '../../utils/moduleCache';
+import { captureAccountDataGeneration } from '../../utils/accountDataWrites';
 import type { CachedModule } from '../../utils/moduleCache';
 import { getThemeIconUrl, getThemeManifestUrl, THEME_COLOR_HEX } from '../../utils/themeAssets';
 import AppIcon from '../AppIcon';
@@ -115,6 +116,7 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
 
   React.useEffect(() => {
     if (!token) return;
+    const writeGeneration = captureAccountDataGeneration();
     const abortController = new AbortController();
     const applyModuleAvailability = (modules: CachedModule[]) => {
       const availability = getModuleAvailability(modules);
@@ -132,7 +134,7 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
         if (abortController.signal.aborted) return;
         if (response.success) {
           applyModuleAvailability(response.modules);
-          writeModulesCache(user, response.modules);
+          writeModulesCache(user, response.modules, writeGeneration);
         }
       } catch (error) {
         if (axios.isCancel(error)) return;
@@ -196,37 +198,28 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
   const isDemo = basePath === '/demo';
 
   return (
-    <div className="flex h-[100dvh] flex-col overflow-hidden bg-surface-50 dark:bg-surface-950">
+    <PwaInstallProvider automaticPromotion={!isDemo && !androidPresentation}>
+      <div className="flex h-[100dvh] flex-col overflow-hidden bg-surface-50 dark:bg-surface-950">
       {isDemo && <DemoBar />}
       {isSidebarOpen && (
         <div className={'fixed inset-x-0 bottom-0 flex z-40 md:hidden ' + (isDemo ? 'top-10' : 'inset-0')}>
           <div className={'fixed inset-x-0 bottom-0 bg-surface-900/40 backdrop-blur-sm ' + (isDemo ? 'top-10' : 'inset-0')} onClick={() => setIsSidebarOpen(false)} />
-          <div className="relative flex-1 flex flex-col max-w-xs w-full bg-white dark:bg-surface-900 shadow-soft-lg animate-drawer-in">
-            <div className="absolute top-0 right-0 -mr-12 pt-4">
-              <button
-                type="button"
-                className="flex items-center justify-center h-10 w-10 rounded-full focus:outline-none focus:ring-2 focus:ring-white/50"
-                aria-label="Menü schließen"
-                onClick={() => setIsSidebarOpen(false)}
-              >
-                <XMarkIcon className="h-6 w-6 text-white" />
-              </button>
-            </div>
-            <SidebarContent navigation={navigation} />
+          <div className="relative flex flex-1 flex-col max-w-xs w-full bg-white dark:bg-surface-900 shadow-soft-lg animate-drawer-in">
+            <SidebarContent navigation={navigation} showCloseButton />
           </div>
         </div>
       )}
 
       <div className={'hidden md:flex md:flex-col md:fixed transition-[width] duration-300 ease-out ' + (isSidebarCollapsed ? 'md:w-[60px]' : 'md:w-64') + ' ' + (isDemo ? 'md:top-10 md:bottom-0' : 'md:inset-y-0')}>
         <div className="flex-1 flex flex-col min-h-0 bg-white dark:bg-surface-900 border-r border-surface-100 dark:border-surface-800">
-          <SidebarContent navigation={navigation} isCollapsed={isSidebarCollapsed} />
+          <SidebarContent navigation={navigation} isCollapsed={isSidebarCollapsed} canCollapse />
         </div>
       </div>
 
       <div className={'md:hidden absolute inset-x-0 h-14 z-30 flex items-center justify-between px-4 bg-white/80 dark:bg-surface-900/80 backdrop-blur-md border-b border-surface-100 dark:border-surface-800 ' + (isDemo ? 'top-10' : 'top-0')}>
         <button
           type="button"
-          className="flex items-center justify-center h-9 w-9 rounded-lg text-surface-500 dark:text-surface-400 hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors"
+          className="flex items-center justify-center h-11 w-11 rounded-lg text-surface-500 dark:text-surface-400 hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors"
           aria-label="Menü öffnen"
           onClick={() => setIsSidebarOpen(true)}
         >
@@ -234,15 +227,16 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
         </button>
         <Link
           to={`${basePath}/dashboard`}
-          className="flex items-center gap-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500/50"
+          className="flex items-center gap-2 rounded-lg focus:outline-none"
           aria-label="Zum Dashboard"
         >
           <AppIcon alt="Schulportal" className="h-7 w-7 rounded-lg" />
-          <span className="text-sm font-semibold text-surface-900 dark:text-surface-100">Schulportal</span>
+          <span className="text-sm font-semibold text-surface-900 dark:text-surface-100">Lanis</span>
         </Link>
         <button
           onClick={() => setIsSearchOpen(true)}
-          className="flex items-center justify-center h-9 w-9 rounded-lg text-surface-500 dark:text-surface-400 hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors"
+          className="flex items-center justify-center h-11 w-11 rounded-lg text-surface-500 dark:text-surface-400 hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors"
+          aria-label="Suche"
           title="Suche (Strg+K)"
         >
           <MagnifyingGlassIcon className="h-5 w-5" />
@@ -267,24 +261,35 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
         hasDsbModule={hasDsbModule}
       />
       {isFeedbackOpen && <FeedbackDialog token={token || ''} onClose={closeFeedbackDialog} openerRef={feedbackOpenerRef} />}
-      {!androidPresentation && <><pwa-install
-        ref={pwaRef}
-        manifest-url={manifestUrl}
-        name="Lanis"
-        icon={appIconUrl}
-        description="Moderne Benutzeroberfläche für das Schulportal Hessen"
-        install-description="Direkt vom Homescreen öffnen — wie eine echte App."
-      ></pwa-install>
-      <InstallPrompt /></>}
-    </div>
+      {!isDemo && !androidPresentation && (
+        <pwa-install
+          ref={pwaRef}
+          manifest-url={manifestUrl}
+          manual-apple="true"
+          manual-chrome="true"
+          disable-chrome="true"
+          disable-android-fallback="true"
+          use-local-storage="true"
+          name="Lanis"
+          icon={appIconUrl}
+          description="Moderne Benutzeroberfläche für das Schulportal Hessen"
+          install-description="Direkt vom Homescreen öffnen — wie eine echte App."
+        ></pwa-install>
+      )}
+      </div>
+    </PwaInstallProvider>
   );
 
   function SidebarContent({
     navigation,
     isCollapsed = false,
+    canCollapse = false,
+    showCloseButton = false,
   }: {
     navigation: SidebarNavigationItem[];
     isCollapsed?: boolean;
+    canCollapse?: boolean;
+    showCloseButton?: boolean;
   }) {
     return (
       <>
@@ -324,7 +329,7 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
               </svg>
             )}
           </Link>
-          {!isCollapsed && (
+          {canCollapse && !isCollapsed && (
             <button
               type="button"
               onClick={() => setIsSidebarCollapsed(true)}
@@ -346,6 +351,16 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
                 <path d="M19 12H9" />
                 <path d="m13 8-4 4 4 4" />
               </svg>
+            </button>
+          )}
+          {showCloseButton && (
+            <button
+              type="button"
+              onClick={() => setIsSidebarOpen(false)}
+              className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg text-surface-500 transition-colors hover:bg-surface-100 hover:text-surface-700 focus:outline-none focus:ring-2 focus:ring-primary-500/50 dark:text-surface-400 dark:hover:bg-surface-800 dark:hover:text-surface-200"
+              aria-label="Menü schließen"
+            >
+              <XMarkIcon className="h-5 w-5" />
             </button>
           )}
         </div>
