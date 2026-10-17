@@ -31,12 +31,12 @@ for (const file of ['index.html', 'status/index.html', 'sw.js']) {
 }
 // Preserve previews from branches predating school pages. For school builds,
 // ensure every URL advertised in the sitemap has a static page before publishing.
-if (fs.existsSync(path.join(assets, 'schulen/index.html'))) {
+if (fs.existsSync(path.join(assets, 'schulen.html'))) {
   const sitemap = fs.readFileSync(path.join(assets, 'sitemap.xml'), 'utf8');
   const ids = [...sitemap.matchAll(/<loc>https:\/\/lanis\.arg-server\.de\/schule\/([0-9]{1,10})<\/loc>/g)];
   if (!ids.length) throw new Error('School sitemap is empty');
   for (const [, id] of ids) {
-    if (!fs.statSync(path.join(assets, 'schule', id, 'index.html')).isFile()) throw new Error(`Missing school ${id}`);
+    if (!fs.statSync(path.join(assets, 'schule', `${id}.html`)).isFile()) throw new Error(`Missing school ${id}`);
   }
 }
 if (kind === 'preview') {

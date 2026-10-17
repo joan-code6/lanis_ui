@@ -14,7 +14,7 @@ export { DEFAULT_API_BASE_URL } from './utils/backendConfig';
 export const routes = [
   { path: '/', file: 'index.html' },
   { path: '/status', file: 'status/index.html' },
-  { path: '/schulen', file: 'schulen/index.html' },
+  { path: '/schulen', file: 'schulen.html' },
 ];
 
 export function render(path: string, data: { school?: SchoolProfile; schools?: SchoolListItem[] } = {}) {

@@ -86,7 +86,7 @@ async function prerender() {
     // Sequential rendering keeps peak memory bounded to one school's markup.
     for (const entry of entries) {
       const { school } = entry;
-      const route = { path: `/schule/${school.school_id}`, file: `schule/${school.school_id}/index.html` };
+      const route = { path: `/schule/${school.school_id}`, file: `schule/${school.school_id}.html` };
       const key = hash(`${fingerprint}:${JSON.stringify(school)}`);
       const cachedFile = join(markupDir, `${school.school_id}.json`);
       let result;

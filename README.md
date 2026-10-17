@@ -154,7 +154,7 @@ and keep links stable when schools change names. Old unambiguous name URLs
 continue to resolve in the browser and navigate to the canonical ID URL.
 
 After Vite, `scripts/prerender.mjs` renders the real React school pages into
-`dist/schule/<id>/index.html`, including school identity, login card, proxied
+`dist/schule/<id>.html` (served without `.html` by Cloudflare), including school identity, login card, proxied
 images when available, SEO metadata and structured data. The directory and all
 generated school URLs are written to `dist/sitemap.xml`. The source sitemap in
 `public/` covers the fixed public routes for local development. School pages
