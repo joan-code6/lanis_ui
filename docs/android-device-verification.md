@@ -92,6 +92,14 @@ Main advanced again during verification. Integrated `e59d3800`, preserving the n
 
 The inherited Cloudflare deployment checks passed 5 of 6 checks on Windows. The remaining fixture creates a POSIX executable stub, which Windows cannot execute (`spawnSync ... wrangler ENOENT`); deployment workflows run on Ubuntu. Deployment code was preserved unchanged, and no deployment was performed locally.
 
+## Course attachment fix — 17 October
+
+- Course attachments now use a private cache file and Android's file viewer instead of unsupported WebView blob downloads. Files retain their original names in unique cache folders; existing logout cleanup removes them.
+- External-link handling runs after component click handlers and respects prevented clicks, so authenticated attachments no longer also open an unauthenticated backend URL in a browser. Entry-detail attachments use the same authenticated download path as cards and the timeline.
+- A viewer receives a read-only content URI and MIME type. Devices without a compatible viewer fall back to save/share. The native opener rejects files outside the dedicated cache folder.
+- Signed in with the supplied test account, opened a real course PDF from the phone UI, confirmed it rendered in the PDF viewer, and returned to the course without an error. Signed out afterward. No account content was changed.
+- Added native-file regression checks for private cache writes, viewer handoff, missing-viewer fallback, visible failures, and the existing export/share flow. Android verification (TypeScript, APK, native unit tests and lint) and frontend regression checks passed.
+
 ## Remaining release checks
 
 Switching between different accounts, expired/revoked sessions, scheduled WorkManager execution under battery restrictions, and long-duration notification/background delivery still need device coverage. Demo checks above are presentation checks only.

@@ -54,7 +54,7 @@
     "android:run": "npm run android:sync && cap run android",
     "android:apk": "npm run android:sync && node scripts/android-build.mjs apk",
     "android:bundle": "npm run android:sync && node scripts/android-build.mjs bundle",
-    "test:android": "tsx --test scripts/android.test.ts && node scripts/test-native-auth-storage.cjs",
+    "test:android": "tsx --test scripts/android.test.ts && node scripts/test-native-auth-storage.cjs && node scripts/test-native-files.cjs",
     "test:account-data": "node scripts/test-account-data.cjs",
     "android:verify": "npm run android:sync && node scripts/android-build.mjs verify",
     "deploy": "wrangler deploy",

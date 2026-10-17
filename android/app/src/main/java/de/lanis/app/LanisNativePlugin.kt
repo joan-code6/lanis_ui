@@ -5,11 +5,16 @@ import android.app.NotificationManager
 import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import android.content.Intent
+import android.content.ActivityNotFoundException
+import android.content.ClipData
+import android.net.Uri
+import android.webkit.MimeTypeMap
 import android.content.pm.PackageManager
 import android.graphics.Color
 import android.os.Build
 import android.provider.Settings
 import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.FileProvider
 import androidx.core.view.WindowInsetsControllerCompat
 import com.getcapacitor.*
 import com.getcapacitor.annotation.CapacitorPlugin
@@ -21,6 +26,37 @@ import java.util.concurrent.Executors
 
 @CapacitorPlugin(name = "LanisNative", permissions = [Permission(alias = "notifications", strings = [Manifest.permission.POST_NOTIFICATIONS])])
 class LanisNativePlugin : Plugin() {
+    @PluginMethod fun openFile(call: PluginCall) {
+        try {
+            val source = Uri.parse(call.getString("uri") ?: return call.reject("Datei fehlt."))
+            if (source.scheme != "file") return call.reject("Ungültige Datei.")
+            val file = java.io.File(source.path ?: "").canonicalFile
+            val shared = java.io.File(context.cacheDir, "lanis-share").canonicalFile
+            if (!file.toPath().startsWith(shared.toPath()) || !file.isFile) return call.reject("Datei nicht verfügbar.")
+            val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+            val extension = file.extension.lowercase(java.util.Locale.ROOT)
+            val type = MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension)
+                ?: call.getString("mimeType")?.takeIf { it.contains('/') && it != "application/octet-stream" }
+                ?: "*/*"
+            val intent = Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(uri, type)
+                clipData = ClipData.newRawUri(file.name, uri)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            activity.runOnUiThread {
+                try {
+                    activity.startActivity(intent)
+                    call.resolve()
+                } catch (_: ActivityNotFoundException) {
+                    call.reject("Keine passende App installiert.", "NO_FILE_VIEWER")
+                } catch (_: Exception) {
+                    call.reject("Die Datei konnte nicht geöffnet werden.")
+                }
+            }
+        } catch (_: Exception) {
+            call.reject("Die Datei konnte nicht geöffnet werden.")
+        }
+    }
     private val executor = Executors.newSingleThreadExecutor()
     private fun task(call: PluginCall, action: () -> Unit) {
         executor.execute { try { action() } catch (_: Exception) { call.reject("Die Aktion konnte nicht abgeschlossen werden. Bitte versuche es erneut.") } }

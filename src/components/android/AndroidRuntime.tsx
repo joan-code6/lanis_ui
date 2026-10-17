@@ -62,6 +62,7 @@ export default function AndroidRuntime() {
       } catch { /* Cached timetable stays available during network interruptions. */ }
     }));
     const externalLink = (event: MouseEvent) => {
+      if (event.defaultPrevented) return;
       const anchor = (event.target as Element)?.closest?.('a[href]') as HTMLAnchorElement | null;
       if (!anchor || anchor.hasAttribute('download') || anchor.href.startsWith('blob:')) return;
       const url = new URL(anchor.href);
@@ -70,8 +71,8 @@ export default function AndroidRuntime() {
       event.preventDefault();
       void Browser.open({ url: url.href }).catch(() => setFailure('Der Link konnte nicht geöffnet werden.'));
     };
-    document.addEventListener('click', externalLink, true);
-    return () => { disposed = true; handles.forEach(handle => void handle.remove()); document.removeEventListener('click', externalLink, true); };
+    document.addEventListener('click', externalLink);
+    return () => { disposed = true; handles.forEach(handle => void handle.remove()); document.removeEventListener('click', externalLink); };
   }, [navigate]);
 
   useEffect(() => {

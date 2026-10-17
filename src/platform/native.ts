@@ -19,6 +19,7 @@ export type WidgetKind = 'next' | 'today' | 'changes';
 export interface NativeSession { [key: string]: string }
 
 interface LanisNativePlugin {
+  openFile(options: { uri: string; mimeType: string }): Promise<void>;
   getSession(): Promise<{ values: NativeSession; backend?: string }>;
   saveSession(options: { values: NativeSession; backend: string }): Promise<void>;
   clearSession(): Promise<void>;
