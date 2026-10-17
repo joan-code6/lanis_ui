@@ -81,7 +81,10 @@ CHROME_BIN=/path/to/chrome STATUS_UI_URL=http://localhost:3000 node scripts/stat
 
 It checks mobile and desktop layouts and simulated service states, and writes screenshots to `/tmp/lanis-status-*.png`. It uses `puppeteer-core` with your installed Chrome; `CHROME_BIN` is required. This manual check is separate from the build and CI, which do not install or launch a browser.
 
-There is no `npm test` script. An `npm run lint` script exists, but ESLint and its configuration are not included in this checkout, so it is not currently a ready-to-run validation step.
+`npm test` runs the account-data lifecycle, timetable, lossless image conversion,
+and deployment regression checks. CI runs these checks before building.
+An `npm run lint` script exists, but ESLint and its configuration are not included
+in this checkout, so it is not currently a ready-to-run validation step.
 
 ## Build and hosting
 
@@ -92,7 +95,16 @@ npm run build
 npm run preview
 ```
 
-The build runs TypeScript checking and Vite, then npm automatically runs `postbuild`.
+Before `npm run dev` and `npm run build`, npm generates lossless WebP versions
+of the five landing-page screenshots with the existing Sharp dependency.
+`LandingImage` uses these files through `<picture>` with the original PNG as a
+fallback. Feature screenshots below the hero load lazily. PNG editing sources remain in `public/landing/`; generated files in
+`public/landing/optimized/` are ignored by Git. Run `npm run images:optimize`
+after changing a source image during development. Conversion errors fail the
+command, and the regression check verifies every decoded pixel is preserved.
+Icons and Open Graph images keep their existing formats.
+
+The build then runs TypeScript checking and Vite, then npm automatically runs `postbuild`.
 That step renders the actual public and school React components directly into
 `dist/` using React's server renderer. Vite loads the TSX in middleware mode;
 there is no HTTP listener, Chrome installation, browser automation, fixed delay,

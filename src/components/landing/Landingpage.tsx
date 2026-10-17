@@ -1,4 +1,5 @@
 import DemoPreview from './DemoPreview';
+import LandingImage from './LandingImage';
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import SEO from '../seo/SEO';
@@ -58,7 +59,7 @@ const FeatureRow: React.FC<{
       <div className="flex-1 w-full">
         <div className="w-full aspect-[4/3] rounded-3xl bg-[#f5f5f2] dark:bg-surface-900 border border-black/[0.03] dark:border-white/[0.07] flex items-center justify-center overflow-hidden">
           {imagePath ? (
-            <div className="w-full h-full select-none"><img src={imagePath} alt={title} className="w-full h-full object-cover" /></div>
+            <div className="w-full h-full select-none"><LandingImage src={imagePath} loading="lazy" decoding="async" alt={title} className="w-full h-full object-cover" /></div>
           ) : children}
         </div>
       </div>
@@ -350,14 +351,14 @@ const Landingpage: React.FC<LandingpageProps> = ({ hero, seo }) => {
               className="relative w-full aspect-[16/10] rounded-2xl overflow-hidden border border-black/[0.06] dark:border-white/[0.08] bg-[#f5f5f2] dark:bg-surface-900 shadow-[0_8px_40px_-12px_rgba(0,0,0,0.08)] dark:shadow-[0_12px_50px_-16px_rgba(0,0,0,0.65)]"
             >
               <div className="absolute inset-0" style={{ clipPath: `inset(0 ${100 - sliderPos}% 0 0)` }}>
-                <img
+                <LandingImage
                   src="/landing/lanis-dashboard.png"
                   alt="Lanis UI Dashboard"
                   className="absolute inset-0 w-full h-full object-cover"
                 />
               </div>
               <div className="absolute inset-0" style={{ clipPath: `inset(0 0 0 ${sliderPos}%)` }}>
-                <img
+                <LandingImage
                   src="/landing/sph-dashboard.png"
                   alt="Schulportal Hessen Dashboard"
                   className="absolute inset-0 w-full h-full object-cover"

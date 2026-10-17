@@ -7,3 +7,5 @@ nul
 .wrangler/
 .dev.vars*
 .cache/school-pages/
+
+public/landing/optimized/
