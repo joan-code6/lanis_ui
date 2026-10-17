@@ -33,7 +33,7 @@ const PrivacyPolicy: React.FC = () => {
               <li>Lanis UI und das Standard-Backend sind ein privates, inoffizielles Angebot desselben Betreibers. Sie gehören nicht zum Schulportal Hessen oder zum Land Hessen.</li>
               <li>Bei Nutzung des Standard-Backends erhält dieses dein Schulportal-Passwort und speichert es verschlüsselt, aber wieder entschlüsselbar, für erneute Anmeldungen beim Schulportal.</li>
               <li>Das Standard-Backend speichert auch Profil- und kontobezogene Nutzungsdaten. Der Betreiber kann auf serverseitig verarbeitete Daten zugreifen; die Verschlüsselung schließt diesen Zugriff nicht aus.</li>
-              <li>Bereits beim Seitenaufruf werden externe Schriftarten und Symbol-Stylesheets geladen. Weitere externe Dienste kommen je nach Funktion hinzu.</li>
+              <li>Die Schriftarten werden von unseren eigenen Servern geladen. Externe Symbol-Stylesheets werden bereits beim Seitenaufruf geladen; weitere externe Dienste kommen je nach Funktion hinzu.</li>
             </ul>
           </div>
 
@@ -130,12 +130,13 @@ const PrivacyPolicy: React.FC = () => {
               Beim Aufruf der Website erhalten die Server, die Benutzeroberfläche und Backend
               bereitstellen, technisch erforderliche Verbindungsdaten wie IP-Adresse, Zeitpunkt,
               angeforderte Adresse und Browserinformationen.
-              Die Website bindet außerdem Schriftarten von Google Fonts (fonts.googleapis.com und
-              fonts.gstatic.com) und Symbol-Stylesheets von cdnjs (cdnjs.cloudflare.com) ein.
-              Diese Anfragen erfolgen automatisch beim Seitenaufruf, auch ohne Anmeldung und ohne
-              Aktivierung der Schulkarte. Die jeweiligen Anbieter erhalten dabei insbesondere deine
-              IP-Adresse und die technischen Anfragedaten. Je nach Browserrichtlinie kann auch die
-              Herkunftsseite übermittelt werden.
+              Die Schriftarten Outfit, JetBrains Mono, Syne und Fraunces werden von unseren eigenen
+              Servern bereitgestellt. Zum Laden dieser Schriftarten wird keine Verbindung zu Google
+              hergestellt. Die Website bindet Symbol-Stylesheets von cdnjs (cdnjs.cloudflare.com) ein.
+              Die Anfragen an cdnjs erfolgen automatisch beim Seitenaufruf, auch ohne Anmeldung und ohne
+              Aktivierung der Schulkarte. Der Anbieter erhält dabei insbesondere deine IP-Adresse und
+              die technischen Anfragedaten; die Herkunftsseite wird bei diesen Stylesheet-Anfragen durch
+              die Einstellung „no-referrer“ unterdrückt.
             </p>
             <p className="mt-2">
               Die Startseite enthält eine Schulkarte, die erst nach einem Klick auf „Karte laden“
@@ -228,7 +229,7 @@ const PrivacyPolicy: React.FC = () => {
                 ? 'Das oben angezeigte Backend ist ein getrennt betriebenes System des von dir ausgewählten Betreibers.'
                 : 'Das oben angezeigte Backend ist ein getrennt betriebenes System desselben Verantwortlichen.'}{' '}
               Zur Bereitstellung der angeforderten schulischen Funktionen kommuniziert es mit dem
-              Schulportal Hessen. Google Fonts und cdnjs erhalten bereits beim Seitenaufruf die in
+              Schulportal Hessen. cdnjs erhält bereits beim Seitenaufruf die in
               Abschnitt 5 beschriebenen Anfragedaten. Nach dem Laden der Schulkarte empfängt die OpenStreetMap Foundation die
               in Abschnitt 5 beschriebenen Verbindungsdaten. Bei Nutzung von Push-Benachrichtigungen wird außerdem der Push-Dienst des
               Browsers oder Betriebssystems einbezogen. Beim freiwilligen WhatsApp-Assistenten wird
@@ -248,6 +249,19 @@ const PrivacyPolicy: React.FC = () => {
                   <li>WhatsApp-Gesprächsverlauf: 24 Stunden nach der letzten Aktualisierung; Einmalcodes und ausstehende Bestätigungen: 10 Minuten;</li>
                   <li>externe WhatsApp-Nachrichten-IDs zur Verhinderung doppelter Verarbeitung: 7 Tage.</li>
                 </ul>
+                <p>
+                  Technische Zugriffs- und Betriebsprotokolle des Standard-Backends dienen der
+                  Fehleranalyse und dem sicheren Betrieb. Sie können Verbindungsadressen, Zeitpunkte,
+                  angeforderte Pfade einschließlich Abfrageparametern, HTTP-Statuscodes sowie
+                  Fehlermeldungen und in Anwendungsmeldungen auch Benutzer- und Schulkennungen enthalten.
+                  Diese Protokolle liegen auf dem Backend-Server derzeit in einem flüchtigen
+                  Systemprotokoll im Arbeitsspeicher. Es gibt keine feste Aufbewahrungsfrist in Tagen:
+                  Ältere Einträge werden bei der speicherplatzabhängigen Rotation entfernt; spätestens
+                  mit einem Neustart des Servers gehen die verbleibenden Einträge verloren. Ein Neustart
+                  nur der Backend-Anwendung löscht das Systemprotokoll nicht. Die LANIS-Anwendung legt
+                  keine eigenen Sicherungskopien dieser Systemprotokolle an. Die hier beschriebene
+                  Speicherung ist von den kontobezogenen Login- und Aktivitätsdaten getrennt.
+                </p>
                 <p>Die Fristen für Caches und kurzlebige Daten beschreiben deren vorgesehene Gültigkeit. Die physische Entfernung erfolgt durch die jeweilige Bereinigung und kann zeitlich nachgelagert sein.</p>
                 <p>Beim Löschen des LANIS-Kontos werden die kontobezogenen Daten und Sitzungen in den aktiven Kontodatenbanken und kontobezogenen Zwischenspeichern beim Standard-Backend entfernt. Daten im Schulportal Hessen selbst werden dadurch nicht gelöscht. Gemeinsam genutzte Unterrichtsdateien werden nicht einem einzelnen Konto zugeordnet und deshalb erst nach Ablauf ihrer Cache-Frist entfernt.</p>
             </div>
