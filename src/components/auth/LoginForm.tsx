@@ -246,7 +246,6 @@ const LoginForm: React.FC = () => {
         {isOled ? <MoonIcon className="h-4 w-4" /> : isDark ? <SunIcon className="h-4 w-4" /> : <MoonIcon className="h-4 w-4" />}
         {isOled ? 'OLED' : isDark ? 'Dunkel' : 'Hell'}
       </button>
-      {/* The custom-backend selector is intentionally hidden from the login page. */}
       <div className="w-full max-w-sm">
         <div className="text-center mb-10">
             <AppIcon alt="Schulportal" className="mx-auto h-14 w-14 rounded-2xl mb-6 shadow-soft-md" />
@@ -433,13 +432,21 @@ const LoginForm: React.FC = () => {
             </Link>
           </p>
 
-          <p className="text-center break-words text-xs leading-relaxed text-surface-500 dark:text-surface-400">
-            Anmeldedaten werden an{' '}
-            <span className="font-medium">
-              {API_BASE_URL.replace(/^https?:\/\//, '')}
-            </span>{' '}
-            übertragen.
-          </p>
+          <div className="text-center text-xs text-surface-500 dark:text-surface-400">
+            <p className="break-words leading-relaxed">
+              Anmeldedaten werden an{' '}
+              <span className="font-medium">
+                {API_BASE_URL.replace(/^https?:\/\//, '')}
+              </span>{' '}
+              übertragen.
+            </p>
+            <Link
+              to="/set-custom-backend"
+              className="inline-flex min-h-11 items-center rounded-sm px-2 underline underline-offset-2 transition-colors hover:text-surface-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:hover:text-surface-200"
+            >
+              Backend ändern
+            </Link>
+          </div>
         </form>
       </div>
     </div>
