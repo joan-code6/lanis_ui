@@ -38,7 +38,8 @@
     "to-ico": "^1.0.1",
     "tsx": "^4.23.15",
     "typescript": "^5.2.2",
-    "vite": "^7.3.6"
+    "vite": "^7.3.6",
+    "wrangler": "4.151.1"
   },
   "scripts": {
     "dev": "vite",
@@ -55,7 +56,9 @@
     "android:bundle": "npm run android:sync && node scripts/android-build.mjs bundle",
     "test:android": "tsx --test scripts/android.test.ts && node scripts/test-native-auth-storage.cjs",
     "test:account-data": "node scripts/test-account-data.cjs",
-    "android:verify": "npm run android:sync && node scripts/android-build.mjs verify"
+    "android:verify": "npm run android:sync && node scripts/android-build.mjs verify",
+    "deploy": "wrangler deploy",
+    "deploy:preview": "wrangler versions upload"
   },
   "browserslist": {
     "production": [

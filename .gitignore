@@ -12,3 +12,7 @@ android/key.properties
 
 # Local installable Android artifacts
 artifacts/android/
+
+# Cloudflare local state and secrets
+.wrangler/
+.dev.vars*

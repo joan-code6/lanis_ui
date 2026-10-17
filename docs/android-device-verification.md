@@ -86,6 +86,12 @@ The user supplied the test account separately after the first pass. Credentials 
 - Shortened settings-index descriptions and redundant appearance text. Fixed selected-view icon contrast in dark themes, including Moss.
 - Six frontend tests, encrypted-session and account-lifecycle checks, Android assembly/unit tests/lint, and the scoped design detector passed. Phone/tablet dashboard checks measured no page overflow or unnamed visible buttons.
 
+## Final main synchronization — 17 October
+
+Main advanced again during verification. Integrated `e59d3800`, preserving the new deployment workflows and practical setup guide alongside the Android scripts and documentation. Regenerated the combined lockfile; a clean install with scripts disabled passed, followed by the frontend, encrypted-storage, and account-lifecycle checks.
+
+The inherited Cloudflare deployment checks passed 5 of 6 checks on Windows. The remaining fixture creates a POSIX executable stub, which Windows cannot execute (`spawnSync ... wrangler ENOENT`); deployment workflows run on Ubuntu. Deployment code was preserved unchanged, and no deployment was performed locally.
+
 ## Remaining release checks
 
 Switching between different accounts, expired/revoked sessions, scheduled WorkManager execution under battery restrictions, and long-duration notification/background delivery still need device coverage. Demo checks above are presentation checks only.
