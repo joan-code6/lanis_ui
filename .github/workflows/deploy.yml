@@ -94,6 +94,17 @@ jobs:
             await core.summary.addLink(preview ? 'Open PR preview' : 'Open production', url).write();
             if (!preview) return;
             const issue_number = Number(process.env.PR_NUMBER);
+            const {data: pull} = await github.rest.pulls.get({...context.repo, pull_number: issue_number});
+            const start = '<!-- cloudflare-preview-body -->';
+            const end = '<!-- /cloudflare-preview-body -->';
+            const description = (pull.body || '')
+              .replace(/<!-- cloudflare-preview-body -->[\s\S]*?<!-- \/cloudflare-preview-body -->/g, '')
+              .trimEnd();
+            const previewSection = `${start}\n### Preview deployment\n\n[Open PR preview](${url})\n\nThis preview uses the live LANIS API. Changes made after signing in affect your real account.\n${end}`;
+            const updatedBody = description ? `${description}\n\n${previewSection}` : previewSection;
+            if (updatedBody !== pull.body) {
+              await github.rest.pulls.update({...context.repo, pull_number: issue_number, body: updatedBody});
+            }
             const marker = '<!-- cloudflare-preview -->';
             const body = `${marker}\nCloudflare preview: ${url}\n\nCommit: \`${process.env.SOURCE_SHA}\`\n\nThis preview uses the live LANIS API. Changes made after signing in affect your real account.`;
             const comments = await github.paginate(github.rest.issues.listComments, {...context.repo, issue_number});
