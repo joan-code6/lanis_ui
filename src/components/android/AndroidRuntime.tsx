@@ -14,6 +14,10 @@ export default function AndroidRuntime() {
   const { isAuthenticated, token } = useAuth();
   const { isDark, isOled, themeColor } = useTheme();
   const navigate = useNavigate();
+  // React Router can replace navigate after each route change. Native listeners
+  // must stay mounted so getLaunchUrl is consumed only once per runtime.
+  const navigation = useRef(navigate);
+  navigation.current = navigate;
   const location = useLocation();
   const currentPath = useRef(location.pathname);
   const authenticated = useRef(isAuthenticated);
@@ -33,7 +37,7 @@ export default function AndroidRuntime() {
     const open = (url: string) => {
       const route = nativeRoute(url);
       if (!route) return;
-      if (authenticated.current) navigate(route);
+      if (authenticated.current) navigation.current(route);
       else pendingRoute.current = route;
     };
     void track(App.addListener('appUrlOpen', ({ url }) => open(url)));
@@ -44,10 +48,10 @@ export default function AndroidRuntime() {
       if (!window.dispatchEvent(event)) return;
       if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
       const idx = window.history.state?.idx;
-      if (typeof idx === 'number' && idx > 0) navigate(-1);
+      if (typeof idx === 'number' && idx > 0) navigation.current(-1);
       else {
         const fallback = nativeBackFallback(currentPath.current);
-        if (fallback) navigate(fallback, { replace: true });
+        if (fallback) navigation.current(fallback, { replace: true });
         else void App.minimizeApp();
       }
     }));
@@ -73,13 +77,13 @@ export default function AndroidRuntime() {
     };
     document.addEventListener('click', externalLink);
     return () => { disposed = true; handles.forEach(handle => void handle.remove()); document.removeEventListener('click', externalLink); };
-  }, [navigate]);
+  }, []);
 
   useEffect(() => {
     if (!isAndroid || !isAuthenticated || currentPath.current.startsWith('/demo')) return;
-    if (pendingRoute.current) { navigate(pendingRoute.current); pendingRoute.current = null; }
+    if (pendingRoute.current) { navigation.current(pendingRoute.current); pendingRoute.current = null; }
     void flushAuthStorage().then(() => LanisNative.sync()).catch(() => setFailure('Offline-Daten konnten noch nicht aktualisiert werden.'));
-  }, [isAuthenticated, token, navigate]);
+  }, [isAuthenticated, token]);
 
   useEffect(() => {
     if (isAndroid) void LanisNative.setAppearance({ dark: isDark, oled: isOled, accent: THEME_COLOR_HEX[themeColor], theme: themeColor }).catch(() => {});
