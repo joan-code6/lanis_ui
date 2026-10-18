@@ -11,6 +11,11 @@ import androidx.core.view.WindowInsetsCompat
 import com.getcapacitor.BridgeActivity
 
 class MainActivity : BridgeActivity() {
+    lateinit var appLock: AppLock
+        private set
+    val appLockBack = object : androidx.activity.OnBackPressedCallback(false) {
+        override fun handleOnBackPressed() { moveTaskToBack(true) }
+    }
     override fun onCreate(savedInstanceState: Bundle?) {
         registerPlugin(LanisNativePlugin::class.java)
         super.onCreate(savedInstanceState)
@@ -29,6 +34,18 @@ class MainActivity : BridgeActivity() {
         val appearance = runCatching { NativeStore.read(this) }.getOrNull()
         updateTaskAppearance(appearance?.optString("theme", "ruby") ?: "ruby")
         if (BuildConfig.DEBUG) android.webkit.WebView.setWebContentsDebuggingEnabled(true)
+        appLock = AppLock(this)
+        onBackPressedDispatcher.addCallback(this, appLockBack)
+    }
+
+    override fun onPostResume() {
+        super.onPostResume()
+        if (::appLock.isInitialized) appLock.resume()
+    }
+
+    override fun onPause() {
+        if (::appLock.isInitialized) appLock.pause()
+        super.onPause()
     }
 
     @Suppress("DEPRECATION")

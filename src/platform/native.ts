@@ -7,6 +7,8 @@ export const androidPresentation = isAndroid || (import.meta.env.DEV && new URLS
 
 export interface DeviceStatus {
   signedIn: boolean;
+  appLockEnabled: boolean;
+  appLockAvailable: boolean;
   lastUpdated: number;
   syncError: string;
   notificationsAllowed: boolean;
@@ -19,6 +21,7 @@ export type WidgetKind = 'next' | 'today' | 'changes';
 export interface NativeSession { [key: string]: string }
 
 interface LanisNativePlugin {
+  setAppLock(options: { enabled: boolean }): Promise<DeviceStatus>;
   openFile(options: { uri: string; mimeType: string }): Promise<void>;
   getSession(): Promise<{ values: NativeSession; backend?: string }>;
   saveSession(options: { values: NativeSession; backend: string }): Promise<void>;

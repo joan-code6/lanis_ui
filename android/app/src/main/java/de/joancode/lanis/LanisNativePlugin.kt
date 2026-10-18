@@ -64,6 +64,8 @@ class LanisNativePlugin : Plugin() {
     private fun status(): JSObject {
         val state = NativeStore.read(context)
         return JSObject().apply {
+            put("appLockEnabled", AppLock.enabled(context))
+            put("appLockAvailable", AppLock.available(context))
             put("signedIn", !state.optJSONObject("session")?.optString("auth_refresh_token").isNullOrEmpty())
             put("lastUpdated", state.optLong("lastUpdated"))
             put("syncError", state.optString("syncError"))
@@ -72,6 +74,18 @@ class LanisNativePlugin : Plugin() {
             put("pushConfigured", BuildConfig.PUSH_CONFIGURED)
             put("widgetPinSupported", AppWidgetManager.getInstance(context).isRequestPinAppWidgetSupported)
             put("version", BuildConfig.VERSION_NAME)
+        }
+    }
+    @PluginMethod fun setAppLock(call: PluginCall) {
+        val enabled = call.getBoolean("enabled") ?: return call.reject("Auswahl fehlt.")
+        activity.runOnUiThread {
+            (activity as MainActivity).appLock.setEnabled(enabled) { success, error ->
+                if (success) {
+                    Widgets.updateAll(context)
+                    if (enabled) context.getSystemService(android.app.NotificationManager::class.java).cancelAll()
+                    call.resolve(status())
+                } else call.reject(error ?: "Entsperren fehlgeschlagen.")
+            }
         }
     }
     @PluginMethod fun getSession(call: PluginCall) = task(call) {

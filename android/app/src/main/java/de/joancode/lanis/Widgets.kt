@@ -132,6 +132,12 @@ object Widgets {
         views.setTextViewText(R.id.widget_updated, if (state.optString("syncError").isNotEmpty() || sourceError) "$age · Änderungen können fehlen" else age)
         views.setViewVisibility(R.id.widget_refresh, if (signedIn) View.VISIBLE else View.GONE)
         when {
+            AppLock.enabled(context) -> {
+                views.setTextViewText(R.id.widget_headline, "LANIS gesperrt")
+                views.setTextViewText(R.id.widget_detail, "Zum Entsperren tippen")
+                views.setTextViewText(R.id.widget_updated, "")
+                views.setViewVisibility(R.id.widget_refresh, View.GONE)
+            }
             !signedIn -> {
                 views.setTextViewText(R.id.widget_headline, "Noch nicht angemeldet")
                 views.setTextViewText(R.id.widget_detail, "Zum Anmelden tippen")

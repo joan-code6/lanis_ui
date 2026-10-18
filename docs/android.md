@@ -15,6 +15,14 @@ The Android app packages the existing React/Vite interface with Capacitor 8. It 
 
 Substitution widgets show resolved personal-timetable changes and unmatched notices. They do not claim to show every raw entry in a school's substitution plan. Homework/exam widgets and incoming share-to-submission intents are outside this implementation.
 
+## App lock
+
+In Settings → Android und Widgets, App-Sperre enables Android's biometric prompt with the device PIN, pattern or password as fallback. A secure device screen lock is required. Enabling and disabling require a fresh system verification; there is no separate LANIS PIN to store or recover.
+
+A native cover hides the WebView before its first frame and whenever the activity pauses. Cold starts, recreation and foreground return require verification, including incoming widget/notification links. Cancelling leaves the cover visible with an unlock button. Successful credential fallback remains concealed until the activity resumes. Authentication is held only in memory, while the opt-in is private device-local state independent of account logout.
+
+When enabled, screenshots/recents snapshots are blocked, widgets show only an unlock prompt and notifications omit message details. Existing notifications are cleared on activation. The lock protects local access to the Android UI; background sync continues using the existing encrypted session storage. The web/PWA target does not expose this device-only setting.
+
 ## Requirements and build
 
 Use Node 22+, JDK 21, Android SDK platform 36 and its build tools. Android 8 (API 26) or later is supported. Install Android Studio and set `ANDROID_HOME`, or use the manual GitHub Actions workflow.

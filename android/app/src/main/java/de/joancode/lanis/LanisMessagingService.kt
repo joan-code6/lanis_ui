@@ -36,9 +36,12 @@ class LanisMessagingService : FirebaseMessagingService() {
                     .setData(Uri.parse("https://lanis.arg-server.de$path")).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
                 val tag = data["tag"] ?: "lanis-update"
                 val pending = PendingIntent.getActivity(this, tag.hashCode(), intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+                val appLocked = AppLock.enabled(this)
+                val title = if (appLocked) "LANIS" else data["title"] ?: "LANIS"
+                val body = if (appLocked) "Neue Informationen. Zum Öffnen entsperren." else data["body"] ?: "Es gibt neue Informationen."
                 val notification = NotificationCompat.Builder(this, channel).setSmallIcon(R.drawable.ic_stat_lanis)
-                    .setContentTitle(data["title"] ?: "LANIS").setContentText(data["body"] ?: "Es gibt neue Informationen.")
-                    .setStyle(NotificationCompat.BigTextStyle().bigText(data["body"] ?: "Es gibt neue Informationen."))
+                    .setContentTitle(title).setContentText(body)
+                    .setStyle(NotificationCompat.BigTextStyle().bigText(body))
                     .setContentIntent(pending).setAutoCancel(true).setOnlyAlertOnce(false)
                     .setVisibility(NotificationCompat.VISIBILITY_PRIVATE).setCategory(NotificationCompat.CATEGORY_EVENT).build()
                 try { manager.notify(tag, 1, notification) } catch (_: SecurityException) { /* Permission revoked since the check. */ }

@@ -6,6 +6,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { notificationsAPI } from '../../services/api';
 import { isAndroid, LanisNative, type DeviceStatus, type WidgetKind } from '../../platform/native';
 import type { NotificationPreferences } from '../../types';
+import AppLockSettings from './AppLockSettings';
 
 const widgets: { kind: WidgetKind; title: string; size: string; description: string }[] = [
   { kind: 'next', title: 'Nächste Stunde', size: 'Kompakt', description: 'Fach, Raum und Uhrzeit auf einen Blick.' },
@@ -105,6 +106,7 @@ export default function AndroidSettings({ notificationsOnly = false }: { notific
     {!nativeAvailable && <p role="status" className="rounded-2xl border border-primary-200 bg-primary-50 p-4 text-sm text-primary-900 dark:border-primary-800 dark:bg-primary-950 dark:text-primary-200">Vorschau · Widgets sind in der Android-App verfügbar.</p>}
     {error && <div role="alert" className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-200">{error}<button className="ml-2 underline" disabled={busy} onClick={() => void run(load)}>Erneut versuchen</button></div>}
     {message && <p role="status" className="flex items-center gap-2 rounded-2xl bg-emerald-50 p-4 text-sm text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200"><CheckCircleIcon className="h-5 w-5 shrink-0" />{message}</p>}
+    {nativeAvailable && !notificationsOnly && <AppLockSettings />}
     {!notificationsOnly && <>
       <section className="card !overflow-hidden !p-0">
         <div className="border-b border-surface-100 px-5 py-5 dark:border-surface-800 sm:px-6"><h2 className="flex items-center gap-2 text-base font-semibold text-surface-950 dark:text-white"><Squares2X2Icon className="h-5 w-5" />Widgets</h2></div>
