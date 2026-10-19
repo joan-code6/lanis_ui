@@ -1,5 +1,3 @@
-export const RESOURCE_STALE_TIME = 10 * 60 * 1000;
-
 export interface ResourceSnapshot<T> {
   data: T | undefined;
   updatedAt: number;
@@ -52,9 +50,6 @@ export function refreshResource<T>(
 ): Promise<void> {
   const entry = entryFor(key);
   if (entry.pending) return entry.pending;
-  if (!force && entry.snapshot.data !== undefined && Date.now() - entry.snapshot.updatedAt < RESOURCE_STALE_TIME) {
-    return Promise.resolve();
-  }
   const controller = new AbortController();
   entry.controller = controller;
   const refresh = force || entry.snapshot.data !== undefined;

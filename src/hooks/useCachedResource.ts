@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useSyncExternalStore } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { getApiBaseUrl } from '../utils/backendConfig';
-import { readResource, refreshResource, RESOURCE_STALE_TIME, subscribeResource } from '../utils/resourceCache';
+import { readResource, refreshResource, subscribeResource } from '../utils/resourceCache';
 
-/** Render cached data synchronously; revalidate stale data without hiding it. */
+/** Render cached data synchronously; revalidate on every visit without hiding it. */
 export function useCachedResource<T>(
   resource: string,
   load: (signal: AbortSignal, refresh: boolean) => Promise<T>,
@@ -24,23 +24,8 @@ export function useCachedResource<T>(
 
   useEffect(() => {
     if (!key) return;
-    let timer: ReturnType<typeof setTimeout>;
-    let active = true;
-    const revalidate = async () => {
-      await refreshResource(key, loadRef.current);
-      if (!active) return;
-      const state = readResource(key);
-      // Retry failed refreshes later while retaining the last successful result.
-      const delay = state.error ? RESOURCE_STALE_TIME
-        : Math.max(1, RESOURCE_STALE_TIME - (Date.now() - state.updatedAt));
-      timer = setTimeout(revalidate, delay);
-    };
-    void revalidate();
-    return () => {
-      active = false;
-      clearTimeout(timer);
-      // Requests belong to the cache and may complete after navigation.
-    };
+    void refreshResource(key, loadRef.current);
+    // Requests belong to the cache and may complete after navigation.
   }, [key]);
 
   return {
