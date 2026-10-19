@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import axios from 'axios';
+import React, { useMemo } from 'react';
+import { useCachedResource } from '../../hooks/useCachedResource';
 import { useNavigate } from 'react-router-dom';
 import { format, parseISO } from 'date-fns';
 import { de } from 'date-fns/locale';
@@ -14,8 +14,8 @@ import {
 import { useAuth } from '../../contexts/AuthContext';
 import { useBasePath } from '../../contexts/BasePathContext';
 import { studyGroupsAPI } from '../../services/api';
-import { StudyGroup, StudyGroupExam } from '../../types';
 import SEO from '../seo/SEO';
+import type { StudyGroupExam } from '../../types';
 
 const formatExamDate = (date: string | null) => {
   if (!date) return 'Datum offen';
@@ -30,34 +30,13 @@ const StudyGroups: React.FC = () => {
   const { token } = useAuth();
   const navigate = useNavigate();
   const basePath = useBasePath();
-  const [groups, setGroups] = useState<StudyGroup[]>([]);
-  const [exams, setExams] = useState<StudyGroupExam[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [reloadKey, setReloadKey] = useState(0);
-
-  useEffect(() => {
-    if (!token) return;
-    const controller = new AbortController();
-    setLoading(true);
-    setError('');
-
-    studyGroupsAPI.getStudyGroups(token, controller.signal)
-      .then(response => {
-        if (!response.success) throw new Error(response.error || 'Die Lerngruppen konnten nicht geladen werden.');
-        setGroups(response.groups || []);
-        setExams(response.exams || []);
-      })
-      .catch(err => {
-        if (axios.isCancel(err)) return;
-        setError(err.response?.data?.detail || err.message || 'Die Lerngruppen konnten nicht geladen werden.');
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setLoading(false);
-      });
-
-    return () => controller.abort();
-  }, [token, reloadKey]);
+  const { data, loading, error, refresh } = useCachedResource('study-groups', async signal => {
+    const response = await studyGroupsAPI.getStudyGroups(token!, signal);
+    if (!response.success) throw new Error(response.error || 'Die Lerngruppen konnten nicht geladen werden.');
+    return response;
+  });
+  const groups = data?.groups || [];
+  const exams = data?.exams || [];
 
   const upcomingExams = useMemo(() => {
     const today = new Date();
@@ -80,18 +59,19 @@ const StudyGroups: React.FC = () => {
         <p className="page-subtitle">Kurse, Lehrkräfte und anstehende Klausuren</p>
       </div>
 
+      {error && data && <p role="status" className="mb-4 text-sm text-amber-700 dark:text-amber-300">Aktualisierung fehlgeschlagen. Der zuletzt geladene Stand wird angezeigt. {error}</p>}
       {loading ? (
         <div className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {Array.from({ length: 4 }).map((_, index) => <div key={index} className="skeleton h-40" />)}
           </div>
         </div>
-      ) : error ? (
+      ) : error && !data ? (
         <div className="card flex min-h-64 flex-col items-center justify-center text-center">
           <UserGroupIcon className="mb-3 h-10 w-10 text-red-400" />
           <h2 className="font-semibold text-surface-900 dark:text-surface-100">Lerngruppen nicht verfügbar</h2>
           <p className="mt-1 max-w-md text-sm text-surface-500 dark:text-surface-400">{error}</p>
-          <button className="btn btn-secondary mt-4" onClick={() => setReloadKey(value => value + 1)}>
+          <button className="btn btn-secondary mt-4" onClick={refresh}>
             <ArrowPathIcon className="mr-2 h-4 w-4" />Erneut versuchen
           </button>
         </div>

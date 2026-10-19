@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { calendarAPI } from '../../services/api';
 import { useSearchParams } from 'react-router-dom';
-import axios from 'axios';
+import { useCachedResource } from '../../hooks/useCachedResource';
 import SEO from '../seo/SEO';
 import {
   CalendarCategory,
@@ -141,37 +141,24 @@ const Kalender: React.FC = () => {
   const { token } = useAuth();
   const [searchParams] = useSearchParams();
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [events, setEvents] = useState<CalendarEvent[]>([]);
-  const [categories, setCategories] = useState<CalendarCategory[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState('');
   const [calendarViewMode, setCalendarViewMode] = useState<'month' | 'list'>('month');
-  const overviewRef = useRef<{ key: string } | null>(null);
-
-  if (!token) {
-    return (
-      <div className="p-6">
-        <div className="text-center py-12">
-          <h3 className="text-lg font-medium text-surface-900">Nicht authentifiziert</h3>
-          <p className="text-surface-500">Bitte melden Sie sich an, um den Kalender zu sehen.</p>
-        </div>
-      </div>
-    );
-  }
-
-  useEffect(() => {
-    if (!token) return;
-    const abortController = new AbortController();
-    loadCalendarData(abortController.signal);
-    return () => abortController.abort();
-  }, [token, currentDate.getMonth(), currentDate.getFullYear()]);
+  const { data, loading: isLoading, error } = useCachedResource('calendar', async signal => {
+    const [overview, events] = await Promise.all([
+      calendarAPI.getOverview(token!, signal),
+      calendarAPI.getEvents(token!, { year: 0, start: 'year', category: '', search: '' }, signal),
+    ]);
+    if (!overview.success || !events.success) throw new Error('Fehler beim Laden der Termine.');
+    return { overview, events };
+  });
+  const events = data?.events.events || [];
+  const categories = data?.overview.categories || [];
+  const viewId = data?.overview.calendar?.key;
 
   useEffect(() => {
     const eventId = searchParams.get('event');
-    const viewId = overviewRef.current?.key;
     if (!eventId || !token || !viewId) return;
     const abort = new AbortController();
     calendarAPI.getEvent(token, eventId, viewId, abort.signal)
@@ -182,44 +169,7 @@ const Kalender: React.FC = () => {
       })
       .catch(() => {});
     return () => abort.abort();
-  }, [searchParams, token]);
-
-  const loadCalendarData = async (signal?: AbortSignal) => {
-    if (!token) return;
-    setIsLoading(true);
-    setError('');
-
-    try {
-      const [overviewRes, eventsRes] = await Promise.all([
-        calendarAPI.getOverview(token, signal),
-        calendarAPI.getEvents(token, {
-          year: 0,
-          start: 'year',
-          category: selectedCategory,
-          search: searchQuery,
-        }, signal),
-      ]);
-
-      if (signal?.aborted) return;
-
-      if (overviewRes.success) {
-        setCategories(overviewRes.categories);
-        overviewRef.current = overviewRes.calendar;
-      }
-
-      if (eventsRes.success) {
-        setEvents(eventsRes.events);
-      } else {
-        setError('Fehler beim Laden der Termine.');
-      }
-      setIsLoading(false);
-    } catch (err) {
-      if (axios.isCancel(err)) return;
-      console.error('Error loading calendar:', err);
-      setError('Fehler beim Laden der Termine.');
-      setIsLoading(false);
-    }
-  };
+  }, [searchParams, token, viewId]);
 
   const filteredEvents = useMemo(() => {
     return events.filter((event) => {
@@ -401,7 +351,7 @@ const Kalender: React.FC = () => {
 
       {error && (
         <div className="mb-6 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-900 text-red-600 dark:text-red-400 px-4 py-3 rounded-xl text-sm animate-scale-in flex-shrink-0">
-          {error}
+          {data && 'Aktualisierung fehlgeschlagen. Der zuletzt geladene Stand wird angezeigt. '}{error}
         </div>
       )}
 

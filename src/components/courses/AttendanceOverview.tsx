@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import axios from 'axios';
+import React, { useMemo } from 'react';
+import { useCachedResource } from '../../hooks/useCachedResource';
 import { useNavigate } from 'react-router-dom';
 import {
   AcademicCapIcon,
@@ -13,7 +13,7 @@ import {
 import { useAuth } from '../../contexts/AuthContext';
 import { useBasePath } from '../../contexts/BasePathContext';
 import { coursesAPI } from '../../services/api';
-import { AttendanceCourse, AttendanceOverviewResponse } from '../../types';
+import { AttendanceCourse } from '../../types';
 import SEO from '../seo/SEO';
 
 const preferredOrder = ['anwesend', 'entschuldigt', 'unentschuldigt', 'fehlend'];
@@ -95,36 +95,11 @@ const AttendanceOverview: React.FC = () => {
   const { token } = useAuth();
   const basePath = useBasePath();
   const navigate = useNavigate();
-  const [data, setData] = useState<AttendanceOverviewResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [reloadKey, setReloadKey] = useState(0);
-
-  useEffect(() => {
-    if (!token) {
-      setLoading(false);
-      return undefined;
-    }
-
-    const controller = new AbortController();
-    setLoading(true);
-    setError('');
-    coursesAPI.getAttendanceOverview(token, reloadKey > 0, controller.signal)
-      .then(response => {
-        if (!response.success) throw new Error(response.error || 'Die Anwesenheitsdaten konnten nicht geladen werden.');
-        setData(response);
-      })
-      .catch(err => {
-        if (axios.isCancel(err)) return;
-        setData(null);
-        setError(err instanceof Error ? err.message : 'Die Anwesenheitsdaten konnten nicht geladen werden.');
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setLoading(false);
-      });
-
-    return () => controller.abort();
-  }, [token, reloadKey]);
+  const { data, loading, refreshing, error, refresh } = useCachedResource('attendance', async (signal, force) => {
+    const response = await coursesAPI.getAttendanceOverview(token!, force, signal);
+    if (!response.success) throw new Error(response.error || 'Die Anwesenheitsdaten konnten nicht geladen werden.');
+    return response;
+  });
 
   const totalStats = useMemo(() => {
     if (!data) return [];
@@ -171,8 +146,8 @@ const AttendanceOverview: React.FC = () => {
           <button
             type="button"
             className="btn btn-secondary self-start"
-            onClick={() => setReloadKey(value => value + 1)}
-            disabled={loading}
+            onClick={refresh}
+            disabled={loading || refreshing}
           >
             <ArrowPathIcon className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             Aktualisieren
@@ -181,7 +156,7 @@ const AttendanceOverview: React.FC = () => {
 
         {error && (
           <div className="card mb-5 border-red-200 bg-red-50 text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300">
-            {error}
+            {data && 'Aktualisierung fehlgeschlagen. Der zuletzt geladene Stand wird angezeigt. '}{error}
           </div>
         )}
 
@@ -192,7 +167,7 @@ const AttendanceOverview: React.FC = () => {
               Anwesenheit wird geladen …
             </div>
           </div>
-        ) : !error && data?.available === false ? (
+        ) : data?.available === false ? (
           <div className="card flex min-h-64 flex-col items-center justify-center text-center">
             <ChartBarIcon className="mb-3 h-10 w-10 text-surface-300" />
             <h2 className="font-semibold text-surface-900 dark:text-white">Keine Anwesenheitsdaten</h2>
@@ -202,7 +177,7 @@ const AttendanceOverview: React.FC = () => {
                 : 'Für dieses Schulportal-Konto wurden in Mein Unterricht noch keine Anwesenheitsübersichten gefunden.'}
             </p>
           </div>
-        ) : !error && data ? (
+        ) : data ? (
           <>
             <div className="mb-6 rounded-xl border border-primary-100 bg-primary-50/70 p-4 dark:border-primary-900 dark:bg-primary-950/40">
               <p className="text-sm text-primary-900 dark:text-primary-100">

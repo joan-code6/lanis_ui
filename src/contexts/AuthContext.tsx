@@ -1,3 +1,4 @@
+import { clearResourceCache } from '../utils/resourceCache';
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { AuthContextType, LoginRequest, User } from '../types';
 import { authAPI, notificationsAPI, unsubscribeBrowserPushSubscription } from '../services/api';
@@ -161,6 +162,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     let writeGeneration = captureAccountDataGeneration();
     try {
       const response = await authAPI.login(credentials);
+      clearResourceCache();
 
       const expiresAt = Date.now() + response.expires_in * 1000;
 
@@ -276,6 +278,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
+      clearResourceCache();
       setToken(null);
       setUser(null);
       setIsAuthenticated(false);

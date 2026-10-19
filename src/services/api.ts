@@ -1,3 +1,4 @@
+import { clearResourceCache } from '../utils/resourceCache';
 import {
   SchoolListResponse,
   DistrictSchoolsResponse,
@@ -1229,6 +1230,7 @@ apiClient.interceptors.response.use(
       } catch (cleanupError) {
         console.warn('Failed to remove push subscription after authentication loss:', cleanupError);
       }
+      clearResourceCache();
       localStorage.removeItem(ACCESS_TOKEN_KEY);
       localStorage.removeItem(REFRESH_TOKEN_KEY);
       localStorage.removeItem(TOKEN_EXPIRES_KEY);
