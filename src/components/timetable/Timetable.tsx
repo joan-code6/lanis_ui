@@ -51,7 +51,7 @@ const Timetable: React.FC = () => {
   const [substitutionSources, setSubstitutionSources] = useState<{ name: string; error: boolean; updated?: string | null }[]>([]);
   const refreshTracker = useRef(createTimetableRefreshTracker());
   const loadedTimetableKey = useRef('');
-  const timetableKey = JSON.stringify([timetableViewMode, planMode, selectedWeek, preferences.vertretungsplan.class_override, preferences.timetable.show_substitutions]);
+  const timetableKey = JSON.stringify([token, timetableViewMode, planMode, selectedWeek, preferences.vertretungsplan.class_override, preferences.timetable.show_substitutions]);
   const hasCurrentTimetable = loadedTimetableKey.current === timetableKey;
   const dayScrollerRef = useRef<HTMLDivElement>(null);
 
@@ -269,7 +269,7 @@ const Timetable: React.FC = () => {
                         }}
                       >
                         <TimetableLessonFields
-                          title={<p className={`font-semibold text-surface-900 dark:text-white ${lesson.cancelled ? 'line-through' : ''}`}>{lesson.subject}</p>}
+                          title={<p className={`item-title ${lesson.cancelled ? 'line-through' : ''}`}>{lesson.subject}</p>}
                           secondary={lesson.class_name && <p className="text-xs text-surface-500">{lesson.class_name}</p>}
                           badges={<>
                             {lesson.week_type && <WeekBadge week={lesson.week_type} />}
