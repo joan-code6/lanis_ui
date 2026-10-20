@@ -20,7 +20,7 @@ export function moduleDestination(module: Module): string | undefined {
 export function modulePreloadOrder(modules: Module[], preferences: UserPreferences): string[] {
   const visible = modules.filter(module => !preferences.dashboard.hidden_modules.includes(module.name));
   const pinned = preferences.dashboard.pinned_modules.flatMap(name => visible.filter(module => module.name === name));
-  const available = new Set(visible.map(moduleDestination).filter(Boolean));
+  const available = new Set(modules.map(moduleDestination).filter(Boolean));
   return [...new Set([
     ...pinned.map(moduleDestination),
     ...normalizeSidebarOrder(preferences.sidebar.order)

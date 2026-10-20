@@ -50,5 +50,18 @@ const config = { headers: { 'X-Session-Token': 'test' }, params: { refresh: fals
   const modules = ['Kalender', 'Nachrichten', 'Stundenplan', 'Dateispeicher', 'External'].map(name => ({ name, url: '/' + name.toLowerCase() + '.php' }));
   const preferences = { dashboard: { pinned_modules: ['Stundenplan', 'Kalender'], hidden_modules: ['Dateispeicher'] }, sidebar: { order: ['messages', 'calendar', 'timetable'], hidden_items: [] } };
   assert.deepEqual(Array.from(orderContext.exports.modulePreloadOrder(modules, preferences)), ['timetable', 'calendar', 'messages']);
+  const preloadOrder = (dashboardHidden, sidebarHidden) => Array.from(orderContext.exports.modulePreloadOrder(modules, {
+    ...preferences,
+    dashboard: { ...preferences.dashboard, hidden_modules: dashboardHidden },
+    sidebar: { ...preferences.sidebar, hidden_items: sidebarHidden },
+  }));
+  assert.deepEqual(preloadOrder(['Kalender', 'Dateispeicher'], []), ['timetable', 'messages', 'calendar'],
+    'dashboard-hidden modules still preload in sidebar order');
+  assert.deepEqual(preloadOrder(['Kalender', 'Dateispeicher'], ['calendar']), ['timetable', 'messages'],
+    'modules hidden in both places are excluded, including stale pins');
+  assert.deepEqual(preloadOrder(['Dateispeicher'], ['calendar']), ['timetable', 'calendar', 'messages'],
+    'dashboard-visible pinned modules keep priority when hidden in sidebar');
+  assert.deepEqual(preloadOrder([], ['dateispeicher']), ['timetable', 'calendar', 'messages', 'dateispeicher'],
+    'dashboard-visible modules remain in fallback when hidden in sidebar');
   console.log('Module prefetch checks passed');
 })().catch(error => { console.error(error); process.exitCode = 1; });
