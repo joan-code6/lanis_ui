@@ -27,6 +27,7 @@ import {
 import { API_BASE_URL } from '../../services/api';
 import clsx from 'clsx';
 import ModuleIcon from './ModuleIcon';
+import { moduleDestination, prefetchModule } from '../../utils/modulePrefetch';
 import DashboardNotifications from './DashboardNotifications';
 import { readModulesCache, writeModulesCache } from '../../utils/moduleCache';
 import { captureAccountDataGeneration } from '../../utils/accountDataWrites';
@@ -108,6 +109,11 @@ const Dashboard: React.FC = () => {
     } finally {
       setIsUpdating(false);
     }
+  };
+
+  const warmModule = (module: Module) => {
+    const id = moduleDestination(module);
+    if (!isEditMode && id && token) void prefetchModule(id, token, preferences);
   };
 
   const handleModuleClick = (module: Module) => {
@@ -480,6 +486,8 @@ const Dashboard: React.FC = () => {
                   if (!event.currentTarget.contains(event.relatedTarget as Node)) setDropTarget(null);
                 }}
                 onDrop={(event) => handleDrop(event, module.name)}
+                onMouseEnter={() => warmModule(module)}
+                onFocus={() => warmModule(module)}
                 onClick={() => handleModuleClick(module)}
               >
                 {activeDropTarget && (

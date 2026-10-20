@@ -1,4 +1,5 @@
 import React from 'react';
+import { modulePreloadOrder, prefetchModule } from '../../utils/modulePrefetch';
 import { useAuth } from '../../contexts/AuthContext';
 import { usePreferences } from '../../contexts/PreferencesContext';
 import { BasePathProvider } from '../../contexts/BasePathContext';
@@ -67,6 +68,7 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
   const [isFeedbackOpen, setIsFeedbackOpen] = React.useState(false);
   const feedbackOpenerRef = React.useRef<HTMLButtonElement | null>(null);
   const closeFeedbackDialog = React.useCallback(() => setIsFeedbackOpen(false), []);
+  const [preloadModules, setPreloadModules] = React.useState<CachedModule[]>([]);
   const [hasNativeDateispeicher, setHasNativeDateispeicher] = React.useState(false);
   const [hasNativeDateiverteilung, setHasNativeDateiverteilung] = React.useState(false);
   const [hasNativeSubstitutionPlan, setHasNativeSubstitutionPlan] = React.useState(false);
@@ -109,6 +111,7 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
     const writeGeneration = captureAccountDataGeneration();
     const abortController = new AbortController();
     const applyModuleAvailability = (modules: CachedModule[]) => {
+      setPreloadModules(modules);
       const availability = getModuleAvailability(modules);
       setHasNativeDateispeicher(availability.hasNativeDateispeicher);
       setHasNativeDateiverteilung(availability.hasNativeDateiverteilung);
@@ -137,6 +140,19 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
     checkDsbModule();
     return () => abortController.abort();
   }, [token, user?.school_id, user?.username]);
+
+  React.useEffect(() => {
+    if (!token || !preloadModules.length) return;
+    let cancelled = false;
+    const timer = window.setTimeout(async () => {
+      for (const id of modulePreloadOrder(preloadModules, preferences)) {
+        if (cancelled) break;
+        if (window.location.pathname.replace(/^\/demo/, '').split('/')[1] === id) continue;
+        await prefetchModule(id, token, preferences);
+      }
+    }, 500);
+    return () => { cancelled = true; window.clearTimeout(timer); };
+  }, [token, preloadModules, preferences]);
 
   React.useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -390,6 +406,8 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
                 <Link
                   key={item.id}
                   to={item.href}
+                  onMouseEnter={() => token && void prefetchModule(item.id, token, preferences)}
+                  onFocus={() => token && void prefetchModule(item.id, token, preferences)}
                   style={{ animationDelay: `${index * 60}ms` }}
                   className={`nav-link ${isCollapsed ? 'mx-auto h-10 w-10 justify-center gap-0 px-0' : ''} ${isActive ? 'nav-link-active' : ''}`}
                   title={isCollapsed ? item.name : undefined}
