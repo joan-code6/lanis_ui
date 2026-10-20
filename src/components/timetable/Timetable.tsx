@@ -21,6 +21,7 @@ import { StudyGroupExam, TimetableDay, TimetableLesson, TimetableResponse } from
 import { timetableDatesForMode, weekTypeForDate } from '../../utils/timetableView';
 import SEO from '../seo/SEO';
 import TimetableSkeleton from './TimetableSkeleton';
+import TimetableLessonFields from './TimetableLessonFields';
 import { layoutTimetableEntries, TimetableEntry, timetableEntries } from '../../utils/timetableExams';
 import { createTimetableRefreshTracker } from '../../utils/timetableRefresh';
 import {
@@ -49,6 +50,9 @@ const Timetable: React.FC = () => {
   const [examsError, setExamsError] = useState(false);
   const [substitutionSources, setSubstitutionSources] = useState<{ name: string; error: boolean; updated?: string | null }[]>([]);
   const refreshTracker = useRef(createTimetableRefreshTracker());
+  const loadedTimetableKey = useRef('');
+  const timetableKey = JSON.stringify([timetableViewMode, planMode, selectedWeek, preferences.vertretungsplan.class_override, preferences.timetable.show_substitutions]);
+  const hasCurrentTimetable = loadedTimetableKey.current === timetableKey;
   const dayScrollerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -56,9 +60,11 @@ const Timetable: React.FC = () => {
     const controller = new AbortController();
     setLoading(true);
     setError('');
-    setExams([]);
-    setExamsError(false);
-    setSubstitutionSources([]);
+    if (!hasCurrentTimetable) {
+      setExams([]);
+      setExamsError(false);
+      setSubstitutionSources([]);
+    }
 
     const refresh = refreshTracker.current.shouldRefresh(reloadKey);
     timetableAPI.getResolvedTimetable(token, { view_mode: timetableViewMode, plan_mode: planMode, show_substitutions: preferences.timetable.show_substitutions, week_type: selectedWeek, refresh }, controller.signal)
@@ -66,6 +72,7 @@ const Timetable: React.FC = () => {
         if (controller.signal.aborted) return;
         if (!response.success) throw new Error(response.message || 'Der Stundenplan konnte nicht geladen werden.');
         refreshTracker.current.markSuccessful(reloadKey);
+        loadedTimetableKey.current = timetableKey;
         setVisibleDays(response.days || []);
         setHasAlternatingWeeks(Boolean(response.has_alternating_weeks));
         setSubstitutionSources(response.substitution_sources || []);
@@ -174,7 +181,7 @@ const Timetable: React.FC = () => {
           </div>
         )}
 
-        {loading ? (
+        {loading && !hasCurrentTimetable ? (
           <TimetableSkeleton
             dates={loadingDates}
             layoutMode={preferences.timetable.layout_mode}
@@ -261,22 +268,20 @@ const Timetable: React.FC = () => {
                           }
                         }}
                       >
-                        <div className="mb-2 flex items-start justify-between gap-2">
-                          <div>
-                            <p className={`font-semibold text-surface-900 dark:text-white ${lesson.cancelled ? 'line-through' : ''}`}>{lesson.subject}</p>
-                            {lesson.class_name && <p className="text-xs text-surface-500">{lesson.class_name}</p>}
-                          </div>
-                          <div className="flex shrink-0 items-center gap-1.5">
+                        <TimetableLessonFields
+                          title={<p className={`font-semibold text-surface-900 dark:text-white ${lesson.cancelled ? 'line-through' : ''}`}>{lesson.subject}</p>}
+                          secondary={lesson.class_name && <p className="text-xs text-surface-500">{lesson.class_name}</p>}
+                          badges={<>
                             {lesson.week_type && <WeekBadge week={lesson.week_type} />}
                             {lesson.period != null && <span className="badge badge-surface">{lesson.period}{typeof lesson.period === 'number' ? '.' : ''} Std.</span>}
                             {lesson.course_id && <ChevronRightIcon className="h-4 w-4 text-primary-500" aria-hidden="true" />}
-                          </div>
-                        </div>
-                        <div className="space-y-1 text-xs text-surface-500 dark:text-surface-400">
-                          {(lesson.start_time || lesson.end_time) && <p className="flex items-center gap-1.5"><ClockIcon className="h-3.5 w-3.5" />{lesson.start_time}{lesson.end_time ? ` – ${lesson.end_time}` : ''}</p>}
-                          {lesson.teacher && <p className="flex items-center gap-1.5"><UserIcon className="h-3.5 w-3.5" />{lesson.teacher}</p>}
-                          {lesson.room && <p className="flex items-center gap-1.5"><MapPinIcon className="h-3.5 w-3.5" />{lesson.room}</p>}
-                        </div>
+                          </>}
+                          details={[
+                            ...((lesson.start_time || lesson.end_time) ? [{ icon: ClockIcon, value: <>{lesson.start_time}{lesson.end_time ? ` – ${lesson.end_time}` : ''}</> }] : []),
+                            ...(lesson.teacher ? [{ icon: UserIcon, value: lesson.teacher }] : []),
+                            ...(lesson.room ? [{ icon: MapPinIcon, value: lesson.room }] : []),
+                          ]}
+                        />
                         {lesson.substitution && <div className="mt-2 border-t pt-2 text-xs text-amber-800 dark:text-amber-200">
                           <p className="font-semibold">{lesson.substitution.kind || (lesson.cancelled ? 'Entfall' : 'Vertretung')} · {lesson.substitution.source}</p>
                           {lesson.original_lesson && <p className="mt-1 text-surface-500">Geplant: {[lesson.original_lesson.subject, lesson.original_lesson.teacher, lesson.original_lesson.room].filter(Boolean).join(' · ')}</p>}

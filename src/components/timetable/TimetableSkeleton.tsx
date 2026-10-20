@@ -1,13 +1,21 @@
 import React from 'react';
 import { format, isToday } from 'date-fns';
 import { de } from 'date-fns/locale';
+import { ChevronRightIcon, ClockIcon, MapPinIcon, UserIcon } from '@heroicons/react/24/outline';
+import TimetableLessonFields from './TimetableLessonFields';
 import type { TimetableLayoutMode } from '../../types';
 
 const LessonPlaceholder: React.FC = () => (
   <div className="rounded-xl border p-3" aria-hidden="true">
-    <div className="skeleton h-5 w-3/4 mb-3" />
-    <div className="skeleton h-4 w-1/2 mb-2" />
-    <div className="skeleton h-4 w-2/3" />
+    <TimetableLessonFields
+      title={<div className="flex h-6 items-center"><span className="skeleton block h-4 w-3/4" /></div>}
+      badges={<><span className="badge badge-surface gap-1"><span className="skeleton h-4 w-5" />Std.</span><ChevronRightIcon className="h-4 w-4 text-primary-500" /></>}
+      details={[
+        { icon: ClockIcon, value: <span className="skeleton h-4 w-28 max-w-full" /> },
+        { icon: UserIcon, value: <span className="skeleton h-4 w-12" /> },
+        { icon: MapPinIcon, value: <span className="skeleton h-4 w-16" /> },
+      ]}
+    />
   </div>
 );
 
@@ -47,7 +55,7 @@ const TimetableSkeleton: React.FC<{ dates: Date[]; layoutMode: TimetableLayoutMo
               <p className="mt-0.5 text-xs text-surface-500">{format(date, 'd. MMMM', { locale: de })}</p>
             </div>
             <div className="space-y-2 p-3">
-              {Array.from({ length: 3 }, (_, i) => <LessonPlaceholder key={i} />)}
+              {Array.from({ length: 5 }, (_, i) => <LessonPlaceholder key={i} />)}
             </div>
           </section>
         ))}
