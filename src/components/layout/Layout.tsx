@@ -619,6 +619,12 @@ function FeedbackDialog({ token, onClose, openerRef }: {
             Beschreibung
             <textarea value={details} onChange={(event) => setDetails(event.target.value)} required rows={5} maxLength={5000} placeholder="Beschreibe deine Idee oder was passiert ist …" className="input mt-1.5 w-full resize-y" />
           </label>
+          <p className="text-xs leading-relaxed text-surface-500 dark:text-surface-400">
+            Dein Feedback wird mit deinem Konto gespeichert. Bei aktivierten Betreiberbenachrichtigungen
+            werden Text und Kontokennung auch an Discord gesendet. Bitte sende keine Passwörter oder
+            vertraulichen Angaben über andere Personen.{' '}
+            <a href="/privacy-policy" target="_blank" rel="noreferrer" className="underline underline-offset-2">Datenschutzhinweise</a>
+          </p>
           {message && <p role="status" className="text-sm text-surface-600 dark:text-surface-300">{message}</p>}
           <div className="flex justify-end gap-2 pt-1">
             <button type="button" onClick={onClose} disabled={isSubmitting} className="btn btn-secondary disabled:cursor-not-allowed disabled:opacity-60">Abbrechen</button>

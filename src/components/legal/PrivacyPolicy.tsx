@@ -35,6 +35,13 @@ const PrivacyPolicy: React.FC = () => {
               <li>Das Standard-Backend speichert auch Profil- und kontobezogene Nutzungsdaten. Der Betreiber kann auf serverseitig verarbeitete Daten zugreifen; die Verschlüsselung schließt diesen Zugriff nicht aus.</li>
               <li>Die Schriftarten werden von unseren eigenen Servern geladen. Externe Symbol-Stylesheets werden bereits beim Seitenaufruf geladen; weitere externe Dienste kommen je nach Funktion hinzu.</li>
             </ul>
+            <p className="mt-3">
+              Einfach erklärt: LANIS zeigt dir Informationen aus deinem Schulportal. Dafür bekommt
+              unser Standard-Backend deine Anmeldedaten und die abgerufenen Inhalte. Es ist ein
+              unabhängiges Angebot. Wenn du etwas zum Datenschutz nicht verstehst, kannst du uns
+              über die unten genannte E-Mail-Adresse fragen und dir von einer vertrauten erwachsenen
+              Person helfen lassen. Du musst uns dafür kein Passwort schicken.
+            </p>
           </div>
 
           <div>
@@ -89,6 +96,13 @@ const PrivacyPolicy: React.FC = () => {
               Zugangsdaten und Anfragen; für seine Verarbeitung gelten seine eigenen Angaben.
             </p>
             <p className="mt-2">
+              In diesen Inhalten können auch Angaben über andere Personen stehen, etwa Namen und
+              Kontaktdaten von Lehrkräften, Mitschülern oder Eltern sowie Angaben in Nachrichten,
+              Aufgaben, Abgaben und Dateien. Die Angaben stammen aus dem Schulportal Hessen oder
+              aus Eingaben der Nutzer. Auch Personen ohne eigenes LANIS-Konto können sich wegen
+              ihrer bei LANIS verarbeiteten Daten an den oben genannten Kontakt wenden.
+            </p>
+            <p className="mt-2">
               Unabhängig von einem selbst eingestellten Backend ruft die Startseite beim Öffnen öffentliche,
               zusammengefasste Konto- und Schulzahlen sowie bekannte Schulstandorte vom
               bereitgestellten Standard-Backend unter{' '}
@@ -130,6 +144,12 @@ const PrivacyPolicy: React.FC = () => {
               Beim Aufruf der Website erhalten die Server, die Benutzeroberfläche und Backend
               bereitstellen, technisch erforderliche Verbindungsdaten wie IP-Adresse, Zeitpunkt,
               angeforderte Adresse und Browserinformationen.
+              Die Benutzeroberfläche wird bei Cloudflare bereitgestellt. Das Standard-Backend wird
+              vom Betreiber auf einem eigenen Server betrieben. Cloudflare erhält bei der
+              Bereitstellung der Benutzeroberfläche die technischen Anfragedaten. Informationen
+              des Anbieters findest du in der{' '}
+              <a href="https://www.cloudflare.com/privacypolicy/" target="_blank" rel="noreferrer" className="text-[#00a0c0] underline underline-offset-2">Datenschutzerklärung von Cloudflare</a>.
+              {' '}
               Die Schriftarten Outfit, JetBrains Mono, Syne und Fraunces werden von unseren eigenen
               Servern bereitgestellt. Zum Laden dieser Schriftarten wird keine Verbindung zu Google
               hergestellt. Die Website bindet Symbol-Stylesheets von cdnjs (cdnjs.cloudflare.com) ein.
@@ -218,6 +238,16 @@ const PrivacyPolicy: React.FC = () => {
               jedes erstmals erfasste Konto ausgelöst und enthalten personenbezogene Kennungen.
             </p>
             <p className="mt-2">
+              Wenn du Feedback einreichst, speichert das Standard-Backend Kategorie, Titel,
+              Beschreibung, den Seitenpfad ohne Abfrageparameter, deine Kontokennung und den
+              Zeitpunkt. Berechtigte Administratoren bearbeiten die Meldung im privaten
+              Verwaltungsportal; dabei werden auch Status und Bearbeitungsangaben gespeichert.
+              Bei konfigurierten Feedback-Benachrichtigungen werden Titel, Beschreibung und
+              Kontokennung außerdem an Discord übermittelt. Die Verarbeitung dient der
+              Bearbeitung deiner Rückmeldung und der Fehleranalyse. Bitte sende keine Passwörter
+              oder vertraulichen Angaben über andere Personen im Feedback.
+            </p>
+            <p className="mt-2">
               Soweit ein Nutzungsverhältnis besteht, erfolgt die für die angeforderten Funktionen
               erforderliche Verarbeitung auf Grundlage von Art. 6 Abs. 1 lit. b DSGVO. Im Übrigen stützt
               sie sich auf Art. 6 Abs. 1 lit. f DSGVO; das berechtigte Interesse liegt in der sicheren und
@@ -251,6 +281,7 @@ const PrivacyPolicy: React.FC = () => {
                 <ul className="list-disc space-y-1 pl-5">
                   <li>Schulportal-Zugangsdaten werden wieder entschlüsselbar gespeichert; LANIS-Aktualisierungssitzungen sind bis zu 90 Tage nach der Anmeldung gültig. Abgelaufene Sitzungen und zugehörige Zugangsdaten werden bei der serverseitigen Bereinigung entfernt;</li>
                   <li>Profil, Einstellungen, eigene Stunden, Klassenverknüpfungen, Push-Abos sowie Login- und Aktivitätsdaten: bis zur Löschung des LANIS-Kontos;</li>
+                  <li>Feedback einschließlich Bearbeitungsstatus und Kontozuordnung: bis zur Löschung des LANIS-Kontos; bereits an Discord übermittelte Kopien werden dadurch nicht automatisch entfernt;</li>
                   <li>gewöhnliche Antwort-Caches: regelmäßig 10 Minuten; Profil-, App- und Moduldaten höchstens 30 Tage;</li>
                   <li>private Ausfall-Snapshots: höchstens 24 Stunden; gemeinsam genutzte heruntergeladene Unterrichtsdateien: höchstens 30 Tage;</li>
                   <li>WhatsApp-Gesprächsverlauf: 24 Stunden nach der letzten Aktualisierung; Einmalcodes und ausstehende Bestätigungen: 10 Minuten;</li>
@@ -270,7 +301,7 @@ const PrivacyPolicy: React.FC = () => {
                   Speicherung ist von den kontobezogenen Login- und Aktivitätsdaten getrennt.
                 </p>
                 <p>Die Fristen für Caches und kurzlebige Daten beschreiben deren vorgesehene Gültigkeit. Die physische Entfernung erfolgt durch die jeweilige Bereinigung und kann zeitlich nachgelagert sein.</p>
-                <p>Beim Löschen des LANIS-Kontos werden die kontobezogenen Daten und Sitzungen in den aktiven Kontodatenbanken und kontobezogenen Zwischenspeichern beim Standard-Backend entfernt. Daten im Schulportal Hessen selbst werden dadurch nicht gelöscht. Gemeinsam genutzte Unterrichtsdateien werden nicht einem einzelnen Konto zugeordnet und deshalb erst nach Ablauf ihrer Cache-Frist entfernt.</p>
+                <p>Beim Löschen des LANIS-Kontos werden die kontobezogenen Daten und Sitzungen in den aktiven Kontodatenbanken und kontobezogenen Zwischenspeichern beim Standard-Backend entfernt. Daten im Schulportal Hessen selbst werden dadurch nicht gelöscht. Heruntergeladene Unterrichtsdateien werden über Kontoreferenzen zugeordnet. Nach Entfernung der letzten Kontoreferenz werden sie gelöscht; Dateien, die auch anderen Konten zugeordnet sind, bleiben bis zur jeweiligen Cache-Bereinigung erhalten. Ein kurzzeitiger kontobezogener Löschmarker bleibt bis zu einer Stunde bestehen, damit laufende Hintergrundaufgaben gelöschte Daten nicht wieder anlegen.</p>
             </div>
             {usesCustomBackend && (
               <p className="mt-2">Bei einem selbst eingestellten Backend richten sich Speicherkategorien und Löschfristen nach den Angaben und der Konfiguration seines Betreibers.</p>
@@ -294,6 +325,14 @@ const PrivacyPolicy: React.FC = () => {
               Abschnitt 1. Sicherheitsgeheimnisse wie Passwörter, Tokens, Cookies und
               kryptografische Schlüssel sind nicht Bestandteil des Exports.
             </p>
+            <p className="mt-2">
+              Der automatische Export enthält nicht alle Datenbestände, insbesondere nicht den
+              gespeicherten WhatsApp-Gesprächsverlauf. Für eine darüber hinausgehende Auskunft
+              kannst du dich an den Kontakt in Abschnitt 1 wenden. Du kannst dich insbesondere
+              beim{' '}
+              <a href="https://datenschutz.hessen.de/service/beschwerde-uebermitteln" target="_blank" rel="noreferrer" className="text-[#00a0c0] underline underline-offset-2">Hessischen Beauftragten für Datenschutz und Informationsfreiheit</a>
+              {' '}beschweren.
+            </p>
           </div>
 
           <div>
@@ -309,7 +348,7 @@ const PrivacyPolicy: React.FC = () => {
           <hr className="border-black/[0.06]" />
 
           <p className="text-xs text-[#bbb] pt-2">
-            Stand: 17. Oktober 2026
+            Stand: 20. Oktober 2026
           </p>
         </section>
       </div>
