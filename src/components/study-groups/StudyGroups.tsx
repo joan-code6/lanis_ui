@@ -68,7 +68,7 @@ const StudyGroups: React.FC = () => {
   }, [exams]);
 
   return (
-    <div className="p-4 sm:p-6 max-w-7xl mx-auto">
+    <div className="module-page">
       <SEO
         title="Lerngruppen"
         description="Deine Lerngruppen, Lehrkräfte und Klausurtermine im Schulportal Hessen."
@@ -107,7 +107,7 @@ const StudyGroups: React.FC = () => {
             <section aria-labelledby="upcoming-exams">
               <div className="mb-3 flex items-center gap-2">
                 <CalendarDaysIcon className="h-5 w-5 text-primary-600 dark:text-primary-400" />
-                <h2 id="upcoming-exams" className="text-lg font-semibold text-surface-900 dark:text-surface-100">Anstehende Klausuren</h2>
+                <h2 id="upcoming-exams" className="section-title">Anstehende Klausuren</h2>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
                 {upcomingExams.map(exam => <ExamCard key={exam.id} exam={exam} />)}
@@ -118,7 +118,7 @@ const StudyGroups: React.FC = () => {
           <section aria-labelledby="group-list">
             <div className="mb-3 flex items-center gap-2">
               <AcademicCapIcon className="h-5 w-5 text-primary-600 dark:text-primary-400" />
-              <h2 id="group-list" className="text-lg font-semibold text-surface-900 dark:text-surface-100">Meine Gruppen</h2>
+              <h2 id="group-list" className="section-title">Meine Gruppen</h2>
               <span className="badge badge-surface">{groups.length}</span>
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

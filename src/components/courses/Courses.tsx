@@ -64,7 +64,7 @@ const EmptyCourseTab: React.FC<{
 }> = ({ icon, title, description }) => (
   <div className="card py-12 text-center">
     {icon}
-    <h3 className="mt-3 text-sm font-medium text-surface-900 dark:text-surface-100">{title}</h3>
+    <h3 className="mt-3 empty-state-title">{title}</h3>
     <p className="mt-1 text-sm text-surface-500 dark:text-surface-400">{description}</p>
   </div>
 );
@@ -117,7 +117,7 @@ const CoursePerformance: React.FC<{ marks?: CourseMark[] }> = ({ marks = [] }) =
           <article key={`${mark.name}-${mark.date}-${index}`} className="card">
             <div className="flex items-center justify-between gap-4">
               <div className="min-w-0">
-                <h3 className="truncate text-base font-semibold text-surface-900 dark:text-surface-100">
+                <h3 className="truncate item-title">
                   {mark.name}
                 </h3>
                 <p className="mt-1 text-sm text-surface-500 dark:text-surface-400">{mark.date}</p>
@@ -237,7 +237,7 @@ const CourseExams: React.FC<{ exams?: string[] }> = ({ exams = [] }) => {
               <DocumentTextIcon className="h-5 w-5 text-primary-600 dark:text-primary-400" />
             </div>
             <div className="min-w-0 flex-1">
-              <h3 className="text-base font-semibold text-surface-900 dark:text-surface-100">{exam.title}</h3>
+              <h3 className="item-title">{exam.title}</h3>
               {(exam.date || exam.hours || exam.duration) ? (
                 <div className="mt-4 grid gap-2 text-sm sm:grid-cols-3">
                   {exam.date && (
@@ -342,7 +342,7 @@ const Courses: React.FC = () => {
   // Early return if no token
   if (!token) {
     return (
-      <div className="p-6">
+      <div className="module-page">
         <div className="text-center py-12">
           <h3 className="text-lg font-medium text-surface-900 dark:text-surface-100">Nicht authentifiziert</h3>
           <p className="text-surface-500 dark:text-surface-400">Bitte melden Sie sich an, um Kurse zu sehen.</p>
@@ -583,7 +583,7 @@ const Courses: React.FC = () => {
   // Show course detail skeleton when navigating to a course
   if (viewMode === 'course-detail' && !selectedCourse) {
     return (
-      <div className="p-6">
+      <div className="module-page">
         <div className="animate-pulse space-y-6">
           <div className="flex items-center gap-4 mb-8">
             <div className="h-8 w-8 bg-surface-300 dark:bg-surface-600 rounded-lg" />
@@ -618,7 +618,7 @@ const Courses: React.FC = () => {
   // Show overview skeleton only when on overview and loading
   if (isLoading && (!courses || courses.length === 0) && viewMode === 'overview') {
     return (
-      <div className="p-6">
+      <div className="module-page">
         <div className="animate-pulse space-y-4">
           <div className="h-8 bg-surface-300 dark:bg-surface-600 rounded w-1/4"></div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -632,7 +632,7 @@ const Courses: React.FC = () => {
   }
 
   return (
-    <div className="p-6">
+    <div className="module-page">
       <SEO
         title="Mein Unterricht"
         description="Lanis Unterricht — Deine Kurse, Aufgaben und Materialien aus dem Schulportal Hessen im Überblick."
@@ -642,7 +642,7 @@ const Courses: React.FC = () => {
       {/* Spinner indicator for updating */}
       
       {/* Header */}
-      <div className="mb-8">
+      <div className="page-header">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex min-w-0 items-center">
             {viewMode !== 'overview' && (
@@ -654,14 +654,14 @@ const Courses: React.FC = () => {
               </button>
             )}
             <div className="min-w-0">
-              <h1 className="break-words text-3xl font-bold text-surface-900 dark:text-surface-100">
+              <h1 className="page-title break-words">
                 {viewMode === 'overview' && 'Mein Unterricht'}
                 {viewMode === 'course-detail' && selectedCourseName}
                 {viewMode === 'weekly' && 'Wochenansicht'}
                 {viewMode === 'entry-detail' && selectedEntry?.title}
               </h1>
               {viewMode === 'course-detail' && selectedCourse && (
-                <p className="text-surface-600 dark:text-surface-400 mt-1">Lehrer: {selectedCourse.teacher_full}</p>
+                <p className="page-subtitle">Lehrer: {selectedCourse.teacher_full}</p>
               )}
             </div>
           </div>
@@ -699,7 +699,7 @@ const Courses: React.FC = () => {
           {!courses || courses.length === 0 ? (
             <div className="col-span-full text-center py-12">
               <AcademicCapIcon className="mx-auto h-12 w-12 text-surface-400 dark:text-surface-500" />
-              <h3 className="mt-2 text-sm font-medium text-surface-900 dark:text-surface-100">Keine Kurse</h3>
+              <h3 className="mt-2 empty-state-title">Keine Kurse</h3>
               <p className="mt-1 text-sm text-surface-500 dark:text-surface-400">
                 Es sind noch keine Kurse verfügbar.
               </p>
@@ -716,7 +716,7 @@ const Courses: React.FC = () => {
                     <AcademicCapIcon className="h-6 w-6 text-white" />
                   </div>
                   <div className="ml-4 flex-1">
-                    <h3 className="text-lg font-semibold text-surface-900 dark:text-surface-100">{course.name}</h3>
+                    <h3 className="section-title">{course.name}</h3>
                     <p className="text-sm text-surface-600 dark:text-surface-400">{course.teacher_full_name}</p>
                   </div>
                   <ChevronRightIcon className="h-5 w-5 text-surface-400 dark:text-surface-500" />
@@ -886,7 +886,7 @@ const Courses: React.FC = () => {
           {!selectedCourse.entries || selectedCourse.entries.length === 0 ? (
             <div className="text-center py-12">
               <DocumentTextIcon className="mx-auto h-12 w-12 text-surface-400 dark:text-surface-500" />
-              <h3 className="mt-2 text-sm font-medium text-surface-900 dark:text-surface-100">Keine Einträge</h3>
+              <h3 className="mt-2 empty-state-title">Keine Einträge</h3>
               <p className="mt-1 text-sm text-surface-500 dark:text-surface-400">
                 Für diesen Kurs sind noch keine Einträge vorhanden.
               </p>
@@ -935,7 +935,7 @@ const Courses: React.FC = () => {
                 return (
                   <div className="text-center py-12 card">
                     <FunnelIcon className="mx-auto h-12 w-12 text-surface-400 dark:text-surface-500" />
-                    <h3 className="mt-2 text-sm font-medium text-surface-900 dark:text-surface-100">Keine passenden Einträge</h3>
+                    <h3 className="mt-2 empty-state-title">Keine passenden Einträge</h3>
                     <p className="mt-1 text-sm text-surface-500 dark:text-surface-400">
                       Versuchen Sie, die Filter anzupassen.
                     </p>
@@ -957,7 +957,7 @@ const Courses: React.FC = () => {
                             <CalendarDaysIcon className="h-5 w-5 text-white" />
                           </div>
                           <div>
-                            <div className="text-sm font-medium text-surface-900 dark:text-surface-100">{formatDate(entry.date) || entry.hours}</div>
+                            <div className="empty-state-title">{formatDate(entry.date) || entry.hours}</div>
                             {entry.attendance && (
                               <div className="flex items-center gap-1 mt-1">
                                 {(() => {
@@ -1002,7 +1002,7 @@ const Courses: React.FC = () => {
                       </div>
                       
                       {/* Topic */}
-                      <h4 className="text-lg font-semibold text-surface-900 dark:text-surface-100 mb-3">{entry.thema}</h4>
+                      <h4 className="section-title mb-3">{entry.thema}</h4>
 
                       {/* Content / Description */}
                       {entry.content && (
@@ -1133,7 +1133,7 @@ const Courses: React.FC = () => {
                             </div>
                           </div>
                           
-                          <h4 className="text-base font-semibold text-surface-900 dark:text-surface-100 mb-3">{entry.thema}</h4>
+                          <h4 className="item-title mb-3">{entry.thema}</h4>
 
                           {entry.content && (
                             <div
@@ -1233,7 +1233,7 @@ const Courses: React.FC = () => {
 
             {selectedEntry.attachments && selectedEntry.attachments.length > 0 && (
               <div>
-                <h3 className="text-lg font-semibold text-surface-900 dark:text-surface-100 mb-3 flex items-center">
+                <h3 className="section-title mb-3 flex items-center">
                   <PaperClipIcon className="h-5 w-5 mr-2" />
                   Anhänge
                 </h3>
@@ -1278,7 +1278,7 @@ const Courses: React.FC = () => {
           {!weeklyEntries || weeklyEntries.length === 0 ? (
             <div className="text-center py-12">
               <CalendarDaysIcon className="mx-auto h-12 w-12 text-surface-400 dark:text-surface-500" />
-              <h3 className="mt-2 text-sm font-medium text-surface-900 dark:text-surface-100">Keine Einträge diese Woche</h3>
+              <h3 className="mt-2 empty-state-title">Keine Einträge diese Woche</h3>
               <p className="mt-1 text-sm text-surface-500 dark:text-surface-400">
                 Für diese Woche sind keine Unterrichtseinträge vorhanden.
               </p>

@@ -320,7 +320,7 @@ const Vertretungsplan: React.FC = () => {
   }
 
   return (
-    <div className="min-h-full px-3 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
+    <div className="min-h-full module-padding">
       <SEO
         title="Vertretungsplan"
         description="Dein nativer Vertretungsplan aus dem Schulportal Hessen."
@@ -328,10 +328,10 @@ const Vertretungsplan: React.FC = () => {
         noindex
       />
       <div className="mx-auto max-w-7xl">
-        <header className="mb-4 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:items-start sm:justify-between">
+        <header className="page-header page-header-actions">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-surface-900 dark:text-white sm:text-3xl">Vertretungsplan</h1>
-            <div className="mt-1.5 flex flex-wrap items-center gap-2 text-sm text-surface-500 dark:text-surface-400">
+            <h1 className="page-title">Vertretungsplan</h1>
+            <div className="page-subtitle flex flex-wrap items-center gap-2">
               <span>Direkt aus dem Schulportal Hessen</span>
               {plan?.last_updated && (
                 <span className="whitespace-nowrap text-xs text-surface-400 dark:text-surface-500">

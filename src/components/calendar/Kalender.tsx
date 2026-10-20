@@ -288,7 +288,7 @@ const Kalender: React.FC = () => {
 
   if (isLoading && events.length === 0) {
     return (
-      <div className="h-full flex flex-col p-4 sm:p-6 max-w-7xl mx-auto">
+      <div className="h-full flex flex-col module-page">
         <div className="page-header flex-shrink-0">
           <div className="flex items-center justify-between">
             <div className="skeleton h-9 w-36 rounded-lg" />
@@ -335,7 +335,7 @@ const Kalender: React.FC = () => {
   }
 
   return (
-    <div className="h-full flex flex-col p-4 sm:p-6 max-w-7xl mx-auto">
+    <div className="h-full flex flex-col module-page">
       <SEO
         title="Kalender"
         description="Lanis Kalender — Behalte den Überblick über Termine, Klausuren und Veranstaltungen im Schulportal Hessen."
@@ -442,7 +442,7 @@ const Kalender: React.FC = () => {
       {calendarViewMode === 'month' && (
       <div className="flex-1 min-h-0 flex flex-col">
         <div className="sticky top-0 z-10 mb-2 flex-shrink-0 border-b border-surface-200 bg-surface-50/95 py-2 backdrop-blur dark:border-surface-700 dark:bg-surface-950/95">
-          <h2 className="text-lg font-semibold text-surface-900 dark:text-surface-100">
+          <h2 className="section-title">
             {format(currentDate, 'MMMM yyyy', { locale: de })}
           </h2>
         </div>
@@ -535,7 +535,7 @@ const Kalender: React.FC = () => {
       {calendarViewMode === 'list' && (
         <div className="flex-1 min-h-0 flex flex-col">
           <div className="sticky top-0 z-10 mb-2 flex-shrink-0 border-b border-surface-200 bg-surface-50/95 py-2 backdrop-blur dark:border-surface-700 dark:bg-surface-950/95">
-            <h2 className="text-lg font-semibold text-surface-900 dark:text-surface-100">
+            <h2 className="section-title">
               {format(currentDate, 'MMMM yyyy', { locale: de })}
             </h2>
           </div>
@@ -548,7 +548,7 @@ const Kalender: React.FC = () => {
               return (
                 <div className="card text-center py-12">
                   <CalendarDaysIcon className="mx-auto h-12 w-12 text-surface-300 dark:text-surface-600" />
-                  <h3 className="mt-2 text-sm font-medium text-surface-700 dark:text-surface-300">Keine Termine</h3>
+                  <h3 className="mt-2 empty-state-title">Keine Termine</h3>
                   <p className="mt-1 text-sm text-surface-500 dark:text-surface-400">
                     Keine Termine im {format(currentDate, 'MMMM yyyy', { locale: de })} gefunden.
                   </p>

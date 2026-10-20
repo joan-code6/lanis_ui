@@ -177,7 +177,7 @@ const DashboardNotifications: React.FC = () => {
         </span>
         <div className="min-w-0 flex-1">
           <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-surface-400 dark:text-surface-500">Neu für dich</p>
-          <h2 id="dashboard-notifications-title" className="truncate text-base font-semibold text-surface-900 dark:text-surface-100">
+          <h2 id="dashboard-notifications-title" className="truncate item-title">
             {unreadCount === 1 ? '1 ungelesener Hinweis' : `${unreadCount} ungelesene Hinweise`}
           </h2>
         </div>

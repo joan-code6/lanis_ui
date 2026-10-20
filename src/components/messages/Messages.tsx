@@ -370,7 +370,7 @@ const Messages: React.FC = () => {
       <div className={`${selectedConversation ? 'hidden lg:flex' : 'flex'} w-full lg:w-80 xl:w-1/3 border-r border-surface-100 dark:border-surface-800 flex-col bg-white dark:bg-surface-900`}>
         <div className="p-4 border-b border-surface-100 dark:border-surface-800">
           <div className="flex items-center justify-between mb-4">
-            <h1 className="text-lg font-bold text-surface-900 dark:text-surface-100 tracking-tight">Nachrichten</h1>
+            <h1 className="page-title page-title-compact">Nachrichten</h1>
             <button
               onClick={() => setShowCompose(true)}
               className="btn btn-primary h-9 px-3 text-xs"
@@ -573,7 +573,7 @@ const Messages: React.FC = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-surface-900/40 backdrop-blur-sm">
           <div className="bg-white dark:bg-surface-800 rounded-2xl sm:rounded-2xl shadow-soft-lg max-w-lg w-full max-h-[85vh] flex flex-col animate-scale-in mx-2 sm:mx-0">
             <div className="flex items-center justify-between p-5 border-b border-surface-100 dark:border-surface-800">
-              <h3 className="text-base font-semibold text-surface-900 dark:text-surface-100">Neue Nachricht</h3>
+              <h3 className="item-title">Neue Nachricht</h3>
               <button
                 onClick={() => setShowCompose(false)}
                 className="w-8 h-8 flex items-center justify-center rounded-lg text-surface-400 dark:text-surface-500 hover:text-surface-600 dark:hover:text-surface-300 hover:bg-surface-100 dark:hover:bg-surface-700 transition-colors"
@@ -693,7 +693,7 @@ const Messages: React.FC = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-surface-900/40 backdrop-blur-sm">
           <div className="bg-white dark:bg-surface-900 rounded-2xl sm:rounded-2xl shadow-soft-lg max-w-md w-full max-h-[70vh] flex flex-col animate-scale-in mx-2 sm:mx-0 ring-1 ring-black/5 dark:ring-white/10">
             <div className="flex items-center justify-between p-5 border-b border-surface-100 dark:border-surface-700">
-              <h3 className="text-base font-semibold text-surface-900 dark:text-surface-100">Teilnehmer</h3>
+              <h3 className="item-title">Teilnehmer</h3>
               <button
                 onClick={closeParticipantsModal}
                 className="w-8 h-8 flex items-center justify-center rounded-lg text-surface-400 dark:text-surface-500 hover:text-surface-600 dark:hover:text-surface-300 hover:bg-surface-100 dark:hover:bg-surface-700 transition-colors"

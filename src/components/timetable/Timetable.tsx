@@ -118,12 +118,12 @@ const Timetable: React.FC = () => {
   };
 
   return (
-    <div className="min-h-full px-3 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
+    <div className="min-h-full module-padding">
       <SEO title="Stundenplan" description="Dein persönlicher Stundenplan im Schulportal Hessen." path="/timetable" noindex />
       <div className="mx-auto max-w-7xl">
-        <header className="mb-4 sm:mb-6">
-          <h1 className="text-2xl font-bold tracking-tight text-surface-900 dark:text-white sm:text-3xl">Stundenplan</h1>
-          <div className="mt-1.5 flex flex-wrap items-center gap-2 text-sm text-surface-500 dark:text-surface-400">
+        <header className="page-header">
+          <h1 className="page-title">Stundenplan</h1>
+          <div className="page-subtitle flex flex-wrap items-center gap-2">
             {firstVisibleDate && lastVisibleDate && (
               <span>{format(firstVisibleDate, "d. MMMM", { locale: de })} – {format(lastVisibleDate, "d. MMMM yyyy", { locale: de })}</span>
             )}
@@ -179,7 +179,7 @@ const Timetable: React.FC = () => {
         ) : lessonCount === 0 && visibleExamCount === 0 && noticeCount === 0 ? (
           <div className="card flex min-h-64 flex-col items-center justify-center text-center">
             <CalendarDaysIcon className="mb-3 h-10 w-10 text-surface-300" />
-            <h2 className="font-semibold text-surface-900 dark:text-white">Keine Stunden eingetragen</h2>
+            <h2 className="empty-state-title">Keine Stunden eingetragen</h2>
             <p className="mt-1 text-sm text-surface-500">Für diese Woche wurden keine Unterrichtsstunden gefunden.</p>
           </div>
         ) : preferences.timetable.layout_mode === 'compact' ? (

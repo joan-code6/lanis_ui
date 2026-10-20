@@ -132,7 +132,7 @@ const Profile: React.FC = () => {
   }
 
   return (
-    <div className="p-4 sm:p-6 max-w-6xl mx-auto">
+    <div className="module-page">
       <SEO
         title="Mein Profil"
         description="Lanis Profil — Deine Benutzerinformationen und Kontodetails im Schulportal Hessen."

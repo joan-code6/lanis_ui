@@ -587,7 +587,7 @@ const TimetableSettings: React.FC = () => {
           </button>
           <div className="mb-5 flex items-start justify-between gap-4">
             <div>
-              <h3 className="text-lg font-semibold text-surface-900 dark:text-white">
+              <h3 className="section-title">
                 {isNew ? 'Neue Stunde' : draft.subject || 'Stunde bearbeiten'}
               </h3>
             </div>

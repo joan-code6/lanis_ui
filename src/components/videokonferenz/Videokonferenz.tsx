@@ -163,12 +163,12 @@ const Videokonferenz: React.FC = () => {
   }
 
   return (
-    <div className="min-h-full px-3 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
+    <div className="min-h-full module-padding">
       <SEO title="Videokonferenz" description="Deine aktuellen Videoräume im Schulportal Hessen." noindex />
-      <div className="mx-auto max-w-5xl">
-        <header className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+      <div className="mx-auto max-w-7xl">
+        <header className="page-header page-header-actions">
           <div>
-            <h1 className="text-2xl font-bold text-surface-900 dark:text-white">Videokonferenz</h1>
+            <h1 className="page-title">Videokonferenz</h1>
             {lastChecked && (
               <p className="mt-1 text-xs text-surface-500 dark:text-surface-400" aria-live="polite">
                 Aktualisiert um {lastChecked.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} Uhr
@@ -209,7 +209,7 @@ const Videokonferenz: React.FC = () => {
         ) : !overview ? (
           <div className="card flex min-h-64 flex-col items-center justify-center text-center">
             <InformationCircleIcon className="mb-3 h-10 w-10 text-surface-300" />
-            <h2 className="font-semibold text-surface-900 dark:text-white">Keine Raumübersicht verfügbar</h2>
+            <h2 className="empty-state-title">Keine Raumübersicht verfügbar</h2>
             <p className="mt-1 max-w-md text-sm text-surface-500 dark:text-surface-400">
               Aktualisiere die Seite, um es erneut zu versuchen.
             </p>

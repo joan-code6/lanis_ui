@@ -299,7 +299,7 @@ const Dashboard: React.FC = () => {
   }
 
   return (
-    <div className="p-4 sm:p-6 max-w-7xl mx-auto">
+    <div className="module-page">
       <SEO
         title="Dashboard"
         description="Lanis Dashboard — Deine persönliche Übersicht über alle Apps und Module des Schulportal Hessen."
@@ -724,7 +724,7 @@ const Dashboard: React.FC = () => {
                   <InformationCircleIcon className="h-5 w-5" />
                 </div>
                 <div>
-                  <h2 id="external-module-title" className="text-base font-semibold text-surface-900 dark:text-surface-100">
+                  <h2 id="external-module-title" className="item-title">
                     Externes Modul
                   </h2>
                   <p className="mt-1 text-sm leading-5 text-surface-600 dark:text-surface-300">
