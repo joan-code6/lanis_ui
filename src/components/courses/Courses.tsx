@@ -957,7 +957,7 @@ const Courses: React.FC = () => {
                             <CalendarDaysIcon className="h-5 w-5 text-white" />
                           </div>
                           <div>
-                            <div className="empty-state-title">{formatDate(entry.date) || entry.hours}</div>
+                            <div className="text-sm font-medium text-surface-900 dark:text-surface-100">{formatDate(entry.date) || entry.hours}</div>
                             {entry.attendance && (
                               <div className="flex items-center gap-1 mt-1">
                                 {(() => {
