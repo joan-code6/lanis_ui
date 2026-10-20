@@ -9,4 +9,4 @@ The dashboard recording starts with its module cache cleared. Its header, contro
 
 Profile uses the authenticated user's existing data immediately in demo mode, so its cold-loading skeleton is not shown in these recordings.
 
-Validation: `npm test`, `npm run build`, and browser checks of desktop/mobile layout and loading-to-content transitions.
+Validation: `npm test`, `SKIP_PRERENDER=1 npm run build` (the PR-preview build), and browser checks of desktop/mobile layout and loading-to-content transitions.
