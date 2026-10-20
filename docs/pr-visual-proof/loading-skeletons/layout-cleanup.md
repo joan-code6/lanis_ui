@@ -26,3 +26,10 @@ The audited views were Dashboard, Courses, Messages, Study groups, Calendar, Tim
 Mobile main-area scrolling, drawer navigation, route scroll reset, and public landing-page scrolling passed. Course-detail tabs stayed at the same position and height while the teacher response loaded. Existing tests and the PR-preview production build passed.
 
 This verifies the measured demo transitions. Variable content lengths, different numbers of records, errors, and optional data can still change content height; the checks do not claim zero layout shift for every possible account or response.
+
+## Focused headed-browser recordings
+
+- [Tablet: timetable and both substitution plans](cleanup-tablet.mp4)
+- [320px: timetable and both substitution plans](cleanup-narrow.mp4)
+
+These clips show the final timestamp rows, controls, and day headings during held responses and after loading.
