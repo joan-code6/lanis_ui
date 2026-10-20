@@ -233,7 +233,8 @@ export function clearPrefetchedData(): void {
 
 export function readAPI<T = unknown>(url: string, config: AxiosRequestConfig = {}, prefetch = false): Promise<AxiosResponse<T>> {
   const token = String(config.headers?.['X-Session-Token'] || '');
-  const scope = `${captureAccountDataGeneration()}:${token}:${window.location.pathname.startsWith('/demo')}`;
+  const generation = captureAccountDataGeneration();
+  const scope = `${generation}:${token}:${window.location.pathname.startsWith('/demo')}`;
   if (scope !== speculativeScope) {
     clearPrefetchedData();
     speculativeScope = scope;
@@ -251,8 +252,21 @@ export function readAPI<T = unknown>(url: string, config: AxiosRequestConfig = {
   const cached = speculativeReads.get(key);
   if (cached) {
     // Hand off once so a subsequent manual reload always reaches the server.
-    if (!prefetch) speculativeReads.delete(key);
-    return cached.promise as Promise<AxiosResponse<T>>;
+    if (prefetch) return cached.promise as Promise<AxiosResponse<T>>;
+    speculativeReads.delete(key);
+    const retry = (): Promise<AxiosResponse<T>> => {
+      if (generation !== captureAccountDataGeneration() || config.signal?.aborted
+        || (token && !canUseAccountToken(token) && !window.location.pathname.startsWith('/demo'))) {
+        return Promise.reject(new axios.CanceledError('Session changed'));
+      }
+      // A speculative failure must not replace the navigation's own live read.
+      return apiClient.get<T>(url, config);
+    };
+    return cached.promise.then(response => (
+      (response.data as { success?: boolean } | null)?.success === false
+        ? retry()
+        : response as AxiosResponse<T>
+    ), retry);
   }
   if (!prefetch) return apiClient.get<T>(url, config);
   const entry = { promise: apiClient.get<T>(url, config), expires: Infinity };

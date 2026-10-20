@@ -7,12 +7,13 @@ let generation = 1;
 let calls = 0;
 let rejectNext = false;
 let now = 1000;
+let nextRequest;
 const cacheCode = fs.readFileSync('src/services/api.ts', 'utf8').split('// Only speculative reads')[1].split('// Startup deletion recovery')[0];
 const context = {
   exports: {}, Map, Date: { now: () => now }, window: { location: { pathname: '/dashboard' } },
   captureAccountDataGeneration: () => generation, canUseAccountToken: () => true,
   axios: { CanceledError: Error },
-  apiClient: { get: async () => { calls++; if (rejectNext) { rejectNext = false; throw Error('offline'); } return { data: { success: true } }; } },
+  apiClient: { get: async () => { calls++; if (nextRequest) { const pending = nextRequest; nextRequest = undefined; return pending; } if (rejectNext) { rejectNext = false; throw Error('offline'); } return { data: { success: true } }; } },
 };
 vm.runInNewContext(transpile('//' + cacheCode), context);
 const { readAPI, clearPrefetchedData } = context.exports;
@@ -42,6 +43,32 @@ const config = { headers: { 'X-Session-Token': 'test' }, params: { refresh: fals
   await readAPI('/vertretungsplan', config);
   assert.equal(calls, 11, 'failed prefetch retries on navigation');
   await assert.rejects(readAPI('/vertretungsplan', { ...config, signal: { aborted: true } }));
+
+  async function pendingPrefetchCase(outcome, options = {}) {
+    clearPrefetchedData();
+    let resolve, reject;
+    nextRequest = new Promise((ok, fail) => { resolve = ok; reject = fail; });
+    const signal = new AbortController();
+    const startCalls = calls;
+    const warm = readAPI('/vertretungsplan', config, true);
+    const warmResult = warm.catch(() => undefined);
+    const navigation = readAPI('/vertretungsplan', { ...config, signal: signal.signal });
+    if (options.abort) signal.abort();
+    if (options.changeSession) generation++;
+    if (options.failRetry) rejectNext = true;
+    if (outcome === 'reject') reject(Error('prefetch failed'));
+    else resolve({ data: { success: false } });
+    if (options.abort || options.changeSession || options.failRetry) await assert.rejects(navigation);
+    else assert.equal((await navigation).data.success, true, 'navigation retries failed pending prefetch');
+    await warmResult;
+    assert.equal(calls - startCalls, options.abort || options.changeSession ? 1 : 2,
+      'one live retry at most, and none after cancellation or session change');
+  }
+  await pendingPrefetchCase('reject');
+  await pendingPrefetchCase('unsuccessful');
+  await pendingPrefetchCase('reject', { failRetry: true });
+  await pendingPrefetchCase('reject', { abort: true });
+  await pendingPrefetchCase('unsuccessful', { changeSession: true });
 
   const orderContext = { exports: {}, require: path => path.includes('sidebarNavigation') ? {
     normalizeSidebarOrder: order => order,
