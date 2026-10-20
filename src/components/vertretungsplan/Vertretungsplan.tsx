@@ -320,7 +320,7 @@ const Vertretungsplan: React.FC = () => {
   }
 
   return (
-    <div className="min-h-full px-3 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
+    <div className="min-h-full module-padding">
       <SEO
         title="Vertretungsplan"
         description="Dein nativer Vertretungsplan aus dem Schulportal Hessen."

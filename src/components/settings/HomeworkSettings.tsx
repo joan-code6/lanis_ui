@@ -17,7 +17,7 @@ const HomeworkSettings: React.FC = () => {
   return (
     <div className="space-y-6">
       <div className="card">
-        <h2 className="text-base font-semibold text-surface-900 dark:text-surface-100">Erledigte Hausaufgaben in „Mein Unterricht“</h2>
+        <h2 className="item-title">Erledigte Hausaufgaben in „Mein Unterricht“</h2>
         <p className="mt-1 max-w-2xl text-sm leading-6 text-surface-500">
           Wähle, wie erledigte Aufgaben in der Übersicht aussehen. In den Kursdetails bleiben sie immer sichtbar.
         </p>

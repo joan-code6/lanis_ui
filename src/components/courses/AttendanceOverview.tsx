@@ -150,10 +150,10 @@ const AttendanceOverview: React.FC = () => {
   }
 
   return (
-    <div className="min-h-full min-w-0 px-3 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
+    <div className="min-h-full min-w-0 module-padding">
       <SEO title="Anwesenheit" description="Deine Anwesenheitsübersicht aus Mein Unterricht im Schulportal Hessen." noindex />
       <div className="mx-auto max-w-7xl">
-        <header className="mb-4 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:items-start sm:justify-between">
+        <header className="page-header page-header-actions">
           <div className="flex items-start gap-3">
             <button
               type="button"
@@ -164,8 +164,8 @@ const AttendanceOverview: React.FC = () => {
               <ArrowLeftIcon className="h-5 w-5" />
             </button>
             <div>
-              <h1 className="text-2xl font-bold tracking-tight text-surface-900 dark:text-white sm:text-3xl">Anwesenheit</h1>
-              <p className="mt-1.5 text-sm text-surface-500 dark:text-surface-400">Gesamtübersicht aus Mein Unterricht</p>
+              <h1 className="page-title">Anwesenheit</h1>
+              <p className="page-subtitle">Gesamtübersicht aus Mein Unterricht</p>
             </div>
           </div>
           <button
@@ -195,7 +195,7 @@ const AttendanceOverview: React.FC = () => {
         ) : !error && data?.available === false ? (
           <div className="card flex min-h-64 flex-col items-center justify-center text-center">
             <ChartBarIcon className="mb-3 h-10 w-10 text-surface-300" />
-            <h2 className="font-semibold text-surface-900 dark:text-white">Keine Anwesenheitsdaten</h2>
+            <h2 className="empty-state-title">Keine Anwesenheitsdaten</h2>
             <p className="mt-1 max-w-md text-sm text-surface-500 dark:text-surface-400">
               {data.failed_course_count > 0
                 ? 'Die Anwesenheitsdaten konnten nicht geladen werden. Bitte versuche es erneut.'
@@ -214,7 +214,7 @@ const AttendanceOverview: React.FC = () => {
             <section className="mb-8">
               <div className="mb-3 flex items-center gap-2">
                 <ChartBarIcon className="h-5 w-5 text-primary-600 dark:text-primary-400" />
-                <h2 className="text-lg font-semibold text-surface-900 dark:text-white">Gesamt</h2>
+                <h2 className="section-title">Gesamt</h2>
               </div>
               {totalStats.length > 0 ? (
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -226,7 +226,7 @@ const AttendanceOverview: React.FC = () => {
             </section>
 
             <section>
-              <h2 className="mb-3 text-lg font-semibold text-surface-900 dark:text-white">Nach Kurs</h2>
+              <h2 className="mb-3 section-title">Nach Kurs</h2>
               <div className="grid gap-4 md:grid-cols-2">
                 {data.courses.map(course => <CourseAttendanceCard key={course.course_id} course={course} />)}
               </div>

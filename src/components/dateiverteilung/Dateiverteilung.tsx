@@ -124,21 +124,21 @@ const Dateiverteilung: React.FC = () => {
   if (!token) {
     return (
       <div className="p-6 text-center">
-        <h1 className="text-lg font-semibold text-surface-900 dark:text-white">Nicht authentifiziert</h1>
+        <h1 className="section-title">Nicht authentifiziert</h1>
         <p className="mt-1 text-surface-500 dark:text-surface-400">Bitte melde dich an, um verteilte Dateien zu sehen.</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-full px-3 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
+    <div className="min-h-full module-padding">
       <SEO title="Dateiverteilung" description="Persönlich und zielgruppengerecht verteilte Dateien aus dem Schulportal Hessen." noindex />
-      <div className="mx-auto max-w-6xl">
-        <header className="mb-6">
+      <div className="mx-auto max-w-7xl">
+        <header className="page-header">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <h1 className="text-2xl font-bold tracking-tight text-surface-950 dark:text-white sm:text-3xl">Dateiverteilung</h1>
-              <p className="mt-1.5 max-w-2xl text-sm text-surface-500 dark:text-surface-400">
+              <h1 className="page-title">Dateiverteilung</h1>
+              <p className="page-subtitle max-w-2xl">
                 Finde Elternbriefe, persönliche Dokumente und Zugänge dort, woher sie kommen.
               </p>
             </div>
@@ -200,7 +200,7 @@ const Dateiverteilung: React.FC = () => {
         ) : visibleGroups.length === 0 ? (
           <div className="card flex min-h-64 flex-col items-center justify-center text-center">
             <InboxArrowDownIcon className="mb-3 h-10 w-10 text-surface-300 dark:text-surface-600" />
-            <h2 className="font-semibold text-surface-900 dark:text-white">Keine passenden Verteilungen</h2>
+            <h2 className="empty-state-title">Keine passenden Verteilungen</h2>
             <p className="mt-1 max-w-md text-sm text-surface-500 dark:text-surface-400">
               {query || filter === 'unread' ? 'Ändere die Suche oder zeige alle Verteilungen an.' : 'Für dich wurden derzeit keine Dateien oder Hinweise bereitgestellt.'}
             </p>

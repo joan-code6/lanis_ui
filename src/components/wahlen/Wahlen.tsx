@@ -283,7 +283,7 @@ const Wahlen: React.FC = () => {
   if (!token) return null;
 
   return (
-    <div className="min-h-full px-3 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
+    <div className="min-h-full module-padding">
       <SEO title="Wahlen" description="Teilnahme an deinen verfügbaren Wahlen im Schulportal Hessen." path="/wahlen" noindex />
 
       <div className="mx-auto max-w-6xl">
@@ -309,7 +309,7 @@ const Wahlen: React.FC = () => {
 
         {!selectedElectionId ? (
           loading ? <OverviewLoadingState /> : elections.length === 0 ? (
-            <div className="card py-14 text-center"><ClipboardDocumentCheckIcon className="mx-auto h-12 w-12 text-surface-300 dark:text-surface-700" /><h2 className="mt-4 text-lg font-semibold">Keine offenen Wahlen</h2><p className="mt-1 text-sm text-surface-500">Für dein Konto gibt es derzeit keine verfügbare Wahl.</p></div>
+            <div className="card py-14 text-center"><ClipboardDocumentCheckIcon className="mx-auto h-12 w-12 text-surface-300 dark:text-surface-700" /><h2 className="mt-4 empty-state-title">Keine offenen Wahlen</h2><p className="mt-1 text-sm text-surface-500">Für dein Konto gibt es derzeit keine verfügbare Wahl.</p></div>
           ) : (
             <div className="grid gap-4 md:grid-cols-2">
               {elections.map(election => (

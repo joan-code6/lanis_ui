@@ -47,6 +47,7 @@ import {
   MoonIcon,
   PaintBrushIcon,
   ServerStackIcon,
+  UserCircleIcon,
   Squares2X2Icon,
   SunIcon,
   SparklesIcon,
@@ -132,12 +133,6 @@ const settingsSections: Array<{
   icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
 }> = [
   {
-    id: 'account',
-    title: 'Datenschutz und Konto',
-    description: 'Deine LANIS-Daten exportieren oder dein LANIS-Konto löschen.',
-    icon: ServerStackIcon,
-  },
-  {
     id: 'appearance',
     title: 'Erscheinungsbild',
     description: 'Farben, Dark Mode und die Oberfläche von Lanis.',
@@ -168,6 +163,12 @@ const settingsSections: Array<{
     icon: ClipboardDocumentListIcon,
   },
   {
+    id: 'sidebar',
+    title: 'Seitenleiste',
+    description: 'Reihenfolge der Einträge in der Seitenleiste anpassen.',
+    icon: Bars3Icon,
+  },
+  {
     id: 'notifications',
     title: 'Benachrichtigungen',
     description: 'Push-Mitteilungen für Nachrichten und den Vertretungsplan verwalten.',
@@ -185,11 +186,12 @@ const settingsSections: Array<{
     description: 'Lanis installieren und Geräteoptionen ansehen.',
     icon: DevicePhoneMobileIcon,
   },
+
   {
-    id: 'sidebar',
-    title: 'Seitenleiste',
-    description: 'Reihenfolge der Einträge in der Seitenleiste anpassen.',
-    icon: Bars3Icon,
+    id: 'account',
+    title: 'Datenschutz und Konto',
+    description: 'Deine LANIS-Daten exportieren oder dein LANIS-Konto löschen.',
+    icon: UserCircleIcon,
   },
 ];
 
@@ -305,7 +307,7 @@ const AccountSettings: React.FC = () => {
 
   return <div className="space-y-6">
     <div className="card">
-      <h2 className="text-base font-semibold text-surface-900 dark:text-surface-100">Meine Daten exportieren</h2>
+      <h2 className="item-title">Meine Daten exportieren</h2>
       <p className="mt-1 text-sm leading-relaxed text-surface-500">Du erhältst die von LANIS gespeicherten Profildaten, Einstellungen, Benachrichtigungsdaten, Aktivitäten und Cache-Inhalte als JSON. Passwörter, Tokens, Cookies und kryptografische Schlüssel werden aus Sicherheitsgründen nicht exportiert.</p>
       <button type="button" onClick={() => void exportData()} disabled={exporting} className="mt-5 inline-flex items-center rounded-xl bg-primary-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-primary-700 disabled:opacity-50"><ArrowDownTrayIcon className="mr-2 h-4 w-4" />{exporting ? 'Export wird erstellt …' : 'Daten exportieren'}</button>
     </div>
@@ -449,7 +451,7 @@ const SidebarSettings: React.FC<{ isDemo: boolean }> = ({ isDemo }) => {
     {!isDemo && <section className="card">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h3 className="text-base font-semibold text-surface-900 dark:text-surface-100">Feedback-Schaltfläche</h3>
+          <h3 className="item-title">Feedback-Schaltfläche</h3>
           <p className="mt-1 text-sm text-surface-500 dark:text-surface-400">Zeigt den Feedback-Eintrag unten in der Seitenleiste.</p>
         </div>
         <button
@@ -490,7 +492,7 @@ const SidebarSettings: React.FC<{ isDemo: boolean }> = ({ isDemo }) => {
       <div className="border-b border-surface-100 px-5 py-5 dark:border-surface-800 sm:px-6">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h3 className="text-base font-semibold text-surface-900 dark:text-surface-100">Deine Navigation</h3>
+            <h3 className="item-title">Deine Navigation</h3>
             <p className="mt-1 max-w-xl text-sm leading-6 text-surface-500 dark:text-surface-400">
               Ziehe Einträge am Griff an ihre neue Position oder nutze die Pfeile. Blende Einträge aus, die du nicht brauchst.
             </p>
@@ -637,7 +639,7 @@ const SettingsIndex: React.FC<{
   sections: typeof settingsSections;
 }> = ({ basePath, sections }) => (
   <div className="divide-y divide-surface-100 overflow-hidden rounded-xl border border-surface-200 bg-white dark:divide-surface-800 dark:border-surface-800 dark:bg-surface-900">
-    {sections.map(item => (
+    {sections.filter(item => item.id !== 'account').map(item => (
       <Link
         key={item.id}
         to={`${basePath}/settings/${item.id}`}
@@ -653,19 +655,6 @@ const SettingsIndex: React.FC<{
         <ChevronRightIcon className="h-5 w-5 shrink-0 text-surface-300 group-hover:text-surface-500 dark:text-surface-600" />
       </Link>
     ))}
-    <Link
-      to="/set-custom-backend"
-      className="group flex items-center gap-4 px-4 py-4 transition-colors hover:bg-surface-50 dark:hover:bg-surface-800/70 sm:px-5"
-    >
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-surface-100 text-surface-600 dark:bg-surface-800 dark:text-surface-300">
-        <ServerStackIcon className="h-5 w-5" />
-      </div>
-      <div className="min-w-0 flex-1">
-        <h2 className="font-medium text-surface-900 dark:text-white">Backend-Adresse</h2>
-        <p className="mt-0.5 text-sm text-surface-500">Das Backend für dieses Gerät konfigurieren.</p>
-      </div>
-      <ChevronRightIcon className="h-5 w-5 shrink-0 text-surface-300 group-hover:text-surface-500 dark:text-surface-600" />
-    </Link>
     {!basePath && (
       <Link
         to="/onboarding"
@@ -681,6 +670,35 @@ const SettingsIndex: React.FC<{
         <ChevronRightIcon className="h-5 w-5 shrink-0 text-surface-300 group-hover:text-surface-500 dark:text-surface-600" />
       </Link>
     )}
+    <Link
+      to="/set-custom-backend"
+      className="group flex items-center gap-4 px-4 py-4 transition-colors hover:bg-surface-50 dark:hover:bg-surface-800/70 sm:px-5"
+    >
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-surface-100 text-surface-600 dark:bg-surface-800 dark:text-surface-300">
+        <ServerStackIcon className="h-5 w-5" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <h2 className="font-medium text-surface-900 dark:text-white">Backend-Adresse</h2>
+        <p className="mt-0.5 text-sm text-surface-500">Das Backend für dieses Gerät konfigurieren.</p>
+      </div>
+      <ChevronRightIcon className="h-5 w-5 shrink-0 text-surface-300 group-hover:text-surface-500 dark:text-surface-600" />
+    </Link>
+    {sections.filter(item => item.id === 'account').map(item => (
+      <Link
+        key={item.id}
+        to={`${basePath}/settings/${item.id}`}
+        className="group flex items-center gap-4 px-4 py-4 transition-colors hover:bg-surface-50 dark:hover:bg-surface-800/70 sm:px-5"
+      >
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-surface-100 text-surface-600 dark:bg-surface-800 dark:text-surface-300">
+          <item.icon className="h-5 w-5" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <h2 className="font-medium text-surface-900 dark:text-white">{item.title}</h2>
+          <p className="mt-0.5 text-sm text-surface-500">{item.description}</p>
+        </div>
+        <ChevronRightIcon className="h-5 w-5 shrink-0 text-surface-300 group-hover:text-surface-500 dark:text-surface-600" />
+      </Link>
+    ))}
   </div>
 );
 
@@ -1116,7 +1134,7 @@ const Settings: React.FC = () => {
   };
 
   return (
-    <div className="mx-auto max-w-6xl p-4 sm:p-6 lg:p-8">
+    <div className="module-page">
       <SEO
         title={sectionMeta[section].title}
         description={sectionMeta[section].subtitle}
@@ -1153,7 +1171,7 @@ const Settings: React.FC = () => {
           <>
         {/* Display mode */}
         <div className="card">
-          <h3 className="text-base font-semibold text-surface-900 dark:text-surface-100">Darstellung</h3>
+          <h3 className="item-title">Darstellung</h3>
           <p className="mt-0.5 text-sm text-surface-500">Wird mit deinem Lanis-Konto synchronisiert.</p>
           <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
             {([
@@ -1179,7 +1197,7 @@ const Settings: React.FC = () => {
 
         {/* Primary Color */}
         <div className="card">
-          <h3 className="text-base font-semibold text-surface-900 dark:text-surface-100 mb-1">Primärfarbe</h3>
+          <h3 className="item-title mb-1">Primärfarbe</h3>
           <p className="text-sm text-surface-500 mb-5">Wähle eine Farbe für das Design</p>
           <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-7">
             {themeColors.map((c) => (
@@ -1225,7 +1243,7 @@ const Settings: React.FC = () => {
                 )}
               </div>
               <div>
-                <h3 className="text-base font-semibold text-surface-900 dark:text-surface-100">Push-Benachrichtigungen</h3>
+                <h3 className="item-title">Push-Benachrichtigungen</h3>
                 <p className="text-sm text-surface-500 mt-0.5">
                   {notificationPrefs.enabled && notificationBrowserReady
                     ? `Aktiv von ${notificationPrefs.start_time} bis ${notificationPrefs.end_time} · Prüfung alle ${notificationPrefs.poll_interval_minutes} Min.`
@@ -1359,7 +1377,7 @@ const Settings: React.FC = () => {
                 <InboxIcon className="h-5 w-5" />
               </div>
               <div>
-                <h3 className="text-base font-semibold text-surface-900 dark:text-surface-100">Nachrichten</h3>
+                <h3 className="item-title">Nachrichten</h3>
                 <p className="text-sm text-surface-500 mt-0.5">Benachrichtigt bei neuen oder aktualisierten ungelesenen Unterhaltungen.</p>
               </div>
             </div>
@@ -1409,7 +1427,7 @@ const Settings: React.FC = () => {
                 <ClipboardDocumentListIcon className="h-5 w-5" />
               </div>
               <div>
-                <h3 className="text-base font-semibold text-surface-900 dark:text-surface-100">Vertretungsplan</h3>
+                <h3 className="item-title">Vertretungsplan</h3>
                 <p className="text-sm text-surface-500 mt-0.5">Benachrichtigt über neue Einträge im Vertretungsplan.</p>
               </div>
             </div>
@@ -1538,7 +1556,7 @@ const Settings: React.FC = () => {
         {/* Preview Card */}
         {section === 'appearance' && (
         <div className="card">
-          <h3 className="text-base font-semibold text-surface-900 dark:text-surface-100 mb-4">Vorschau</h3>
+          <h3 className="item-title mb-4">Vorschau</h3>
           <div className="space-y-3">
             <div className="flex items-center gap-3 p-4 bg-primary-50 rounded-xl">
               <div className="w-10 h-10 rounded-xl bg-primary-600 flex items-center justify-center">
@@ -1566,7 +1584,7 @@ const Settings: React.FC = () => {
               <ArrowDownTrayIcon className="h-5 w-5" />
             </div>
             <div className="min-w-0 flex-1">
-              <h3 className="text-base font-semibold text-surface-900 dark:text-surface-100">
+              <h3 className="item-title">
                 {installAvailability === 'installed'
                   ? 'App installiert'
                   : 'Lanis als App installieren'}
@@ -1610,7 +1628,7 @@ const Settings: React.FC = () => {
                 <DevicePhoneMobileIcon className="h-5 w-5" />
               </div>
               <div>
-                <h3 className="text-base font-semibold text-surface-900 dark:text-surface-100">
+                <h3 className="item-title">
                   {installAvailability === 'ios-other-browser'
                     ? 'Für die Installation Safari verwenden'
                     : installAvailability === 'macos-safari'
@@ -1631,7 +1649,7 @@ const Settings: React.FC = () => {
 
         {section === 'app' && ghostClicks >= 5 && (
           <div className="card border-dashed border-primary-300/50 dark:border-primary-700/50 bg-primary-50/30 dark:bg-primary-950/20">
-            <h3 className="text-base font-semibold text-surface-900 dark:text-surface-100 mb-3">PWA Debug</h3>
+            <h3 className="item-title mb-3">PWA Debug</h3>
             <div className="text-xs font-mono text-surface-500 space-y-1">
               {(() => {
                 const el = document.querySelector('pwa-install') as PwaInstallElement | null;

@@ -73,7 +73,7 @@ const VertretungsplanSettings: React.FC = () => {
           <ClipboardDocumentListIcon className="h-5 w-5" />
         </div>
         <div>
-          <h2 className="text-base font-semibold text-surface-900 dark:text-surface-100">Klasse im Vertretungsplan</h2>
+          <h2 className="item-title">Klasse im Vertretungsplan</h2>
           <p className="mt-0.5 text-sm text-surface-500">
             Der Vertretungsplan zeigt standardmäßig nur deine Klasse. Abweichende Schreibweisen wie „10 a“ und „10A“ werden erkannt.
           </p>

@@ -307,13 +307,13 @@ const Dateispeicher: React.FC = () => {
   }
 
   return (
-    <div className="min-h-full px-3 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
+    <div className="min-h-full module-padding">
       <SEO title="Dateispeicher" description="Deine Dateien aus dem nativen Dateispeicher des Schulportal Hessen." noindex />
       <div className="mx-auto max-w-7xl">
-        <header className="mb-4 flex flex-col gap-4 sm:mb-6 sm:flex-row sm:items-start sm:justify-between">
+        <header className="page-header page-header-actions">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-surface-900 dark:text-white sm:text-3xl">Dateispeicher</h1>
-            <p className="mt-1.5 text-sm text-surface-500 dark:text-surface-400">Dateien und Ordner direkt aus dem Schulportal Hessen</p>
+            <h1 className="page-title">Dateispeicher</h1>
+            <p className="page-subtitle">Dateien und Ordner direkt aus dem Schulportal Hessen</p>
           </div>
           <button
             type="button"
@@ -459,7 +459,7 @@ const Dateispeicher: React.FC = () => {
             ) : visibleFolders.length === 0 && !requestError ? (
               <div className="card flex min-h-64 flex-col items-center justify-center text-center">
                 <FolderIcon className="mb-3 h-10 w-10 text-surface-300" />
-                <h2 className="font-semibold text-surface-900 dark:text-white">Keine Dateien gefunden</h2>
+                <h2 className="empty-state-title">Keine Dateien gefunden</h2>
                 <p className="mt-1 max-w-md text-sm text-surface-500 dark:text-surface-400">
                   {isSearchMode ? 'Für diese Suche wurden keine Dateien oder Ordner gefunden.' : 'In diesem Ordner sind derzeit keine Dateien hinterlegt.'}
                 </p>
