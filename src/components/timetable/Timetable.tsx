@@ -21,7 +21,6 @@ import { StudyGroupExam, TimetableDay, TimetableLesson, TimetableResponse } from
 import { timetableDatesForMode, weekTypeForDate } from '../../utils/timetableView';
 import SEO from '../seo/SEO';
 import TimetableSkeleton from './TimetableSkeleton';
-import TimetableLessonFields from './TimetableLessonFields';
 import { layoutTimetableEntries, TimetableEntry, timetableEntries } from '../../utils/timetableExams';
 import { createTimetableRefreshTracker } from '../../utils/timetableRefresh';
 import {
@@ -163,15 +162,12 @@ const Timetable: React.FC = () => {
           )}
         </div>
 
-        <div className="mb-4 flex items-start gap-3 text-xs text-surface-500 dark:text-surface-400">
-          <button type="button" disabled={loading} onClick={() => setReloadKey(value => value + 1)} className="shrink-0 font-medium text-primary-600 disabled:opacity-50 dark:text-primary-400">Aktualisieren</button>
-          <div role="status" className="min-h-12 min-w-0 flex-1 sm:min-h-4">
-            <div className="flex flex-wrap gap-x-3 gap-y-1">
-              {substitutionSources.map(source => <span key={source.name} className={source.error ? 'text-amber-700 dark:text-amber-300' : ''}>
-                {source.name}: {source.error ? 'nicht geladen – Änderungen können fehlen' : source.updated ? `Stand ${formatSourceDate(source.updated)}` : 'abgeglichen'}
-              </span>)}
-            </div>
-          </div>
+        <div role="status" className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-surface-500 dark:text-surface-400">
+          {loading && !hasCurrentTimetable && <span className="skeleton inline-block h-4 w-32" aria-hidden="true" />}
+          {substitutionSources.map(source => <span key={source.name} className={source.error ? 'text-amber-700 dark:text-amber-300' : ''}>
+            {source.name}: {source.error ? 'nicht geladen – Änderungen können fehlen' : source.updated ? `Stand ${formatSourceDate(source.updated)}` : 'abgeglichen'}
+          </span>)}
+          <button type="button" disabled={loading} onClick={() => setReloadKey(value => value + 1)} className="font-medium text-primary-600 disabled:opacity-50 dark:text-primary-400">Aktualisieren</button>
         </div>
 
         {preferences.timetable.show_exams && examsError && (
@@ -211,12 +207,12 @@ const Timetable: React.FC = () => {
             <TimelineView days={visibleDays} exams={displayedExams} timeSlots={timeSlots} onOpenCourse={openCourse} />
           </div>
         ) : (
-          <div ref={dayScrollerRef} className="scrollbar-hide -mx-3 flex snap-x snap-mandatory gap-3 overflow-x-auto px-3 pb-3 sm:mx-0 sm:px-0 md:gap-4 xl:grid xl:grid-cols-5 xl:overflow-visible xl:pb-0">
+          <div ref={dayScrollerRef} className="scrollbar-hide -mx-3 flex snap-x snap-mandatory gap-3 overflow-x-auto px-3 pb-3 sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 sm:pb-0 md:gap-4 xl:grid-cols-5">
             {visibleDays.map(day => {
               const date = new Date(`${day.date}T12:00:00`);
               const today = isToday(date);
               return (
-                <section key={day.date} data-today={today ? 'true' : undefined} className={`card min-w-[84vw] snap-start !p-0 overflow-hidden sm:min-w-[20rem] xl:min-w-0 ${today ? '!border-primary-300 dark:!border-primary-700 ring-2 ring-primary-500/10' : ''}`}>
+                <section key={day.date} data-today={today ? 'true' : undefined} className={`card min-w-[84vw] snap-start !p-0 overflow-hidden sm:min-w-0 ${today ? '!border-primary-300 dark:!border-primary-700 ring-2 ring-primary-500/10' : ''}`}>
                   <div className={`border-b px-4 py-3 ${today ? 'bg-primary-50 dark:bg-primary-950/60' : 'bg-surface-50 dark:bg-surface-800/50'}`}>
                     <div className="flex items-center justify-between">
                       <h2 className="font-semibold text-surface-900 dark:text-white">{day.name || format(date, 'EEEE', { locale: de })}</h2>
@@ -268,20 +264,22 @@ const Timetable: React.FC = () => {
                           }
                         }}
                       >
-                        <TimetableLessonFields
-                          title={<p className={`item-title ${lesson.cancelled ? 'line-through' : ''}`}>{lesson.subject}</p>}
-                          secondary={lesson.class_name && <p className="text-xs text-surface-500">{lesson.class_name}</p>}
-                          badges={<>
+                        <div className="mb-2 flex items-start justify-between gap-2">
+                          <div>
+                            <p className={`font-semibold text-surface-900 dark:text-white ${lesson.cancelled ? 'line-through' : ''}`}>{lesson.subject}</p>
+                            {lesson.class_name && <p className="text-xs text-surface-500">{lesson.class_name}</p>}
+                          </div>
+                          <div className="flex shrink-0 items-center gap-1.5">
                             {lesson.week_type && <WeekBadge week={lesson.week_type} />}
                             {lesson.period != null && <span className="badge badge-surface">{lesson.period}{typeof lesson.period === 'number' ? '.' : ''} Std.</span>}
                             {lesson.course_id && <ChevronRightIcon className="h-4 w-4 text-primary-500" aria-hidden="true" />}
-                          </>}
-                          details={[
-                            ...((lesson.start_time || lesson.end_time) ? [{ icon: ClockIcon, value: <>{lesson.start_time}{lesson.end_time ? ` – ${lesson.end_time}` : ''}</> }] : []),
-                            ...(lesson.teacher ? [{ icon: UserIcon, value: lesson.teacher }] : []),
-                            ...(lesson.room ? [{ icon: MapPinIcon, value: lesson.room }] : []),
-                          ]}
-                        />
+                          </div>
+                        </div>
+                        <div className="space-y-1 text-xs text-surface-500 dark:text-surface-400">
+                          {(lesson.start_time || lesson.end_time) && <p className="flex items-center gap-1.5"><ClockIcon className="h-3.5 w-3.5" />{lesson.start_time}{lesson.end_time ? ` – ${lesson.end_time}` : ''}</p>}
+                          {lesson.teacher && <p className="flex items-center gap-1.5"><UserIcon className="h-3.5 w-3.5" />{lesson.teacher}</p>}
+                          {lesson.room && <p className="flex items-center gap-1.5"><MapPinIcon className="h-3.5 w-3.5" />{lesson.room}</p>}
+                        </div>
                         {lesson.substitution && <div className="mt-2 border-t pt-2 text-xs text-amber-800 dark:text-amber-200">
                           <p className="font-semibold">{lesson.substitution.kind || (lesson.cancelled ? 'Entfall' : 'Vertretung')} · {lesson.substitution.source}</p>
                           {lesson.original_lesson && <p className="mt-1 text-surface-500">Geplant: {[lesson.original_lesson.subject, lesson.original_lesson.teacher, lesson.original_lesson.room].filter(Boolean).join(' · ')}</p>}

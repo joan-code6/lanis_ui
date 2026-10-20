@@ -44,9 +44,9 @@ const TimetableSkeleton: React.FC<{ dates: Date[]; layoutMode: TimetableLayoutMo
         </div>
       </div>
     ) : (
-      <div className="scrollbar-hide -mx-3 flex snap-x snap-mandatory gap-3 overflow-x-auto px-3 pb-3 sm:mx-0 sm:px-0 md:gap-4 xl:grid xl:grid-cols-5 xl:overflow-visible xl:pb-0">
+      <div className="scrollbar-hide -mx-3 flex snap-x snap-mandatory gap-3 overflow-x-auto px-3 pb-3 sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 sm:pb-0 md:gap-4 xl:grid-cols-5">
         {dates.map(date => (
-          <section key={date.toISOString()} className={`card min-w-[84vw] snap-start !p-0 overflow-hidden sm:min-w-[20rem] xl:min-w-0 ${isToday(date) ? '!border-primary-300 dark:!border-primary-700 ring-2 ring-primary-500/10' : ''}`}>
+          <section key={date.toISOString()} className={`card min-w-[84vw] snap-start !p-0 overflow-hidden sm:min-w-0 ${isToday(date) ? '!border-primary-300 dark:!border-primary-700 ring-2 ring-primary-500/10' : ''}`}>
             <div className={`border-b px-4 py-3 ${isToday(date) ? 'bg-primary-50 dark:bg-primary-950/60' : 'bg-surface-50 dark:bg-surface-800/50'}`}>
               <div className="flex items-center justify-between">
                 <h2 className="font-semibold text-surface-900 dark:text-white">{format(date, 'EEEE', { locale: de })}</h2>

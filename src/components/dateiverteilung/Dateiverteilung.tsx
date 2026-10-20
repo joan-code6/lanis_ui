@@ -177,7 +177,7 @@ const Dateiverteilung: React.FC = () => {
                   className={`rounded-lg px-3 py-2 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500/50 ${filter === value ? 'bg-white text-surface-900 shadow-sm dark:bg-surface-700 dark:text-white' : 'text-surface-500 hover:text-surface-800 dark:text-surface-400 dark:hover:text-surface-200'}`}
                   aria-pressed={filter === value}
                 >
-                  {value === 'all' ? 'Alle' : 'Neu'} <span className="inline-block min-w-[2ch] text-center tabular-nums">{loading ? <span className="skeleton inline-block h-3 w-[2ch] align-middle" aria-hidden="true" /> : value === 'all' ? distributions.length : unreadCount}</span>
+                  {value === 'all' ? `Alle ${distributions.length}` : `Neu ${unreadCount}`}
                 </button>
               ))}
             </div>

@@ -169,11 +169,11 @@ const Videokonferenz: React.FC = () => {
         <header className="page-header page-header-actions">
           <div>
             <h1 className="page-title">Videokonferenz</h1>
-            <p className="mt-1 min-h-4 text-xs text-surface-500 dark:text-surface-400" aria-live="polite">
-              Aktualisiert um {lastChecked
-                ? lastChecked.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })
-                : <span className="skeleton inline-block h-3 w-9 align-middle" aria-hidden="true" />} Uhr
-            </p>
+            {lastChecked && (
+              <p className="mt-1 text-xs text-surface-500 dark:text-surface-400" aria-live="polite">
+                Aktualisiert um {lastChecked.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} Uhr
+              </p>
+            )}
           </div>
           <button
             type="button"

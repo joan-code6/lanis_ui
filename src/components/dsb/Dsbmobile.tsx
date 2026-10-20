@@ -107,18 +107,19 @@ const Dsbmobile: React.FC = () => {
       />
       <div className="page-header">
         <h1 className="page-title">Vertretungsplan</h1>
-        <p className="page-subtitle flex flex-col items-start gap-y-0.5">
+        <p className="page-subtitle flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
           <span>
             {showAllClasses ? 'Vertretungen für alle Klassen' : userClass ? `Vertretungen für Klasse ${userClass}` : 'Aktuelle Vertretungen und Abwesenheiten'}
           </span>
-          <span className="inline-flex h-4 items-center gap-1 whitespace-nowrap text-xs text-surface-400 dark:text-surface-500">
-            Stand {lastUpdated ? <time dateTime={lastUpdated}>{formatLastUpdated(lastUpdated)}</time>
-              : isLoading ? <span className="skeleton inline-block h-3 w-28" aria-hidden="true" /> : 'nicht verfügbar'}
-          </span>
+          {lastUpdated && (
+            <span className="whitespace-nowrap text-xs text-surface-400 dark:text-surface-500">
+              <time dateTime={lastUpdated}>Stand {formatLastUpdated(lastUpdated)}</time>
+            </span>
+          )}
         </p>
       </div>
 
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+      <div className="mb-6 flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           {userClass && (
             <button

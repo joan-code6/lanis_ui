@@ -104,6 +104,18 @@ const StudyGroups: React.FC = () => {
         </div>
       ) : (
         <div className="space-y-8">
+          {upcomingExams.length > 0 && (
+            <section aria-labelledby="upcoming-exams">
+              <div className="mb-3 flex items-center gap-2">
+                <CalendarDaysIcon className="h-5 w-5 text-primary-600 dark:text-primary-400" />
+                <h2 id="upcoming-exams" className="section-title">Anstehende Klausuren</h2>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                {upcomingExams.map(exam => <ExamCard key={exam.id} exam={exam} />)}
+              </div>
+            </section>
+          )}
+
           <section aria-labelledby="group-list">
             <div className="mb-3 flex items-center gap-2">
               <AcademicCapIcon className="h-5 w-5 text-primary-600 dark:text-primary-400" />
@@ -181,18 +193,6 @@ const StudyGroups: React.FC = () => {
               ))}
             </div>
           </section>
-
-          {upcomingExams.length > 0 && (
-            <section aria-labelledby="upcoming-exams">
-              <div className="mb-3 flex items-center gap-2">
-                <CalendarDaysIcon className="h-5 w-5 text-primary-600 dark:text-primary-400" />
-                <h2 id="upcoming-exams" className="text-lg font-semibold text-surface-900 dark:text-surface-100">Anstehende Klausuren</h2>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-                {upcomingExams.map(exam => <ExamCard key={exam.id} exam={exam} />)}
-              </div>
-            </section>
-          )}
         </div>
       )}
     </div>
