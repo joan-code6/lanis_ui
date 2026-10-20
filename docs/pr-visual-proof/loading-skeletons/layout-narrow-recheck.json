@@ -1,0 +1,52 @@
+[
+  {
+    "width": 768,
+    "route": "timetable",
+    "shifts": [],
+    "added": []
+  },
+  {
+    "width": 768,
+    "route": "dsb",
+    "shifts": [],
+    "added": []
+  },
+  {
+    "width": 768,
+    "route": "vertretungsplan",
+    "shifts": [],
+    "added": [
+      "BUTTON:Do., 22.10.2",
+      "BUTTON:Fr., 23.10.2",
+      "BUTTON:Mo., 26.10.1",
+      "SELECT:Alle Klassen",
+      "H2:Mathematik",
+      "H2:Biologie"
+    ]
+  },
+  {
+    "width": 320,
+    "route": "timetable",
+    "shifts": [],
+    "added": []
+  },
+  {
+    "width": 320,
+    "route": "dsb",
+    "shifts": [],
+    "added": []
+  },
+  {
+    "width": 320,
+    "route": "vertretungsplan",
+    "shifts": [],
+    "added": [
+      "BUTTON:Do., 22.10.2",
+      "BUTTON:Fr., 23.10.2",
+      "BUTTON:Mo., 26.10.1",
+      "SELECT:Alle Klassen",
+      "H2:Mathematik",
+      "H2:Biologie"
+    ]
+  }
+]

@@ -1,0 +1,341 @@
+[
+  {
+    "width": 768,
+    "route": "dashboard",
+    "shifts": [],
+    "added": []
+  },
+  {
+    "width": 768,
+    "route": "courses",
+    "shifts": [],
+    "added": []
+  },
+  {
+    "width": 768,
+    "route": "messages",
+    "shifts": [],
+    "added": []
+  },
+  {
+    "width": 768,
+    "route": "study-groups",
+    "shifts": [],
+    "added": [
+      "BUTTON:Nachricht an Clara Neumann",
+      "BUTTON:Nachricht an Martin Vogel",
+      "BUTTON:Nachricht an Aylin Özdemir",
+      "BUTTON:Nachricht an Felix Brandt",
+      "BUTTON:Nachricht an Marie Seidel",
+      "BUTTON:Nachricht an Leonie Roth",
+      "H2:Anstehende Klausuren"
+    ]
+  },
+  {
+    "width": 768,
+    "route": "calendar",
+    "shifts": [],
+    "added": [
+      "BUTTON:A-Woche",
+      "BUTTON:Klassensprecher-Runde",
+      "BUTTON:SV-Treffen",
+      "BUTTON:Biologie-Protokoll",
+      "BUTTON:Klassenfahrt: Infoabend",
+      "BUTTON:Englisch-Präsentation",
+      "BUTTON:Elternabend 9C",
+      "BUTTON:Deutsch-Arbeit",
+      "BUTTON:Mathematik-Arbeit"
+    ]
+  },
+  {
+    "width": 768,
+    "route": "timetable",
+    "shifts": [
+      {
+        "key": "H2:Donnerstag",
+        "dx": 0,
+        "dy": 292,
+        "dw": 0,
+        "dh": 0,
+        "before": {
+          "x": 297,
+          "y": 677.5,
+          "w": 86.015625,
+          "h": 24
+        },
+        "after": {
+          "x": 297,
+          "y": 969.5,
+          "w": 86.015625,
+          "h": 24
+        }
+      },
+      {
+        "key": "H2:Freitag",
+        "dx": 0,
+        "dy": 292,
+        "dw": 0,
+        "dh": 0,
+        "before": {
+          "x": 534,
+          "y": 677.5,
+          "w": 53.03125,
+          "h": 24
+        },
+        "after": {
+          "x": 534,
+          "y": 969.5,
+          "w": 53.03125,
+          "h": 24
+        }
+      },
+      {
+        "key": "H2:Montag",
+        "dx": 0,
+        "dy": 373,
+        "dw": 0,
+        "dh": 0,
+        "before": {
+          "x": 297,
+          "y": 1096.5,
+          "w": 56.3125,
+          "h": 24
+        },
+        "after": {
+          "x": 297,
+          "y": 1469.5,
+          "w": 56.3125,
+          "h": 24
+        }
+      }
+    ],
+    "added": []
+  },
+  {
+    "width": 768,
+    "route": "dsb",
+    "shifts": [],
+    "added": []
+  },
+  {
+    "width": 768,
+    "route": "dateispeicher",
+    "shifts": [],
+    "added": [
+      "H2:Ordner",
+      "BUTTON:UnterrichtsmaterialienArbeitsblätter und Zusammenfassungen",
+      "BUTTON:ProjekteGemeinsame Projektdateien",
+      "BUTTON:AbgabenEinreichungen für Unterricht und Projekte",
+      "BUTTON:SchulorganisationWichtige Informationen rund um die Schule",
+      "H2:Dateien",
+      "BUTTON:Schuljahreskalender.pdf herunterladen",
+      "BUTTON:Raumplan_9C.pdf herunterladen",
+      "BUTTON:Regeln_fuer_Projektarbeit.pdf herunterladen"
+    ]
+  },
+  {
+    "width": 768,
+    "route": "dateiverteilung",
+    "shifts": [],
+    "added": [
+      "H2:Klassenleitung 9C",
+      "BUTTON:Einverständniserklärung.pdf herunterladen",
+      "H2:Mathematik 9c",
+      "BUTTON:Zugangsdaten-Mia.txt herunterladen",
+      "H2:Schulleitung",
+      "BUTTON:Lageplan-Schulfest.pdf herunterladen"
+    ]
+  },
+  {
+    "width": 768,
+    "route": "vertretungsplan",
+    "shifts": [],
+    "added": [
+      "BUTTON:Do., 22.10.2",
+      "BUTTON:Fr., 23.10.2",
+      "BUTTON:Mo., 26.10.1",
+      "SELECT:Alle Klassen",
+      "H2:Mathematik",
+      "H2:Biologie"
+    ]
+  },
+  {
+    "width": 768,
+    "route": "videokonferenz",
+    "shifts": [],
+    "added": [
+      "H2:Mathematik 9C",
+      "H2:Klassenrat 9C"
+    ]
+  },
+  {
+    "width": 320,
+    "route": "dashboard",
+    "shifts": [],
+    "added": []
+  },
+  {
+    "width": 320,
+    "route": "courses",
+    "shifts": [],
+    "added": []
+  },
+  {
+    "width": 320,
+    "route": "messages",
+    "shifts": [],
+    "added": []
+  },
+  {
+    "width": 320,
+    "route": "study-groups",
+    "shifts": [],
+    "added": [
+      "BUTTON:Nachricht an Clara Neumann",
+      "BUTTON:Nachricht an Martin Vogel",
+      "BUTTON:Nachricht an Aylin Özdemir",
+      "BUTTON:Nachricht an Felix Brandt",
+      "BUTTON:Nachricht an Marie Seidel",
+      "BUTTON:Nachricht an Leonie Roth",
+      "H2:Anstehende Klausuren"
+    ]
+  },
+  {
+    "width": 320,
+    "route": "calendar",
+    "shifts": [],
+    "added": [
+      "BUTTON:A-Woche",
+      "BUTTON:Klassensprecher-Runde",
+      "BUTTON:SV-Treffen",
+      "BUTTON:Biologie-Protokoll",
+      "BUTTON:Klassenfahrt: Infoabend",
+      "BUTTON:Englisch-Präsentation",
+      "BUTTON:Elternabend 9C",
+      "BUTTON:Deutsch-Arbeit",
+      "BUTTON:Mathematik-Arbeit"
+    ]
+  },
+  {
+    "width": 320,
+    "route": "timetable",
+    "shifts": [],
+    "added": []
+  },
+  {
+    "width": 320,
+    "route": "dsb",
+    "shifts": [
+      {
+        "key": "BUTTON:Alle Klassen",
+        "dx": 0,
+        "dy": 18,
+        "dw": 0,
+        "dh": 0,
+        "before": {
+          "x": 16,
+          "y": 193.1875,
+          "w": 160,
+          "h": 38
+        },
+        "after": {
+          "x": 16,
+          "y": 211.1875,
+          "w": 160,
+          "h": 38
+        }
+      },
+      {
+        "key": "BUTTON:Aktualisieren",
+        "dx": 0,
+        "dy": 18,
+        "dw": 0,
+        "dh": 0,
+        "before": {
+          "x": 188,
+          "y": 191.1875,
+          "w": 137.171875,
+          "h": 42
+        },
+        "after": {
+          "x": 188,
+          "y": 209.1875,
+          "w": 137.171875,
+          "h": 42
+        }
+      }
+    ],
+    "added": []
+  },
+  {
+    "width": 320,
+    "route": "dateispeicher",
+    "shifts": [],
+    "added": [
+      "H2:Ordner",
+      "BUTTON:UnterrichtsmaterialienArbeitsblätter und Zusammenfassungen",
+      "BUTTON:ProjekteGemeinsame Projektdateien",
+      "BUTTON:AbgabenEinreichungen für Unterricht und Projekte",
+      "BUTTON:SchulorganisationWichtige Informationen rund um die Schule",
+      "H2:Dateien",
+      "BUTTON:Schuljahreskalender.pdf herunterladen",
+      "BUTTON:Raumplan_9C.pdf herunterladen",
+      "BUTTON:Regeln_fuer_Projektarbeit.pdf herunterladen"
+    ]
+  },
+  {
+    "width": 320,
+    "route": "dateiverteilung",
+    "shifts": [],
+    "added": [
+      "H2:Klassenleitung 9C",
+      "BUTTON:Einverständniserklärung.pdf herunterladen",
+      "H2:Mathematik 9c",
+      "BUTTON:Zugangsdaten-Mia.txt herunterladen",
+      "H2:Schulleitung",
+      "BUTTON:Lageplan-Schulfest.pdf herunterladen"
+    ]
+  },
+  {
+    "width": 320,
+    "route": "vertretungsplan",
+    "shifts": [
+      {
+        "key": "BUTTON:Aktualisieren",
+        "dx": 0,
+        "dy": 24,
+        "dw": 0,
+        "dh": 0,
+        "before": {
+          "x": 12,
+          "y": 181.1875,
+          "w": 139.171875,
+          "h": 42
+        },
+        "after": {
+          "x": 12,
+          "y": 205.1875,
+          "w": 139.171875,
+          "h": 42
+        }
+      }
+    ],
+    "added": [
+      "BUTTON:Do., 22.10.2",
+      "BUTTON:Fr., 23.10.2",
+      "BUTTON:Mo., 26.10.1",
+      "SELECT:Alle Klassen",
+      "H2:Mathematik",
+      "H2:Biologie"
+    ]
+  },
+  {
+    "width": 320,
+    "route": "videokonferenz",
+    "shifts": [],
+    "added": [
+      "H2:Mathematik 9C",
+      "H2:Klassenrat 9C"
+    ]
+  }
+]

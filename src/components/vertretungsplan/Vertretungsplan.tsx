@@ -329,15 +329,14 @@ const Vertretungsplan: React.FC = () => {
       />
       <div className="mx-auto max-w-7xl">
         <header className="mb-4 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:items-start sm:justify-between">
-          <div>
+          <div className="min-w-0 flex-1">
             <h1 className="text-2xl font-bold tracking-tight text-surface-900 dark:text-white sm:text-3xl">Vertretungsplan</h1>
-            <div className="mt-1.5 flex flex-wrap items-center gap-2 text-sm text-surface-500 dark:text-surface-400">
+            <div className="mt-1.5 flex flex-col items-start gap-1 text-sm text-surface-500 dark:text-surface-400">
               <span>Direkt aus dem Schulportal Hessen</span>
-              {plan?.last_updated && (
-                <span className="whitespace-nowrap text-xs text-surface-400 dark:text-surface-500">
-                  Stand {formatLastUpdated(plan.last_updated)} Uhr
-                </span>
-              )}
+              <span className="inline-flex h-4 items-center gap-1 whitespace-nowrap text-xs text-surface-400 dark:text-surface-500">
+                Stand {plan?.last_updated ? `${formatLastUpdated(plan.last_updated)} Uhr`
+                  : loading ? <span className="skeleton inline-block h-3 w-28" aria-hidden="true" /> : 'nicht verfügbar'}
+              </span>
             </div>
           </div>
           <button

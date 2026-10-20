@@ -719,7 +719,7 @@ const Courses: React.FC = () => {
                 {viewMode === 'entry-detail' && selectedEntry?.title}
               </h1>
               {viewMode === 'course-detail' && (
-                <p className="text-surface-600 dark:text-surface-400 mt-1">Lehrer: {selectedCourse ? selectedCourse.teacher_full : <span className="skeleton inline-block h-5 w-32 align-middle" aria-hidden="true" />}</p>
+                <p className="mt-1 flex items-start gap-1 text-surface-600 dark:text-surface-400"><span className="shrink-0">Lehrer:</span>{selectedCourse ? <span>{selectedCourse.teacher_full}</span> : <span className="skeleton h-6 w-32" aria-hidden="true" />}</p>
               )}
             </div>
           </div>

@@ -191,7 +191,7 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
 
   return (
     <PwaInstallProvider automaticPromotion={!isDemo}>
-      <div className="flex h-[100dvh] flex-col overflow-hidden bg-surface-50 dark:bg-surface-950">
+      <div className="fixed inset-x-0 top-0 flex h-[100dvh] flex-col overflow-hidden bg-surface-50 dark:bg-surface-950">
       {isDemo && <DemoBar />}
       {isSidebarOpen && (
         <div className={'fixed inset-x-0 bottom-0 flex z-40 md:hidden ' + (isDemo ? 'top-10' : 'inset-0')}>
@@ -232,7 +232,7 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
           <MagnifyingGlassIcon className="h-5 w-5" />
         </button>
       </div>
-      <main ref={mainRef} className={'flex-1 min-h-0 overflow-y-auto focus:outline-none pt-14 md:pt-0 transition-[margin] duration-300 ease-out ' + (isSidebarCollapsed ? 'md:ml-[60px]' : 'md:ml-64')}>
+      <main ref={mainRef} className={'flex-1 min-h-0 overflow-y-auto [scrollbar-gutter:stable] focus:outline-none pt-14 md:pt-0 transition-[margin] duration-300 ease-out ' + (isSidebarCollapsed ? 'md:ml-[60px]' : 'md:ml-64')}>
         <BasePathProvider basePath={basePath}>
           <div className="animate-fade-in">
             {!isDemo && <OutageNotice />}

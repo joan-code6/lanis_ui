@@ -368,7 +368,7 @@ const Kalender: React.FC = () => {
           <select
             value={selectedCategory}
             onChange={(e) => setSelectedCategory(e.target.value)}
-            className="input text-xs py-1.5 w-auto"
+            className="input text-xs py-1.5 !w-44 max-w-full min-w-0"
           >
             <option value="">Alle Kategorien</option>
             {categories.map((cat) => (

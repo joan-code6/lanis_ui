@@ -91,9 +91,14 @@ const Timetable: React.FC = () => {
   const visibleExamCount = visibleDays.reduce((total, day) => total + displayedExams.filter(exam => exam.date === day.date).length, 0);
   const noticeCount = visibleDays.reduce((total, day) => total + (day.substitutionNotices || []).length, 0);
   const lessonCount = useMemo(() => visibleDays.reduce((total, day) => total + day.lessons.length, 0), [visibleDays]);
-  const firstVisibleDate = visibleDays[0]?.date ? new Date(`${visibleDays[0].date}T12:00:00`) : undefined;
+  const loadingDates = timetableDatesForMode(timetableViewMode, new Date());
+  const firstVisibleDate = visibleDays[0]?.date
+    ? new Date(`${visibleDays[0].date}T12:00:00`)
+    : loading ? loadingDates[0] : undefined;
   const lastVisibleDay = visibleDays[visibleDays.length - 1];
-  const lastVisibleDate = lastVisibleDay?.date ? new Date(`${lastVisibleDay.date}T12:00:00`) : undefined;
+  const lastVisibleDate = lastVisibleDay?.date
+    ? new Date(`${lastVisibleDay.date}T12:00:00`)
+    : loading ? loadingDates[loadingDates.length - 1] : undefined;
   const displayedWeekTypes = useMemo(() => {
     if (weekOverride) return [weekOverride];
     if (!activeWeek || !referenceWeekStart) return [];
@@ -151,11 +156,15 @@ const Timetable: React.FC = () => {
           )}
         </div>
 
-        <div role="status" className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-surface-500 dark:text-surface-400">
-          {substitutionSources.map(source => <span key={source.name} className={source.error ? 'text-amber-700 dark:text-amber-300' : ''}>
-            {source.name}: {source.error ? 'nicht geladen – Änderungen können fehlen' : source.updated ? `Stand ${formatSourceDate(source.updated)}` : 'abgeglichen'}
-          </span>)}
-          <button type="button" disabled={loading} onClick={() => setReloadKey(value => value + 1)} className="font-medium text-primary-600 disabled:opacity-50 dark:text-primary-400">Aktualisieren</button>
+        <div className="mb-4 flex items-start gap-3 text-xs text-surface-500 dark:text-surface-400">
+          <button type="button" disabled={loading} onClick={() => setReloadKey(value => value + 1)} className="shrink-0 font-medium text-primary-600 disabled:opacity-50 dark:text-primary-400">Aktualisieren</button>
+          <div role="status" className="min-h-12 min-w-0 flex-1 sm:min-h-4">
+            <div className="flex flex-wrap gap-x-3 gap-y-1">
+              {substitutionSources.map(source => <span key={source.name} className={source.error ? 'text-amber-700 dark:text-amber-300' : ''}>
+                {source.name}: {source.error ? 'nicht geladen – Änderungen können fehlen' : source.updated ? `Stand ${formatSourceDate(source.updated)}` : 'abgeglichen'}
+              </span>)}
+            </div>
+          </div>
         </div>
 
         {preferences.timetable.show_exams && examsError && (
@@ -167,7 +176,7 @@ const Timetable: React.FC = () => {
 
         {loading ? (
           <TimetableSkeleton
-            dates={timetableDatesForMode(timetableViewMode, new Date())}
+            dates={loadingDates}
             layoutMode={preferences.timetable.layout_mode}
           />
         ) : error ? (
@@ -195,12 +204,12 @@ const Timetable: React.FC = () => {
             <TimelineView days={visibleDays} exams={displayedExams} timeSlots={timeSlots} onOpenCourse={openCourse} />
           </div>
         ) : (
-          <div ref={dayScrollerRef} className="scrollbar-hide -mx-3 flex snap-x snap-mandatory gap-3 overflow-x-auto px-3 pb-3 sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 sm:pb-0 md:gap-4 xl:grid-cols-5">
+          <div ref={dayScrollerRef} className="scrollbar-hide -mx-3 flex snap-x snap-mandatory gap-3 overflow-x-auto px-3 pb-3 sm:mx-0 sm:px-0 md:gap-4 xl:grid xl:grid-cols-5 xl:overflow-visible xl:pb-0">
             {visibleDays.map(day => {
               const date = new Date(`${day.date}T12:00:00`);
               const today = isToday(date);
               return (
-                <section key={day.date} data-today={today ? 'true' : undefined} className={`card min-w-[84vw] snap-start !p-0 overflow-hidden sm:min-w-0 ${today ? '!border-primary-300 dark:!border-primary-700 ring-2 ring-primary-500/10' : ''}`}>
+                <section key={day.date} data-today={today ? 'true' : undefined} className={`card min-w-[84vw] snap-start !p-0 overflow-hidden sm:min-w-[20rem] xl:min-w-0 ${today ? '!border-primary-300 dark:!border-primary-700 ring-2 ring-primary-500/10' : ''}`}>
                   <div className={`border-b px-4 py-3 ${today ? 'bg-primary-50 dark:bg-primary-950/60' : 'bg-surface-50 dark:bg-surface-800/50'}`}>
                     <div className="flex items-center justify-between">
                       <h2 className="font-semibold text-surface-900 dark:text-white">{day.name || format(date, 'EEEE', { locale: de })}</h2>
