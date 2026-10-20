@@ -1,4 +1,5 @@
 import { readPersonalCache, writePersonalCache } from '../../utils/accountDataWrites';
+import { CoursesSkeleton } from '../shared/LoadingSkeletons';
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useBasePath } from '../../contexts/BasePathContext';
@@ -583,30 +584,29 @@ const Courses: React.FC = () => {
   // Show course detail skeleton when navigating to a course
   if (viewMode === 'course-detail' && !selectedCourse) {
     return (
-      <div className="p-6">
-        <div className="animate-pulse space-y-6">
+      <div className="p-6" aria-busy="true" aria-label="Kurs wird geladen">
+        <div className="space-y-6">
           <div className="flex items-center gap-4 mb-8">
-            <div className="h-8 w-8 bg-surface-300 dark:bg-surface-600 rounded-lg" />
-            <div className="h-8 bg-surface-300 dark:bg-surface-600 rounded w-48" />
+            <div className="h-9 w-9 skeleton rounded-lg" />
+            <div className="min-w-0"><h1 className="break-words text-3xl font-bold text-surface-900 dark:text-surface-100">{selectedCourseName || 'Mein Unterricht'}</h1><div className="mt-1 h-6 skeleton rounded w-32 max-w-full" /></div>
           </div>
-          <div className="card">
-            <div className="flex gap-4">
-              <div className="h-10 w-24 bg-surface-300 dark:bg-surface-600 rounded-lg" />
-              <div className="h-10 w-32 bg-surface-300 dark:bg-surface-600 rounded-lg" />
+          <div className="card p-1">
+            <div className="flex flex-wrap gap-1">
+              {courseDetailTabs.map(tab => <div key={tab.id} className="h-10 min-w-[7rem] flex-1 skeleton rounded-lg" />)}
             </div>
           </div>
           <div className="space-y-4">
             {Array.from({ length: 4 }).map((_, i) => (
               <div key={i} className="card">
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="h-10 w-10 bg-surface-300 dark:bg-surface-600 rounded-lg" />
+                  <div className="h-10 w-10 skeleton rounded-lg" />
                   <div className="space-y-2 flex-1">
-                    <div className="h-4 bg-surface-300 dark:bg-surface-600 rounded w-1/3" />
-                    <div className="h-3 bg-surface-300 dark:bg-surface-600 rounded w-1/4" />
+                    <div className="h-4 skeleton rounded w-1/3" />
+                    <div className="h-3 skeleton rounded w-1/4" />
                   </div>
                 </div>
-                <div className="h-5 bg-surface-300 dark:bg-surface-600 rounded w-3/4 mb-3" />
-                <div className="h-4 bg-surface-300 dark:bg-surface-600 rounded w-full" />
+                <div className="h-5 skeleton rounded w-3/4 mb-3" />
+                <div className="h-4 skeleton rounded w-full" />
               </div>
             ))}
           </div>
@@ -617,18 +617,7 @@ const Courses: React.FC = () => {
 
   // Show overview skeleton only when on overview and loading
   if (isLoading && (!courses || courses.length === 0) && viewMode === 'overview') {
-    return (
-      <div className="p-6">
-        <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-surface-300 dark:bg-surface-600 rounded w-1/4"></div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="h-32 bg-surface-300 dark:bg-surface-600 rounded-lg"></div>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
+    return <CoursesSkeleton />;
   }
 
   return (

@@ -288,15 +288,14 @@ const Kalender: React.FC = () => {
 
   if (isLoading && events.length === 0) {
     return (
-      <div className="h-full flex flex-col p-4 sm:p-6 max-w-7xl mx-auto">
+      <div className="h-full flex flex-col p-4 sm:p-6 max-w-7xl mx-auto" aria-busy="true" aria-label="Kalender wird geladen">
         <div className="page-header flex-shrink-0">
           <div className="flex items-center justify-between">
-            <div className="skeleton h-9 w-36 rounded-lg" />
+            <div className="skeleton h-8 sm:h-9 w-28 sm:w-36 rounded-lg" />
             <div className="flex items-center gap-2">
-              <div className="skeleton h-10 w-20 rounded-xl" />
-              <div className="skeleton h-10 w-20 rounded-xl" />
-              <div className="skeleton h-10 w-20 rounded-xl" />
-              <div className="skeleton h-10 w-20 rounded-xl" />
+              <div className="skeleton h-[42px] w-[72px] rounded-xl" />
+              <div className="skeleton h-[34px] w-[67px] rounded-xl" />
+              <div className="skeleton h-[34px] w-[67px] rounded-xl" />
             </div>
           </div>
         </div>
@@ -304,8 +303,8 @@ const Kalender: React.FC = () => {
         <div className="mb-6 card flex-shrink-0">
           <div className="flex flex-wrap items-center gap-3">
             <div className="skeleton h-4 w-14 rounded" />
-            <div className="skeleton h-9 w-32 rounded-xl" />
-            <div className="skeleton h-9 w-48 rounded-xl" />
+            <div className="skeleton h-[31px] w-32 rounded-xl" />
+            <div className="skeleton h-[30px] w-48 rounded-xl" />
           </div>
         </div>
 
@@ -313,13 +312,14 @@ const Kalender: React.FC = () => {
           <div className="mb-2 flex-shrink-0 border-b border-surface-200 py-2 dark:border-surface-700">
             <div className="skeleton h-7 w-40 rounded-lg" />
           </div>
+          {calendarViewMode === 'month' ? <>
           <div className="grid grid-cols-7 gap-px mb-1 flex-shrink-0">
             {Array.from({ length: 7 }).map((_, i) => (
               <div key={i} className="skeleton h-8 rounded" />
             ))}
           </div>
           <div className="flex-1 min-h-0 grid grid-cols-7 auto-rows-[80px] sm:auto-rows-[160px] content-start gap-px bg-surface-200 dark:bg-surface-700 rounded-xl overflow-hidden border border-surface-100 dark:border-surface-700">
-            {Array.from({ length: 35 }).map((_, i) => (
+            {Array.from({ length: calendarDays.length }).map((_, i) => (
               <div key={i} className="bg-white dark:bg-surface-900 min-h-0 p-1 sm:p-1.5">
                 <div className="skeleton h-6 w-6 rounded-full mb-1" />
                 <div className="space-y-0.5">
@@ -329,6 +329,9 @@ const Kalender: React.FC = () => {
               </div>
             ))}
           </div>
+          </> : <div className="min-h-0 flex-1 overflow-hidden space-y-1" aria-hidden="true">
+            {Array.from({ length: 4 }, (_, i) => <div key={i} className="card"><div className="flex items-center gap-2 mb-3"><div className="skeleton h-7 w-7 rounded-full" /><div className="skeleton h-5 w-48 max-w-full" /></div><div className="skeleton h-12 w-full rounded-xl" /></div>)}
+          </div>}
         </div>
       </div>
     );

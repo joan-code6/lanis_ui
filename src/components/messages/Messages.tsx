@@ -1,4 +1,5 @@
 import { readPersonalCache, writePersonalCache } from '../../utils/accountDataWrites';
+import { MessagesSkeleton } from '../shared/LoadingSkeletons';
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { messagesAPI } from '../../services/api';
@@ -344,18 +345,7 @@ const Messages: React.FC = () => {
   };
 
   if (isLoading && (!messages || messages.length === 0)) {
-    return (
-      <div className="p-6">
-        <div className="space-y-4">
-          <div className="skeleton h-8 w-48" />
-          <div className="space-y-2">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="skeleton h-16" />
-            ))}
-          </div>
-        </div>
-      </div>
-    );
+    return <MessagesSkeleton />;
   }
 
   return (

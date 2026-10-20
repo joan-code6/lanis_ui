@@ -1,4 +1,5 @@
 import { readPersonalCache, writePersonalCache } from '../../utils/accountDataWrites';
+import { ProfileSkeleton } from '../shared/LoadingSkeletons';
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { authAPI } from '../../services/api';
@@ -24,7 +25,7 @@ const Profile: React.FC = () => {
     return cached ? JSON.parse(cached) : user;
   });
   const [isUpdating, setIsUpdating] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(!userDetails);
   const [error, setError] = useState('');
   const [healthStatus, setHealthStatus] = useState<string>('');
 
@@ -117,18 +118,7 @@ const Profile: React.FC = () => {
 
   // Show cached state immediately, but if no cached and loading, show skeleton
   if (isLoading && (!userDetails)) {
-    return (
-      <div className="p-6">
-        <div className="space-y-4">
-          <div className="skeleton h-8 w-48"></div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="skeleton h-20"></div>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
+    return <ProfileSkeleton />;
   }
 
   return (
