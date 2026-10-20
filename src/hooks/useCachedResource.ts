@@ -1,3 +1,4 @@
+import { captureAccountDataGeneration } from '../utils/accountDataWrites';
 import { useCallback, useEffect, useRef, useSyncExternalStore } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { getApiBaseUrl } from '../utils/backendConfig';
@@ -36,6 +37,6 @@ export function useResourceKey(resource: string, enabled = true): string | null 
   const { user, token } = useAuth();
   return token && enabled ? JSON.stringify([
     getApiBaseUrl(), token.startsWith('demo-') ? 'demo' : 'account',
-    user?.school_id, user?.username, resource,
+    user?.school_id, user?.username, captureAccountDataGeneration(), resource,
   ]) : null;
 }

@@ -11,7 +11,49 @@ const now = 1000;
 vm.runInNewContext(compiled, {
   module: loaded, exports: loaded.exports, AbortController, Date: { now: () => now },
 });
-const { readResource, refreshResource, subscribeResource, clearResourceCache } = loaded.exports;
+const { readResource, refreshResource, subscribeResource, clearResourceCache, updateResource, resourceCacheGeneration } = loaded.exports;
+
+// Exercise the real hook's scope calculation without needing a DOM or credentials.
+let auth = { token: 'session-A', user: { school_id: '123', username: 'pupil-A' } };
+let backend = 'https://backend-one.invalid';
+let loginGeneration = 1;
+const hookExports = {};
+vm.runInNewContext(ts.transpileModule(fs.readFileSync('src/hooks/useCachedResource.ts', 'utf8'), {
+  compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
+}).outputText, {
+  exports: hookExports,
+  require(name) {
+    if (name.endsWith('/AuthContext')) return { useAuth: () => auth };
+    if (name.endsWith('/backendConfig')) return { getApiBaseUrl: () => backend };
+    if (name.endsWith('/accountDataWrites')) return { captureAccountDataGeneration: () => loginGeneration };
+    if (name.endsWith('/resourceCache')) return loaded.exports;
+    if (name === 'react') return {};
+    throw new Error(`Unexpected hook dependency: ${name}`);
+  },
+});
+const scope = resource => hookExports.useResourceKey(resource);
+const originalScope = scope('timetable:personal:A');
+auth.token = 'rotated-A';
+assert.equal(scope('timetable:personal:A'), originalScope, 'token rotation retains the current session cache');
+assert(!originalScope.includes('session-A') && !originalScope.includes('rotated-A'), 'keys do not store session tokens');
+assert.notEqual(scope('timetable:all:A'), originalScope, 'view options have separate caches');
+auth.user.username = 'pupil-B';
+assert.notEqual(scope('timetable:personal:A'), originalScope, 'accounts have separate caches');
+auth.user.username = 'pupil-A';
+auth.user.school_id = '456';
+assert.notEqual(scope('timetable:personal:A'), originalScope, 'schools have separate caches');
+auth.user.school_id = '123';
+backend = 'https://backend-two.invalid';
+assert.notEqual(scope('timetable:personal:A'), originalScope, 'backends have separate caches');
+backend = 'https://backend-one.invalid';
+loginGeneration++;
+assert.notEqual(scope('timetable:personal:A'), originalScope, 'a new login cannot restore prior session data');
+loginGeneration--;
+auth.token = 'demo-test';
+assert.notEqual(scope('timetable:personal:A'), originalScope, 'demo and live data remain separate');
+assert.equal(hookExports.useResourceKey('search', false), null, 'disabled resources do not fetch');
+auth.token = null;
+assert.equal(scope('timetable:personal:A'), null, 'signed-out views have no cache key');
 
 (async () => {
   const key = 'backend:account:timetable:personal:A';
@@ -71,6 +113,15 @@ const { readResource, refreshResource, subscribeResource, clearResourceCache } =
   const nextLogin = refreshResource(key, async () => ({ lesson: 'New session' }));
   await nextLogin;
   assert.equal(readResource(key).data.lesson, 'New session');
+  const generation = resourceCacheGeneration();
+  updateResource('interactive', { done: false }, generation);
+  updateResource('interactive', previous => ({ ...previous, done: true }), generation);
+  assert.equal(readResource('interactive').data.done, true, 'interactive changes update cached views');
+  clearResourceCache();
+  updateResource('interactive', { done: false }, generation);
+  assert.equal(readResource('interactive').data, undefined, 'old interactive callbacks cannot restore a signed-out cache');
+  updateResource('interactive', [], resourceCacheGeneration());
+  assert.equal(readResource('interactive').data.length, 0, 'new session callbacks can cache an empty result');
   clearResourceCache();
   console.log('Resource cache checks passed: navigation, immediate revalidation on every visit, background replacement, deduplication, view/account separation, empty results, failure retention, manual refresh and logout races.');
 })().catch(error => { console.error(error); process.exitCode = 1; });

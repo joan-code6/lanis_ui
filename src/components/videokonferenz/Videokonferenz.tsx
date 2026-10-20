@@ -1,6 +1,7 @@
 import { useCachedResource } from '../../hooks/useCachedResource';
 import React, { useEffect, useMemo, useRef } from 'react';
-import axios from 'axios';
+import { Link } from 'react-router-dom';
+import { useBasePath } from '../../contexts/BasePathContext';
 import {
   ArrowPathIcon,
   ArrowTopRightOnSquareIcon,
@@ -38,15 +39,39 @@ function safeHttpsUrl(value: string | null | undefined): string | null {
   }
 }
 
+function internalCoursePath(links: VideoRoom['links']): string | null {
+  for (const link of links) {
+    const safeUrl = safeHttpsUrl(link.url);
+    if (!safeUrl) continue;
+    const url = new URL(safeUrl);
+    if (!['start.schulportal.hessen.de', 'schulportal.hessen.de'].includes(url.hostname)
+      || url.pathname !== '/meinunterricht.php'
+      || url.searchParams.getAll('a').length !== 1
+      || url.searchParams.get('a') !== 'sus_view'
+      || url.searchParams.getAll('id').length !== 1) continue;
+    const id = url.searchParams.get('id') || '';
+    if (/^[a-zA-Z0-9_-]+$/.test(id)) return `/courses/${encodeURIComponent(id)}`;
+  }
+  return null;
+}
+
 export const RoomCard: React.FC<{ room: VideoRoom; statusLive: boolean }> = ({ room, statusLive }) => {
-  const joinUrl = statusLive && room.can_join ? safeHttpsUrl(room.join_url) : null;
+  const basePath = useBasePath();
+  const coursePath = internalCoursePath(room.links);
+  const joinUrl = statusLive && room.status === 'open' && room.can_join ? safeHttpsUrl(room.join_url) : null;
   const status = statusLive ? room.status : 'unknown';
 
   return (
     <article className="card">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
-          <h2 className="text-base font-semibold text-surface-900 dark:text-surface-100">{room.name}</h2>
+          <h2 className="text-base font-semibold text-surface-900 dark:text-surface-100">
+            {coursePath ? (
+              <Link to={`${basePath}${coursePath}`} className="hover:text-primary-600 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:hover:text-primary-400">
+                {room.name}
+              </Link>
+            ) : room.name}
+          </h2>
           {room.teachers.length > 0 && (
             <p className="mt-1 text-sm text-surface-500 dark:text-surface-400">{room.teachers.join(' · ')}</p>
           )}
@@ -61,19 +86,6 @@ export const RoomCard: React.FC<{ room: VideoRoom; statusLive: boolean }> = ({ r
           </a>
         )}
       </div>
-      {room.links.length > 0 && (
-        <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2">
-          {room.links.map(link => {
-            const url = safeHttpsUrl(link.url);
-            return url ? (
-              <a key={`${link.label}-${url}`} href={url} target="_blank" rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-sm text-primary-600 hover:underline dark:text-primary-400">
-                {link.label}<ArrowTopRightOnSquareIcon className="h-3.5 w-3.5" />
-              </a>
-            ) : null;
-          })}
-        </div>
-      )}
     </article>
   );
 };
@@ -83,7 +95,8 @@ const Videokonferenz: React.FC = () => {
   const { data, loading, refreshing, error, refresh, updatedAt } = useCachedResource('videokonferenz', async (signal, force) => {
     const response = await videokonferenzAPI.getRooms(token!, force, signal);
     if (!response.success) throw new Error(response.error || 'Videoräume konnten nicht geladen werden.');
-    return response;
+    // Each completed check needs a distinct identity, including reused demo responses.
+    return { ...response };
   });
   // A cached room list is useful immediately, but joining requires this visit's live check.
   const initialData = useRef(data);
@@ -111,12 +124,12 @@ const Videokonferenz: React.FC = () => {
   }
 
   return (
-    <div className="min-h-full px-3 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
+    <div className="min-h-full module-padding">
       <SEO title="Videokonferenz" description="Deine aktuellen Videoräume im Schulportal Hessen." noindex />
-      <div className="mx-auto max-w-5xl">
-        <header className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+      <div className="mx-auto max-w-7xl">
+        <header className="page-header page-header-actions">
           <div>
-            <h1 className="text-2xl font-bold text-surface-900 dark:text-white">Videokonferenz</h1>
+            <h1 className="page-title">Videokonferenz</h1>
             {lastChecked && (
               <p className="mt-1 text-xs text-surface-500 dark:text-surface-400" aria-live="polite">
                 Aktualisiert um {lastChecked.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} Uhr
@@ -157,7 +170,7 @@ const Videokonferenz: React.FC = () => {
         ) : !overview ? (
           <div className="card flex min-h-64 flex-col items-center justify-center text-center">
             <InformationCircleIcon className="mb-3 h-10 w-10 text-surface-300" />
-            <h2 className="font-semibold text-surface-900 dark:text-white">Keine Raumübersicht verfügbar</h2>
+            <h2 className="empty-state-title">Keine Raumübersicht verfügbar</h2>
             <p className="mt-1 max-w-md text-sm text-surface-500 dark:text-surface-400">
               Aktualisiere die Seite, um es erneut zu versuchen.
             </p>

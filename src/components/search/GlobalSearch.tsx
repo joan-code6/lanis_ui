@@ -1,3 +1,4 @@
+import { readPersonalCache } from '../../utils/accountDataWrites';
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -141,7 +142,7 @@ function searchCacheData(
   const results: SearchItem[] = [];
 
   try {
-    const raw = basePath === '/demo' ? null : localStorage.getItem('messages_cache');
+    const raw = basePath === '/demo' ? null : readPersonalCache('messages_cache');
     if (raw) {
       const msgs = JSON.parse(raw);
       if (Array.isArray(msgs)) {
@@ -168,7 +169,7 @@ function searchCacheData(
   } catch {}
 
   try {
-    const raw = basePath === '/demo' ? null : localStorage.getItem('courses_cache');
+    const raw = basePath === '/demo' ? null : readPersonalCache('courses_cache');
     if (raw) {
       const entries = JSON.parse(raw);
       if (Array.isArray(entries)) {
@@ -202,7 +203,7 @@ function searchCacheData(
   }
 
   try {
-    const raw = basePath === '/demo' ? null : localStorage.getItem('dsb_plan_cache_v2');
+    const raw = basePath === '/demo' ? null : readPersonalCache('dsb_plan_cache_v2');
     if (raw) {
       const data = JSON.parse(raw);
       for (const t of data?.tables || []) {
@@ -221,7 +222,7 @@ function searchCacheData(
   } catch {}
 
   try {
-    const raw = basePath === '/demo' ? null : localStorage.getItem('username_cache');
+    const raw = basePath === '/demo' ? null : readPersonalCache('username_cache');
     if (raw) {
       const p = JSON.parse(raw);
       const data = p?.data || p;
@@ -242,7 +243,7 @@ function searchCacheData(
   } catch {}
 
   try {
-    const raw = basePath === '/demo' ? null : localStorage.getItem('profile_cache');
+    const raw = basePath === '/demo' ? null : readPersonalCache('profile_cache');
     if (raw) {
       const profile = JSON.parse(raw);
       if (searchText(query, profile)) {

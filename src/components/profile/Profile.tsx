@@ -1,4 +1,5 @@
 import { useCachedState } from '../../hooks/useCachedState';
+import { readPersonalCache, writePersonalCache } from '../../utils/accountDataWrites';
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { authAPI } from '../../services/api';
@@ -18,7 +19,12 @@ import { canWriteAccountData, captureAccountDataGeneration } from '../../utils/a
 
 const Profile: React.FC = () => {
   const { user, token } = useAuth();
-  const [userDetails, setUserDetails] = useCachedState<User | null>('profile', user);
+  const [userDetails, setUserDetails] = useCachedState<User | null>('profile', () => {
+    try {
+      const cached = isDemoRoute() ? null : readPersonalCache('profile_cache');
+      return cached ? JSON.parse(cached) : user;
+    } catch { return user; }
+  });
   const [isUpdating, setIsUpdating] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -58,7 +64,7 @@ const Profile: React.FC = () => {
         if (canWriteAccountData(writeGeneration)) {
           const cachedProfile = JSON.stringify(response.data);
           notifyDemoCacheWrite('profile_cache', cachedProfile);
-          localStorage.setItem('profile_cache', cachedProfile);
+          writePersonalCache('profile_cache', cachedProfile, writeGeneration);
         }
       } else {
         setError('Fehler beim Laden des Benutzerprofils.');
@@ -128,7 +134,7 @@ const Profile: React.FC = () => {
   }
 
   return (
-    <div className="p-4 sm:p-6 max-w-6xl mx-auto">
+    <div className="module-page">
       <SEO
         title="Mein Profil"
         description="Lanis Profil — Deine Benutzerinformationen und Kontodetails im Schulportal Hessen."

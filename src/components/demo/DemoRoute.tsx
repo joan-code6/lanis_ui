@@ -88,7 +88,7 @@ const seedLocalStorage = () => {
   const handleExternalAuthRemoval = (event: StorageEvent) => {
     if (
       event.key === ACCOUNT_DATA_GENERATION_KEY
-      && hasAccountDataDeletionOccurredSince(initialDeletionEpoch)
+      && captureAccountDataGeneration() !== initialGeneration
     ) {
       restoreAllowed = false;
       deletionGeneration = captureAccountDataGeneration();
@@ -121,8 +121,7 @@ const seedLocalStorage = () => {
         : previous;
       const deletionWasObserved = !restoreAllowed
         || hasAccountDataDeletionOccurredSince(initialDeletionEpoch);
-      const loginHasSupersededSnapshot = captureAccountDataGeneration() > initialGeneration
-        && hasAccountDataLoginSince(initialGeneration);
+      const loginHasSupersededSnapshot = captureAccountDataGeneration() !== initialGeneration;
       if (hasAccountDataDeletionMarker()) {
         DEMO_OWNED_STORAGE_KEYS.forEach(key => {
           if (localStorage.getItem(key) === valuesOwnedByDemo.get(key)) localStorage.removeItem(key);

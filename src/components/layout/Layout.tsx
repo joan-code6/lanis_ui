@@ -166,10 +166,9 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
     'study-groups': { name: 'Lerngruppen', href: `${basePath}/study-groups`, icon: UserGroupIcon },
     calendar: { name: 'Kalender', href: `${basePath}/calendar`, icon: CalendarDaysIcon },
     profile: { name: 'Profil', href: `${basePath}/profile`, icon: UserIcon },
-    settings: { name: 'Einstellungen', href: `${basePath}/settings`, icon: Cog6ToothIcon },
   } satisfies Record<SidebarItemId, { name: string; href: string; icon: React.ComponentType<React.SVGProps<SVGSVGElement>> }>;
   const availableItems = new Set<SidebarItemId>([
-    'search', 'divider', 'dashboard', 'messages', 'courses', 'timetable', 'study-groups', 'calendar', 'profile', 'settings',
+    'search', 'divider', 'dashboard', 'messages', 'courses', 'timetable', 'study-groups', 'calendar', 'profile',
     ...(hasNativeDateispeicher ? ['dateispeicher' as const] : []),
     ...(hasNativeDateiverteilung ? ['dateiverteilung' as const] : []),
     ...(hasNativeSubstitutionPlan ? ['vertretungsplan' as const] : []),
@@ -232,7 +231,7 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
           <MagnifyingGlassIcon className="h-5 w-5" />
         </button>
       </div>
-      <main ref={mainRef} className={'flex-1 min-h-0 overflow-y-auto focus:outline-none pt-14 md:pt-0 transition-[margin] duration-300 ease-out ' + (isSidebarCollapsed ? 'md:ml-[60px]' : 'md:ml-64')}>
+      <main ref={mainRef} className={'flex-1 min-h-0 min-w-0 overflow-y-auto focus:outline-none pt-14 md:pt-0 transition-[margin] duration-300 ease-out ' + (isSidebarCollapsed ? 'md:ml-[60px]' : 'md:ml-64')}>
         <BasePathProvider basePath={basePath}>
           <div className="animate-fade-in">
             {!isDemo && <OutageNotice />}
@@ -299,7 +298,7 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
           >
             <AppIcon alt="Schulportal" className={`${isCollapsed ? 'h-10 w-10' : 'h-9 w-9'} rounded-xl transition-opacity duration-200 ${isCollapsed ? 'group-hover:opacity-0' : ''}`} />
             <div className={`overflow-hidden transition-all duration-300 ${isCollapsed ? 'w-0 opacity-0' : 'w-32 opacity-100'}`}>
-              <h1 className="whitespace-nowrap text-base font-semibold text-surface-900 dark:text-surface-100 tracking-tight">Schulportal</h1>
+              <span className="whitespace-nowrap text-base font-semibold text-surface-900 dark:text-surface-100 tracking-tight">Schulportal</span>
               <p className="whitespace-nowrap text-[11px] text-surface-500 dark:text-surface-400 font-medium tracking-wide uppercase">Hessen</p>
             </div>
             {isCollapsed && (
@@ -426,6 +425,18 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
                 </span>
               </button>
             )}
+            <Link
+              to={`${basePath}/settings`}
+              className={`nav-link ${isCollapsed ? 'mx-auto h-10 w-10 justify-center gap-0 px-0' : ''} ${location.pathname === `${basePath}/settings` || location.pathname.startsWith(`${basePath}/settings/`) ? 'nav-link-active' : ''}`}
+              title={isCollapsed ? 'Einstellungen' : undefined}
+              aria-label="Einstellungen"
+              onClick={() => setIsSidebarOpen(false)}
+            >
+              <Cog6ToothIcon className="nav-link-icon" />
+              <span className={`overflow-hidden whitespace-nowrap transition-[max-width,opacity] duration-300 ${isCollapsed ? 'max-w-0 opacity-0' : 'max-w-48 opacity-100'}`}>
+                Einstellungen
+              </span>
+            </Link>
             <div className="relative">
               {showLogoutConfirmation && (
                 <div

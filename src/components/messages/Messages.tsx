@@ -1,4 +1,5 @@
 import { useCachedState } from '../../hooks/useCachedState';
+import { readPersonalCache, writePersonalCache } from '../../utils/accountDataWrites';
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { messagesAPI } from '../../services/api';
@@ -42,12 +43,19 @@ interface ConversationParticipant {
 const Messages: React.FC = () => {
   const { token } = useAuth();
   const [searchParams] = useSearchParams();
-  const [messages, setMessages, hasMessages] = useCachedState<MessageHeader[]>('messages', []);
+  const [messages, setMessages, hasMessages] = useCachedState<MessageHeader[]>('messages', () => {
+    try {
+      const cached = isDemoRoute() ? null : readPersonalCache('messages_cache');
+      const parsed: unknown = cached ? JSON.parse(cached) : null;
+      return Array.isArray(parsed) ? parsed.map((message: MessageHeader) => ({ ...message, Betreff: htmlToText(message.Betreff) })) : [];
+    } catch { return []; }
+  });
   const [isUpdating, setIsUpdating] = useState(false);
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
   const [conversations, setConversations] = useCachedState<Record<string, Message[]>>('conversations', {});
   const conversationMessages = selectedConversation ? conversations[selectedConversation] || [] : [];
   const [isLoading, setIsLoading] = useState(true);
+  const conversationRequest = useRef(0);
   const [isConversationLoading, setIsConversationLoading] = useState(false);
   const [error, setError] = useState('');
   const [showCompose, setShowCompose] = useState(false);
@@ -85,7 +93,7 @@ const Messages: React.FC = () => {
   const loadUsernameCache = (): Record<string, string> => {
     if (isDemoRoute()) return {};
     try {
-      const raw = localStorage.getItem(USERNAME_CACHE_KEY);
+      const raw = readPersonalCache(USERNAME_CACHE_KEY);
       if (!raw) return {};
       const parsed: { data: Record<string, string>; ts: number } = JSON.parse(raw);
       if (Date.now() - parsed.ts > USERNAME_CACHE_TTL) {
@@ -96,10 +104,12 @@ const Messages: React.FC = () => {
     } catch { return {}; }
   };
 
+  const usernameCacheGeneration = useRef(captureAccountDataGeneration()).current;
+
   const saveUsernameCache = (data: Record<string, string>) => {
     const cachedUsername = JSON.stringify({ data, ts: Date.now() });
     notifyDemoCacheWrite(USERNAME_CACHE_KEY, cachedUsername);
-    localStorage.setItem(USERNAME_CACHE_KEY, cachedUsername);
+    writePersonalCache(USERNAME_CACHE_KEY, cachedUsername, usernameCacheGeneration);
   };
 
   const usernameCache = useRef<Record<string, string>>(loadUsernameCache());
@@ -116,7 +126,7 @@ const Messages: React.FC = () => {
     if (!token) return;
     const abortController = new AbortController();
     loadMessages(abortController.signal);
-    return () => abortController.abort();
+    return () => { abortController.abort(); conversationRequest.current++; };
   }, [token]);
 
   useEffect(() => {
@@ -173,7 +183,7 @@ const Messages: React.FC = () => {
         if (canWriteAccountData(writeGeneration)) {
           const cachedMessages = JSON.stringify(resolved);
           notifyDemoCacheWrite('messages_cache', cachedMessages);
-          localStorage.setItem('messages_cache', cachedMessages);
+          writePersonalCache('messages_cache', cachedMessages, writeGeneration);
         }
       } else {
         setError('Fehler beim Laden der Nachrichten.');
@@ -191,10 +201,12 @@ const Messages: React.FC = () => {
 
   const loadConversation = async (conversationId: string) => {
     if (!token) return;
+    const requestId = ++conversationRequest.current;
     try {
       setIsConversationLoading(conversations[conversationId] === undefined);
       setSelectedConversation(conversationId);
       const response = await messagesAPI.getConversation(token, conversationId);
+      if (requestId !== conversationRequest.current) return;
       if (response.success && response.messages) {
         const transformedMessages = response.messages.map((msg: any) => ({
           ...msg,
@@ -220,6 +232,7 @@ const Messages: React.FC = () => {
         }
       }
     } catch (error: any) {
+      if (requestId !== conversationRequest.current) return;
       console.error('Error loading conversation:', error);
       if (error?.response?.status === 404) {
         setError('Unterhaltung nicht gefunden.');
@@ -229,8 +242,10 @@ const Messages: React.FC = () => {
         setError('Fehler beim Laden der Unterhaltung. Bitte versuchen Sie es später erneut.');
       }
     } finally {
-      setIsConversationLoading(false);
-      void loadMessages(undefined, false);
+      if (requestId === conversationRequest.current) {
+        setIsConversationLoading(false);
+        void loadMessages(undefined, false);
+      }
     }
   };
 
@@ -331,7 +346,7 @@ const Messages: React.FC = () => {
     }
   };
 
-  if (isLoading && !hasMessages) {
+  if (isLoading && !hasMessages && messages.length === 0) {
     return (
       <div className="p-6">
         <div className="space-y-4">
@@ -358,7 +373,7 @@ const Messages: React.FC = () => {
       <div className={`${selectedConversation ? 'hidden lg:flex' : 'flex'} w-full lg:w-80 xl:w-1/3 border-r border-surface-100 dark:border-surface-800 flex-col bg-white dark:bg-surface-900`}>
         <div className="p-4 border-b border-surface-100 dark:border-surface-800">
           <div className="flex items-center justify-between mb-4">
-            <h1 className="text-lg font-bold text-surface-900 dark:text-surface-100 tracking-tight">Nachrichten</h1>
+            <h1 className="page-title page-title-compact">Nachrichten</h1>
             <button
               onClick={() => setShowCompose(true)}
               className="btn btn-primary h-9 px-3 text-xs"
@@ -561,7 +576,7 @@ const Messages: React.FC = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-surface-900/40 backdrop-blur-sm">
           <div className="bg-white dark:bg-surface-800 rounded-2xl sm:rounded-2xl shadow-soft-lg max-w-lg w-full max-h-[85vh] flex flex-col animate-scale-in mx-2 sm:mx-0">
             <div className="flex items-center justify-between p-5 border-b border-surface-100 dark:border-surface-800">
-              <h3 className="text-base font-semibold text-surface-900 dark:text-surface-100">Neue Nachricht</h3>
+              <h3 className="item-title">Neue Nachricht</h3>
               <button
                 onClick={() => setShowCompose(false)}
                 className="w-8 h-8 flex items-center justify-center rounded-lg text-surface-400 dark:text-surface-500 hover:text-surface-600 dark:hover:text-surface-300 hover:bg-surface-100 dark:hover:bg-surface-700 transition-colors"
@@ -681,7 +696,7 @@ const Messages: React.FC = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-surface-900/40 backdrop-blur-sm">
           <div className="bg-white dark:bg-surface-900 rounded-2xl sm:rounded-2xl shadow-soft-lg max-w-md w-full max-h-[70vh] flex flex-col animate-scale-in mx-2 sm:mx-0 ring-1 ring-black/5 dark:ring-white/10">
             <div className="flex items-center justify-between p-5 border-b border-surface-100 dark:border-surface-700">
-              <h3 className="text-base font-semibold text-surface-900 dark:text-surface-100">Teilnehmer</h3>
+              <h3 className="item-title">Teilnehmer</h3>
               <button
                 onClick={closeParticipantsModal}
                 className="w-8 h-8 flex items-center justify-center rounded-lg text-surface-400 dark:text-surface-500 hover:text-surface-600 dark:hover:text-surface-300 hover:bg-surface-100 dark:hover:bg-surface-700 transition-colors"

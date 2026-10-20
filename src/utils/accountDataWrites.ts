@@ -1,4 +1,5 @@
-import { CUSTOM_BACKEND_STORAGE_KEY, clearBackendScopedStorage } from './backendConfig';
+import { clearResourceCache } from './resourceCache';
+import { CUSTOM_BACKEND_STORAGE_KEY, clearBackendScopedStorage, getApiBaseUrl } from './backendConfig';
 
 export const ACCOUNT_DATA_GENERATION_KEY = '__lanis_account_data_generation';
 export const ACCOUNT_DATA_DELETION_EPOCH_KEY = '__lanis_account_deletion_epoch';
@@ -7,6 +8,8 @@ export const ACCOUNT_DATA_DELETION_RECOVERY_KEY = '__lanis_account_deletion_reco
 export const ACCOUNT_DATA_LIFECYCLE_LOCK_KEY = '__lanis_account_data_lifecycle_lock';
 
 let deletionInProgress = false;
+// A failed marker write must still invalidate this tab’s pending requests.
+let minimumAccountGeneration = 0;
 const DELETION_LEASE_MS = 15 * 60 * 1000;
 let deletionLeaseTimer: number | undefined;
 
@@ -132,11 +135,11 @@ const readGenerationState = (): { generation: number; deleting: boolean } => {
     const generation = Number.parseInt(generationText, 10);
     const leaseExpiry = Number.parseInt(expiryText || '', 10);
     return {
-      generation: Number.isFinite(generation) ? generation : 0,
+      generation: Math.max(minimumAccountGeneration, Number.isFinite(generation) ? generation : 0),
       deleting: state === 'deleting' && Number.isFinite(leaseExpiry) && leaseExpiry > Date.now(),
     };
   } catch {
-    return { generation: 0, deleting: deletionInProgress };
+    return { generation: minimumAccountGeneration, deleting: deletionInProgress };
   }
 };
 
@@ -319,6 +322,7 @@ export const completeAccountDataDeletion = (expectedGeneration: number): boolean
 
 
 export const purgeDeletedAccountBrowserData = async (): Promise<boolean> => {
+  clearResourceCache();
   // Keep recovery identity and coordination until every cleanup step succeeds.
   let storageClean = false;
   try {
@@ -357,4 +361,98 @@ export const purgeDeletedAccountBrowserData = async (): Promise<boolean> => {
   }
   const results = await Promise.allSettled(cleanupTasks);
   return storageClean && results.every(result => result.status === 'fulfilled');
+};
+
+// Personal caches are valid only for the current account and login generation.
+// Legacy unowned values are intentionally treated as cache misses.
+const personalCacheOwner = (): string | null => {
+  try {
+    if (window.location.pathname === '/demo' || window.location.pathname.startsWith('/demo/')) return null;
+    if (!localStorage.getItem('auth_access_token')) return null;
+    const user = JSON.parse(localStorage.getItem('auth_user') || 'null');
+    if (!user?.school_id || !user?.username) return null;
+    return JSON.stringify([getApiBaseUrl(), user.school_id, user.username]);
+  } catch { return null; }
+};
+
+export const readPersonalCache = (key: string): string | null => {
+  try {
+    const owner = personalCacheOwner();
+    const generation = captureAccountDataGeneration();
+    if (!owner || !canWriteAccountData(generation)) return null;
+    const cached = JSON.parse(localStorage.getItem(key) || 'null');
+    return cached?.owner === owner && cached?.generation === generation && typeof cached?.value === 'string'
+      ? cached.value : null;
+  } catch { return null; }
+};
+
+export const writePersonalCache = (key: string, value: string, generation: number): void => {
+  const owner = personalCacheOwner();
+  if (!owner || !canWriteAccountData(generation)) return;
+  try {
+    localStorage.setItem(key, JSON.stringify({ owner, generation, value }));
+  } catch {
+    // Live data remains usable when optional browser caching is unavailable.
+  }
+};
+
+/** Remove this browser's personal state even when marker writes fail. */
+export const clearSignedOutAccountData = (): void => {
+  clearResourceCache();
+  // Account deletion retains its own recovery marker and lifecycle ownership.
+  const deleting = hasAccountDataDeletionMarker();
+  const generation = captureAccountDataGeneration() + 1;
+  const publishLogout = () => {
+    if (deleting) return;
+    try {
+      localStorage.setItem(ACCOUNT_DATA_GENERATION_KEY, `${generation}:logout`);
+    } catch {
+      // Retry after cleanup has freed space; the local generation still fences writes.
+    }
+  };
+  if (!deleting) minimumAccountGeneration = generation;
+  accountTokenGenerations.clear();
+  publishLogout();
+  try {
+    clearBackendScopedStorage();
+  } catch (error) {
+    console.warn('Browser storage unavailable during local sign-out:', error);
+  }
+  try {
+    for (let index = localStorage.length - 1; index >= 0; index -= 1) {
+      const key = localStorage.key(index);
+      if (key && (key.startsWith('lanis_preferences:') || [
+        '__demo_storage_snapshot', '__demo_active_session', '__demo_mode',
+        'pinned_modules', 'lanis_timetable_view_mode', 'lanis_preferences_legacy_owner',
+      ].includes(key))) localStorage.removeItem(key);
+    }
+  } catch (error) {
+    console.warn('Browser storage unavailable during private-cache cleanup:', error);
+  }
+  publishLogout();
+};
+
+/** Compare account identities without treating profile-field updates as account switches. */
+export const isSameAccountIdentity = (previous: string | null, next: string | null): boolean => {
+  const identity = (value: string | null): string | null => {
+    try {
+      const user = JSON.parse(value || 'null');
+      return typeof user?.school_id === 'string' && user.school_id
+        && typeof user?.username === 'string' && user.username
+        ? JSON.stringify([user.school_id, user.username]) : null;
+    } catch { return null; }
+  };
+  const nextIdentity = identity(next);
+  return nextIdentity !== null && identity(previous) === nextIdentity;
+};
+
+// Access-token refresh may rotate storage before React receives the new token.
+// Remember earlier tokens only within their original login generation.
+const accountTokenGenerations = new Map<string, number>();
+export const rememberAccountToken = (token: string): void => {
+  accountTokenGenerations.set(token, captureAccountDataGeneration());
+};
+export const canUseAccountToken = (token: string): boolean => {
+  if (token === localStorage.getItem('auth_access_token')) rememberAccountToken(token);
+  return accountTokenGenerations.get(token) === captureAccountDataGeneration();
 };

@@ -2,8 +2,6 @@ import { useCachedResource } from '../../hooks/useCachedResource';
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { dashboardAPI, dsbAPI } from '../../services/api';
-import axios from 'axios';
-import { DSBPlanTable } from '../../types';
 import SEO from '../seo/SEO';
 import { ArrowPathIcon, CalendarDaysIcon } from '@heroicons/react/24/outline';
 
@@ -42,18 +40,18 @@ const Dsbmobile: React.FC = () => {
   };
 
   const findClassColumnAndMatch = (row: Record<string, string> | string[], headers: string[]): boolean => {
-    const classIndex = headers.findIndex(h => 
+    const classIndex = headers.findIndex(h =>
       h.toLowerCase().includes('klasse')
     );
     if (classIndex === -1) return true;
-    
+
     let classValue = '';
     if (Array.isArray(row)) {
       classValue = String(row[classIndex] || '');
     } else {
       classValue = String(row[headers[classIndex]] || '');
     }
-    
+
     if (!userClass) return true;
     return classValue.trim().toLowerCase().includes(userClass.toLowerCase());
   };
@@ -80,7 +78,7 @@ const Dsbmobile: React.FC = () => {
   }
 
   return (
-    <div className="p-4 sm:p-6 max-w-6xl mx-auto">
+    <div className="module-page">
       <SEO
         title="Vertretungsplan"
         description="Lanis Vertretungsplan — Aktuelle Vertretungen, Abwesenheiten und Raumänderungen für deine Schule."
@@ -141,7 +139,7 @@ const Dsbmobile: React.FC = () => {
       {!isLoading && tables.length === 0 && !error && (
         <div className="card text-center py-12">
           <CalendarDaysIcon className="mx-auto h-12 w-12 text-surface-400 dark:text-surface-500" />
-          <h3 className="mt-2 text-sm font-medium text-surface-900 dark:text-surface-100">Keine Vertretungen</h3>
+          <h3 className="mt-2 empty-state-title">Keine Vertretungen</h3>
           <p className="mt-1 text-sm text-surface-500 dark:text-surface-400">
             Für heute sind keine Vertretungen vorhanden.
           </p>
@@ -151,7 +149,7 @@ const Dsbmobile: React.FC = () => {
       {!isLoading && tables.length > 0 && visibleTables.length === 0 && !error && (
         <div className="card text-center py-12">
           <CalendarDaysIcon className="mx-auto h-12 w-12 text-surface-400 dark:text-surface-500" />
-          <h3 className="mt-2 text-sm font-medium text-surface-900 dark:text-surface-100">
+          <h3 className="mt-2 empty-state-title">
             {showAllClasses ? 'Keine Vertretungen vorhanden' : 'Keine Vertretungen für deine Klasse'}
           </h3>
           <p className="mt-1 text-sm text-surface-500 dark:text-surface-400">
@@ -171,11 +169,11 @@ const Dsbmobile: React.FC = () => {
               const dateLabel = table.date
                 ? new Date(table.date).toLocaleDateString('de-DE', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
                 : 'Vertretungen';
-              
+
               return (
                 <div key={tableIdx} className="card overflow-hidden">
                   <div className="px-4 py-3 bg-surface-50 dark:bg-surface-800 border-b border-surface-200 dark:border-surface-700">
-                    <h3 className="text-lg font-semibold text-surface-900 dark:text-surface-100">
+                    <h3 className="section-title">
                       {dateLabel}
                     </h3>
                     <p className="text-xs text-surface-500 dark:text-surface-400 mt-0.5">
