@@ -5,7 +5,6 @@ import { de } from 'date-fns/locale';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   AcademicCapIcon,
-  ArrowPathIcon,
   BookOpenIcon,
   CalendarDaysIcon,
   CheckCircleIcon,
@@ -19,8 +18,9 @@ import { useBasePath } from '../../contexts/BasePathContext';
 import { usePreferences } from '../../contexts/PreferencesContext';
 import { timetableAPI } from '../../services/api';
 import { StudyGroupExam, TimetableDay, TimetableLesson, TimetableResponse } from '../../types';
-import { weekTypeForDate } from '../../utils/timetableView';
+import { timetableDatesForMode, weekTypeForDate } from '../../utils/timetableView';
 import SEO from '../seo/SEO';
+import TimetableSkeleton from './TimetableSkeleton';
 import { layoutTimetableEntries, TimetableEntry, timetableEntries } from '../../utils/timetableExams';
 import { createTimetableRefreshTracker } from '../../utils/timetableRefresh';
 import {
@@ -166,9 +166,10 @@ const Timetable: React.FC = () => {
         )}
 
         {loading ? (
-          <div className="card flex min-h-64 items-center justify-center">
-            <div className="text-center text-surface-500"><ArrowPathIcon className="mx-auto mb-3 h-7 w-7 animate-spin text-primary-500" />Stundenplan wird geladen …</div>
-          </div>
+          <TimetableSkeleton
+            dates={timetableDatesForMode(timetableViewMode, new Date())}
+            layoutMode={preferences.timetable.layout_mode}
+          />
         ) : error ? (
           <div className="card flex min-h-64 flex-col items-center justify-center text-center">
             <CalendarDaysIcon className="mb-3 h-10 w-10 text-red-400" />

@@ -1,5 +1,5 @@
 import { readPersonalCache, writePersonalCache } from '../../utils/accountDataWrites';
-import { CoursesSkeleton } from '../shared/LoadingSkeletons';
+import { CoursesGridSkeleton, CourseEntriesSkeleton } from '../shared/LoadingSkeletons';
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useBasePath } from '../../contexts/BasePathContext';
@@ -581,44 +581,113 @@ const Courses: React.FC = () => {
     navigate(`${basePath}/courses/submissions/${encodeURIComponent(upload.detail_ref)}`);
   };
 
-  // Show course detail skeleton when navigating to a course
-  if (viewMode === 'course-detail' && !selectedCourse) {
-    return (
-      <div className="p-6" aria-busy="true" aria-label="Kurs wird geladen">
-        <div className="space-y-6">
-          <div className="flex items-center gap-4 mb-8">
-            <div className="h-9 w-9 skeleton rounded-lg" />
-            <div className="min-w-0"><h1 className="break-words text-3xl font-bold text-surface-900 dark:text-surface-100">{selectedCourseName || 'Mein Unterricht'}</h1><div className="mt-1 h-6 skeleton rounded w-32 max-w-full" /></div>
-          </div>
-          <div className="card p-1">
-            <div className="flex flex-wrap gap-1">
-              {courseDetailTabs.map(tab => <div key={tab.id} className="h-10 min-w-[7rem] flex-1 skeleton rounded-lg" />)}
-            </div>
-          </div>
-          <div className="space-y-4">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="card">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="h-10 w-10 skeleton rounded-lg" />
-                  <div className="space-y-2 flex-1">
-                    <div className="h-4 skeleton rounded w-1/3" />
-                    <div className="h-3 skeleton rounded w-1/4" />
-                  </div>
-                </div>
-                <div className="h-5 skeleton rounded w-3/4 mb-3" />
-                <div className="h-4 skeleton rounded w-full" />
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  }
 
-  // Show overview skeleton only when on overview and loading
-  if (isLoading && (!courses || courses.length === 0) && viewMode === 'overview') {
-    return <CoursesSkeleton />;
-  }
+  const courseTabs = (
+    <div className="card p-1">
+      <div className="flex flex-wrap gap-1" role="tablist" aria-label="Kursansicht">
+        {courseDetailTabs.map((tab) => {
+          const Icon = tab.icon;
+          const isActive = courseDetailTab === tab.id;
+
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              role="tab"
+              aria-selected={isActive}
+              aria-controls={`course-tabpanel-${tab.id}`}
+              onClick={() => setCourseDetailTab(tab.id)}
+              className={clsx(
+                'flex min-w-[7rem] flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
+                isActive
+                  ? 'bg-primary-600 text-white'
+                  : 'text-surface-600 hover:bg-surface-100 dark:text-surface-400 dark:hover:bg-surface-700',
+              )}
+            >
+              <Icon className="h-4 w-4" />
+              {tab.label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+
+  const courseFilters = (
+              <div className="card">
+                <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                <div className="flex items-center gap-1.5">
+                  <FunnelIcon className="h-3.5 w-3.5 text-surface-500 dark:text-surface-400" />
+                  <span className="text-xs font-medium text-surface-700 dark:text-surface-300 hidden sm:inline">Filter:</span>
+                </div>
+
+                <select
+                  value={filterAttendance}
+                  onChange={(e) => setFilterAttendance(e.target.value)}
+                  className="text-xs sm:text-sm border border-surface-300 dark:border-surface-600 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white dark:bg-surface-800 text-surface-700 dark:text-surface-300 min-w-0"
+                >
+                  <option value="all">Alle Einträge</option>
+                  <option value="anwesend">Anwesend</option>
+                  <option value="entschuldigt">Entschuldigt</option>
+                  <option value="unentschuldigt">Unentschuldigt</option>
+                  <option value="fehlend">Fehlend</option>
+                  {dynamicAttendanceOptions.map((option) => (
+                    <option key={option} value={option}>{option}</option>
+                  ))}
+                </select>
+
+                <button
+                  onClick={() => setShowOnlyHomework(!showOnlyHomework)}
+                  className={clsx(
+                    "text-xs sm:text-sm px-2.5 py-1.5 rounded-lg transition-colors whitespace-nowrap",
+                    showOnlyHomework
+                      ? "bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-300 border border-yellow-300 dark:border-yellow-700"
+                      : "bg-surface-200 dark:bg-surface-700 text-surface-600 dark:text-surface-400 border border-surface-300 dark:border-surface-600 hover:bg-surface-200 dark:hover:bg-surface-700"
+                  )}
+                >
+                  {showOnlyHomework ? '✓ ' : ''}Nur HA
+                </button>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setSortOrder(sortOrder === 'newest' ? 'oldest' : 'newest')}
+                  className="text-xs sm:text-sm px-2.5 py-1.5 rounded-lg bg-surface-200 dark:bg-surface-700 text-surface-700 dark:text-surface-300 hover:bg-surface-200 dark:hover:bg-surface-700 transition-colors border border-surface-300 dark:border-surface-600 whitespace-nowrap"
+                >
+                  {sortOrder === 'newest' ? '↓ Neu' : '↑ Alt'}
+                </button>
+
+                <div className="flex border border-surface-300 dark:border-surface-600 rounded-lg overflow-hidden">
+                  <button
+                    onClick={() => setDetailViewMode('cards')}
+                    className={clsx(
+                      "p-2 transition-colors",
+                      detailViewMode === 'cards'
+                        ? "bg-primary-600 text-white"
+                        : "bg-surface-50 dark:bg-surface-800 text-surface-600 dark:text-surface-400 hover:bg-surface-100 dark:hover:bg-surface-700"
+                    )}
+                    title="Kartenansicht"
+                  >
+                    <Squares2X2Icon className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={() => setDetailViewMode('timeline')}
+                    className={clsx(
+                      "p-2 transition-colors",
+                      detailViewMode === 'timeline'
+                        ? "bg-primary-600 text-white"
+                        : "bg-surface-50 dark:bg-surface-800 text-surface-600 dark:text-surface-400 hover:bg-surface-100 dark:hover:bg-surface-700"
+                    )}
+                    title="Timeline-Ansicht"
+                  >
+                    <ListBulletIcon className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+            </div>
+  );
 
   return (
     <div className="p-6">
@@ -649,8 +718,8 @@ const Courses: React.FC = () => {
                 {viewMode === 'weekly' && 'Wochenansicht'}
                 {viewMode === 'entry-detail' && selectedEntry?.title}
               </h1>
-              {viewMode === 'course-detail' && selectedCourse && (
-                <p className="text-surface-600 dark:text-surface-400 mt-1">Lehrer: {selectedCourse.teacher_full}</p>
+              {viewMode === 'course-detail' && (
+                <p className="text-surface-600 dark:text-surface-400 mt-1">Lehrer: {selectedCourse ? selectedCourse.teacher_full : <span className="skeleton inline-block h-5 w-32 align-middle" aria-hidden="true" />}</p>
               )}
             </div>
           </div>
@@ -683,7 +752,7 @@ const Courses: React.FC = () => {
       )}
 
       {/* Content */}
-      {viewMode === 'overview' && (
+      {viewMode === 'overview' && (isLoading && courses.length === 0 ? <CoursesGridSkeleton /> : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {!courses || courses.length === 0 ? (
             <div className="col-span-full text-center py-12">
@@ -762,115 +831,26 @@ const Courses: React.FC = () => {
             ))
           )}
         </div>
+      ))}
+
+      {viewMode === 'course-detail' && !selectedCourse && (
+        <div className="space-y-6">
+          {courseTabs}
+          <div id={`course-tabpanel-${courseDetailTab}`} role="tabpanel" aria-label={courseDetailTabs.find(tab => tab.id === courseDetailTab)?.label}>
+            {courseDetailTab === 'history' && courseFilters}
+            <div className="mt-6"><CourseEntriesSkeleton /></div>
+          </div>
+        </div>
       )}
 
       {viewMode === 'course-detail' && selectedCourse && (
         <div className="space-y-6">
-          <div className="card p-1">
-            <div className="flex flex-wrap gap-1" role="tablist" aria-label="Kursansicht">
-              {courseDetailTabs.map((tab) => {
-                const Icon = tab.icon;
-                const isActive = courseDetailTab === tab.id;
-
-                return (
-                  <button
-                    key={tab.id}
-                    type="button"
-                    role="tab"
-                    aria-selected={isActive}
-                    aria-controls={`course-tabpanel-${tab.id}`}
-                    onClick={() => setCourseDetailTab(tab.id)}
-                    className={clsx(
-                      'flex min-w-[7rem] flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
-                      isActive
-                        ? 'bg-primary-600 text-white'
-                        : 'text-surface-600 hover:bg-surface-100 dark:text-surface-400 dark:hover:bg-surface-700',
-                    )}
-                  >
-                    <Icon className="h-4 w-4" />
-                    {tab.label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+          {courseTabs}
 
           {courseDetailTab === 'history' && (
             <div id="course-tabpanel-history" role="tabpanel" aria-label="Historie" className="space-y-6">
               {/* Filters and Controls */}
-              <div className="card">
-                <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center justify-between gap-3">
-              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                <div className="flex items-center gap-1.5">
-                  <FunnelIcon className="h-3.5 w-3.5 text-surface-500 dark:text-surface-400" />
-                  <span className="text-xs font-medium text-surface-700 dark:text-surface-300 hidden sm:inline">Filter:</span>
-                </div>
-                
-                <select
-                  value={filterAttendance}
-                  onChange={(e) => setFilterAttendance(e.target.value)}
-                  className="text-xs sm:text-sm border border-surface-300 dark:border-surface-600 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white dark:bg-surface-800 text-surface-700 dark:text-surface-300 min-w-0"
-                >
-                  <option value="all">Alle Einträge</option>
-                  <option value="anwesend">Anwesend</option>
-                  <option value="entschuldigt">Entschuldigt</option>
-                  <option value="unentschuldigt">Unentschuldigt</option>
-                  <option value="fehlend">Fehlend</option>
-                  {dynamicAttendanceOptions.map((option) => (
-                    <option key={option} value={option}>{option}</option>
-                  ))}
-                </select>
-
-                <button
-                  onClick={() => setShowOnlyHomework(!showOnlyHomework)}
-                  className={clsx(
-                    "text-xs sm:text-sm px-2.5 py-1.5 rounded-lg transition-colors whitespace-nowrap",
-                    showOnlyHomework 
-                      ? "bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-300 border border-yellow-300 dark:border-yellow-700" 
-                      : "bg-surface-200 dark:bg-surface-700 text-surface-600 dark:text-surface-400 border border-surface-300 dark:border-surface-600 hover:bg-surface-200 dark:hover:bg-surface-700"
-                  )}
-                >
-                  {showOnlyHomework ? '✓ ' : ''}Nur HA
-                </button>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setSortOrder(sortOrder === 'newest' ? 'oldest' : 'newest')}
-                  className="text-xs sm:text-sm px-2.5 py-1.5 rounded-lg bg-surface-200 dark:bg-surface-700 text-surface-700 dark:text-surface-300 hover:bg-surface-200 dark:hover:bg-surface-700 transition-colors border border-surface-300 dark:border-surface-600 whitespace-nowrap"
-                >
-                  {sortOrder === 'newest' ? '↓ Neu' : '↑ Alt'}
-                </button>
-
-                <div className="flex border border-surface-300 dark:border-surface-600 rounded-lg overflow-hidden">
-                  <button
-                    onClick={() => setDetailViewMode('cards')}
-                    className={clsx(
-                      "p-2 transition-colors",
-                      detailViewMode === 'cards'
-                        ? "bg-primary-600 text-white"
-                        : "bg-surface-50 dark:bg-surface-800 text-surface-600 dark:text-surface-400 hover:bg-surface-100 dark:hover:bg-surface-700"
-                    )}
-                    title="Kartenansicht"
-                  >
-                    <Squares2X2Icon className="h-4 w-4" />
-                  </button>
-                  <button
-                    onClick={() => setDetailViewMode('timeline')}
-                    className={clsx(
-                      "p-2 transition-colors",
-                      detailViewMode === 'timeline'
-                        ? "bg-primary-600 text-white"
-                        : "bg-surface-50 dark:bg-surface-800 text-surface-600 dark:text-surface-400 hover:bg-surface-100 dark:hover:bg-surface-700"
-                    )}
-                    title="Timeline-Ansicht"
-                  >
-                    <ListBulletIcon className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
-            </div>
-            </div>
+              {courseFilters}
 
           {!selectedCourse.entries || selectedCourse.entries.length === 0 ? (
             <div className="text-center py-12">

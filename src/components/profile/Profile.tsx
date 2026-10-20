@@ -1,5 +1,4 @@
 import { readPersonalCache, writePersonalCache } from '../../utils/accountDataWrites';
-import { ProfileSkeleton } from '../shared/LoadingSkeletons';
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { authAPI } from '../../services/api';
@@ -92,14 +91,14 @@ const Profile: React.FC = () => {
   };
 
   const renderUserField = (label: string, value: string | undefined, icon?: React.ComponentType<any>) => {
-    if (!value) return null;
+    if (!value && !(isLoading && !userDetails)) return null;
     const Icon = icon || IdentificationIcon;
     return (
       <div className="flex items-center gap-3 p-3.5 border border-surface-200 dark:border-surface-700 rounded-xl">
         <Icon className="h-5 w-5 text-surface-400 flex-shrink-0" />
         <div>
           <div className="text-xs font-medium text-surface-500">{label}</div>
-          <div className="text-sm text-surface-900 dark:text-surface-100">{value}</div>
+          <div className="text-sm text-surface-900 dark:text-surface-100">{isLoading && !userDetails ? <div className="skeleton h-5 w-28 max-w-full" aria-hidden="true" /> : value}</div>
         </div>
       </div>
     );
@@ -116,10 +115,6 @@ const Profile: React.FC = () => {
     }
   };
 
-  // Show cached state immediately, but if no cached and loading, show skeleton
-  if (isLoading && (!userDetails)) {
-    return <ProfileSkeleton />;
-  }
 
   return (
     <div className="p-4 sm:p-6 max-w-6xl mx-auto">
@@ -150,7 +145,7 @@ const Profile: React.FC = () => {
                 </div>
                 <div>
                   <h2 className="text-xl font-bold text-surface-900 dark:text-surface-100">
-                    {userDetails?.firstname && userDetails?.lastname
+                    {isLoading && !userDetails ? <span className="skeleton block h-7 w-40" aria-hidden="true" /> : userDetails?.firstname && userDetails?.lastname
                       ? `${userDetails.firstname} ${userDetails.lastname}`
                       : userDetails?.username || 'Benutzer'
                     }
@@ -159,7 +154,7 @@ const Profile: React.FC = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3" aria-busy={isLoading && !userDetails} aria-label="Profilinformationen">
                 {renderUserField('Benutzername', userDetails?.username, UserIcon)}
                 {renderUserField('Vorname', userDetails?.firstname, IdentificationIcon)}
                 {renderUserField('Nachname', userDetails?.lastname, IdentificationIcon)}

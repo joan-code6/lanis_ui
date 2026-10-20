@@ -1,5 +1,5 @@
 import { readPersonalCache, writePersonalCache } from '../../utils/accountDataWrites';
-import { MessagesSkeleton } from '../shared/LoadingSkeletons';
+import { MessagesListSkeleton } from '../shared/LoadingSkeletons';
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { messagesAPI } from '../../services/api';
@@ -344,9 +344,7 @@ const Messages: React.FC = () => {
     }
   };
 
-  if (isLoading && (!messages || messages.length === 0)) {
-    return <MessagesSkeleton />;
-  }
+
 
   return (
     <div className="h-[calc(100dvh-3.5rem)] md:h-screen flex overflow-hidden">
@@ -388,7 +386,9 @@ const Messages: React.FC = () => {
             </div>
           )}
 
-          {messages && messages.length === 0 ? (
+          {isLoading && messages.length === 0 ? (
+            <MessagesListSkeleton />
+          ) : messages && messages.length === 0 ? (
             <div className="empty-state">
               <InboxArrowDownIcon className="empty-state-icon" />
               <h3 className="empty-state-title">Keine Nachrichten</h3>
