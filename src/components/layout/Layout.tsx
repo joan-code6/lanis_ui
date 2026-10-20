@@ -232,7 +232,7 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
           <MagnifyingGlassIcon className="h-5 w-5" />
         </button>
       </div>
-      <main ref={mainRef} className={'flex-1 min-h-0 overflow-y-auto focus:outline-none pt-14 md:pt-0 transition-[margin] duration-300 ease-out ' + (isSidebarCollapsed ? 'md:ml-[60px]' : 'md:ml-64')}>
+      <main ref={mainRef} className={'flex-1 min-h-0 min-w-0 overflow-y-auto focus:outline-none pt-14 md:pt-0 transition-[margin] duration-300 ease-out ' + (isSidebarCollapsed ? 'md:ml-[60px]' : 'md:ml-64')}>
         <BasePathProvider basePath={basePath}>
           <div className="animate-fade-in">
             {!isDemo && <OutageNotice />}
