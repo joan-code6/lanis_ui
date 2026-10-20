@@ -249,6 +249,12 @@ export function readAPI<T = unknown>(url: string, config: AxiosRequestConfig = {
   for (const [key, entry] of speculativeReads) {
     if (entry.expires <= Date.now()) speculativeReads.delete(key);
   }
+  if (config.params?.refresh === true) {
+    // A live refresh supersedes the older speculative response for these params.
+    speculativeReads.delete(JSON.stringify([url, params.filter(([name]) => name !== 'refresh')]));
+    speculativeReads.delete(key);
+    return apiClient.get<T>(url, config);
+  }
   const cached = speculativeReads.get(key);
   if (cached) {
     // Hand off once so a subsequent manual reload always reaches the server.

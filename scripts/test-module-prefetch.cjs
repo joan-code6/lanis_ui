@@ -70,6 +70,27 @@ const config = { headers: { 'X-Session-Token': 'test' }, params: { refresh: fals
   await pendingPrefetchCase('reject', { abort: true });
   await pendingPrefetchCase('unsuccessful', { changeSession: true });
 
+  async function refreshInvalidatesDefault(pending) {
+    clearPrefetchedData();
+    const startCalls = calls;
+    let resolve;
+    if (pending) nextRequest = new Promise(ok => { resolve = ok; });
+    const rootConfig = { ...config, params: { folder_id: 0, refresh: false } };
+    const otherConfig = { ...config, params: { folder_id: 1 } };
+    const warm = readAPI('/dateispeicher', rootConfig, true);
+    if (!pending) await warm;
+    const other = await readAPI('/dateispeicher', otherConfig, true);
+    await readAPI('/dateispeicher', { ...rootConfig, params: { refresh: true, folder_id: 0 } });
+    if (pending) resolve({ data: { success: true, version: 'old' } });
+    await warm;
+    await readAPI('/dateispeicher', rootConfig);
+    assert.equal(calls - startCalls, 4, 'refresh invalidates matching default, including late prefetch completion');
+    assert.equal(await readAPI('/dateispeicher', otherConfig), other, 'refresh preserves other request parameters');
+    assert.equal(calls - startCalls, 4, 'unrelated prefetched response remains reusable');
+  }
+  await refreshInvalidatesDefault(false);
+  await refreshInvalidatesDefault(true);
+
   const orderContext = { exports: {}, require: path => path.includes('sidebarNavigation') ? {
     normalizeSidebarOrder: order => order,
   } : { readAPI: async () => {} } };
