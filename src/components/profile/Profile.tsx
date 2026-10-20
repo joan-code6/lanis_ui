@@ -1,3 +1,4 @@
+import { useCachedState } from '../../hooks/useCachedState';
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { authAPI } from '../../services/api';
@@ -17,11 +18,7 @@ import { canWriteAccountData, captureAccountDataGeneration } from '../../utils/a
 
 const Profile: React.FC = () => {
   const { user, token } = useAuth();
-  // Cached user profile state
-  const [userDetails, setUserDetails] = useState<User | null>(() => {
-    const cached = isDemoRoute() ? null : localStorage.getItem('profile_cache');
-    return cached ? JSON.parse(cached) : user;
-  });
+  const [userDetails, setUserDetails] = useCachedState<User | null>('profile', user);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');

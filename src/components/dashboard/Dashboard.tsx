@@ -1,3 +1,4 @@
+import { useCachedState } from '../../hooks/useCachedState';
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -42,9 +43,9 @@ const Dashboard: React.FC = () => {
   const { preferences, updatePreferences } = usePreferences();
   const navigate = useNavigate();
   const basePath = useBasePath();
-  const [modules, setModules] = useState<Module[]>(() => readModulesCache(user));
+  const [modules, setModules, hasModules] = useCachedState<Module[]>('modules', () => readModulesCache(user));
   const [isUpdating, setIsUpdating] = useState(false);
-  const [folders, setFolders] = useState<string[]>([]);
+  const folders = [...new Set(modules.flatMap(module => module.folders))];
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
@@ -72,7 +73,6 @@ const Dashboard: React.FC = () => {
 
   useEffect(() => {
     if (!token) return;
-    setModules(readModulesCache(user));
     const abortController = new AbortController();
     const writeGeneration = captureAccountDataGeneration();
     loadModules(abortController.signal, writeGeneration);
@@ -97,7 +97,7 @@ const Dashboard: React.FC = () => {
             }
           });
         });
-        setFolders(allFolders);
+
       }
       setIsLoading(false);
     } catch (error) {
@@ -282,7 +282,7 @@ const Dashboard: React.FC = () => {
     return 0;
   });
 
-  if (isLoading && (!modules || modules.length === 0)) {
+  if (isLoading && !hasModules && modules.length === 0) {
     return (
       <div className="p-6">
         <div className="space-y-6">

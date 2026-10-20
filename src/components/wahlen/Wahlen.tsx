@@ -1,3 +1,4 @@
+import { useCachedResource } from '../../hooks/useCachedResource';
 import React, { FormEvent, useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
 import {
@@ -66,38 +67,22 @@ const excludedByFirstChoice = (
 
 const Wahlen: React.FC = () => {
   const { token } = useAuth();
-  const [elections, setElections] = useState<WahlenElection[]>([]);
+  const { data: cachedElections, loading, error: electionsError } = useCachedResource('wahlen', async signal => {
+    const response = await wahlenAPI.getElections(token!, signal);
+    if (!response.success) throw new Error(response.error || 'Wahlen konnten nicht geladen werden.');
+    return response.elections || [];
+  });
+  const elections = cachedElections || [];
   const [selectedElectionId, setSelectedElectionId] = useState('');
   const [form, setForm] = useState<WahlenFormResponse | null>(null);
   const [fields, setFields] = useState<Record<string, string>>({});
   const [selections, setSelections] = useState<SelectionMap>({});
-  const [loading, setLoading] = useState(true);
   const [formLoading, setFormLoading] = useState(false);
   const [error, setError] = useState('');
   const [reviewOpen, setReviewOpen] = useState(false);
   const [confirmChecked, setConfirmChecked] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-
-  useEffect(() => {
-    if (!token) return;
-    const controller = new AbortController();
-    setLoading(true);
-    setError('');
-    wahlenAPI.getElections(token, controller.signal)
-      .then(response => {
-        if (!response.success) throw new Error(response.error || 'Wahlen konnten nicht geladen werden.');
-        setElections(response.elections || []);
-        setSelectedElectionId('');
-      })
-      .catch(loadError => {
-        if (!controller.signal.aborted) setError(errorMessage(loadError, 'Wahlen konnten nicht geladen werden.'));
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setLoading(false);
-      });
-    return () => controller.abort();
-  }, [token]);
 
   useEffect(() => {
     if (!token || !selectedElectionId) return;
@@ -305,7 +290,7 @@ const Wahlen: React.FC = () => {
           )}
         </header>
 
-        {error && <div className="mb-6 flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900/70 dark:bg-red-950/40 dark:text-red-200"><ExclamationTriangleIcon className="mt-0.5 h-5 w-5 shrink-0" />{error}</div>}
+        {(error || electionsError) && <div className="mb-6 flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900/70 dark:bg-red-950/40 dark:text-red-200"><ExclamationTriangleIcon className="mt-0.5 h-5 w-5 shrink-0" />{error || electionsError}</div>}
 
         {!selectedElectionId ? (
           loading ? <OverviewLoadingState /> : elections.length === 0 ? (

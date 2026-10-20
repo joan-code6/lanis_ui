@@ -1,3 +1,4 @@
+import { useCachedResource } from '../../hooks/useCachedResource';
 import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
 import axios from 'axios';
 import {
@@ -33,47 +34,19 @@ function sourceInitial(source: string): string {
 const Dateiverteilung: React.FC = () => {
   const { token } = useAuth();
   const sourceIdPrefix = useId();
-  const [distributions, setDistributions] = useState<DateiverteilungDistribution[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const { data, loading, refreshing, error, refresh } = useCachedResource('dateiverteilung', async (signal, force) => {
+    const response = await dateiverteilungAPI.getOverview(token!, force, signal);
+    if (!response.success) throw new Error(response.error || 'Die Dateiverteilung konnte nicht geladen werden.');
+    return response.distributions || [];
+  });
+  const distributions = data || [];
+  const [downloadError, setError] = useState('');
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<Filter>('all');
-  const [reloadKey, setReloadKey] = useState(0);
   const [downloading, setDownloading] = useState('');
-  const forceRefresh = useRef(false);
   const downloadController = useRef<AbortController | null>(null);
 
   useEffect(() => () => downloadController.current?.abort(), []);
-
-  useEffect(() => {
-    if (!token) {
-      setLoading(false);
-      return undefined;
-    }
-    const controller = new AbortController();
-    const refresh = forceRefresh.current;
-    forceRefresh.current = false;
-    setLoading(true);
-    setError('');
-
-    dateiverteilungAPI.getOverview(token, refresh, controller.signal)
-      .then(response => {
-        if (controller.signal.aborted) return;
-        if (!response.success) {
-          throw new Error(response.error || 'Die Dateiverteilung konnte nicht geladen werden.');
-        }
-        setDistributions(Array.isArray(response.distributions) ? response.distributions : []);
-      })
-      .catch(cause => {
-        if (controller.signal.aborted || axios.isCancel(cause)) return;
-        setError(cause instanceof Error ? cause.message : 'Die Dateiverteilung konnte nicht geladen werden.');
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setLoading(false);
-      });
-
-    return () => controller.abort();
-  }, [reloadKey, token]);
 
   const visibleGroups = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase('de-DE');
@@ -145,13 +118,10 @@ const Dateiverteilung: React.FC = () => {
             <button
               type="button"
               className="btn btn-secondary self-start"
-              onClick={() => {
-                forceRefresh.current = true;
-                setReloadKey(value => value + 1);
-              }}
-              disabled={loading}
+              onClick={refresh}
+              disabled={refreshing}
             >
-              <ArrowPathIcon className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+              <ArrowPathIcon className={`mr-2 h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
               Aktualisieren
             </button>
           </div>
@@ -184,9 +154,9 @@ const Dateiverteilung: React.FC = () => {
           </div>
         </header>
 
-        {error && (
+        {(error || downloadError) && (
           <div role="alert" className="mb-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300">
-            {error}
+            {downloadError || error}
           </div>
         )}
 

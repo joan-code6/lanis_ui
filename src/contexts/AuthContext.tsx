@@ -148,6 +148,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       ) {
         return;
       }
+      clearResourceCache();
       setToken(null);
       setUser(null);
       setIsAuthenticated(false);
@@ -278,6 +279,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
+      clearResourceCache();
       clearResourceCache();
       setToken(null);
       setUser(null);

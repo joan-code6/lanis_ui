@@ -7,12 +7,9 @@ import { readResource, refreshResource, subscribeResource } from '../utils/resou
 export function useCachedResource<T>(
   resource: string,
   load: (signal: AbortSignal, refresh: boolean) => Promise<T>,
+  enabled = true,
 ) {
-  const { user, token } = useAuth();
-  const key = token ? JSON.stringify([
-    getApiBaseUrl(), token.startsWith('demo-') ? 'demo' : 'account',
-    user?.school_id, user?.username, resource,
-  ]) : null;
+  const key = useResourceKey(resource, enabled);
   const loadRef = useRef(load);
   loadRef.current = load;
   const subscribe = useCallback((listener: () => void) => subscribeResource(key, listener), [key]);
@@ -33,4 +30,12 @@ export function useCachedResource<T>(
     loading: Boolean(key) && snapshot.data === undefined && !snapshot.error,
     refresh,
   };
+}
+
+export function useResourceKey(resource: string, enabled = true): string | null {
+  const { user, token } = useAuth();
+  return token && enabled ? JSON.stringify([
+    getApiBaseUrl(), token.startsWith('demo-') ? 'demo' : 'account',
+    user?.school_id, user?.username, resource,
+  ]) : null;
 }

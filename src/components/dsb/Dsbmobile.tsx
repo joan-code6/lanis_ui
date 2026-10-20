@@ -1,3 +1,4 @@
+import { useCachedResource } from '../../hooks/useCachedResource';
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { dashboardAPI, dsbAPI } from '../../services/api';
@@ -13,12 +14,14 @@ function formatLastUpdated(value: string): string {
 
 const Dsbmobile: React.FC = () => {
   const { token, user } = useAuth();
-  const [tables, setTables] = useState<DSBPlanTable[]>([]);
-  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
+  const { data, loading: isLoading, refreshing, error, refresh } = useCachedResource('dsb', async (signal, force) => {
+    const response = await dsbAPI.getSchoolPlan(token!, force, signal);
+    if (!response.success) throw new Error(response.error || 'Vertretungsplan konnte nicht geladen werden.');
+    return response;
+  });
+  const tables = data?.tables || [];
+  const lastUpdated = data?.last_updated || null;
   const [showAllClasses, setShowAllClasses] = useState(false);
-  const [reloadKey, setReloadKey] = useState(0);
   const userClass = user?.klasse || user?.class || user?.Klasse || '';
 
   useEffect(() => {
@@ -29,27 +32,6 @@ const Dsbmobile: React.FC = () => {
         console.error('Failed to mark DSB notifications as read:', error);
       });
   }, [token]);
-
-  useEffect(() => {
-    if (!token) return;
-    const controller = new AbortController();
-    setIsLoading(true);
-    setTables([]);
-    setLastUpdated(null);
-    setError('');
-    dsbAPI.getSchoolPlan(token, reloadKey > 0, controller.signal)
-      .then(response => {
-        if (controller.signal.aborted) return;
-        if (!response.success) throw new Error(response.error || 'Vertretungsplan konnte nicht geladen werden.');
-        setTables(response.tables || []);
-        setLastUpdated(response.last_updated || null);
-      })
-      .catch(error => {
-        if (!axios.isCancel(error) && !controller.signal.aborted) setError(error.message || 'Vertretungsplan konnte nicht geladen werden.');
-      })
-      .finally(() => { if (!controller.signal.aborted) setIsLoading(false); });
-    return () => controller.abort();
-  }, [token, reloadKey]);
 
   const getCellValue = (row: Record<string, string> | string[], headerIndex: number, headers: string[]): string => {
     if (Array.isArray(row)) {
@@ -133,11 +115,11 @@ const Dsbmobile: React.FC = () => {
         </div>
         <button
           type="button"
-          onClick={() => setReloadKey(value => value + 1)}
-          disabled={isLoading}
+          onClick={refresh}
+          disabled={refreshing}
           className="btn btn-secondary shrink-0"
         >
-          <ArrowPathIcon className={`mr-1.5 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} aria-hidden="true" />
+          <ArrowPathIcon className={`mr-1.5 h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} aria-hidden="true" />
           Aktualisieren
         </button>
       </div>

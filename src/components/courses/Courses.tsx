@@ -1,3 +1,4 @@
+import { useCachedState } from '../../hooks/useCachedState';
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useBasePath } from '../../contexts/BasePathContext';
@@ -285,23 +286,20 @@ const Courses: React.FC = () => {
   const { id: courseIdFromUrl } = useParams();
   const basePath = useBasePath();
   const [viewMode, setViewMode] = useState<ViewMode>('overview');
-  // Cached courses state
-  const [courses, setCourses] = useState<CourseEntry[]>(() => {
-    const cached = isDemoRoute() ? null : localStorage.getItem('courses_cache');
-    return cached ? JSON.parse(cached) : [];
-  });
+  const [courses, setCourses, hasCourses] = useCachedState<CourseEntry[]>('courses', []);
   const [isUpdating, setIsUpdating] = useState(false);
-  const [selectedCourse, setSelectedCourse] = useState<CourseDetailsResponse | null>(null);
-  const [selectedEntry, setSelectedEntry] = useState<EntryDetails | null>(null);
-  const [weeklyEntries, setWeeklyEntries] = useState<WeeklyEntry[]>([]);
-  const [submissions, setSubmissions] = useState<Submission[]>([]);
+  const [selectedCourse, setSelectedCourse, hasCourse] = useCachedState<CourseDetailsResponse | null>(`course:${courseIdFromUrl || ''}`, null);
+  const [selectedEntry, setSelectedEntry] = useCachedState<EntryDetails | null>('course-entry', null);
+  const [weeklyEntries, setWeeklyEntries, hasWeekly] = useCachedState<WeeklyEntry[]>('courses-weekly', []);
+  const [submissions, setSubmissions, hasSubmissions] = useCachedState<Submission[]>('courses-submissions', []);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [filterAttendance, setFilterAttendance] = useState<string>('all');
   const [showOnlyHomework, setShowOnlyHomework] = useState(false);
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
   const [detailViewMode, setDetailViewMode] = useState<'cards' | 'timeline'>('cards');
-  const [dynamicAttendanceOptions, setDynamicAttendanceOptions] = useState<string[]>([]);
+  const dynamicAttendanceOptions = [...new Set((selectedCourse?.entries || []).map(entry => entry.attendance.trim()).filter(Boolean))]
+    .filter(att => !['anwesend', 'entschuldigt', 'unentschuldigt', 'fehlend'].includes(att.toLowerCase()));
   const [courseDetailTab, setCourseDetailTab] = useState<CourseDetailTab>('history');
   const completedHomeworkDisplay = preferences.homework.completed_display;
 
@@ -334,13 +332,11 @@ const Courses: React.FC = () => {
     if (!token) return;
     if (!courseIdFromUrl) {
       setViewMode('overview');
-      setSelectedCourse(null);
       return;
     }
     const abortController = new AbortController();
     setViewMode('course-detail');
-    setSelectedCourse(null);
-    setIsLoading(true);
+    setIsLoading(!hasCourse);
     loadCourseDetails(courseIdFromUrl, abortController.signal);
     return () => abortController.abort();
   }, [token, courseIdFromUrl]);
@@ -409,11 +405,6 @@ const Courses: React.FC = () => {
         }
         setSelectedCourse(resolvedCourse);
         
-        const presetAttendance = ['anwesend', 'entschuldigt', 'unentschuldigt', 'fehlend'];
-        const allAttendances = response.entries.map((entry: CourseDetailEntry) => entry.attendance.trim()).filter(Boolean);
-        const uniqueAttendances = [...new Set(allAttendances)];
-        const dynamicOptions = uniqueAttendances.filter((att) => !presetAttendance.includes(att.toLowerCase()));
-        setDynamicAttendanceOptions(dynamicOptions);
       } else {
         setError('Fehler beim Laden der Kursdetails.');
       }
@@ -452,7 +443,8 @@ const Courses: React.FC = () => {
     if (!token) return;
 
     try {
-      setIsLoading(true);
+      setViewMode('weekly');
+      setIsLoading(!hasWeekly);
       setError('');
       const response = await coursesAPI.getWeeklyView(token);
       
@@ -474,7 +466,8 @@ const Courses: React.FC = () => {
     if (!token) return;
 
     try {
-      setIsLoading(true);
+      setViewMode('submissions');
+      setIsLoading(!hasSubmissions);
       setError('');
       const response = await coursesAPI.getSubmissions(token);
       
@@ -622,7 +615,7 @@ const Courses: React.FC = () => {
   }
 
   // Show overview skeleton only when on overview and loading
-  if (isLoading && (!courses || courses.length === 0) && viewMode === 'overview') {
+  if (isLoading && !hasCourses && viewMode === 'overview') {
     return (
       <div className="p-6">
         <div className="animate-pulse space-y-4">

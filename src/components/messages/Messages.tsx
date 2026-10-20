@@ -1,3 +1,4 @@
+import { useCachedState } from '../../hooks/useCachedState';
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { messagesAPI } from '../../services/api';
@@ -41,21 +42,11 @@ interface ConversationParticipant {
 const Messages: React.FC = () => {
   const { token } = useAuth();
   const [searchParams] = useSearchParams();
-  const [messages, setMessages] = useState<MessageHeader[]>(() => {
-    const cached = isDemoRoute() ? null : localStorage.getItem('messages_cache');
-    if (!cached) return [];
-    try {
-      return JSON.parse(cached).map((message: MessageHeader) => ({
-        ...message,
-        Betreff: htmlToText(message.Betreff),
-      }));
-    } catch {
-      return [];
-    }
-  });
+  const [messages, setMessages, hasMessages] = useCachedState<MessageHeader[]>('messages', []);
   const [isUpdating, setIsUpdating] = useState(false);
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
-  const [conversationMessages, setConversationMessages] = useState<Message[]>([]);
+  const [conversations, setConversations] = useCachedState<Record<string, Message[]>>('conversations', {});
+  const conversationMessages = selectedConversation ? conversations[selectedConversation] || [] : [];
   const [isLoading, setIsLoading] = useState(true);
   const [isConversationLoading, setIsConversationLoading] = useState(false);
   const [error, setError] = useState('');
@@ -201,7 +192,7 @@ const Messages: React.FC = () => {
   const loadConversation = async (conversationId: string) => {
     if (!token) return;
     try {
-      setIsConversationLoading(true);
+      setIsConversationLoading(conversations[conversationId] === undefined);
       setSelectedConversation(conversationId);
       const response = await messagesAPI.getConversation(token, conversationId);
       if (response.success && response.messages) {
@@ -215,7 +206,7 @@ const Messages: React.FC = () => {
           empf: typeof msg.empf === 'string' ? displayName(msg.empf) : msg.empf,
           WeitereEmpfaenger: displayName(msg.WeitereEmpfaenger),
         }));
-        setConversationMessages(transformedMessages);
+        setConversations(current => ({ ...current, [conversationId]: transformedMessages }));
         setError('');
       } else {
         if (response && typeof response === 'object' && 'error' in response) {
@@ -340,7 +331,7 @@ const Messages: React.FC = () => {
     }
   };
 
-  if (isLoading && (!messages || messages.length === 0)) {
+  if (isLoading && !hasMessages) {
     return (
       <div className="p-6">
         <div className="space-y-4">

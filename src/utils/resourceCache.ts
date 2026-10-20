@@ -16,6 +16,9 @@ const emptySnapshot: ResourceSnapshot<never> = {
   data: undefined, updatedAt: 0, refreshing: false, error: '',
 };
 // Keep school data in memory for this app session, without writing it to disk.
+let generation = 0;
+export const resourceCacheGeneration = () => generation;
+
 const entries = new Map<string, ResourceEntry>();
 
 function entryFor(key: string): ResourceEntry {
@@ -75,7 +78,18 @@ export function refreshResource<T>(
   return entry.pending;
 }
 
+/** Updates for interactive views; obsolete async callbacks cannot restore cleared data. */
+export function updateResource<T>(key: string, value: T | ((previous: T | undefined) => T), expectedGeneration: number): void {
+  if (expectedGeneration !== generation) return;
+  const entry = entryFor(key);
+  const data = typeof value === 'function'
+    ? (value as (previous: T | undefined) => T)(entry.snapshot.data as T | undefined)
+    : value;
+  publish(entry, { ...entry.snapshot, data, updatedAt: Date.now() });
+}
+
 export function clearResourceCache(): void {
+  generation++;
   for (const entry of entries.values()) {
     entry.controller?.abort();
     entry.controller = undefined;
