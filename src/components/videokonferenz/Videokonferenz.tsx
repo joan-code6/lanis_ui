@@ -168,7 +168,7 @@ const Videokonferenz: React.FC = () => {
       <div className="mx-auto max-w-7xl">
         <header className="page-header page-header-actions">
           <div>
-            <h1 className="text-2xl font-bold text-surface-900 dark:text-white">Videokonferenz</h1>
+            <h1 className="page-title">Videokonferenz</h1>
             <p className="mt-1 min-h-4 text-xs text-surface-500 dark:text-surface-400" aria-live="polite">
               Aktualisiert um {lastChecked
                 ? lastChecked.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })
