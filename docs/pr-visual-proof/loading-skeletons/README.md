@@ -1,5 +1,7 @@
 # Loading skeleton recordings
 
+Latest: [deployed timetable verification](deployed-verification.md), including the actual PR-preview recording, matching metadata rows, and refresh retention. Earlier local recordings below predate the shared lesson-row fix.
+
 Recorded from this branch's actual `/demo` routes in headed Chromium (`headless: false`) on an Xvfb display at 1280 × 800 and 390 × 800. Each main recording visits Dashboard, Mein Unterricht, Nachrichten, Lerngruppen, Kalender, and Stundenplan, briefly holding the relevant mock API response and then releasing it. The lower-left caption identifies the route, viewport, and response state. Responses are held only to expose the loading state; these timings are not a measurement of backend response time.
 
 - [Desktop recording](desktop.mp4)
