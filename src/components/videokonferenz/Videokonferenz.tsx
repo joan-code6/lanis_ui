@@ -1,3 +1,4 @@
+import { VideoRoomsSkeleton } from '../shared/ModuleLoadingSkeletons';
 import React, { useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
@@ -200,12 +201,7 @@ const Videokonferenz: React.FC = () => {
         )}
 
         {loading ? (
-          <div className="card flex min-h-64 items-center justify-center">
-            <div className="text-center text-surface-500">
-              <ArrowPathIcon className="mx-auto mb-3 h-7 w-7 animate-spin text-primary-500" />
-              Videoräume werden geladen …
-            </div>
-          </div>
+          <VideoRoomsSkeleton />
         ) : !overview ? (
           <div className="card flex min-h-64 flex-col items-center justify-center text-center">
             <InformationCircleIcon className="mb-3 h-10 w-10 text-surface-300" />

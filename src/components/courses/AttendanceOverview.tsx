@@ -1,3 +1,4 @@
+import { AttendanceSkeleton } from '../shared/ModuleLoadingSkeletons';
 import React, { useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
@@ -186,12 +187,7 @@ const AttendanceOverview: React.FC = () => {
         )}
 
         {loading ? (
-          <div className="card flex min-h-64 items-center justify-center">
-            <div className="text-center text-surface-500">
-              <ArrowPathIcon className="mx-auto mb-3 h-7 w-7 animate-spin text-primary-500" />
-              Anwesenheit wird geladen …
-            </div>
-          </div>
+          <AttendanceSkeleton />
         ) : !error && data?.available === false ? (
           <div className="card flex min-h-64 flex-col items-center justify-center text-center">
             <ChartBarIcon className="mb-3 h-10 w-10 text-surface-300" />

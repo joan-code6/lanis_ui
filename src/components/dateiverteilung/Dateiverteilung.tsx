@@ -1,3 +1,4 @@
+import { FileDistributionSkeleton } from '../shared/ModuleLoadingSkeletons';
 import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
 import axios from 'axios';
 import {
@@ -191,12 +192,7 @@ const Dateiverteilung: React.FC = () => {
         )}
 
         {loading ? (
-          <div className="card flex min-h-64 items-center justify-center">
-            <div className="text-center text-sm text-surface-500 dark:text-surface-400">
-              <ArrowPathIcon className="mx-auto mb-3 h-7 w-7 animate-spin text-primary-500" />
-              Verteilte Dateien werden geladen …
-            </div>
-          </div>
+          <FileDistributionSkeleton />
         ) : visibleGroups.length === 0 ? (
           <div className="card flex min-h-64 flex-col items-center justify-center text-center">
             <InboxArrowDownIcon className="mb-3 h-10 w-10 text-surface-300 dark:text-surface-600" />

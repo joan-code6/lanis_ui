@@ -18,7 +18,6 @@ import {
   ClipboardDocumentListIcon,
   FolderIcon,
   DocumentDuplicateIcon,
-  ArrowPathIcon,
   ClockIcon,
   UserGroupIcon,
   VideoCameraIcon,
@@ -586,9 +585,8 @@ export default function GlobalSearch({
           )}
 
           {showLoading && (
-            <div className="flex items-center gap-3 px-4 py-4 text-sm text-surface-500 dark:text-surface-400">
-              <ArrowPathIcon className="h-4 w-4 animate-spin text-primary-500" />
-              Suche läuft...
+            <div role="status" aria-busy="true" aria-label="Suchergebnisse werden geladen">
+              {[0, 1, 2].map(i => <div key={i} className="flex items-center gap-3 rounded-xl px-3 py-2.5" aria-hidden="true"><div className="skeleton h-8 w-8 shrink-0 rounded-lg" /><div className="min-w-0 flex-1"><div className="skeleton h-5 w-3/4" /><div className="skeleton mt-1 h-4 w-1/2" /></div></div>)}
             </div>
           )}
 

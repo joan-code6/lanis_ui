@@ -1,3 +1,4 @@
+import { ConversationSkeleton } from '../shared/ModuleLoadingSkeletons';
 import { readPersonalCache, writePersonalCache } from '../../utils/accountDataWrites';
 import { MessagesListSkeleton } from '../shared/LoadingSkeletons';
 import React, { useState, useEffect, useRef } from 'react';
@@ -480,9 +481,7 @@ const Messages: React.FC = () => {
             </div>
 
             {isConversationLoading ? (
-              <div className="flex-1 flex items-center justify-center">
-                <div className="w-6 h-6 rounded-full border-2 border-primary-300 border-t-primary-600 animate-spin" />
-              </div>
+              <ConversationSkeleton />
             ) : (
               <>
               <div className="flex-1 overflow-y-auto p-6 space-y-4">

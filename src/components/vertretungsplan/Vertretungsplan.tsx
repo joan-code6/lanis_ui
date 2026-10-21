@@ -1,3 +1,4 @@
+import { SubstitutionPlanSkeleton } from '../shared/ModuleLoadingSkeletons';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import axios from 'axios';
 import {
@@ -359,12 +360,7 @@ const Vertretungsplan: React.FC = () => {
         )}
 
         {loading ? (
-          <div className="card flex min-h-64 items-center justify-center">
-            <div className="text-center text-surface-500">
-              <ArrowPathIcon className="mx-auto mb-3 h-7 w-7 animate-spin text-primary-500" />
-              Vertretungsplan wird geladen …
-            </div>
-          </div>
+          <SubstitutionPlanSkeleton />
         ) : !error && plan?.available === false ? (
           <div className="card flex min-h-64 flex-col items-center justify-center text-center">
             <InformationCircleIcon className="mb-3 h-10 w-10 text-surface-300" />

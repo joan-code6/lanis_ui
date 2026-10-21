@@ -2,7 +2,6 @@ import React, { FormEvent, useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
 import {
   ArrowLeftIcon,
-  ArrowPathIcon,
   CheckCircleIcon,
   ChevronRightIcon,
   ClipboardDocumentCheckIcon,
@@ -377,13 +376,10 @@ const OverviewLoadingState: React.FC = () => (
 );
 
 const FormLoadingState: React.FC = () => (
-  <div className="space-y-4">
+  <div role="status" aria-busy="true" aria-label="Formular wird geladen" className="space-y-4">
     <div className="skeleton h-52 w-full rounded-2xl" />
     <div className="skeleton h-72 w-full rounded-2xl" />
-    <div className="flex items-center justify-center gap-2 py-3 text-sm text-surface-500">
-      <ArrowPathIcon className="h-4 w-4 animate-spin" />
-      Formular wird geladen …
-    </div>
+    <span className="sr-only">Formular wird geladen …</span>
   </div>
 );
 
