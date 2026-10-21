@@ -1,3 +1,4 @@
+import { useCachedState } from '../../hooks/useCachedState';
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
@@ -180,7 +181,7 @@ const SubmissionDetailView: React.FC<{
   const transportMaxBytes = 50 * 1024 * 1024;
   const maxBytes = Math.min(parseMaxBytes(detail.max_file_size) ?? transportMaxBytes, transportMaxBytes);
   const attemptClosed = detail.allows_multiple_attempts === false && detail.own_files.length > 0;
-  const uploadAllowed = detail.status === 'open' && detail.can_upload && !attemptClosed;
+  const uploadAllowed = !refreshError && detail.status === 'open' && detail.can_upload && !attemptClosed;
   const multipleFilesAllowed = detail.allows_multiple_files !== false;
   const accept = detail.allowed_file_types.length > 0
     && !detail.allowed_file_types.some(type => type.trim().toLowerCase() === 'alle')
@@ -277,7 +278,7 @@ const SubmissionDetailView: React.FC<{
   };
 
   const removeFile = async () => {
-    if (!deleteTarget || busy || refreshing) return;
+    if (!deleteTarget || busy || refreshing || refreshError) return;
     setBusy(true);
     setError('');
     setDeleteError('');
@@ -336,21 +337,21 @@ const SubmissionDetailView: React.FC<{
                 key={file.index}
                 name={file.name}
                 meta={[file.time, file.comment].filter(Boolean).join(' · ') || null}
-                action={<div className="flex shrink-0 items-center gap-1"><button type="button" className="rounded-lg p-2 text-surface-500 hover:bg-surface-100 hover:text-primary-700 dark:hover:bg-surface-800 dark:hover:text-primary-300" onClick={() => void download(file.download_ref, file.name)} disabled={Boolean(downloading)} title="Datei herunterladen"><ArrowDownTrayIcon className={clsx('h-4 w-4', downloading === file.download_ref && 'animate-bounce')} /></button>{detail.can_delete && <button type="button" className="rounded-lg p-2 text-surface-500 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/40 dark:hover:text-red-300" onClick={() => setDeleteTarget(file.index)} disabled={busy || refreshing} aria-label={`${file.name} löschen`} title="Datei löschen"><TrashIcon className="h-4 w-4" /></button>}</div>}
+                action={<div className="flex shrink-0 items-center gap-1"><button type="button" className="rounded-lg p-2 text-surface-500 hover:bg-surface-100 hover:text-primary-700 dark:hover:bg-surface-800 dark:hover:text-primary-300" onClick={() => void download(file.download_ref, file.name)} disabled={Boolean(downloading)} title="Datei herunterladen"><ArrowDownTrayIcon className={clsx('h-4 w-4', downloading === file.download_ref && 'animate-bounce')} /></button>{detail.can_delete && <button type="button" className="rounded-lg p-2 text-surface-500 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/40 dark:hover:text-red-300" onClick={() => setDeleteTarget(file.index)} disabled={busy || refreshing || Boolean(refreshError)} aria-label={`${file.name} löschen`} title="Datei löschen"><TrashIcon className="h-4 w-4" /></button>}</div>}
               />
             ))}</div>}
 
             {uploadAllowed ? (
               <div className="space-y-4 pt-2">
-                <input ref={inputRef} type="file" className="hidden" multiple={multipleFilesAllowed} accept={accept} onChange={chooseFiles} disabled={busy || refreshing} />
-                <button type="button" onClick={() => inputRef.current?.click()} disabled={busy || refreshing} className="flex w-full items-center gap-3 rounded-lg border border-dashed border-surface-300 px-4 py-5 text-left text-surface-700 transition-colors hover:border-primary-400 hover:bg-surface-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 disabled:cursor-not-allowed dark:border-surface-700 dark:text-surface-200 dark:hover:border-primary-500 dark:hover:bg-surface-800/50">
+                <input ref={inputRef} type="file" className="hidden" multiple={multipleFilesAllowed} accept={accept} onChange={chooseFiles} disabled={busy || refreshing || Boolean(refreshError)} />
+                <button type="button" onClick={() => inputRef.current?.click()} disabled={busy || refreshing || Boolean(refreshError)} className="flex w-full items-center gap-3 rounded-lg border border-dashed border-surface-300 px-4 py-5 text-left text-surface-700 transition-colors hover:border-primary-400 hover:bg-surface-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 disabled:cursor-not-allowed dark:border-surface-700 dark:text-surface-200 dark:hover:border-primary-500 dark:hover:bg-surface-800/50">
                   <DocumentArrowUpIcon className="h-6 w-6 shrink-0 text-surface-500 dark:text-surface-400" />
                   <span className="min-w-0">
                     <span className="block font-semibold">Dateien auswählen</span>
                     <span className="mt-1 block text-xs text-surface-500 dark:text-surface-400">{detail.allowed_file_types.join(', ') || 'Erlaubte Dateitypen ansehen'} · {multipleFilesAllowed ? 'Bis zu fünf Dateien pro Upload' : 'Maximal eine Datei'}</span>
                   </span>
                 </button>
-                {selectedFiles.length > 0 && <div>{selectedFiles.map(file => <FileRow key={`${file.name}-${file.lastModified}`} name={file.name} meta={formatBytes(file.size)} action={<button type="button" onClick={() => { setSelectedFiles(current => current.filter(item => item !== file)); if (inputRef.current) inputRef.current.value = ''; }} className="rounded-lg p-2 text-surface-500 hover:bg-surface-200 dark:hover:bg-surface-800" disabled={busy || refreshing} aria-label={`${file.name} entfernen`}><XMarkIcon className="h-4 w-4" /></button>} />)}</div>}
+                {selectedFiles.length > 0 && <div>{selectedFiles.map(file => <FileRow key={`${file.name}-${file.lastModified}`} name={file.name} meta={formatBytes(file.size)} action={<button type="button" onClick={() => { setSelectedFiles(current => current.filter(item => item !== file)); if (inputRef.current) inputRef.current.value = ''; }} className="rounded-lg p-2 text-surface-500 hover:bg-surface-200 dark:hover:bg-surface-800" disabled={busy || refreshing || Boolean(refreshError)} aria-label={`${file.name} entfernen`}><XMarkIcon className="h-4 w-4" /></button>} />)}</div>}
                 <div className="flex justify-end">
                   <button type="button" onClick={() => void upload()} disabled={!selectedFiles.length || busy || refreshing} className="btn btn-primary w-full disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto">{busy ? 'Wird hochgeladen …' : 'Hochladen'}</button>
                 </div>
@@ -389,7 +390,7 @@ const SubmissionDetailView: React.FC<{
             {deleteError && <div role="alert" className="mt-4 flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-900/70 dark:bg-red-950/30 dark:text-red-200"><ExclamationCircleIcon className="mt-0.5 h-4 w-4 shrink-0" />{deleteError}</div>}
             <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
               <button type="button" className="btn btn-secondary" autoFocus disabled={busy} onClick={closeDeleteDialog}>Abbrechen</button>
-              <button type="submit" className="btn btn-primary" disabled={busy || refreshing}>{busy ? 'Wird gelöscht …' : 'Endgültig löschen'}</button>
+              <button type="submit" className="btn btn-primary" disabled={busy || refreshing || Boolean(refreshError)}>{busy ? 'Wird gelöscht …' : 'Endgültig löschen'}</button>
             </div>
           </form>
         </dialog>
@@ -403,9 +404,9 @@ const Submissions: React.FC = () => {
   const basePath = useBasePath();
   const navigate = useNavigate();
   const { id } = useParams<{ id?: string }>();
-  const [submissions, setSubmissions] = useState<Submission[]>([]);
+  const [submissions, setSubmissions, hasSubmissions] = useCachedState<Submission[]>('submissions', []);
   const [filter, setFilter] = useState<'all' | 'open' | 'submitted'>('all');
-  const [detail, setDetail] = useState<SubmissionDetail | null>(null);
+  const [detail, setDetail, hasDetail] = useCachedState<SubmissionDetail | null>(`submission:${id || ''}`, null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const listRequestRef = useRef(0);
@@ -426,7 +427,7 @@ const Submissions: React.FC = () => {
     setLoading(true);
     setError('');
     try {
-      const response = await coursesAPI.getSubmissions(token, signal, refresh);
+      const response = await coursesAPI.getSubmissions(token, signal, refresh || hasSubmissions);
       if (requestId !== listRequestRef.current || signal?.aborted || currentIdRef.current) return;
       if (response.success) setSubmissions(response.submissions || []);
       else setError(response.error || 'Die Abgaben konnten nicht geladen werden.');
@@ -444,7 +445,7 @@ const Submissions: React.FC = () => {
     setLoading(true);
     setError('');
     try {
-      const response = await coursesAPI.getSubmission(token, detailRef, signal, refresh);
+      const response = await coursesAPI.getSubmission(token, detailRef, signal, refresh || hasDetail);
       if (requestId !== detailRequestRef.current || signal?.aborted || currentIdRef.current !== detailRef) return;
       if (response.success && response.submission) setDetail(response.submission);
       else setError(response.error || 'Die Abgabe konnte nicht geladen werden.');
@@ -460,7 +461,6 @@ const Submissions: React.FC = () => {
   useEffect(() => {
     const controller = new AbortController();
     previousDetailIdRef.current = id;
-    setDetail(null);
     if (id) void loadDetail(id, controller.signal);
     else {
       detailRequestRef.current += 1;
@@ -498,7 +498,7 @@ const Submissions: React.FC = () => {
   return (
     <div className="min-h-full min-w-0 module-padding">
       {isDetail && detail && detail.detail_ref === id ? (
-        <SubmissionDetailView key={id} detail={detail} refreshError={error} refreshing={loading} token={token} onBack={() => navigate(listPath)} onRefresh={async () => { if (id && currentIdRef.current === id) await loadDetail(id, undefined, true); }} />
+        <SubmissionDetailView key={id} detail={detail} refreshError={error} refreshing={loading || detailNavigationPending} token={token} onBack={() => navigate(listPath)} onRefresh={async () => { if (id && currentIdRef.current === id) await loadDetail(id, undefined, true); }} />
       ) : !isDetail ? (
         <div className="mx-auto max-w-7xl space-y-6">
           <header className="page-header page-header-actions">
@@ -550,7 +550,7 @@ const Submissions: React.FC = () => {
             </div>
           )}
           <div id="submission-results" aria-busy={loading}>
-            {loading ? (
+            {loading && !hasSubmissions ? (
               <div className="space-y-3">{Array.from({ length: 4 }).map((_, index) => <div key={index} className="card h-36 animate-pulse bg-surface-100 dark:bg-surface-900" />)}</div>
             ) : visibleSubmissions.length === 0 ? !error && (
               <div className="card py-14 text-center">

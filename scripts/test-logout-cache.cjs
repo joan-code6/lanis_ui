@@ -13,7 +13,7 @@ const storage = {
   removeItem(key) { values.delete(key); },
 };
 const window = { localStorage: storage, location: { pathname: '/messages', href: '' }, addEventListener() {}, setInterval() { return 1; }, clearInterval() {} };
-const context = { window, localStorage: storage, navigator: {}, console, URL, document: { cookie: '' }, setTimeout, clearTimeout, Blob, FormData };
+const context = { window, localStorage: storage, navigator: {}, console, URL, document: { cookie: '' }, setTimeout, clearTimeout, Blob, FormData, AbortController };
 const modules = new Map();
 function load(relative) {
   const filename = path.resolve(__dirname, '../src', relative);
@@ -32,6 +32,7 @@ function load(relative) {
   return exports;
 }
 const lifecycle = load('utils/accountDataWrites.ts');
+const memory = load('utils/resourceCache.ts');
 const { testClient } = load('services/api.ts');
 const keys = ['messages_cache', 'profile_cache', 'courses_cache', 'username_cache', 'dsb_plan_cache_v2'];
 function login(username) {
@@ -60,6 +61,8 @@ function deferredRequest(status = 200, token = storage.getItem('auth_access_toke
 (async () => {
   login('A');
   const generationA = lifecycle.captureAccountDataGeneration();
+  const memoryGenerationA = memory.resourceCacheGeneration();
+  memory.updateResource('account-module', 'private-A', memoryGenerationA);
   for (const key of keys) {
     storage.setItem(key, JSON.stringify({ secret: 'legacy-A' }));
     assert.equal(lifecycle.readPersonalCache(key), null, 'Legacy unowned caches must not render');
@@ -74,6 +77,9 @@ function deferredRequest(status = 200, token = storage.getItem('auth_access_toke
   const pending = deferredRequest();
   await pending.started;
   lifecycle.clearSignedOutAccountData();
+  assert.equal(memory.readResource('account-module').data, undefined, 'Sign-out synchronously clears module memory');
+  memory.updateResource('account-module', 'late-A', memoryGenerationA);
+  assert.equal(memory.readResource('account-module').data, undefined, 'Late UI callbacks cannot restore signed-out data');
   for (const key of [...keys, 'auth_access_token', 'auth_user', 'modules_cache:123:A', 'lanis_preferences:123:A', '__demo_storage_snapshot']) assert.equal(storage.getItem(key), null, key);
   assert.equal(storage.getItem('lanis_theme_color'), 'ruby');
   assert.equal(storage.getItem('lanis_custom_backend_url'), 'https://custom.invalid');
@@ -94,8 +100,10 @@ function deferredRequest(status = 200, token = storage.getItem('auth_access_toke
   await old401.started;
   lifecycle.clearSignedOutAccountData();
   login('C');
+  memory.updateResource('account-module', 'private-C', memory.resourceCacheGeneration());
   old401.finish();
   await assert.rejects(old401.result(), axios.isCancel);
+  assert.equal(memory.readResource('account-module').data, 'private-C', 'Old authentication failures must not clear the new session cache');
   assert.equal(storage.getItem('auth_access_token'), 'C-token', 'Old 401 must not log out the new account');
   const valid = deferredRequest();
   await valid.started;
@@ -120,6 +128,7 @@ function deferredRequest(status = 200, token = storage.getItem('auth_access_toke
   terminal.finish();
   await assert.rejects(terminal.result());
   assert.equal(storage.getItem('messages_cache'), null);
+  assert.equal(memory.readResource('account-module').data, undefined, 'Terminal authentication loss clears module memory');
   assert.equal(storage.getItem('auth_user'), null);
   assert.equal(window.location.href, '/login');
   // Quota failures must not stop cleanup or let a pending response restore auth/data.

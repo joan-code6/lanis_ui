@@ -1,3 +1,4 @@
+import { useCachedState } from '../../hooks/useCachedState';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   ArrowPathIcon,
@@ -59,12 +60,6 @@ const DashboardNotifications: React.FC = () => {
   const { preferences } = usePreferences();
   const basePath = useBasePath();
   const navigate = useNavigate();
-  const [notifications, setNotifications] = useState<DashboardNotification[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [errors, setErrors] = useState<string[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [reloadKey, setReloadKey] = useState(0);
-
   const dashboardPreferences = preferences.dashboard;
   const enabledSources = useMemo(() => new Set<DashboardNotificationSource>([
     ...(dashboardPreferences.notification_messages_enabled ? ['messages' as const] : []),
@@ -76,6 +71,13 @@ const DashboardNotifications: React.FC = () => {
     dashboardPreferences.notification_native_enabled,
   ]);
 
+  const notificationScope = JSON.stringify([Array.from(enabledSources), dashboardPreferences.notification_show_read]);
+  const [notifications, setNotifications, hasNotifications] = useCachedState<DashboardNotification[]>(`dashboard-notifications:${notificationScope}`, []);
+  const [unreadCount, setUnreadCount] = useCachedState<number>(`dashboard-unread:${notificationScope}`, 0);
+  const [errors, setErrors] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [reloadKey, setReloadKey] = useState(0);
+
   useEffect(() => {
     if (!token || !dashboardPreferences.notifications_enabled) {
       setNotifications([]);
@@ -85,7 +87,7 @@ const DashboardNotifications: React.FC = () => {
       return undefined;
     }
     const controller = new AbortController();
-    setLoading(true);
+    setLoading(!hasNotifications);
     dashboardAPI.getNotifications(
       token,
       reloadKey > 0,

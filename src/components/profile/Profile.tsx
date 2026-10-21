@@ -1,3 +1,4 @@
+import { useCachedState } from '../../hooks/useCachedState';
 import { readPersonalCache, writePersonalCache } from '../../utils/accountDataWrites';
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
@@ -18,10 +19,11 @@ import { canWriteAccountData, captureAccountDataGeneration } from '../../utils/a
 
 const Profile: React.FC = () => {
   const { user, token } = useAuth();
-  // Cached user profile state
-  const [userDetails, setUserDetails] = useState<User | null>(() => {
-    const cached = isDemoRoute() ? null : readPersonalCache('profile_cache');
-    return cached ? JSON.parse(cached) : user;
+  const [userDetails, setUserDetails] = useCachedState<User | null>('profile', () => {
+    try {
+      const cached = isDemoRoute() ? null : readPersonalCache('profile_cache');
+      return cached ? JSON.parse(cached) : user;
+    } catch { return user; }
   });
   const [isUpdating, setIsUpdating] = useState(false);
   const [isLoading, setIsLoading] = useState(!userDetails);

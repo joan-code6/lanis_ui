@@ -1,4 +1,5 @@
 import { DashboardModulesSkeleton } from '../shared/LoadingSkeletons';
+import { useCachedState } from '../../hooks/useCachedState';
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -28,6 +29,7 @@ import {
 import { API_BASE_URL } from '../../services/api';
 import clsx from 'clsx';
 import ModuleIcon from './ModuleIcon';
+import { moduleDestination, prefetchModule } from '../../utils/modulePrefetch';
 import DashboardNotifications from './DashboardNotifications';
 import { readModulesCache, writeModulesCache } from '../../utils/moduleCache';
 import { captureAccountDataGeneration } from '../../utils/accountDataWrites';
@@ -43,9 +45,9 @@ const Dashboard: React.FC = () => {
   const { preferences, updatePreferences } = usePreferences();
   const navigate = useNavigate();
   const basePath = useBasePath();
-  const [modules, setModules] = useState<Module[]>(() => readModulesCache(user));
+  const [modules, setModules, hasModules] = useCachedState<Module[]>('modules', () => readModulesCache(user));
   const [isUpdating, setIsUpdating] = useState(false);
-  const [folders, setFolders] = useState<string[]>([]);
+  const folders = [...new Set(modules.flatMap(module => module.folders))];
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
@@ -73,7 +75,6 @@ const Dashboard: React.FC = () => {
 
   useEffect(() => {
     if (!token) return;
-    setModules(readModulesCache(user));
     const abortController = new AbortController();
     const writeGeneration = captureAccountDataGeneration();
     loadModules(abortController.signal, writeGeneration);
@@ -90,15 +91,6 @@ const Dashboard: React.FC = () => {
       if (modulesResponse.success) {
         setModules(modulesResponse.modules);
         writeModulesCache(user, modulesResponse.modules, writeGeneration);
-        const allFolders: string[] = [];
-        modulesResponse.modules.forEach((module: Module) => {
-          module.folders.forEach((folder) => {
-            if (!allFolders.includes(folder)) {
-              allFolders.push(folder);
-            }
-          });
-        });
-        setFolders(allFolders);
       }
       setIsLoading(false);
     } catch (error) {
@@ -109,6 +101,11 @@ const Dashboard: React.FC = () => {
     } finally {
       setIsUpdating(false);
     }
+  };
+
+  const warmModule = (module: Module) => {
+    const id = moduleDestination(module);
+    if (!isEditMode && id && token) void prefetchModule(id, token, preferences);
   };
 
   const handleModuleClick = (module: Module) => {
@@ -429,7 +426,7 @@ const Dashboard: React.FC = () => {
         </div>
       )}
 
-      {isLoading && modules.length === 0 ? (
+      {isLoading && !hasModules && modules.length === 0 ? (
         <DashboardModulesSkeleton viewMode={viewMode} />
       ) : sortedModules.length === 0 ? (
         <div className="empty-state">
@@ -467,6 +464,8 @@ const Dashboard: React.FC = () => {
                   if (!event.currentTarget.contains(event.relatedTarget as Node)) setDropTarget(null);
                 }}
                 onDrop={(event) => handleDrop(event, module.name)}
+                onMouseEnter={() => warmModule(module)}
+                onFocus={() => warmModule(module)}
                 onClick={() => handleModuleClick(module)}
               >
                 {activeDropTarget && (

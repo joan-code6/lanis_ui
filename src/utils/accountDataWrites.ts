@@ -1,3 +1,4 @@
+import { clearResourceCache } from './resourceCache';
 import { CUSTOM_BACKEND_STORAGE_KEY, clearBackendScopedStorage, getApiBaseUrl } from './backendConfig';
 
 export const ACCOUNT_DATA_GENERATION_KEY = '__lanis_account_data_generation';
@@ -321,6 +322,7 @@ export const completeAccountDataDeletion = (expectedGeneration: number): boolean
 
 
 export const purgeDeletedAccountBrowserData = async (): Promise<boolean> => {
+  clearResourceCache();
   // Keep recovery identity and coordination until every cleanup step succeeds.
   let storageClean = false;
   try {
@@ -396,6 +398,7 @@ export const writePersonalCache = (key: string, value: string, generation: numbe
 
 /** Remove this browser's personal state even when marker writes fail. */
 export const clearSignedOutAccountData = (): void => {
+  clearResourceCache();
   // Account deletion retains its own recovery marker and lifecycle ownership.
   const deleting = hasAccountDataDeletionMarker();
   const generation = captureAccountDataGeneration() + 1;

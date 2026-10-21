@@ -1,3 +1,4 @@
+import { useCachedState } from '../../hooks/useCachedState';
 import { readPersonalCache, writePersonalCache } from '../../utils/accountDataWrites';
 import { CoursesGridSkeleton, CourseEntriesSkeleton } from '../shared/LoadingSkeletons';
 import React, { useState, useEffect, useMemo } from 'react';
@@ -314,23 +315,27 @@ const Courses: React.FC = () => {
   const navigate = useNavigate();
   const { id: courseIdFromUrl } = useParams();
   const basePath = useBasePath();
-  const [viewMode, setViewMode] = useState<ViewMode>('overview');
-  // Cached courses state
-  const [courses, setCourses] = useState<CourseEntry[]>(() => {
-    const cached = isDemoRoute() ? null : readPersonalCache('courses_cache');
-    return cached ? JSON.parse(cached) : [];
+  const [viewMode, setViewMode] = useState<ViewMode>(courseIdFromUrl ? 'course-detail' : 'overview');
+  const [courses, setCourses, hasCourses] = useCachedState<CourseEntry[]>('courses', () => {
+    try {
+      const cached = isDemoRoute() ? null : readPersonalCache('courses_cache');
+      const parsed: unknown = cached ? JSON.parse(cached) : null;
+      return Array.isArray(parsed) ? parsed : [];
+    } catch { return []; }
   });
-  const [isUpdating, setIsUpdating] = useState(false);
-  const [selectedCourse, setSelectedCourse] = useState<CourseDetailsResponse | null>(null);
+  const [isUpdating, setIsUpdating] = useState(true);
+  const [selectedCourse, setSelectedCourse, hasCourse] = useCachedState<CourseDetailsResponse | null>(`course:${courseIdFromUrl || ''}`, null);
   const [selectedEntry, setSelectedEntry] = useState<EntryDetails | null>(null);
-  const [weeklyEntries, setWeeklyEntries] = useState<WeeklyEntry[]>([]);
+  const [entryCache, setEntryCache] = useCachedState<Record<string, EntryDetails>>('course-entries', {});
+  const [weeklyEntries, setWeeklyEntries, hasWeekly] = useCachedState<WeeklyEntry[]>('courses-weekly', []);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [filterAttendance, setFilterAttendance] = useState<string>('all');
   const [showOnlyHomework, setShowOnlyHomework] = useState(false);
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
   const [detailViewMode, setDetailViewMode] = useState<'cards' | 'timeline'>('cards');
-  const [dynamicAttendanceOptions, setDynamicAttendanceOptions] = useState<string[]>([]);
+  const dynamicAttendanceOptions = [...new Set((selectedCourse?.entries || []).map(entry => entry.attendance.trim()).filter(Boolean))]
+    .filter(att => !['anwesend', 'entschuldigt', 'unentschuldigt', 'fehlend'].includes(att.toLowerCase()));
   const [courseDetailTab, setCourseDetailTab] = useState<CourseDetailTab>('history');
   const completedHomeworkDisplay = preferences.homework.completed_display;
 
@@ -363,13 +368,11 @@ const Courses: React.FC = () => {
     if (!token) return;
     if (!courseIdFromUrl) {
       setViewMode('overview');
-      setSelectedCourse(null);
       return;
     }
     const abortController = new AbortController();
     setViewMode('course-detail');
-    setSelectedCourse(null);
-    setIsLoading(true);
+    setIsLoading(!hasCourse);
     loadCourseDetails(courseIdFromUrl, abortController.signal);
     return () => abortController.abort();
   }, [token, courseIdFromUrl]);
@@ -404,12 +407,13 @@ const Courses: React.FC = () => {
       setError('Fehler beim Laden der Kurse.');
       setIsLoading(false);
     } finally {
-      setIsUpdating(false);
+      if (!signal?.aborted) setIsUpdating(false);
     }
   };
 
   const loadCourseDetails = async (courseId: string, signal?: AbortSignal) => {
     if (!token) return;
+    setIsUpdating(true);
     const writeGeneration = captureAccountDataGeneration();
 
     try {
@@ -437,12 +441,6 @@ const Courses: React.FC = () => {
           }
         }
         setSelectedCourse(resolvedCourse);
-        
-        const presetAttendance = ['anwesend', 'entschuldigt', 'unentschuldigt', 'fehlend'];
-        const allAttendances = response.entries.map((entry: CourseDetailEntry) => entry.attendance.trim()).filter(Boolean);
-        const uniqueAttendances = [...new Set(allAttendances)];
-        const dynamicOptions = uniqueAttendances.filter((att) => !presetAttendance.includes(att.toLowerCase()));
-        setDynamicAttendanceOptions(dynamicOptions);
       } else {
         setError('Fehler beim Laden der Kursdetails.');
       }
@@ -452,6 +450,8 @@ const Courses: React.FC = () => {
       console.error('Error loading course details:', error);
       setError('Fehler beim Laden der Kursdetails.');
       setIsLoading(false);
+    } finally {
+      if (!signal?.aborted) setIsUpdating(false);
     }
   };
 
@@ -459,11 +459,15 @@ const Courses: React.FC = () => {
     if (!token) return;
 
     try {
-      setIsLoading(true);
+      const cachedEntry = entryCache[url];
+      setSelectedEntry(cachedEntry || null);
+      if (cachedEntry) setViewMode('entry-detail');
+      setIsLoading(!cachedEntry);
       setError('');
       const response = await coursesAPI.getEntryDetails(token, url);
       
       if (response.success) {
+        setEntryCache(current => ({ ...current, [url]: response.entry }));
         setSelectedEntry(response.entry);
         setViewMode('entry-detail');
       } else {
@@ -481,7 +485,8 @@ const Courses: React.FC = () => {
     if (!token) return;
 
     try {
-      setIsLoading(true);
+      setViewMode('weekly');
+      setIsLoading(!hasWeekly);
       setError('');
       const response = await coursesAPI.getWeeklyView(token);
       
@@ -500,7 +505,7 @@ const Courses: React.FC = () => {
   };
 
   const toggleHomework = async (courseId: string, entryId: string, currentDone: boolean) => {
-    if (!token) return;
+    if (!token || isUpdating) return;
     const writeGeneration = captureAccountDataGeneration();
     const newDone = !currentDone;
 
@@ -752,7 +757,7 @@ const Courses: React.FC = () => {
       )}
 
       {/* Content */}
-      {viewMode === 'overview' && (isLoading && courses.length === 0 ? <CoursesGridSkeleton /> : (
+      {viewMode === 'overview' && (isLoading && !hasCourses && courses.length === 0 ? <CoursesGridSkeleton /> : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {!courses || courses.length === 0 ? (
             <div className="col-span-full text-center py-12">
@@ -990,6 +995,7 @@ const Courses: React.FC = () => {
                               <span className="text-sm font-semibold text-yellow-900 dark:text-yellow-200">Hausaufgaben</span>
                             </div>
                             <button
+                              disabled={isUpdating}
                               onClick={(e) => {
                                 e.stopPropagation();
                                 toggleHomework(selectedCourse.course_id, entry.entry_id, entry.homework_done);
@@ -1117,6 +1123,7 @@ const Courses: React.FC = () => {
                                 <ClockIcon className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
                                 <span className="text-xs font-semibold text-yellow-900 dark:text-yellow-200">Hausaufgaben</span>
                                 <button
+                                  disabled={isUpdating}
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     toggleHomework(selectedCourse.course_id, entry.entry_id, entry.homework_done);

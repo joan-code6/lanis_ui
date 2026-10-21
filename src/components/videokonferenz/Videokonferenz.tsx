@@ -1,6 +1,6 @@
 import { VideoRoomsSkeleton } from '../shared/ModuleLoadingSkeletons';
-import React, { useEffect, useMemo, useState } from 'react';
-import axios from 'axios';
+import { useCachedResource } from '../../hooks/useCachedResource';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useBasePath } from '../../contexts/BasePathContext';
 import {
@@ -93,62 +93,23 @@ export const RoomCard: React.FC<{ room: VideoRoom; statusLive: boolean }> = ({ r
 
 const Videokonferenz: React.FC = () => {
   const { token } = useAuth();
-  const [overview, setOverview] = useState<VideoRoomsResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState('');
-  const [reloadKey, setReloadKey] = useState(0);
-  const [lastChecked, setLastChecked] = useState<Date | null>(null);
+  const { data, loading, refreshing, error, refresh, updatedAt } = useCachedResource('videokonferenz', async (signal, force) => {
+    const response = await videokonferenzAPI.getRooms(token!, force, signal);
+    if (!response.success) throw new Error(response.error || 'Videoräume konnten nicht geladen werden.');
+    // Each completed check needs a distinct identity, including reused demo responses.
+    return { ...response };
+  });
+  // A cached room list is useful immediately, but joining requires this visit's live check.
+  const initialData = useRef(data);
+  const statusLive = Boolean(data && data !== initialData.current && !error && data.status_live);
+  const overview = data ? { ...data, status_live: statusLive, open_count: statusLive ? data.open_count : 0 } : undefined;
+  const lastChecked = updatedAt ? new Date(updatedAt) : null;
 
   useEffect(() => {
     if (!token) return;
-    const controller = new AbortController();
-    let inFlight = false;
-
-    const loadRooms = async (manual = false) => {
-      if (inFlight || controller.signal.aborted) return;
-      inFlight = true;
-      if (manual) setRefreshing(true);
-      else setLoading(true);
-      try {
-        const response = await videokonferenzAPI.getRooms(token, manual, controller.signal);
-        if (controller.signal.aborted) return;
-        if (!response.success) throw new Error(response.error || 'Videoräume konnten nicht geladen werden.');
-        setOverview(response);
-        setLastChecked(new Date());
-        setError('');
-      } catch (loadError) {
-        if (!controller.signal.aborted && !axios.isCancel(loadError)) {
-          setOverview(previous => previous ? {
-            ...previous,
-            status_live: false,
-            open_count: 0,
-            rooms: previous.rooms.map(room => ({
-              ...room,
-              status: 'unknown',
-              status_label: 'Aktueller Status nicht verfügbar',
-              can_join: false,
-              join_url: null,
-            })),
-          } : null);
-          setError(loadError instanceof Error ? loadError.message : 'Videoräume konnten nicht geladen werden.');
-        }
-      } finally {
-        inFlight = false;
-        if (!controller.signal.aborted) {
-          setLoading(false);
-          setRefreshing(false);
-        }
-      }
-    };
-
-    void loadRooms(reloadKey > 0);
-    const interval = window.setInterval(() => void loadRooms(true), REFRESH_INTERVAL_MS);
-    return () => {
-      controller.abort();
-      window.clearInterval(interval);
-    };
-  }, [token, reloadKey]);
+    const interval = window.setInterval(refresh, REFRESH_INTERVAL_MS);
+    return () => window.clearInterval(interval);
+  }, [token, refresh]);
 
   const rooms = useMemo(
     () => [...(overview?.rooms || [])].sort((left, right) => statusOrder[left.status] - statusOrder[right.status]),
@@ -179,7 +140,7 @@ const Videokonferenz: React.FC = () => {
           <button
             type="button"
             className="btn btn-secondary self-start"
-            onClick={() => setReloadKey(value => value + 1)}
+            onClick={refresh}
             disabled={loading || refreshing}
           >
             <ArrowPathIcon className={`mr-2 h-4 w-4 ${loading || refreshing ? 'animate-spin' : ''}`} />
