@@ -46,7 +46,7 @@ export async function mountApplication(root: Root) {
   if (isImpersonating) {
     // Capture once, remove before any API request or app rendering. Never log it.
     const code = new URLSearchParams(window.location.hash.slice(1)).get('impersonate');
-    window.history.replaceState(null, '', '/dashboard');
+    if (code) window.history.replaceState(null, '', '/dashboard');
     root.render(<PreviewMessage title="Vorschau wird geöffnet" description="Eine isolierte Sitzung wird vorbereitet …" />);
     try {
       if (code) {

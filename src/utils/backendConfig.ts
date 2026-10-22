@@ -97,6 +97,7 @@ export function clearBackendScopedStorage(): void {
       appStorage.removeItem(key);
     }
   }
+  if (isImpersonating) return;
   for (const key of BACKEND_SCOPED_COOKIE_KEYS) {
     document.cookie = `${key}=;max-age=0;path=/;SameSite=Lax`;
   }
