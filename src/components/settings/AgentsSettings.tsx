@@ -3,10 +3,15 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { API_BASE_URL } from '../../services/api';
 import { normalizeBackendUrl } from '../../utils/backendConfig';
 import { agentSettingsSwitchPath } from '../../utils/agentBackend';
-import { ArrowPathIcon, CheckIcon, ClipboardDocumentIcon, LinkIcon, PlusIcon } from '@heroicons/react/24/outline';
+import { ArrowPathIcon, CheckIcon, ClipboardDocumentIcon, SparklesIcon, PlusIcon, XMarkIcon, ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '../../contexts/AuthContext';
 import { AccessMode, AccessPresets, AgentConnection, AgentsOverview, agentsAPI } from '../../services/api';
 import AccessPicker, { accessLabels, describeAccess } from '../agents/AccessPicker';
+
+const ProviderIcon: React.FC<{ name: string }> = ({ name }) => {
+  const brand = /claude/i.test(name) ? 'claude' : /chatgpt|openai/i.test(name) ? 'openai' : null;
+  return brand ? <img src={`/brands/${brand}.svg`} alt="" aria-hidden="true" className="h-6 w-6 shrink-0 dark:invert" /> : <SparklesIcon aria-hidden="true" className="h-6 w-6 shrink-0 text-surface-500" />;
+};
 
 const Connection: React.FC<{ connection: AgentConnection; overview: AgentsOverview; reload: () => Promise<void>; onChanged: (id: string, changes: Partial<AgentConnection>) => void }> = ({ connection: c, overview, reload, onChanged }) => {
   const { token } = useAuth();
@@ -34,7 +39,7 @@ const Connection: React.FC<{ connection: AgentConnection; overview: AgentsOvervi
   };
   return <article className="py-5 first:pt-0 last:pb-0">
     <div className="flex items-center gap-3">
-      <LinkIcon className="h-5 w-5 shrink-0 text-surface-400" />
+      <ProviderIcon name={c.name} />
       <div className="min-w-0 flex-1"><h3 className="item-title break-words">{c.name}</h3><p className="mt-0.5 text-xs text-surface-500">{accessLabels[describeAccess(c.scopes, overview.presets)]}{c.last_used_at ? ` · ${new Date(c.last_used_at * 1000).toLocaleDateString('de-DE')}` : ''}</p></div>
       <button className="btn btn-ghost shrink-0" aria-expanded={editing} onClick={() => { setEditing(!editing); setName(c.name); setScopes(c.scopes); setMode(describeAccess(c.scopes, presets)); }}>{editing ? 'Schließen' : 'Verwalten'}</button>
     </div>
@@ -61,7 +66,7 @@ export default function AgentsSettings() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [setup, setSetup] = useState(false);
-  const [provider, setProvider] = useState('ChatGPT');
+  const [provider, setProvider] = useState('Claude');
   const [copied, setCopied] = useState(false);
   const requestVersion = useRef(0);
   const owner = useRef(token);
@@ -87,15 +92,19 @@ export default function AgentsSettings() {
   };
   const active = data?.connections.filter(c => !c.revoked) || [];
   if (invalidIssuer || backendMismatch) return <section className="card max-w-md"><h2 className="section-title">{invalidIssuer ? 'Ungültiger Link' : 'Anderes Backend'}</h2>{!invalidIssuer && <><p className="mt-3 break-all text-sm text-surface-500">{issuer}</p><Link className="btn btn-primary mt-4" to={agentSettingsSwitchPath(issuer)}>Backend prüfen</Link></>}</section>;
-  return <div className="max-w-2xl space-y-6">
-    <div className="flex items-center justify-between gap-3"><h2 id="connections-heading" className="section-title">Verbindungen{data ? ` (${active.length})` : ''}</h2><button className="btn btn-primary" aria-expanded={setup} onClick={() => setSetup(!setup)}><PlusIcon className="mr-1.5 h-4 w-4" />Agent verbinden</button></div>
-    {setup && <section className="card space-y-4" aria-label="Agent verbinden">
-      <div className="flex flex-wrap gap-1" role="group" aria-label="Agent auswählen">{['ChatGPT', 'Claude', 'Andere'].map(p => <button key={p} onClick={() => setProvider(p)} aria-pressed={provider === p} className={`btn ${provider === p ? 'btn-secondary' : 'btn-ghost'}`}>{p}</button>)}</div>
-      <ol className="list-inside list-decimal space-y-2 text-sm text-surface-600 dark:text-surface-300"><li>{provider === 'ChatGPT' ? 'In ChatGPT ein MCP-Plugin hinzufügen.' : provider === 'Claude' ? 'In Claude einen Connector hinzufügen.' : 'Im Agenten einen Remote-MCP-Server hinzufügen.'}</li><li>Diese Adresse eintragen.</li><li>Bei LANIS anmelden und Zugriff wählen.</li></ol>
-      <div className="flex gap-2"><label className="sr-only" htmlFor="mcp-url">MCP-Adresse</label><input id="mcp-url" className="input min-w-0 font-mono text-xs" readOnly value={data?.mcp_url || ''} placeholder="MCP-Adresse" /><button className="btn btn-secondary shrink-0" disabled={!data} onClick={copy} aria-label="MCP-Adresse kopieren">{copied ? <CheckIcon className="h-4 w-4" /> : <ClipboardDocumentIcon className="h-4 w-4" />}</button></div>
-      <p role="status" className="text-xs text-surface-500">{copied ? 'Kopiert.' : window.location.pathname.startsWith('/demo') ? 'Demo-Adresse. Echte Agenten verbindest du nach der Anmeldung.' : 'Die Einrichtung hängt von deinem Agenten-Konto ab.'}</p>
-    </section>}
+  return <div className="space-y-6">
+    <section className="card">
+      <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="item-title">Agent verbinden</h2><button className="btn btn-secondary" aria-expanded={setup} onClick={() => setSetup(!setup)}>{setup ? <XMarkIcon className="mr-1.5 h-4 w-4" /> : <PlusIcon className="mr-1.5 h-4 w-4" />}{setup ? 'Schließen' : 'Hinzufügen'}</button></div>
+      {setup && <div className="mt-5 space-y-5" aria-label="Agent verbinden">
+        <div className="grid grid-cols-3 gap-3" role="group" aria-label="Agent auswählen">{['ChatGPT', 'Claude', 'Andere'].map(p => <button key={p} onClick={() => { setProvider(p); setCopied(false); }} aria-pressed={provider === p} className={`flex min-w-0 flex-col items-center gap-3 rounded-xl border p-3 text-sm font-semibold transition-colors ${provider === p ? 'border-primary-500 bg-primary-50 ring-2 ring-primary-500/15 dark:bg-primary-950/40' : 'border-surface-200 bg-white hover:border-primary-300 dark:border-surface-800 dark:bg-surface-900'}`}><ProviderIcon name={p} />{p}</button>)}</div>
+        {provider === 'ChatGPT' ? <p role="status" className="text-sm text-surface-500">Coming Soon</p> : <>
+          {provider === 'Claude' ? <a href="https://claude.ai/customize/connectors?modal=add-custom-connector" target="_blank" rel="noopener noreferrer" className="btn btn-secondary">Connector in Claude hinzufügen<ArrowTopRightOnSquareIcon className="ml-2 h-4 w-4" /></a> : <p className="text-sm text-surface-500">Füge diese Adresse als Remote-MCP-Server hinzu.</p>}
+          <div><label className="label" htmlFor="mcp-url">MCP-Adresse</label><div className="flex gap-2"><input id="mcp-url" className="input min-w-0 font-mono text-xs" readOnly value={data?.mcp_url || ''} placeholder="MCP-Adresse" /><button className="btn btn-secondary shrink-0" disabled={!data} onClick={copy} aria-label="MCP-Adresse kopieren">{copied ? <CheckIcon className="h-4 w-4" /> : <ClipboardDocumentIcon className="h-4 w-4" />}</button></div></div>
+          <p role="status" className="text-xs text-surface-500">{copied ? 'Kopiert.' : window.location.pathname.startsWith('/demo') ? 'Demo-Adresse. Echte Agenten verbindest du nach der Anmeldung.' : 'Adresse eintragen, dann bei LANIS anmelden und Zugriff wählen.'}</p>
+        </>}
+      </div>}
+    </section>
     {error && <div role="alert" className="flex items-center justify-between gap-3 text-sm text-red-600 dark:text-red-400">{error}<button onClick={load} className="btn btn-ghost" aria-label="Erneut versuchen"><ArrowPathIcon className="h-4 w-4" /></button></div>}
-    {loading ? <p role="status" className="text-sm text-surface-500">Laden …</p> : data && <section className="card" aria-labelledby="connections-heading">{active.length ? <div className="divide-y divide-surface-100 dark:divide-surface-800">{active.map(c => <Connection key={c.id} connection={c} overview={data} reload={load} onChanged={applyChange} />)}</div> : <p className="text-sm text-surface-500">Noch keine Agenten verbunden.</p>}</section>}
+    {loading ? <p role="status" className="text-sm text-surface-500">Laden …</p> : data && <section className="card" aria-labelledby="connections-heading"><h2 id="connections-heading" className="item-title mb-5">Verbindungen{` (${active.length})`}</h2>{active.length ? <div className="divide-y divide-surface-100 dark:divide-surface-800">{active.map(c => <Connection key={c.id} connection={c} overview={data} reload={load} onChanged={applyChange} />)}</div> : <p className="text-sm text-surface-500">Noch keine Agenten verbunden.</p>}</section>}
   </div>;
 }
