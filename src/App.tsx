@@ -31,6 +31,7 @@ import StatusPage from './components/status/StatusPage';
 import Videokonferenz from './components/videokonferenz/Videokonferenz';
 import SchoolPage from './components/schools/SchoolPage';
 import SchoolDirectoryPage from './components/schools/SchoolDirectoryPage';
+import AgentAuthorization from './components/agents/AgentAuthorization';
 
 const LandingRoot: React.FC = () => {
   const { isAuthenticated } = useAuth();
@@ -78,6 +79,7 @@ const AppRoutes: React.FC = () => {
         <Route path="/" element={<LandingRoot />} />
         <Route path="/landing" element={<Navigate to="/" replace />} />
         <Route path="/status" element={<StatusPage />} />
+        <Route path="/agents/authorize" element={<AgentAuthorization />} />
         <Route path="/impressum" element={<Impressum />} />
         <Route path="/privacy-policy" element={<PrivacyPolicy />} />
         <Route path="/set-custom-backend" element={<CustomBackend />} />

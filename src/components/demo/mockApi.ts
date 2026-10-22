@@ -655,6 +655,28 @@ function getMockDashboardNotifications() {
 export function getMockResponse(url: string, method: string, config: any): { data: any; status: number } {
   const u = (url || '').replace(config?.baseURL || '', '').split('?')[0];
 
+  // Agent settings: illustrative connections only; no real OAuth grants.
+  if (u === '/agents' && method === 'get') return { status: 200, data: {
+    mcp_url: 'https://lanis.example/mcp',
+    scopes: {
+      'schoolwork:read': { title: 'Unterricht & Hausaufgaben', description: 'Kurse, Unterricht und Aufgaben lesen.' },
+      'timetable:read': { title: 'Stundenplan & Vertretungen', description: 'Stundenplan und Vertretungen lesen.' },
+      'calendar:read': { title: 'Kalender', description: 'Schultermine lesen.' },
+      'messages:read': { title: 'Nachrichten', description: 'Nachrichten auf Anfrage lesen.' },
+    },
+    connections: readMockStorage('lanis_demo_agents') ?? [
+      { id: 'demo-chatgpt', name: 'Mein Lernassistent', client_name: 'ChatGPT', client_id: 'demo', redirect_origin: 'chatgpt.com', scopes: ['schoolwork:read', 'timetable:read', 'calendar:read'], created_at: Date.now()/1000 - 86400*5, last_used_at: Date.now()/1000 - 600, revoked: false },
+      { id: 'demo-claude', name: 'Claude', client_name: 'Claude', client_id: 'demo-claude', redirect_origin: 'claude.ai', scopes: ['schoolwork:read'], created_at: Date.now()/1000 - 86400, last_used_at: null, revoked: false },
+    ],
+  } };
+  if (u.startsWith('/agents/') && ['patch', 'delete'].includes(method)) {
+    const overview = getMockResponse('/agents', 'get', {});
+    const id = u.split('/')[2];
+    const payload = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
+    writeMockStorage('lanis_demo_agents', overview.data.connections.map((c: any) => c.id !== id ? c : method === 'delete' ? { ...c, revoked: true } : { ...c, ...payload }));
+    return { status: 200, data: { success: true } };
+  }
+
   // Auth
   if (u === '/benutzer' && method === 'get') { return { status: 200, data: { success: true, data: demoUser } }; }
   if (u === '/health' && method === 'get') { return { status: 200, data: { status: 'ok' } }; }

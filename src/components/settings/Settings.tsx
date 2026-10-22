@@ -59,6 +59,7 @@ import TimetableSettings from './TimetableSettings';
 import VertretungsplanSettings from './VertretungsplanSettings';
 import HomeworkSettings from './HomeworkSettings';
 import WhatsAppSettings from './WhatsAppSettings';
+import AgentsSettings from './AgentsSettings';
 import DashboardSettings from './DashboardSettings';
 import {
   DEFAULT_SIDEBAR_ORDER,
@@ -124,7 +125,7 @@ const pushSubscriptionToPayload = (subscription: PushSubscription): PushSubscrip
   };
 };
 
-type SettingsSection = 'home' | 'account' | 'appearance' | 'dashboard' | 'timetable' | 'homework' | 'vertretungsplan' | 'notifications' | 'whatsapp' | 'app' | 'sidebar';
+type SettingsSection = 'home' | 'agents' | 'account' | 'appearance' | 'dashboard' | 'timetable' | 'homework' | 'vertretungsplan' | 'notifications' | 'whatsapp' | 'app' | 'sidebar';
 
 const settingsSections: Array<{
   id: Exclude<SettingsSection, 'home'>;
@@ -175,6 +176,12 @@ const settingsSections: Array<{
     icon: BellAlertIcon,
   },
   {
+    id: 'agents',
+    title: 'Agents',
+    description: 'ChatGPT, Claude und weitere Agenten sicher mit LANIS verbinden.',
+    icon: SparklesIcon,
+  },
+  {
     id: 'whatsapp',
     title: 'WhatsApp-Assistent',
     description: 'Stundenplan, Vertretungen und Aufgaben direkt im Chat abrufen.',
@@ -196,6 +203,7 @@ const settingsSections: Array<{
 ];
 
 const sectionMeta: Record<SettingsSection, { title: string; subtitle: string }> = {
+  agents: { title: 'Agents', subtitle: 'Deine Agenten. Deine Berechtigungen. Dein Schulportal.' },
   home: { title: 'Einstellungen', subtitle: 'Passe dein Schulportal an.' },
   account: { title: 'Datenschutz und Konto', subtitle: 'Exportiere deine LANIS-Daten oder lösche dein LANIS-Konto.' },
   appearance: { title: 'Erscheinungsbild', subtitle: 'Farben und Oberfläche an deine Gewohnheiten anpassen.' },
@@ -1164,6 +1172,7 @@ const Settings: React.FC = () => {
       {section === 'vertretungsplan' && <VertretungsplanSettings />}
       {section === 'whatsapp' && <WhatsAppSettings />}
       {section === 'sidebar' && <SidebarSettings isDemo={isDemo} />}
+      {section === 'agents' && <AgentsSettings />}
       {section === 'account' && <AccountSettings />}
 
       <div className="space-y-6">
