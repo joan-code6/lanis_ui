@@ -1,10 +1,14 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
+import { API_BASE_URL } from '../../services/api';
+import { normalizeBackendUrl } from '../../utils/backendConfig';
+import { agentSettingsSwitchPath } from '../../utils/agentBackend';
 import { ArrowPathIcon, CheckIcon, ClipboardDocumentIcon, LinkIcon, PlusIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '../../contexts/AuthContext';
 import { AccessMode, AccessPresets, AgentConnection, AgentsOverview, agentsAPI } from '../../services/api';
 import AccessPicker, { accessLabels, describeAccess } from '../agents/AccessPicker';
 
-const Connection: React.FC<{ connection: AgentConnection; overview: AgentsOverview; reload: () => Promise<void> }> = ({ connection: c, overview, reload }) => {
+const Connection: React.FC<{ connection: AgentConnection; overview: AgentsOverview; reload: () => Promise<void>; onChanged: (id: string, changes: Partial<AgentConnection>) => void }> = ({ connection: c, overview, reload, onChanged }) => {
   const { token } = useAuth();
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(c.name);
@@ -22,7 +26,9 @@ const Connection: React.FC<{ connection: AgentConnection; overview: AgentsOvervi
     try {
       if (revoke) await agentsAPI.revoke(token, c.id);
       else await agentsAPI.update(token, c.id, name, scopes, mode);
-      await reload(); setEditing(false); setConfirm(false);
+      onChanged(c.id, revoke ? { revoked: true } : { name: name.trim(), scopes });
+      setEditing(false); setConfirm(false);
+      await reload();
     } catch { setError('Nicht gespeichert. Bitte erneut versuchen.'); }
     finally { setBusy(false); }
   };
@@ -45,6 +51,12 @@ const Connection: React.FC<{ connection: AgentConnection; overview: AgentsOvervi
 
 export default function AgentsSettings() {
   const { token } = useAuth();
+  const [params] = useSearchParams();
+  let issuer = API_BASE_URL;
+  let invalidIssuer = false;
+  try { if (params.has('issuer')) issuer = normalizeBackendUrl(params.get('issuer') || ''); }
+  catch { invalidIssuer = true; }
+  const backendMismatch = issuer !== API_BASE_URL;
   const [data, setData] = useState<AgentsOverview | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -52,21 +64,29 @@ export default function AgentsSettings() {
   const [provider, setProvider] = useState('ChatGPT');
   const [copied, setCopied] = useState(false);
   const requestVersion = useRef(0);
+  const owner = useRef(token);
+  owner.current = token;
+  const applyChange = (id: string, changes: Partial<AgentConnection>) => {
+    if (owner.current !== token) return;
+    requestVersion.current++;
+    setData(current => current ? { ...current, connections: current.connections.map(c => c.id === id ? { ...c, ...changes } : c) } : current);
+  };
   const load = async () => {
-    if (!token) return;
+    if (!token || invalidIssuer || backendMismatch) return;
     const version = ++requestVersion.current;
     setError('');
     try { const result = await agentsAPI.list(token); if (version === requestVersion.current) setData(result); }
     catch { if (version === requestVersion.current) setError('Agenten konnten nicht geladen werden.'); }
     finally { if (version === requestVersion.current) setLoading(false); }
   };
-  useEffect(() => { setData(null); setLoading(true); void load(); return () => { requestVersion.current++; }; }, [token]);
+  useEffect(() => { setData(null); setLoading(true); void load(); return () => { requestVersion.current++; }; }, [token, invalidIssuer, backendMismatch]);
   const copy = async () => {
     if (!data) return;
     try { await navigator.clipboard.writeText(data.mcp_url); setCopied(true); }
     catch { setError('Bitte die Adresse manuell kopieren.'); }
   };
   const active = data?.connections.filter(c => !c.revoked) || [];
+  if (invalidIssuer || backendMismatch) return <section className="card max-w-md"><h2 className="section-title">{invalidIssuer ? 'Ungültiger Link' : 'Anderes Backend'}</h2>{!invalidIssuer && <><p className="mt-3 break-all text-sm text-surface-500">{issuer}</p><Link className="btn btn-primary mt-4" to={agentSettingsSwitchPath(issuer)}>Backend prüfen</Link></>}</section>;
   return <div className="max-w-2xl space-y-6">
     <div className="flex items-center justify-between gap-3"><h2 id="connections-heading" className="section-title">Verbindungen{data ? ` (${active.length})` : ''}</h2><button className="btn btn-primary" aria-expanded={setup} onClick={() => setSetup(!setup)}><PlusIcon className="mr-1.5 h-4 w-4" />Agent verbinden</button></div>
     {setup && <section className="card space-y-4" aria-label="Agent verbinden">
@@ -76,6 +96,6 @@ export default function AgentsSettings() {
       <p role="status" className="text-xs text-surface-500">{copied ? 'Kopiert.' : window.location.pathname.startsWith('/demo') ? 'Demo-Adresse. Echte Agenten verbindest du nach der Anmeldung.' : 'Die Einrichtung hängt von deinem Agenten-Konto ab.'}</p>
     </section>}
     {error && <div role="alert" className="flex items-center justify-between gap-3 text-sm text-red-600 dark:text-red-400">{error}<button onClick={load} className="btn btn-ghost" aria-label="Erneut versuchen"><ArrowPathIcon className="h-4 w-4" /></button></div>}
-    {loading ? <p role="status" className="text-sm text-surface-500">Laden …</p> : data && <section className="card" aria-labelledby="connections-heading">{active.length ? <div className="divide-y divide-surface-100 dark:divide-surface-800">{active.map(c => <Connection key={c.id} connection={c} overview={data} reload={load} />)}</div> : <p className="text-sm text-surface-500">Noch keine Agenten verbunden.</p>}</section>}
+    {loading ? <p role="status" className="text-sm text-surface-500">Laden …</p> : data && <section className="card" aria-labelledby="connections-heading">{active.length ? <div className="divide-y divide-surface-100 dark:divide-surface-800">{active.map(c => <Connection key={c.id} connection={c} overview={data} reload={load} onChanged={applyChange} />)}</div> : <p className="text-sm text-surface-500">Noch keine Agenten verbunden.</p>}</section>}
   </div>;
 }

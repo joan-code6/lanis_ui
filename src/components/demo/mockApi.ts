@@ -1,3 +1,4 @@
+import { notifyDemoCacheWrite } from '../../utils/demoMode';
 import { projectTimetableDays } from '../../utils/timetableView';
 import { demoModules, demoUser } from './demoData';
 
@@ -42,7 +43,9 @@ const readMockStorage = (key: string): unknown => {
 const writeMockStorage = (key: string, value: unknown) => {
   if (typeof window === 'undefined') return;
   try {
-    window.localStorage.setItem(key, JSON.stringify(value));
+    const serialized = JSON.stringify(value);
+    window.localStorage.setItem(key, serialized);
+    notifyDemoCacheWrite(key, serialized);
   } catch {
     // Demo mode still works when storage is blocked or unavailable.
   }

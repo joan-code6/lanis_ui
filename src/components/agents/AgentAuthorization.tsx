@@ -6,11 +6,25 @@ import { AccessMode, AgentAuthorization as Authorization, agentsAPI } from '../.
 import LoginForm from '../auth/LoginForm';
 import AppIcon from '../AppIcon';
 import AccessPicker from './AccessPicker';
+import { API_BASE_URL } from '../../services/api';
+import { CUSTOM_BACKEND_STORAGE_KEY, normalizeBackendUrl } from '../../utils/backendConfig';
+import { agentBackendSwitchPath } from '../../utils/agentBackend';
 
 export default function AgentAuthorization() {
   const { isAuthenticated, token } = useAuth();
   const [params] = useSearchParams();
   const request = params.get('request') || '';
+  let issuer = API_BASE_URL;
+  let invalidIssuer = false;
+  try { if (params.has('issuer')) issuer = normalizeBackendUrl(params.get('issuer') || ''); }
+  catch { invalidIssuer = true; }
+  const backendMismatch = issuer !== API_BASE_URL;
+  useEffect(() => {
+    const changed = (event: StorageEvent) => { if (event.key === CUSTOM_BACKEND_STORAGE_KEY) window.location.reload(); };
+    window.addEventListener('storage', changed);
+    return () => window.removeEventListener('storage', changed);
+  }, []);
+
   const [data, setData] = useState<Authorization | null>(null);
   const [mode, setMode] = useState<AccessMode>('restricted');
   const [scopes, setScopes] = useState<string[]>([]);
@@ -19,7 +33,7 @@ export default function AgentAuthorization() {
   const [busy, setBusy] = useState(false);
   const [retry, setRetry] = useState(0);
   useEffect(() => {
-    if (!token || !request) return;
+    if (!token || !request || invalidIssuer || backendMismatch) return;
     let cancelled = false;
     setError(''); setData(null); setExpired(false); setBusy(false);
     agentsAPI.authorization(token, request).then(result => {
@@ -31,10 +45,10 @@ export default function AgentAuthorization() {
       setExpired(gone); setError(gone ? 'Anfrage abgelaufen. Im Agenten erneut verbinden.' : 'Anfrage konnte nicht geladen werden.');
     });
     return () => { cancelled = true; };
-  }, [token, request, retry]);
+  }, [token, request, retry, invalidIssuer, backendMismatch]);
   const selectMode = (next: AccessMode) => { setMode(next); if (next !== 'custom') setScopes(data?.presets[next] || []); };
   const decide = async (approve: boolean) => {
-    if (!token || !data || busy) return;
+    if (!token || !data || busy || invalidIssuer || backendMismatch) return;
     setBusy(true); setError('');
     try {
       const result = await agentsAPI.decide(token, request, approve, scopes, data.client_name, mode);
@@ -47,6 +61,7 @@ export default function AgentAuthorization() {
     }
   };
   const meta = <Helmet><title>Agent verbinden | LANIS</title><meta name="robots" content="noindex, nofollow" /><meta name="referrer" content="no-referrer" /></Helmet>;
+  if (invalidIssuer || backendMismatch) return <main className="flex min-h-[100dvh] items-center justify-center px-4 py-10">{meta}<section className="card w-full max-w-md"><AppIcon alt="LANIS" className="mb-6 h-12 w-12 rounded-xl" /><h1 className="page-title">{invalidIssuer ? 'Ungültige Anfrage' : 'Anderes Backend'}</h1><p className="mt-3 text-sm text-surface-500">{invalidIssuer ? 'Starte die Verbindung im Agenten erneut.' : 'Diese Verbindung gehört zu einem anderen LANIS-Backend.'}</p>{!invalidIssuer && <><p className="mt-3 break-all text-sm font-medium">{issuer}</p><Link className="btn btn-primary mt-6" to={agentBackendSwitchPath(request, issuer)}>Backend prüfen</Link></>}<Link className="btn btn-ghost mt-6" to="/settings/agents">Abbrechen</Link></section></main>;
   if (!request) return <main className="mx-auto max-w-md px-5 py-16">{meta}<AppIcon alt="LANIS" className="mb-6 h-12 w-12 rounded-xl" /><h1 className="page-title">Keine Anfrage</h1><p className="page-subtitle">Starte die Verbindung in deinem Agenten.</p><Link className="btn btn-secondary mt-6" to="/settings/agents">Zu Agents</Link></main>;
   if (!isAuthenticated) return <>{meta}<p className="bg-primary-50 px-4 py-3 text-center text-sm text-primary-800 dark:bg-primary-950 dark:text-primary-200">Anmelden, um den Zugriff zu wählen.</p><LoginForm /></>;
   return <main className="flex min-h-[100dvh] items-center justify-center px-4 py-10">{meta}

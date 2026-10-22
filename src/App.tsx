@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
@@ -32,6 +32,7 @@ import Videokonferenz from './components/videokonferenz/Videokonferenz';
 import SchoolPage from './components/schools/SchoolPage';
 import SchoolDirectoryPage from './components/schools/SchoolDirectoryPage';
 import AgentAuthorization from './components/agents/AgentAuthorization';
+import { agentReturnPath } from './utils/agentBackend';
 
 const LandingRoot: React.FC = () => {
   const { isAuthenticated } = useAuth();
@@ -43,16 +44,20 @@ const LandingRoot: React.FC = () => {
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated } = useAuth();
+  const location = useLocation();
+  const returnTo = agentReturnPath(location.pathname + location.search);
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to={returnTo ? `/login?${new URLSearchParams({ returnTo })}` : "/login"} replace />;
   }
   return <>{children}</>;
 };
 
 const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated } = useAuth();
+  const location = useLocation();
+  const returnTo = agentReturnPath(new URLSearchParams(location.search).get('returnTo'));
   if (isAuthenticated) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to={returnTo || "/dashboard"} replace />;
   }
   return <>{children}</>;
 };

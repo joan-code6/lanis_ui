@@ -1453,20 +1453,28 @@ export interface AgentAuthorization {
   client_name: string; client_id: string; redirect_origin: string; verified: boolean;
   scopes: (AgentScope & { id: string })[]; username: string; school_id: string; presets: AccessPresets;
 }
+function assertAgentBackend() {
+  if (getApiBaseUrl() !== API_BASE_URL) throw new axios.CanceledError('Backend changed. Reload LANIS.');
+}
 export const agentsAPI = {
   async list(token: string): Promise<AgentsOverview> {
+    assertAgentBackend();
     return (await apiClient.get('/agents', { headers: { 'X-Session-Token': token } })).data;
   },
   async update(token: string, id: string, name: string, scopes: string[], mode: AccessMode = "custom") {
+    assertAgentBackend();
     return (await apiClient.patch(`/agents/${encodeURIComponent(id)}`, { name, scopes, mode }, { headers: { 'X-Session-Token': token } })).data;
   },
   async revoke(token: string, id: string) {
+    assertAgentBackend();
     return (await apiClient.delete(`/agents/${encodeURIComponent(id)}`, { headers: { 'X-Session-Token': token } })).data;
   },
   async authorization(token: string, request: string): Promise<AgentAuthorization> {
+    assertAgentBackend();
     return (await apiClient.get(`/agents/authorization/${encodeURIComponent(request)}`, { headers: { 'X-Session-Token': token } })).data;
   },
   async decide(token: string, request: string, approve: boolean, scopes: string[], name: string, mode: AccessMode = "custom"): Promise<{ redirect_url: string }> {
+    assertAgentBackend();
     return (await apiClient.post(`/agents/authorization/${encodeURIComponent(request)}`, { approve, scopes, name, mode }, { headers: { 'X-Session-Token': token } })).data;
   },
 };

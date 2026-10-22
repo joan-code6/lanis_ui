@@ -28,6 +28,7 @@ const mockAuth = {
 
 const DEMO_STORAGE_KEYS = [
   '__demo_mode',
+  'lanis_demo_agents',
   'pinned_modules',
   'profile_cache',
   'messages_cache',
@@ -43,6 +44,7 @@ const DEMO_STORAGE_KEYS = [
 
 const DEMO_OWNED_STORAGE_KEYS = [
   '__demo_mode',
+  'lanis_demo_agents',
   'pinned_modules',
   'profile_cache',
   'messages_cache',
@@ -105,6 +107,7 @@ const seedLocalStorage = () => {
     }
   });
 
+  localStorage.removeItem('lanis_demo_agents');
   localStorage.setItem('__demo_mode', '1');
   localStorage.setItem('pinned_modules', JSON.stringify(demoPinnedModules));
   localStorage.setItem('profile_cache', JSON.stringify(demoUser));
