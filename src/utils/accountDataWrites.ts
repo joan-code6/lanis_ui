@@ -1,3 +1,4 @@
+import { isImpersonating, appStorage } from './appStorage';
 import { clearResourceCache } from './resourceCache';
 import { CUSTOM_BACKEND_STORAGE_KEY, clearBackendScopedStorage, getApiBaseUrl } from './backendConfig';
 
@@ -26,11 +27,11 @@ const withStorageLifecycleLock = async <T>(operation: () => Promise<T>): Promise
   while (true) {
     let current: { owner?: string; expiresAt?: number } = {};
     try {
-      const stored = window.localStorage.getItem(ACCOUNT_DATA_LIFECYCLE_LOCK_KEY) || '{}';
+      const stored = appStorage.getItem(ACCOUNT_DATA_LIFECYCLE_LOCK_KEY) || '{}';
       current = JSON.parse(stored);
     } catch {
       try {
-        window.localStorage.getItem(ACCOUNT_DATA_LIFECYCLE_LOCK_KEY);
+        appStorage.getItem(ACCOUNT_DATA_LIFECYCLE_LOCK_KEY);
       } catch {
         throw new Error('Cannot coordinate account changes without browser storage.');
       }
@@ -38,13 +39,13 @@ const withStorageLifecycleLock = async <T>(operation: () => Promise<T>): Promise
     }
     if (!current.owner || !current.expiresAt || current.expiresAt <= Date.now()) {
       try {
-        window.localStorage.setItem(
+        appStorage.setItem(
           ACCOUNT_DATA_LIFECYCLE_LOCK_KEY,
           JSON.stringify({ owner, expiresAt: Date.now() + leaseMs }),
         );
         await delay(20 + Math.floor(Math.random() * 30));
         const claimed = JSON.parse(
-          window.localStorage.getItem(ACCOUNT_DATA_LIFECYCLE_LOCK_KEY) || '{}',
+          appStorage.getItem(ACCOUNT_DATA_LIFECYCLE_LOCK_KEY) || '{}',
         ) as { owner?: string };
         if (claimed.owner === owner) break;
       } catch {
@@ -57,10 +58,10 @@ const withStorageLifecycleLock = async <T>(operation: () => Promise<T>): Promise
   const renewTimer = window.setInterval(() => {
     try {
       const current = JSON.parse(
-        window.localStorage.getItem(ACCOUNT_DATA_LIFECYCLE_LOCK_KEY) || '{}',
+        appStorage.getItem(ACCOUNT_DATA_LIFECYCLE_LOCK_KEY) || '{}',
       ) as { owner?: string };
       if (current.owner === owner) {
-        window.localStorage.setItem(
+        appStorage.setItem(
           ACCOUNT_DATA_LIFECYCLE_LOCK_KEY,
           JSON.stringify({ owner, expiresAt: Date.now() + leaseMs }),
         );
@@ -76,10 +77,10 @@ const withStorageLifecycleLock = async <T>(operation: () => Promise<T>): Promise
     window.clearInterval(renewTimer);
     try {
       const current = JSON.parse(
-        window.localStorage.getItem(ACCOUNT_DATA_LIFECYCLE_LOCK_KEY) || '{}',
+        appStorage.getItem(ACCOUNT_DATA_LIFECYCLE_LOCK_KEY) || '{}',
       ) as { owner?: string };
       if (current.owner === owner) {
-        window.localStorage.removeItem(ACCOUNT_DATA_LIFECYCLE_LOCK_KEY);
+        appStorage.removeItem(ACCOUNT_DATA_LIFECYCLE_LOCK_KEY);
       }
     } catch {
       // The lease expires naturally if storage becomes unavailable.
@@ -90,6 +91,7 @@ const withStorageLifecycleLock = async <T>(operation: () => Promise<T>): Promise
 export const withAccountDataLifecycleLock = <T>(
   operation: () => Promise<T>,
 ): Promise<T> => {
+  if (isImpersonating) return operation();
   if (typeof navigator !== 'undefined' && navigator.locks) {
     return navigator.locks.request<T>(
       'lanis-account-lifecycle',
@@ -101,7 +103,7 @@ export const withAccountDataLifecycleLock = <T>(
 
 const writeDeletionLease = (generation: number): void => {
   try {
-    window.localStorage.setItem(
+    appStorage.setItem(
       ACCOUNT_DATA_GENERATION_KEY,
       `${generation}:deleting:${Date.now() + DELETION_LEASE_MS}`,
     );
@@ -130,7 +132,7 @@ const startDeletionLeaseTimer = (generation: number): void => {
 
 const readGenerationState = (): { generation: number; deleting: boolean } => {
   try {
-    const value = window.localStorage.getItem(ACCOUNT_DATA_GENERATION_KEY) || '';
+    const value = appStorage.getItem(ACCOUNT_DATA_GENERATION_KEY) || '';
     const [generationText, state, expiryText] = value.split(':', 3);
     const generation = Number.parseInt(generationText, 10);
     const leaseExpiry = Number.parseInt(expiryText || '', 10);
@@ -162,7 +164,7 @@ export const isAccountDataDeletionInProgress = (): boolean => readGenerationStat
 
 export const hasAccountDataDeletionMarker = (): boolean => {
   try {
-    const marker = window.localStorage.getItem(ACCOUNT_DATA_GENERATION_KEY) || '';
+    const marker = appStorage.getItem(ACCOUNT_DATA_GENERATION_KEY) || '';
     return marker.split(':', 3)[1] === 'deleting';
   } catch {
     return deletionInProgress;
@@ -171,7 +173,7 @@ export const hasAccountDataDeletionMarker = (): boolean => {
 
 export const ownsAccountDataDeletion = (generation: number): boolean => {
   try {
-    const [generationText, state] = (window.localStorage.getItem(ACCOUNT_DATA_GENERATION_KEY) || '').split(':', 3);
+    const [generationText, state] = (appStorage.getItem(ACCOUNT_DATA_GENERATION_KEY) || '').split(':', 3);
     return state === 'deleting' && Number.parseInt(generationText, 10) === generation;
   } catch {
     return deletionInProgress && readGenerationState().generation === generation;
@@ -180,7 +182,7 @@ export const ownsAccountDataDeletion = (generation: number): boolean => {
 
 export const hasAccountDataLoginSince = (generation: number): boolean => {
   try {
-    const value = window.localStorage.getItem(ACCOUNT_DATA_GENERATION_KEY) || '';
+    const value = appStorage.getItem(ACCOUNT_DATA_GENERATION_KEY) || '';
     const [generationText, state] = value.split(':', 3);
     const currentGeneration = Number.parseInt(generationText, 10);
     return state === 'login' && Number.isFinite(currentGeneration) && currentGeneration >= generation;
@@ -192,7 +194,7 @@ export const hasAccountDataLoginSince = (generation: number): boolean => {
 export const readAccountDataDeletionEpoch = (): number => {
   try {
     const epoch = Number.parseInt(
-      window.localStorage.getItem(ACCOUNT_DATA_DELETION_EPOCH_KEY) || '0',
+      appStorage.getItem(ACCOUNT_DATA_DELETION_EPOCH_KEY) || '0',
       10,
     );
     return Number.isFinite(epoch) ? epoch : 0;
@@ -207,7 +209,7 @@ export const hasAccountDataDeletionOccurredSince = (epoch: number): boolean => (
 
 export const recordAccountDataDeletion = (): boolean => {
   try {
-    window.localStorage.setItem(
+    appStorage.setItem(
       ACCOUNT_DATA_DELETION_EPOCH_KEY,
       String(readAccountDataDeletionEpoch() + 1),
     );
@@ -219,7 +221,7 @@ export const recordAccountDataDeletion = (): boolean => {
 
 export const confirmAccountDataDeletion = (generation: number): boolean => {
   try {
-    window.localStorage.setItem(ACCOUNT_DATA_DELETION_CONFIRMED_KEY, String(generation));
+    appStorage.setItem(ACCOUNT_DATA_DELETION_CONFIRMED_KEY, String(generation));
     return recordAccountDataDeletion();
   } catch {
     return false;
@@ -228,7 +230,7 @@ export const confirmAccountDataDeletion = (generation: number): boolean => {
 
 export const isAccountDataDeletionConfirmed = (generation: number): boolean => {
   try {
-    return window.localStorage.getItem(ACCOUNT_DATA_DELETION_CONFIRMED_KEY) === String(generation);
+    return appStorage.getItem(ACCOUNT_DATA_DELETION_CONFIRMED_KEY) === String(generation);
   } catch {
     return false;
   }
@@ -246,9 +248,9 @@ export const canWriteAccountData = (generation: number): boolean => {
 export const beginAccountDataDeletion = (accessToken: string, refreshToken: string): number => {
   // Persist recovery identity before sending DELETE. Keep it through browser
   // cleanup so a crash or a failed confirmation write remains recoverable.
-  window.localStorage.setItem(ACCOUNT_DATA_DELETION_RECOVERY_KEY, JSON.stringify({ accessToken, refreshToken }));
+  appStorage.setItem(ACCOUNT_DATA_DELETION_RECOVERY_KEY, JSON.stringify({ accessToken, refreshToken }));
   const generation = captureAccountDataGeneration() + 1;
-  window.localStorage.setItem(ACCOUNT_DATA_GENERATION_KEY, `${generation}:deleting:${Date.now() + DELETION_LEASE_MS}`);
+  appStorage.setItem(ACCOUNT_DATA_GENERATION_KEY, `${generation}:deleting:${Date.now() + DELETION_LEASE_MS}`);
   deletionInProgress = true;
   startDeletionLeaseTimer(generation);
   return generation;
@@ -271,7 +273,7 @@ export const finishAccountDataDeletion = (generation: number): void => {
     return;
   }
   try {
-    const marker = window.localStorage.getItem(ACCOUNT_DATA_GENERATION_KEY) || '';
+    const marker = appStorage.getItem(ACCOUNT_DATA_GENERATION_KEY) || '';
     const [generationText, state] = marker.split(':', 3);
     const markedGeneration = Number.parseInt(generationText, 10);
     if (state === 'login' && Number.isFinite(markedGeneration) && markedGeneration >= generation) {
@@ -283,17 +285,17 @@ export const finishAccountDataDeletion = (generation: number): void => {
   }
   stopDeletionLeaseTimer(false);
   try {
-    window.localStorage.removeItem(ACCOUNT_DATA_DELETION_CONFIRMED_KEY);
+    appStorage.removeItem(ACCOUNT_DATA_DELETION_CONFIRMED_KEY);
   } catch {
     // The generation marker remains authoritative if storage is unavailable.
   }
   const nextGeneration = generation + 1;
   try {
-    window.localStorage.setItem(
+    appStorage.setItem(
       ACCOUNT_DATA_GENERATION_KEY,
       `${nextGeneration}:active`,
     );
-    window.localStorage.removeItem(ACCOUNT_DATA_DELETION_RECOVERY_KEY);
+    appStorage.removeItem(ACCOUNT_DATA_DELETION_RECOVERY_KEY);
   } catch {
     // Keep the in-memory state aligned when local storage is unavailable.
   }
@@ -307,9 +309,9 @@ export const completeAccountDataDeletion = (expectedGeneration: number): boolean
   const generation = captureAccountDataGeneration() + 1;
   deletionInProgress = false;
   try {
-    window.localStorage.removeItem(ACCOUNT_DATA_DELETION_CONFIRMED_KEY);
-    window.localStorage.removeItem(ACCOUNT_DATA_DELETION_RECOVERY_KEY);
-    window.localStorage.setItem(
+    appStorage.removeItem(ACCOUNT_DATA_DELETION_CONFIRMED_KEY);
+    appStorage.removeItem(ACCOUNT_DATA_DELETION_RECOVERY_KEY);
+    appStorage.setItem(
       ACCOUNT_DATA_GENERATION_KEY,
       `${generation}:login`,
     );
@@ -332,16 +334,16 @@ export const purgeDeletedAccountBrowserData = async (): Promise<boolean> => {
       ACCOUNT_DATA_DELETION_EPOCH_KEY, ACCOUNT_DATA_DELETION_CONFIRMED_KEY,
       ACCOUNT_DATA_DELETION_RECOVERY_KEY, ACCOUNT_DATA_LIFECYCLE_LOCK_KEY,
     ]);
-    for (let index = localStorage.length - 1; index >= 0; index -= 1) {
-      const key = localStorage.key(index);
-      if (key && !preserved.has(key)) localStorage.removeItem(key);
+    for (let index = appStorage.length - 1; index >= 0; index -= 1) {
+      const key = appStorage.key(index);
+      if (key && !preserved.has(key)) appStorage.removeItem(key);
     }
     storageClean = true;
   } catch {
     // Leave the recovery marker for the next visit if storage is unavailable.
   }
   const cleanupTasks: Promise<unknown>[] = [];
-  if ('serviceWorker' in navigator) {
+  if (!isImpersonating && 'serviceWorker' in navigator) {
     cleanupTasks.push(Promise.resolve().then(async () => {
       const registration = await navigator.serviceWorker.getRegistration();
       const notifications = await registration?.getNotifications();
@@ -352,7 +354,7 @@ export const purgeDeletedAccountBrowserData = async (): Promise<boolean> => {
       }
     }));
   }
-  if ('caches' in window) {
+  if (!isImpersonating && 'caches' in window) {
     cleanupTasks.push(Promise.resolve().then(async () => {
       const names = await caches.keys();
       await Promise.all(names.filter(name => !name.startsWith('lanis-ui-shell-'))
@@ -368,8 +370,8 @@ export const purgeDeletedAccountBrowserData = async (): Promise<boolean> => {
 const personalCacheOwner = (): string | null => {
   try {
     if (window.location.pathname === '/demo' || window.location.pathname.startsWith('/demo/')) return null;
-    if (!localStorage.getItem('auth_access_token')) return null;
-    const user = JSON.parse(localStorage.getItem('auth_user') || 'null');
+    if (!appStorage.getItem('auth_access_token')) return null;
+    const user = JSON.parse(appStorage.getItem('auth_user') || 'null');
     if (!user?.school_id || !user?.username) return null;
     return JSON.stringify([getApiBaseUrl(), user.school_id, user.username]);
   } catch { return null; }
@@ -380,7 +382,7 @@ export const readPersonalCache = (key: string): string | null => {
     const owner = personalCacheOwner();
     const generation = captureAccountDataGeneration();
     if (!owner || !canWriteAccountData(generation)) return null;
-    const cached = JSON.parse(localStorage.getItem(key) || 'null');
+    const cached = JSON.parse(appStorage.getItem(key) || 'null');
     return cached?.owner === owner && cached?.generation === generation && typeof cached?.value === 'string'
       ? cached.value : null;
   } catch { return null; }
@@ -390,7 +392,7 @@ export const writePersonalCache = (key: string, value: string, generation: numbe
   const owner = personalCacheOwner();
   if (!owner || !canWriteAccountData(generation)) return;
   try {
-    localStorage.setItem(key, JSON.stringify({ owner, generation, value }));
+    appStorage.setItem(key, JSON.stringify({ owner, generation, value }));
   } catch {
     // Live data remains usable when optional browser caching is unavailable.
   }
@@ -405,7 +407,7 @@ export const clearSignedOutAccountData = (): void => {
   const publishLogout = () => {
     if (deleting) return;
     try {
-      localStorage.setItem(ACCOUNT_DATA_GENERATION_KEY, `${generation}:logout`);
+      appStorage.setItem(ACCOUNT_DATA_GENERATION_KEY, `${generation}:logout`);
     } catch {
       // Retry after cleanup has freed space; the local generation still fences writes.
     }
@@ -419,12 +421,12 @@ export const clearSignedOutAccountData = (): void => {
     console.warn('Browser storage unavailable during local sign-out:', error);
   }
   try {
-    for (let index = localStorage.length - 1; index >= 0; index -= 1) {
-      const key = localStorage.key(index);
+    for (let index = appStorage.length - 1; index >= 0; index -= 1) {
+      const key = appStorage.key(index);
       if (key && (key.startsWith('lanis_preferences:') || [
         '__demo_storage_snapshot', '__demo_active_session', '__demo_mode',
         'pinned_modules', 'lanis_timetable_view_mode', 'lanis_preferences_legacy_owner',
-      ].includes(key))) localStorage.removeItem(key);
+      ].includes(key))) appStorage.removeItem(key);
     }
   } catch (error) {
     console.warn('Browser storage unavailable during private-cache cleanup:', error);
@@ -453,6 +455,6 @@ export const rememberAccountToken = (token: string): void => {
   accountTokenGenerations.set(token, captureAccountDataGeneration());
 };
 export const canUseAccountToken = (token: string): boolean => {
-  if (token === localStorage.getItem('auth_access_token')) rememberAccountToken(token);
+  if (token === appStorage.getItem('auth_access_token')) rememberAccountToken(token);
   return accountTokenGenerations.get(token) === captureAccountDataGeneration();
 };

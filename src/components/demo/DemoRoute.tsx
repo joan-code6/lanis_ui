@@ -1,3 +1,4 @@
+import { appStorage } from '../../utils/appStorage';
 import React, { useEffect } from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
 import { AuthContext } from '../../contexts/AuthContext';
@@ -78,7 +79,7 @@ const seedLocalStorage = () => {
     ? new Map(Object.entries(storedValues))
     : null;
   const previous = storedSnapshot || new Map<string, string | null>(
-    DEMO_STORAGE_KEYS.map(key => [key, localStorage.getItem(key)]),
+    DEMO_STORAGE_KEYS.map(key => [key, appStorage.getItem(key)]),
   );
   const initialGeneration = captureAccountDataGeneration();
   let restoreAllowed = true;
@@ -105,12 +106,12 @@ const seedLocalStorage = () => {
     }
   });
 
-  localStorage.setItem('__demo_mode', '1');
-  localStorage.setItem('pinned_modules', JSON.stringify(demoPinnedModules));
-  localStorage.setItem('profile_cache', JSON.stringify(demoUser));
-  localStorage.setItem('modules_cache:demo%3Amia.keller', JSON.stringify(demoModules));
-  ['messages_cache', 'courses_cache', 'username_cache', 'dsb_plan_cache_v2'].forEach(key => localStorage.removeItem(key));
-  DEMO_STORAGE_KEYS.forEach(key => valuesOwnedByDemo.set(key, localStorage.getItem(key)));
+  appStorage.setItem('__demo_mode', '1');
+  appStorage.setItem('pinned_modules', JSON.stringify(demoPinnedModules));
+  appStorage.setItem('profile_cache', JSON.stringify(demoUser));
+  appStorage.setItem('modules_cache:demo%3Amia.keller', JSON.stringify(demoModules));
+  ['messages_cache', 'courses_cache', 'username_cache', 'dsb_plan_cache_v2'].forEach(key => appStorage.removeItem(key));
+  DEMO_STORAGE_KEYS.forEach(key => valuesOwnedByDemo.set(key, appStorage.getItem(key)));
 
   return async () => {
     stopTrackingDemoWrites();
@@ -124,14 +125,14 @@ const seedLocalStorage = () => {
       const loginHasSupersededSnapshot = captureAccountDataGeneration() !== initialGeneration;
       if (hasAccountDataDeletionMarker()) {
         DEMO_OWNED_STORAGE_KEYS.forEach(key => {
-          if (localStorage.getItem(key) === valuesOwnedByDemo.get(key)) localStorage.removeItem(key);
+          if (appStorage.getItem(key) === valuesOwnedByDemo.get(key)) appStorage.removeItem(key);
         });
         return null;
       }
       if (!deletionWasObserved && !loginHasSupersededSnapshot) {
         valuesToRestore.forEach((value, key) => {
-          if (value === null) localStorage.removeItem(key);
-          else localStorage.setItem(key, value);
+          if (value === null) appStorage.removeItem(key);
+          else appStorage.setItem(key, value);
         });
       } else {
         const loginHasSupersededDeletion = deletionGeneration !== null
@@ -142,8 +143,8 @@ const seedLocalStorage = () => {
           : DEMO_STORAGE_KEYS;
         keysToRemove.forEach(key => {
           const demoValue = valuesOwnedByDemo.get(key);
-          if (demoValue !== null && demoValue !== undefined && localStorage.getItem(key) === demoValue) {
-            localStorage.removeItem(key);
+          if (demoValue !== null && demoValue !== undefined && appStorage.getItem(key) === demoValue) {
+            appStorage.removeItem(key);
           }
         });
       }

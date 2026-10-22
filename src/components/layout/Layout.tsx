@@ -1,3 +1,4 @@
+import { isImpersonating, appStorage } from '../../utils/appStorage';
 import React from 'react';
 import { modulePreloadOrder, prefetchModule } from '../../utils/modulePrefetch';
 import { useAuth } from '../../contexts/AuthContext';
@@ -61,7 +62,7 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
   const location = useLocation();
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = React.useState(() => (
-    window.localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === 'true'
+    appStorage.getItem(SIDEBAR_COLLAPSED_KEY) === 'true'
   ));
   const [isSearchOpen, setIsSearchOpen] = React.useState(false);
   const [showLogoutConfirmation, setShowLogoutConfirmation] = React.useState(false);
@@ -82,7 +83,7 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
   const manifestUrl = getThemeManifestUrl(themeColor);
 
   React.useEffect(() => {
-    window.localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(isSidebarCollapsed));
+    appStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(isSidebarCollapsed));
   }, [isSidebarCollapsed]);
 
   React.useLayoutEffect(() => {
@@ -205,8 +206,8 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
   const isDemo = basePath === '/demo';
 
   return (
-    <PwaInstallProvider automaticPromotion={!isDemo}>
-      <div className="flex h-[100dvh] flex-col overflow-hidden bg-surface-50 dark:bg-surface-950">
+    <PwaInstallProvider automaticPromotion={!isDemo && !isImpersonating}>
+      <div className={`flex ${isImpersonating ? "h-full" : "h-[100dvh]"} flex-col overflow-hidden bg-surface-50 dark:bg-surface-950`}>
       {isDemo && <DemoBar />}
       {isSidebarOpen && (
         <div className={'fixed inset-x-0 bottom-0 flex z-40 md:hidden ' + (isDemo ? 'top-10' : 'inset-0')}>

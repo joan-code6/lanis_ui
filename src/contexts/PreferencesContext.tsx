@@ -1,3 +1,4 @@
+import { isImpersonating, appStorage } from '../utils/appStorage';
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { useAuth } from './AuthContext';
 import { useTheme } from './ThemeContext';
@@ -117,26 +118,26 @@ const normalizePreferences = (value?: Partial<UserPreferences>): UserPreferences
 };
 
 const legacyPreferences = (): UserPreferences => {
-  const mode = localStorage.getItem('lanis_theme_mode');
-  const legacyDark = localStorage.getItem('lanis_dark_mode');
+  const mode = appStorage.getItem('lanis_theme_mode');
+  const legacyDark = appStorage.getItem('lanis_dark_mode');
   const themeMode = mode === 'system' || mode === 'light' || mode === 'dark' || mode === 'oled'
     ? mode
-    : localStorage.getItem('lanis_oled_mode') === 'true'
+    : appStorage.getItem('lanis_oled_mode') === 'true'
       ? 'oled'
       : legacyDark === 'true'
         ? 'dark'
         : legacyDark === 'false'
           ? 'light'
           : 'system';
-  const color = localStorage.getItem('lanis_theme_color');
+  const color = appStorage.getItem('lanis_theme_color');
   const themeColor = color === 'emerald' || color === 'sapphire' || color === 'amethyst'
     || color === 'ruby' || color === 'amber' || color === 'cyan' || color === 'coral' || color === 'blush' || color === 'moss'
     ? color
     : 'ruby';
-  const timetableMode = localStorage.getItem('lanis_timetable_view_mode');
+  const timetableMode = appStorage.getItem('lanis_timetable_view_mode');
   let pinnedModules: string[] = [];
   try {
-    const parsed = JSON.parse(localStorage.getItem('pinned_modules') || '[]');
+    const parsed = JSON.parse(appStorage.getItem('pinned_modules') || '[]');
     if (Array.isArray(parsed)) pinnedModules = parsed.filter(item => typeof item === 'string');
   } catch {
     pinnedModules = [];
@@ -158,7 +159,7 @@ const cacheKeyForUser = (user: Record<string, string> | null) => {
 const readCache = (cacheKey: string | null): CachedPreferences | null => {
   if (!cacheKey) return null;
   try {
-    const parsed = JSON.parse(localStorage.getItem(cacheKey) || 'null');
+    const parsed = JSON.parse(appStorage.getItem(cacheKey) || 'null');
     if (!parsed?.preferences) return null;
     return {
       preferences: normalizePreferences(parsed.preferences),
@@ -194,14 +195,14 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode; sync?: b
     generation = captureAccountDataGeneration(),
   ) => {
     if (!cacheKey || !canWriteAccountData(generation)) return;
-    localStorage.setItem(cacheKey, JSON.stringify({ preferences: next, dirty } satisfies CachedPreferences));
+    appStorage.setItem(cacheKey, JSON.stringify({ preferences: next, dirty } satisfies CachedPreferences));
   }, [cacheKey]);
 
   useEffect(() => {
     const controller = new AbortController();
     const writeGeneration = captureAccountDataGeneration();
     const cached = readCache(cacheKey);
-    const legacyOwner = localStorage.getItem(LEGACY_PREFERENCES_OWNER_KEY);
+    const legacyOwner = appStorage.getItem(LEGACY_PREFERENCES_OWNER_KEY);
     const canClaimLegacyPreferences = Boolean(sync && token && cacheKey && !legacyOwner);
     const localFallback = cached?.preferences
       || (!sync || canClaimLegacyPreferences ? legacyPreferences() : DEFAULT_USER_PREFERENCES);
@@ -213,7 +214,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode; sync?: b
     }
 
     if (canClaimLegacyPreferences && canWriteAccountData(writeGeneration)) {
-      localStorage.setItem(LEGACY_PREFERENCES_OWNER_KEY, cacheKey);
+      appStorage.setItem(LEGACY_PREFERENCES_OWNER_KEY, cacheKey);
     }
 
     applyPreferences(localFallback);
@@ -238,7 +239,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode; sync?: b
           },
           dashboard: { ...localFallback.dashboard, ...response.preferences.dashboard },
         });
-        if (!response.stored || cached?.dirty) {
+        if (!isImpersonating && (!response.stored || cached?.dirty)) {
           next = cached?.preferences || localFallback;
           const migrated = await settingsAPI.updatePreferences(token, next, controller.signal);
           if (controller.signal.aborted || !canWriteAccountData(writeGeneration)) return;
@@ -250,8 +251,8 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode; sync?: b
         }
         applyPreferences(next);
         writeCache(next, false, writeGeneration);
-        localStorage.removeItem('pinned_modules');
-        localStorage.removeItem('lanis_timetable_view_mode');
+        appStorage.removeItem('pinned_modules');
+        appStorage.removeItem('lanis_timetable_view_mode');
       } catch (error) {
         if (controller.signal.aborted) return;
         console.error('Failed to load account preferences:', error);
@@ -270,6 +271,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode; sync?: b
   }, [applyPreferences, cacheKey, sync, token, writeCache]);
 
   const updatePreferences = useCallback((patch: UserPreferencesPatch): Promise<boolean> => {
+    if (isImpersonating) return Promise.resolve(false);
     const writeGeneration = captureAccountDataGeneration();
     const next = mergePreferences(preferencesRef.current, patch);
     applyPreferences(next);

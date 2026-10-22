@@ -1,3 +1,4 @@
+import { appStorage } from '../utils/appStorage';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import {
   clearDeferredInstallPrompt,
@@ -41,7 +42,7 @@ const defaultPromotionState: PromotionState = {
 
 const readPromotionState = (): PromotionState => {
   try {
-    const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null') as Partial<PromotionState> | null;
+    const stored = JSON.parse(appStorage.getItem(STORAGE_KEY) || 'null') as Partial<PromotionState> | null;
     if (stored?.version === 2) {
       return {
         ...defaultPromotionState,
@@ -56,8 +57,8 @@ const readPromotionState = (): PromotionState => {
     // Invalid local state should never prevent installation.
   }
 
-  const legacyPermanentlyDismissed = localStorage.getItem('pwa_permanent_dismiss') === 'true';
-  const legacyDismissedDate = localStorage.getItem('pwa_dismissed_date');
+  const legacyPermanentlyDismissed = appStorage.getItem('pwa_permanent_dismiss') === 'true';
+  const legacyDismissedDate = appStorage.getItem('pwa_dismissed_date');
   const parsedLegacyDate = legacyDismissedDate
     ? new Date(`${legacyDismissedDate}T00:00:00`).getTime()
     : 0;
@@ -70,7 +71,7 @@ const readPromotionState = (): PromotionState => {
 };
 
 const writePromotionState = (state: PromotionState) => {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  appStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 };
 
 const PwaInstallContext = createContext<PwaInstallContextValue | undefined>(undefined);
