@@ -39,3 +39,5 @@ Messaging is a full-height split pane: retain its own scrolling, pane borders an
 ## Review checklist
 
 Check the affected demo routes at a narrow mobile width and desktop width. Include loading, empty and populated states where available. Confirm long titles wrap or truncate appropriately, header actions fit, there is only one set of page gutters, and light/dark/OLED text remains legible. Run `npm run build`. When introducing a new recurring pattern, add its shared class and update this guide in the same PR.
+
+The Agents setup introduction uses a 24px/30px heading and a connection diagram to explain the initial linking flow. Connection cards, section/item headings and controls use shared module styles. The standalone OAuth approval screen follows the authentication composition.
