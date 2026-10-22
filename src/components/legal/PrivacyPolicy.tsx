@@ -201,7 +201,9 @@ const PrivacyPolicy: React.FC = () => {
             <p>
               Wenn du einen externen Agenten wie ChatGPT oder Claude mit LANIS verbindest, bestätigst du
               den Zugriff auf einer LANIS-Freigabeseite. Du wählst die Berechtigungen für jede Verbindung
-              einzeln. Das Backend speichert den Namen der Verbindung, den angefragten App-Namen, die
+              einzeln. Eingeschränkter Zugriff erlaubt Lesen ohne Noten und Fehlzeiten. Vollzugriff
+              umfasst auch Änderungen und sensible Daten; unter Benutzerdefiniert wählst du einzelne
+              Berechtigungen. Das Backend speichert den Namen der Verbindung, den angefragten App-Namen, die
               Rückkehradresse des Anbieters, Berechtigungen sowie Verbindungs- und Nutzungszeitpunkte.
               Zugangstokens werden nur als Hash gespeichert. Dein Schulportal-Passwort wird nicht an
               den Agenten übermittelt.

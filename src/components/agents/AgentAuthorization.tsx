@@ -1,19 +1,19 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { ArrowRightIcon, ArrowPathIcon, LockClosedIcon, ShieldCheckIcon } from '@heroicons/react/24/outline';
 import { Helmet } from 'react-helmet-async';
 import { useAuth } from '../../contexts/AuthContext';
-import { AgentAuthorization as Authorization, agentsAPI } from '../../services/api';
+import { AccessMode, AgentAuthorization as Authorization, agentsAPI } from '../../services/api';
 import LoginForm from '../auth/LoginForm';
-import { AgentMark, agentButton, agentPanel } from '../settings/AgentsSettings';
+import AppIcon from '../AppIcon';
+import AccessPicker from './AccessPicker';
 
-const AgentAuthorization: React.FC = () => {
+export default function AgentAuthorization() {
   const { isAuthenticated, token } = useAuth();
   const [params] = useSearchParams();
   const request = params.get('request') || '';
   const [data, setData] = useState<Authorization | null>(null);
+  const [mode, setMode] = useState<AccessMode>('restricted');
   const [scopes, setScopes] = useState<string[]>([]);
-  const [name, setName] = useState('');
   const [error, setError] = useState('');
   const [expired, setExpired] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -21,50 +21,45 @@ const AgentAuthorization: React.FC = () => {
   useEffect(() => {
     if (!token || !request) return;
     let cancelled = false;
-    setError(''); setData(null);
+    setError(''); setData(null); setExpired(false); setBusy(false);
     agentsAPI.authorization(token, request).then(result => {
       if (cancelled) return;
-      setData(result); setName(result.client_name); setScopes(result.scopes.map(s => s.id));
+      setData(result); setMode(result.presets.restricted.length ? 'restricted' : 'custom'); setScopes(result.presets.restricted);
     }).catch(error => {
       if (cancelled) return;
       const gone = error?.response?.status === 410;
-      setExpired(gone);
-      setError(gone ? 'Diese Anfrage ist abgelaufen oder wurde bereits beantwortet. Starte die Verbindung in deinem Agenten erneut.' : 'Die Verbindungsanfrage konnte nicht geladen werden. Prüfe deine Verbindung und versuche es erneut.');
+      setExpired(gone); setError(gone ? 'Anfrage abgelaufen. Im Agenten erneut verbinden.' : 'Anfrage konnte nicht geladen werden.');
     });
     return () => { cancelled = true; };
   }, [token, request, retry]);
+  const selectMode = (next: AccessMode) => { setMode(next); if (next !== 'custom') setScopes(data?.presets[next] || []); };
   const decide = async (approve: boolean) => {
     if (!token || !data || busy) return;
     setBusy(true); setError('');
     try {
-      const result = await agentsAPI.decide(token, request, approve, scopes, name);
-      // Callback comes exclusively from the server’s validated, stored OAuth request.
+      const result = await agentsAPI.decide(token, request, approve, scopes, data.client_name, mode);
       const target = new URL(result.redirect_url);
-      if (!['https:', 'http:'].includes(target.protocol)) throw new Error('Invalid callback');
+      if (!['https:', 'http:'].includes(target.protocol) || target.host !== data.redirect_origin) throw new Error('Invalid callback');
       window.location.assign(target.href);
     } catch (error: any) {
       const gone = error?.response?.status === 410;
-      setExpired(gone);
-      setError(gone ? 'Diese Anfrage ist abgelaufen. Starte die Verbindung in deinem Agenten erneut.' : 'Deine Entscheidung konnte nicht gespeichert werden. Bitte versuche es erneut.');
-      setBusy(false);
+      setExpired(gone); setError(gone ? 'Anfrage abgelaufen. Im Agenten erneut verbinden.' : 'Nicht gespeichert. Bitte erneut versuchen.'); setBusy(false);
     }
   };
   const meta = <Helmet><title>Agent verbinden | LANIS</title><meta name="robots" content="noindex, nofollow" /><meta name="referrer" content="no-referrer" /></Helmet>;
-  if (!request) return <main className="mx-auto max-w-lg px-5 py-20">{meta}<h1 className="text-2xl font-semibold">Keine Verbindungsanfrage</h1><p className="mt-3 text-surface-500">Starte die Verbindung in ChatGPT, Claude oder deinem Agenten. Hier bestätigst du anschließend den Zugriff.</p><Link to="/settings/agents" className={`${agentButton} mt-6`}>Zu deinen Agenten</Link></main>;
-  if (!isAuthenticated) return <>{meta}<div className="border-b border-surface-200 bg-primary-50 px-5 py-4 text-center text-sm text-primary-800 dark:border-surface-800 dark:bg-primary-950 dark:text-primary-200">Melde dich bei LANIS an, um die Agenten-Anfrage zu prüfen. Du erteilst damit noch keinen Zugriff.</div><LoginForm /></>;
-  return <main className="flex min-h-[100dvh] items-center justify-center bg-surface-50 px-4 py-10 dark:bg-surface-950 sm:py-16">{meta}
-    <div className="w-full max-w-xl"><Link to="/settings/agents" className="mb-7 flex items-center justify-center gap-2 text-sm font-bold tracking-[0.2em] text-surface-500"><LockClosedIcon className="h-4 w-4" /> LANIS</Link>
-      <section className={`${agentPanel} !p-0 overflow-hidden shadow-soft-md`}>
-        {!data ? <div className="p-8 text-center">{error ? <><h1 className="text-xl font-semibold">Verbindung nicht verfügbar</h1><p role="alert" className="mt-3 text-sm leading-relaxed text-surface-500">{error}</p>{!expired && <button onClick={() => setRetry(v => v + 1)} className={`${agentButton} mt-5`}><ArrowPathIcon className="h-4 w-4" />Erneut versuchen</button>}<Link to="/settings/agents" className="mt-5 block text-sm text-primary-600">Zu deinen Agenten</Link></> : <p role="status" className="text-sm text-surface-500">Verbindungsanfrage wird geprüft …</p>}</div> : <>
-          <div className="px-6 pb-6 pt-8 sm:px-9"><div aria-hidden="true" className="mb-7 flex items-center justify-center gap-5"><AgentMark name={data.client_name} large /><span className="flex h-8 w-8 items-center justify-center rounded-full border border-surface-200 dark:border-surface-700"><ArrowRightIcon className="h-4 w-4 text-surface-400" /></span><span className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary-600 text-sm font-bold text-white">LANIS</span></div>
-            <h1 className="text-center text-2xl font-semibold tracking-tight">{data.client_name} mit LANIS verbinden?</h1><p className="mt-3 text-center text-sm leading-relaxed text-surface-500">Dieser Agent möchte auf dein Schulportal zugreifen. Wähle aus, was du freigeben möchtest.</p>
-            <div className="mt-6 rounded-2xl border border-surface-200 bg-surface-50 p-4 text-sm dark:border-surface-700 dark:bg-surface-950"><p className="font-medium">{data.username} <span className="font-normal text-surface-500">· Schule {data.school_id}</span></p><p className="mt-2 break-all text-xs text-surface-500">Rückkehr zu: <span className="font-medium text-surface-700 dark:text-surface-300">{data.redirect_origin}</span></p><p className="mt-2 text-xs leading-relaxed text-surface-500">Der App-Name wurde vom Anbieter angegeben. Bestätige nur, wenn du diese Verbindung selbst gestartet hast und die Adresse kennst.</p></div>
-          </div>
-          <div className="border-y border-surface-100 px-6 py-6 dark:border-surface-800 sm:px-9"><fieldset disabled={busy || expired}><legend className="mb-4 text-sm font-semibold">Diesen Zugriff erlauben</legend><div className="space-y-3">{data.scopes.map(s => <label key={s.id} className={`flex cursor-pointer items-start gap-3 rounded-2xl border p-4 transition ${scopes.includes(s.id) ? 'border-primary-300 bg-primary-50/50 dark:border-primary-800 dark:bg-primary-950/30' : 'border-surface-200 dark:border-surface-700'}`}><input type="checkbox" checked={scopes.includes(s.id)} onChange={e => setScopes(e.target.checked ? [...scopes, s.id] : scopes.filter(v => v !== s.id))} className="mt-1 h-4 w-4 shrink-0 accent-primary-600" /><span><span className="block text-sm font-medium">{s.title}</span><span className="mt-1 block text-xs leading-relaxed text-surface-500">{s.description}</span></span></label>)}</div></fieldset><label className="mt-5 block text-xs font-medium text-surface-500">Name in deinen Einstellungen<input value={name} onChange={e => setName(e.target.value)} maxLength={100} disabled={busy} className="mt-2 w-full rounded-xl border border-surface-200 bg-surface-50 px-4 py-3 text-sm text-surface-900 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:border-surface-700 dark:bg-surface-950 dark:text-white" /></label></div>
-          <div className="p-6 sm:px-9"><p className="mb-4 text-xs leading-relaxed text-surface-500">Freigegebene Inhalte werden an den Anbieter dieses Agenten übertragen. <Link to="/privacy-policy" target="_blank" rel="noreferrer" className="underline underline-offset-2">Mehr zum Datenschutz</Link></p><p className="mb-5 flex items-start gap-2 text-xs leading-relaxed text-surface-500"><ShieldCheckIcon className="h-5 w-5 shrink-0 text-primary-600" />Dein Passwort wird nicht weitergegeben. Du kannst diese Verbindung jederzeit unter Einstellungen → Agents trennen.</p>{error && <p role="alert" className="mb-4 rounded-xl bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-300">{error}</p>}<button onClick={() => decide(true)} disabled={busy || expired || !scopes.length || !name.trim()} className={`${agentButton} w-full`}>{busy ? 'Du wirst zurückgeleitet …' : 'Zugriff erlauben'}</button><button onClick={() => decide(false)} disabled={busy || expired} className="mt-3 w-full rounded-xl px-5 py-3 text-sm font-medium text-surface-500 hover:bg-surface-100 disabled:opacity-50 dark:hover:bg-surface-800">Ablehnen</button>{!scopes.length && <p role="status" className="mt-3 text-center text-xs text-surface-500">Wähle mindestens eine Berechtigung oder lehne die Anfrage ab.</p>}</div>
-        </>}
-      </section><p className="mt-6 text-center text-xs text-surface-400">Deine Entscheidung gilt nur für diese Verbindung.</p>
-    </div>
+  if (!request) return <main className="mx-auto max-w-md px-5 py-16">{meta}<AppIcon alt="LANIS" className="mb-6 h-12 w-12 rounded-xl" /><h1 className="page-title">Keine Anfrage</h1><p className="page-subtitle">Starte die Verbindung in deinem Agenten.</p><Link className="btn btn-secondary mt-6" to="/settings/agents">Zu Agents</Link></main>;
+  if (!isAuthenticated) return <>{meta}<p className="bg-primary-50 px-4 py-3 text-center text-sm text-primary-800 dark:bg-primary-950 dark:text-primary-200">Anmelden, um den Zugriff zu wählen.</p><LoginForm /></>;
+  return <main className="flex min-h-[100dvh] items-center justify-center px-4 py-10">{meta}
+    <section className="card w-full max-w-md sm:p-8">
+      <AppIcon alt="LANIS" className="mb-6 h-12 w-12 rounded-xl" />
+      {!data ? <><h1 className="page-title">{error ? 'Verbindung nicht verfügbar' : 'Agent verbinden'}</h1>{error ? <><p role="alert" className="mt-3 text-sm text-surface-500">{error}</p>{!expired && <button className="btn btn-secondary mt-5" onClick={() => setRetry(v => v + 1)}>Erneut versuchen</button>}<Link to="/settings/agents" className="btn btn-ghost mt-5">Zu Agents</Link></> : <p role="status" className="mt-3 text-sm text-surface-500">Laden …</p>}</> : <>
+        <h1 className="page-title break-words">{data.client_name} verbinden</h1><p className="mt-2 text-sm text-surface-500">{data.username} · Schule {data.school_id}</p><p className="mt-1 break-all text-xs text-surface-500">{data.redirect_origin}</p>
+        <div className="mt-6"><AccessPicker mode={mode} onMode={selectMode} scopes={scopes} onScopes={setScopes} presets={data.presets} available={data.scopes} disabled={busy || expired} /></div>
+        <details className="mt-5 text-xs text-surface-500"><summary className="cursor-pointer">Verbindung prüfen</summary><p className="mt-2 break-all">Zurück zu {data.redirect_origin}. App-Name vom Anbieter angegeben.</p><Link to="/privacy-policy" target="_blank" rel="noreferrer" className="mt-2 inline-block underline underline-offset-2">Datenschutz</Link></details>
+        {error && <p role="alert" className="mt-4 text-sm text-red-600 dark:text-red-400">{error}</p>}
+        <div className="mt-6 flex gap-2"><button className="btn btn-secondary flex-1" onClick={() => decide(false)} disabled={busy || expired}>Ablehnen</button><button className="btn btn-primary flex-1" onClick={() => decide(true)} disabled={busy || expired || !scopes.length}>{busy ? 'Verbinden …' : 'Verbinden'}</button></div>
+        {mode === 'custom' && !scopes.length && <p role="status" className="mt-3 text-xs text-surface-500">Mindestens eine Berechtigung wählen.</p>}
+      </>}
+    </section>
   </main>;
-};
-export default AgentAuthorization;
+}
