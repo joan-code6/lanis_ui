@@ -72,3 +72,15 @@ test('settings links remain issuer-bound through backend selection and login', (
   assert.equal(switchUrl.searchParams.get('returnTo'), path);
   assert.equal(agents.agentReturnPath('/settings/account?issuer=https://school.example'), null);
 });
+
+test('backend proposal ignores an independently injected backend and requires a valid agent destination', () => {
+  const { agents } = loadRouting();
+  const params = new URLSearchParams({ backend: 'https://attacker.example', returnTo: '/agents/authorize?request=opaque&issuer=https://SCHOOL.example/' });
+  assert.equal(agents.agentBackendProposal(params), 'https://school.example');
+  params.set('returnTo', '/settings/agents?issuer=https://school.example');
+  assert.equal(agents.agentBackendProposal(params), 'https://school.example');
+  params.set('returnTo', 'https://attacker.example');
+  assert.equal(agents.agentBackendProposal(params), null);
+  params.delete('returnTo');
+  assert.equal(agents.agentBackendProposal(params), null);
+});

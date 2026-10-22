@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { agentReturnPath } from '../../utils/agentBackend';
+import { agentReturnPath, agentBackendProposal } from '../../utils/agentBackend';
 import {
   ArrowPathIcon,
   ArrowTopRightOnSquareIcon,
@@ -32,7 +32,7 @@ const CustomBackend: React.FC = () => {
   const { isAuthenticated, logout } = useAuth();
   const [params] = useSearchParams();
   const returnTo = agentReturnPath(params.get("returnTo"));
-  const proposedBackend = returnTo ? params.get("backend") : null;
+  const proposedBackend = agentBackendProposal(params);
   const initialCustomUrl = useMemo(() => getCustomBackendUrl(), []);
   const [backendUrl, setBackendUrl] = useState(proposedBackend || initialCustomUrl || getApiBaseUrl());
   const [requestState, setRequestState] = useState<RequestState>('idle');

@@ -333,7 +333,7 @@ const PrivacyPolicy: React.FC = () => {
           <hr className="border-black/[0.06]" />
 
           <p className="text-xs text-[#bbb] pt-2">
-            Stand: 17. Oktober 2026
+            Stand: 23. Oktober 2026
           </p>
         </section>
       </div>

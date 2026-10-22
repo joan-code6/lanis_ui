@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { API_BASE_URL } from '../../services/api';
 import { normalizeBackendUrl } from '../../utils/backendConfig';
@@ -70,7 +70,7 @@ export default function AgentsSettings() {
   const [copied, setCopied] = useState(false);
   const requestVersion = useRef(0);
   const owner = useRef(token);
-  owner.current = token;
+  useLayoutEffect(() => { owner.current = token; }, [token]);
   const applyChange = (id: string, changes: Partial<AgentConnection>) => {
     if (owner.current !== token) return;
     requestVersion.current++;

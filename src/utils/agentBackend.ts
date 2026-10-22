@@ -28,3 +28,9 @@ export function agentSettingsSwitchPath(issuer: string): string {
   const normalized = normalizeBackendUrl(issuer);
   return '/set-custom-backend?' + new URLSearchParams({ backend: normalized, returnTo: '/settings/agents?' + new URLSearchParams({ issuer: normalized }) });
 }
+
+// The suggested server comes from the validated return destination only.
+export function agentBackendProposal(params: URLSearchParams): string | null {
+  const returnTo = agentReturnPath(params.get('returnTo'));
+  return returnTo ? new URL(returnTo, 'https://lanis.invalid').searchParams.get('issuer') : null;
+}
