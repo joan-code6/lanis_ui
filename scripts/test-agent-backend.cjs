@@ -99,3 +99,19 @@ test('callback hosts normalize default ports and still reject mismatches', () =>
     ['javascript:alert(1)', 'claude.ai'],
   ]) assert.throws(() => agents.agentCallbackUrl(url, host));
 });
+
+
+test('authentication loss preserves validated agent destinations through login', () => {
+  const { agents } = loadRouting();
+  for (const path of [
+    '/settings/agents?issuer=https://school.example',
+    '/agents/authorize?request=opaque&issuer=https://school.example',
+  ]) {
+    const login = new URL(agents.agentLoginPath(path), 'https://ui.example');
+    assert.equal(login.pathname, '/login');
+    assert.equal(login.searchParams.get('returnTo'), agents.agentReturnPath(path));
+  }
+  for (const path of ['/messages', '/settings/agents?issuer=javascript:bad', 'https://evil.example']) {
+    assert.equal(agents.agentLoginPath(path), '/login');
+  }
+});

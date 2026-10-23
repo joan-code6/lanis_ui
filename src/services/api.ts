@@ -10,6 +10,7 @@ import {
   WahlenSubmission,
 } from '../types';
 import { getMockResponse } from '../components/demo/mockApi';
+import { agentLoginPath } from '../utils/agentBackend';
 import { DEFAULT_API_BASE_URL, getApiBaseUrl } from '../utils/backendConfig';
 import {
   clearSignedOutAccountData,
@@ -1396,9 +1397,7 @@ apiClient.interceptors.response.use(
         console.warn('Failed to remove push subscription after authentication loss:', cleanupError);
       }
       if (captureAccountDataGeneration() === signedOutGeneration) {
-        window.location.href = window.location.pathname === '/agents/authorize'
-          ? window.location.pathname + window.location.search
-          : '/login';
+        window.location.href = agentLoginPath(window.location.pathname + window.location.search);
       }
     }
     return Promise.reject(error);

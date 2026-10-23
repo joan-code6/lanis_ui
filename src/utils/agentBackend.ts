@@ -43,3 +43,8 @@ export function agentCallbackUrl(value: string, expectedHost: string): string {
   if (target.host !== expected.host) throw new Error('Invalid callback');
   return target.href;
 }
+
+export function agentLoginPath(destination: string): string {
+  const returnTo = agentReturnPath(destination);
+  return returnTo ? '/login?' + new URLSearchParams({ returnTo }) : '/login';
+}
