@@ -50,7 +50,8 @@ try {
     await incidentBar.focus();
     const tooltip = await incidentBar.$('[role=tooltip]');
     assert.match(await tooltip.evaluate(el => el.textContent), /2690 bestätigte Checks/);
-    assert.equal(await tooltip.$$eval('code', codes => codes.length > 0), true);
+    assert.equal(await tooltip.$$eval('code', codes => codes.length), 0);
+    assert.doesNotMatch(await tooltip.evaluate(el => el.textContent), /Störung|login_failed/);
     await tooltip.screenshot({ path: `/tmp/lanis-status-tooltip-${width}.png` });
     await page.evaluate(() => document.documentElement.classList.add('dark'));
     await tooltip.screenshot({ path: `/tmp/lanis-status-tooltip-dark-${width}.png` });

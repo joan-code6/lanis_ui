@@ -179,7 +179,7 @@ export default function StatusPage() {
                     className="pointer-events-auto absolute bottom-full left-[var(--tooltip-left,0px)] z-20 hidden w-72 max-w-[calc(100vw-1rem)] cursor-text select-text rounded-xl border border-surface-200 bg-white p-3 text-left text-xs text-surface-700 shadow-xl group-hover:block group-focus:block dark:border-surface-700 dark:bg-surface-900 dark:text-surface-200"
                   >
                     <span className="mb-3 block text-[10px] font-semibold uppercase tracking-[0.12em] text-surface-400">
-                      {day.incidents.length ? 'Störung' : 'Verfügbarkeit'} · {shortRange
+                      {shortRange
                         ? day.label.split(' · ')[0]
                         : new Date(`${day.key}T00:00:00Z`).toLocaleDateString('de-DE', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })}
                     </span>
@@ -204,7 +204,6 @@ export default function StatusPage() {
                             ))}
                             <span className="rounded-md bg-surface-100 px-1.5 py-0.5 text-[10px] text-surface-500 dark:bg-surface-800 dark:text-surface-400">{incident.checks ?? 1} bestätigte Checks</span>
                           </span>
-                          {incident.error && <code className="mt-2 block break-words rounded-md bg-surface-50 px-2 py-1 text-[10px] text-surface-500 dark:bg-surface-950 dark:text-surface-400">{incident.error}</code>}
                         </span>
                       ))}
                     </span>
