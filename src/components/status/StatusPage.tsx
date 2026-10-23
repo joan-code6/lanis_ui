@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { Link } from 'react-router-dom';
 import AppIcon from '../AppIcon';
 import SEO from '../seo/SEO';
@@ -17,6 +17,13 @@ import {
 import { getCustomBackendUrl } from '../../utils/backendConfig';
 
 export default function StatusPage() {
+  const tooltipPrefix = useId();
+  const positionTooltip = (element: HTMLElement) => {
+    const rect = element.getBoundingClientRect();
+    const width = 224;
+    const left = Math.max(8, Math.min(rect.left + rect.width / 2 - width / 2, document.documentElement.clientWidth - width - 8));
+    element.style.setProperty('--tooltip-left', `${left - rect.left}px`);
+  };
   const [windowKey, setWindowKey] = useState<'24h' | '7d' | '30d' | '90d'>('90d');
   const { data, loading, error, status, refresh } = usePublicStatus();
   const customBackend = getCustomBackendUrl();
@@ -46,7 +53,9 @@ export default function StatusPage() {
     ? (data?.history_windows?.[windowKey] ?? Array.from({ length: windowKey === '24h' ? 48 : 28 }, () => ({ start: '', end: '', status: 'unknown' as const, uptime_percent: null, coverage_percent: 0 })))
       .map((bucket, index) => ({ key: String(index), status: bucket.status, incidents: (data?.incidents ?? []).filter(incident => {
         const start = Date.parse(incident.started_at || incident.checked_at || '');
-        const end = incident.resolved_at ? Date.parse(incident.resolved_at) : Date.parse(data?.generated_at || '');
+        const end = !Object.prototype.hasOwnProperty.call(incident, 'resolved_at')
+          ? start + 1
+          : incident.resolved_at ? Date.parse(incident.resolved_at) : Date.parse(data?.generated_at || '');
         return start < Date.parse(bucket.end) && Math.max(start + 1, end) > Date.parse(bucket.start);
       }), label: bucket.start ? `${formatTimestamp(bucket.start)} — ${formatTimestamp(bucket.end)} · Verfügbarkeit ${formatPercent(bucket.uptime_percent)} · Abdeckung ${formatPercent(bucket.coverage_percent)}` : 'Keine Zeitverlaufsdaten' }))
     : (data?.daily.slice(-selectedDays) ?? Array.from({ length: selectedDays }, (_, index) => ({ day: String(index), status: 'unknown' as const })))
@@ -159,10 +168,13 @@ export default function StatusPage() {
               data-status-history
             >
               {historyDays.map((day, index) => (
-                <span key={day.key} tabIndex={0} aria-label={`${day.label}: ${statusLabels[day.status]}`}
+                <span key={day.key} tabIndex={0}
+                  onMouseEnter={event => positionTooltip(event.currentTarget)}
+                  onFocus={event => positionTooltip(event.currentTarget)}
+                  aria-describedby={`${tooltipPrefix}-${windowKey}-${index}`} aria-label={`${day.label}: ${statusLabels[day.status]}`}
                   title={`${day.label}: ${statusLabels[day.status]}`}
                   className={`group relative min-w-0 outline-none ${historyBubbleClasses[windowKey]} ${statusColors[day.status]} focus-visible:ring-2 focus-visible:ring-primary-500`}>
-                  <span role="tooltip" className={`pointer-events-none absolute bottom-full z-20 mb-2 hidden w-56 rounded-lg border bg-white p-3 text-xs text-surface-700 shadow-lg group-hover:block group-focus:block dark:bg-surface-900 dark:text-surface-200 ${index < historyDays.length / 3 ? 'left-0' : index >= historyDays.length * 2 / 3 ? 'right-0' : 'left-1/2 -translate-x-1/2'}`}>{day.label}: {statusLabels[day.status]}{day.incidents.map((incident, index) => <span key={index} className="mt-2 block border-t pt-2">{formatIncidentRange(incident)}<br />Bestätigte Checks: {incident.checks ?? 1} · Betroffene Dienste: {incident.affected_features?.map(name => name === 'login' ? 'Anmeldung' : 'Module').join(', ') || 'Unbekannt'}{incident.error && <code className="mt-2 block break-words">{incident.error}</code>}</span>)}</span>
+                  <span id={`${tooltipPrefix}-${windowKey}-${index}`} role="tooltip" className={`pointer-events-none absolute bottom-full z-20 mb-2 hidden w-56 rounded-lg border bg-white p-3 text-xs text-surface-700 shadow-lg group-hover:block group-focus:block dark:bg-surface-900 dark:text-surface-200 left-[var(--tooltip-left,0px)]`}>{day.label}: {statusLabels[day.status]}{day.incidents.map((incident, index) => <span key={index} className="mt-2 block border-t pt-2">{formatIncidentRange(incident)}<br />Bestätigte Checks: {incident.checks ?? 1} · Betroffene Dienste: {incident.affected_features?.map(name => name === 'login' ? 'Anmeldung' : 'Module').join(', ') || 'Unbekannt'}{incident.error && <code className="mt-2 block break-words">{incident.error}</code>}</span>)}</span>
                 </span>
               ))}
             </div>
