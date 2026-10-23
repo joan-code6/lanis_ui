@@ -1,3 +1,4 @@
+import { appStorage } from '../../utils/appStorage';
 import { notifyDemoCacheWrite } from '../../utils/demoMode';
 import { projectTimetableDays } from '../../utils/timetableView';
 import { demoModules, demoUser } from './demoData';
@@ -33,7 +34,7 @@ const weekDate = (dayOffset: number) => {
 const readMockStorage = (key: string): unknown => {
   if (typeof window === 'undefined') return undefined;
   try {
-    const value = window.localStorage.getItem(key);
+    const value = appStorage.getItem(key);
     return value ? JSON.parse(value) : undefined;
   } catch {
     return undefined;
@@ -44,7 +45,7 @@ const writeMockStorage = (key: string, value: unknown) => {
   if (typeof window === 'undefined') return;
   try {
     const serialized = JSON.stringify(value);
-    window.localStorage.setItem(key, serialized);
+    appStorage.setItem(key, serialized);
     notifyDemoCacheWrite(key, serialized);
   } catch {
     // Demo mode still works when storage is blocked or unavailable.

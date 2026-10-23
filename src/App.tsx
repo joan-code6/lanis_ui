@@ -1,3 +1,4 @@
+import { isImpersonating } from './utils/appStorage';
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
@@ -72,7 +73,7 @@ const PreferencesGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
   }
   const onboardingDone = preferences.onboarding.version >= CURRENT_ONBOARDING_VERSION
     && (preferences.onboarding.status === 'completed' || preferences.onboarding.status === 'skipped');
-  if (!onboardingDone) return <Navigate to="/onboarding" replace />;
+  if (!onboardingDone && !isImpersonating) return <Navigate to="/onboarding" replace />;
   return <>{children}</>;
 };
 

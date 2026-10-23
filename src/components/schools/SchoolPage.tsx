@@ -1,3 +1,4 @@
+import { appStorage } from '../../utils/appStorage';
 import React, { useEffect, useState } from 'react';
 import { Navigate, useParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -133,7 +134,7 @@ const SchoolPage: React.FC = () => {
   }, [schoolId, revision]);
 
   useEffect(() => {
-    if (school && !localStorage.getItem(THEME_COLOR_KEY)) setThemeColor(themeForColor(school.palette.primary));
+    if (school && !appStorage.getItem(THEME_COLOR_KEY)) setThemeColor(themeForColor(school.palette.primary));
   }, [school, setThemeColor]);
 
   if (isAuthenticated) return <Navigate to="/dashboard" replace />;

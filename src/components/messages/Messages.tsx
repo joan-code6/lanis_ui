@@ -1,3 +1,4 @@
+import { appStorage } from '../../utils/appStorage';
 import { ConversationSkeleton } from '../shared/ModuleLoadingSkeletons';
 import { useCachedState } from '../../hooks/useCachedState';
 import { readPersonalCache, writePersonalCache } from '../../utils/accountDataWrites';
@@ -99,7 +100,7 @@ const Messages: React.FC = () => {
       if (!raw) return {};
       const parsed: { data: Record<string, string>; ts: number } = JSON.parse(raw);
       if (Date.now() - parsed.ts > USERNAME_CACHE_TTL) {
-        localStorage.removeItem(USERNAME_CACHE_KEY);
+        appStorage.removeItem(USERNAME_CACHE_KEY);
         return {};
       }
       return parsed.data;

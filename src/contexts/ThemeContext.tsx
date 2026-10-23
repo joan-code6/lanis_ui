@@ -1,3 +1,4 @@
+import { appStorage } from '../utils/appStorage';
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { ThemeColor, ThemeMode } from '../types';
 import { applyThemeAssets, isThemeColor, THEME_COLOR_HEX } from '../utils/themeAssets';
@@ -96,12 +97,12 @@ function applyPrimaryTheme(color: ThemeColor) {
 export const ThemeProvider: React.FC<{ children: React.ReactNode; initialColor?: ThemeColor }> = ({ children, initialColor }) => {
   const [themeMode, setThemeModeState] = useState<ThemeMode>(() => {
     if (typeof window === 'undefined') return 'system';
-    const storedMode = localStorage.getItem(THEME_MODE_KEY);
+    const storedMode = appStorage.getItem(THEME_MODE_KEY);
     if (storedMode === 'system' || storedMode === 'light' || storedMode === 'dark' || storedMode === 'oled') {
       return storedMode;
     }
-    if (localStorage.getItem(OLED_MODE_KEY) === 'true') return 'oled';
-    const storedDark = localStorage.getItem(DARK_MODE_KEY);
+    if (appStorage.getItem(OLED_MODE_KEY) === 'true') return 'oled';
+    const storedDark = appStorage.getItem(DARK_MODE_KEY);
     if (storedDark === 'true') return 'dark';
     if (storedDark === 'false') return 'light';
     return 'system';
@@ -110,7 +111,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode; initialColor?:
 
   const [themeColor, setThemeColorState] = useState<ThemeColor>(() => {
     if (typeof window === 'undefined') return initialColor ?? 'ruby';
-    const storedTheme = localStorage.getItem(THEME_COLOR_KEY);
+    const storedTheme = appStorage.getItem(THEME_COLOR_KEY);
     return isThemeColor(storedTheme) ? storedTheme : 'ruby';
   });
 
@@ -121,10 +122,10 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode; initialColor?:
     setThemeModeState(mode);
     const generation = captureAccountDataGeneration();
     if (!canWriteAccountData(generation)) return;
-    localStorage.setItem(THEME_MODE_KEY, mode);
-    localStorage.setItem(OLED_MODE_KEY, String(mode === 'oled'));
-    if (mode === 'system') localStorage.removeItem(DARK_MODE_KEY);
-    else localStorage.setItem(DARK_MODE_KEY, String(mode === 'dark' || mode === 'oled'));
+    appStorage.setItem(THEME_MODE_KEY, mode);
+    appStorage.setItem(OLED_MODE_KEY, String(mode === 'oled'));
+    if (mode === 'system') appStorage.removeItem(DARK_MODE_KEY);
+    else appStorage.setItem(DARK_MODE_KEY, String(mode === 'dark' || mode === 'oled'));
   }, []);
 
   const toggleDark = useCallback(() => {
@@ -139,7 +140,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode; initialColor?:
     setThemeColorState(color);
     const generation = captureAccountDataGeneration();
     if (!canWriteAccountData(generation)) return;
-    localStorage.setItem(THEME_COLOR_KEY, color);
+    appStorage.setItem(THEME_COLOR_KEY, color);
     applyPrimaryTheme(color);
   }, []);
 

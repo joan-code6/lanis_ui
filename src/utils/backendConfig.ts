@@ -1,3 +1,4 @@
+import { isImpersonating, appStorage } from './appStorage';
 export const CUSTOM_BACKEND_STORAGE_KEY = 'lanis_custom_backend_url';
 
 const BACKEND_SCOPED_STORAGE_KEYS = [
@@ -62,10 +63,10 @@ export const DEFAULT_API_BASE_URL = normalizeBackendUrl(
 );
 
 export function getCustomBackendUrl(): string | null {
-  if (typeof window === 'undefined') return null;
+  if (typeof window === 'undefined' || isImpersonating) return null;
 
   try {
-    const stored = window.localStorage.getItem(CUSTOM_BACKEND_STORAGE_KEY);
+    const stored = appStorage.getItem(CUSTOM_BACKEND_STORAGE_KEY);
     return stored ? normalizeBackendUrl(stored) : null;
   } catch {
     return null;
@@ -78,24 +79,25 @@ export function getApiBaseUrl(): string {
 
 export function setCustomBackendUrl(value: string): string {
   const normalized = normalizeBackendUrl(value);
-  window.localStorage.setItem(CUSTOM_BACKEND_STORAGE_KEY, normalized);
+  appStorage.setItem(CUSTOM_BACKEND_STORAGE_KEY, normalized);
   return normalized;
 }
 
 export function resetCustomBackendUrl(): void {
-  window.localStorage.removeItem(CUSTOM_BACKEND_STORAGE_KEY);
+  appStorage.removeItem(CUSTOM_BACKEND_STORAGE_KEY);
 }
 
 export function clearBackendScopedStorage(): void {
   for (const key of BACKEND_SCOPED_STORAGE_KEYS) {
-    window.localStorage.removeItem(key);
+    appStorage.removeItem(key);
   }
-  for (let index = window.localStorage.length - 1; index >= 0; index -= 1) {
-    const key = window.localStorage.key(index);
+  for (let index = appStorage.length - 1; index >= 0; index -= 1) {
+    const key = appStorage.key(index);
     if (key && BACKEND_SCOPED_STORAGE_PREFIXES.some(prefix => key.startsWith(prefix))) {
-      window.localStorage.removeItem(key);
+      appStorage.removeItem(key);
     }
   }
+  if (isImpersonating) return;
   for (const key of BACKEND_SCOPED_COOKIE_KEYS) {
     document.cookie = `${key}=;max-age=0;path=/;SameSite=Lax`;
   }

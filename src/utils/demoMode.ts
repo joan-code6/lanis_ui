@@ -1,3 +1,4 @@
+import { appStorage } from './appStorage';
 export const DEMO_STORAGE_SNAPSHOT_KEY = '__demo_storage_snapshot';
 export const DEMO_TAB_ID_KEY = '__demo_tab_id';
 const DEMO_ACTIVE_SESSION_KEY = '__demo_active_session';
@@ -38,7 +39,7 @@ export const getDemoTabId = (): string | null => {
 const readSnapshotStore = (): Record<string, Record<string, string | null>> => {
   if (typeof window === 'undefined') return {};
   try {
-    const parsed = JSON.parse(window.localStorage.getItem(DEMO_STORAGE_SNAPSHOT_KEY) || '{}');
+    const parsed = JSON.parse(appStorage.getItem(DEMO_STORAGE_SNAPSHOT_KEY) || '{}');
     if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
     return parsed as Record<string, Record<string, string | null>>;
   } catch {
@@ -58,14 +59,14 @@ export const writeDemoStorageSnapshot = (tabId: string, values: Record<string, s
   if (values) snapshots[tabId] = values;
   else delete snapshots[tabId];
 
-  if (Object.keys(snapshots).length === 0) window.localStorage.removeItem(DEMO_STORAGE_SNAPSHOT_KEY);
-  else window.localStorage.setItem(DEMO_STORAGE_SNAPSHOT_KEY, JSON.stringify(snapshots));
+  if (Object.keys(snapshots).length === 0) appStorage.removeItem(DEMO_STORAGE_SNAPSHOT_KEY);
+  else appStorage.setItem(DEMO_STORAGE_SNAPSHOT_KEY, JSON.stringify(snapshots));
 };
 
 const readActiveDemoSession = (): { tabId: string; lastSeen: number } | null => {
   if (typeof window === 'undefined') return null;
   try {
-    const parsed = JSON.parse(window.localStorage.getItem(DEMO_ACTIVE_SESSION_KEY) || 'null');
+    const parsed = JSON.parse(appStorage.getItem(DEMO_ACTIVE_SESSION_KEY) || 'null');
     if (typeof parsed?.tabId !== 'string' || typeof parsed?.lastSeen !== 'number') return null;
     return parsed;
   } catch {
@@ -75,10 +76,10 @@ const readActiveDemoSession = (): { tabId: string; lastSeen: number } | null => 
 
 export const keepDemoSessionAlive = (tabId: string): (() => void) => {
   if (typeof window === 'undefined') return () => {};
-  const touch = () => window.localStorage.setItem(DEMO_ACTIVE_SESSION_KEY, JSON.stringify({ tabId, lastSeen: Date.now() }));
+  const touch = () => appStorage.setItem(DEMO_ACTIVE_SESSION_KEY, JSON.stringify({ tabId, lastSeen: Date.now() }));
   const release = () => {
     const active = readActiveDemoSession();
-    if (active?.tabId === tabId) window.localStorage.removeItem(DEMO_ACTIVE_SESSION_KEY);
+    if (active?.tabId === tabId) appStorage.removeItem(DEMO_ACTIVE_SESSION_KEY);
   };
   touch();
   const interval = window.setInterval(touch, DEMO_HEARTBEAT_INTERVAL);
@@ -106,14 +107,14 @@ export const restoreInterruptedDemoSession = (): void => {
 
   try {
     Object.entries(snapshot).forEach(([key, value]) => {
-      if (typeof value === 'string') window.localStorage.setItem(key, value);
-      else window.localStorage.removeItem(key);
+      if (typeof value === 'string') appStorage.setItem(key, value);
+      else appStorage.removeItem(key);
     });
   } catch {
     // A malformed snapshot should never prevent the normal app from loading.
   } finally {
     writeDemoStorageSnapshot(tabId, null);
-    if (active?.tabId === tabId) window.localStorage.removeItem(DEMO_ACTIVE_SESSION_KEY);
+    if (active?.tabId === tabId) appStorage.removeItem(DEMO_ACTIVE_SESSION_KEY);
   }
 };
 

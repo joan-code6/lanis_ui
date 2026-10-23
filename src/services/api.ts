@@ -1,3 +1,4 @@
+import { isImpersonating, appStorage } from '../utils/appStorage';
 import {
   SchoolListResponse,
   DistrictSchoolsResponse,
@@ -30,12 +31,12 @@ interface CachedSchoolData {
 }
 
 function getCachedSchoolData(): SchoolListResponse | null {
-  const cached = localStorage.getItem(SCHOOL_CACHE_KEY);
+  const cached = appStorage.getItem(SCHOOL_CACHE_KEY);
   if (!cached) return null;
   try {
     const parsed: CachedSchoolData = JSON.parse(cached);
     if (Date.now() - parsed.timestamp > SCHOOL_CACHE_TTL) {
-      localStorage.removeItem(SCHOOL_CACHE_KEY);
+      appStorage.removeItem(SCHOOL_CACHE_KEY);
       return null;
     }
     return parsed.data;
@@ -46,7 +47,7 @@ function getCachedSchoolData(): SchoolListResponse | null {
 
 function setCachedSchoolData(data: SchoolListResponse): void {
   const cached: CachedSchoolData = { data, timestamp: Date.now() };
-  localStorage.setItem(SCHOOL_CACHE_KEY, JSON.stringify(cached));
+  appStorage.setItem(SCHOOL_CACHE_KEY, JSON.stringify(cached));
 }
 
 function normalize(text: string): string {
@@ -360,15 +361,15 @@ const REFRESH_TOKEN_KEY = 'auth_refresh_token';
 const TOKEN_EXPIRES_KEY = 'auth_expires_at';
 
 function getAccessToken(): string | null {
-  return localStorage.getItem(ACCESS_TOKEN_KEY);
+  return appStorage.getItem(ACCESS_TOKEN_KEY);
 }
 
 function getRefreshToken(): string | null {
-  return localStorage.getItem(REFRESH_TOKEN_KEY);
+  return appStorage.getItem(REFRESH_TOKEN_KEY);
 }
 
 function isTokenExpiringSoon(thresholdMs: number = 5 * 60 * 1000): boolean {
-  const expiresAt = localStorage.getItem(TOKEN_EXPIRES_KEY);
+  const expiresAt = appStorage.getItem(TOKEN_EXPIRES_KEY);
   if (!expiresAt) return true;
   return Date.now() > parseInt(expiresAt, 10) - thresholdMs;
 }
@@ -377,7 +378,7 @@ let refreshPromise: Promise<boolean> | null = null;
 
 async function refreshAccessToken(): Promise<boolean> {
   const writeGeneration = captureAccountDataGeneration();
-  const currentAccessToken = localStorage.getItem(ACCESS_TOKEN_KEY);
+  const currentAccessToken = appStorage.getItem(ACCESS_TOKEN_KEY);
   if (currentAccessToken) rememberAccountToken(currentAccessToken);
   const refreshTokenValue = getRefreshToken();
   if (!refreshTokenValue) return false;
@@ -389,8 +390,8 @@ async function refreshAccessToken(): Promise<boolean> {
 
     if (!canWriteAccountData(writeGeneration) || getRefreshToken() !== refreshTokenValue) return false;
     const expiresAt = Date.now() + response.data.expires_in * 1000;
-    localStorage.setItem(ACCESS_TOKEN_KEY, response.data.access_token);
-    localStorage.setItem(TOKEN_EXPIRES_KEY, expiresAt.toString());
+    appStorage.setItem(ACCESS_TOKEN_KEY, response.data.access_token);
+    appStorage.setItem(TOKEN_EXPIRES_KEY, expiresAt.toString());
 
     return true;
   } catch {
@@ -744,7 +745,7 @@ export const whatsappAPI = {
 export async function unsubscribeBrowserPushSubscription(
   subscription?: PushSubscription | null,
 ): Promise<void> {
-  if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return;
+  if (isImpersonating || typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return;
   const registration = await navigator.serviceWorker.getRegistration();
   const currentSubscription = subscription ?? await registration?.pushManager.getSubscription();
   if (currentSubscription) await currentSubscription.unsubscribe();
@@ -1295,7 +1296,7 @@ apiClient.interceptors.request.use(
     const generation = captureAccountDataGeneration();
     requestGenerations.set(config, generation);
     // Demo mode: mock all responses
-    if (localStorage.getItem('__demo_mode') === '1' && window.location.pathname.startsWith('/demo')) {
+    if (appStorage.getItem('__demo_mode') === '1' && window.location.pathname.startsWith('/demo')) {
       config.adapter = (mockConfig: any) => {
         const mock = getMockResponse(mockConfig.url || '', mockConfig.method || 'get', mockConfig);
         return Promise.resolve({
@@ -1339,7 +1340,11 @@ apiClient.interceptors.response.use(
   async (error) => {
     if (staleRequest(error.config)) return Promise.reject(new axios.CanceledError('Session changed'));
     if (['/login', '/logout', '/notifications/unsubscribe'].includes(error.config?.url || '')) return Promise.reject(error);
-    if (error.response?.status === 401 && localStorage.getItem('__demo_mode') !== '1') {
+    if (isImpersonating && error.response?.status === 401) {
+      window.dispatchEvent(new Event('lanis-preview-end'));
+      return Promise.reject(error);
+    }
+    if (error.response?.status === 401 && appStorage.getItem('__demo_mode') !== '1') {
       if (isAccountDataDeletionInProgress()) return Promise.reject(error);
       // Don't try to refresh if the request was already to /auth/refresh
       const isRefreshRequest = error.config?.url === '/auth/refresh';
@@ -1363,8 +1368,8 @@ apiClient.interceptors.response.use(
               return Promise.reject(error);
             }
             const expiresAt = Date.now() + refreshResponse.data.expires_in * 1000;
-            localStorage.setItem(ACCESS_TOKEN_KEY, refreshResponse.data.access_token);
-            localStorage.setItem(TOKEN_EXPIRES_KEY, expiresAt.toString());
+            appStorage.setItem(ACCESS_TOKEN_KEY, refreshResponse.data.access_token);
+            appStorage.setItem(TOKEN_EXPIRES_KEY, expiresAt.toString());
 
             // Retry the original request with the new token
             if (requestConfig) {

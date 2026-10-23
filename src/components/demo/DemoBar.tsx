@@ -1,3 +1,4 @@
+import { appStorage } from '../../utils/appStorage';
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { InformationCircleIcon } from '@heroicons/react/24/outline';
@@ -6,7 +7,7 @@ const DemoBar: React.FC = () => {
   const navigate = useNavigate();
 
   const handleExit = () => {
-    localStorage.removeItem('__demo_mode');
+    appStorage.removeItem('__demo_mode');
     navigate('/');
   };
 

@@ -23,7 +23,10 @@ function loadRouting() {
     vm.runInNewContext(output, { ...context, exports, require: requireFn }, { filename: file });
     return exports;
   };
-  const backend = evaluate('backendConfig.ts', () => { throw Error('Unexpected dependency'); });
+  const backend = evaluate('backendConfig.ts', name => {
+    assert.equal(name, './appStorage');
+    return { appStorage: storage, isImpersonating: false };
+  });
   const agents = evaluate('agentBackend.ts', name => { assert.equal(name, './backendConfig'); return backend; });
   return { backend, agents, storage };
 }

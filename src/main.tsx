@@ -1,7 +1,7 @@
-import React from 'react'
+import { isImpersonating } from './utils/appStorage'
 import ReactDOM from 'react-dom/client'
 import '@khmyznikov/pwa-install'
-import App from './App.tsx'
+import { mountApplication } from './previewBoot.tsx'
 import './index.css'
 import { CUSTOM_BACKEND_STORAGE_KEY } from './utils/backendConfig.ts'
 
@@ -24,13 +24,9 @@ const bootObserver = new MutationObserver((mutations) => {
 })
 bootObserver.observe(appRoot, { childList: true })
 
-ReactDOM.createRoot(appRoot).render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>,
-)
+void mountApplication(ReactDOM.createRoot(appRoot))
 
-if ('serviceWorker' in navigator && import.meta.env.PROD) {
+if ('serviceWorker' in navigator && import.meta.env.PROD && !isImpersonating) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' }).catch((error) => {
       console.warn('Service worker registration failed:', error)

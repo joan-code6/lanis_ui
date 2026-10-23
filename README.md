@@ -235,3 +235,19 @@ Work in a dedicated Git worktree when contributing in the combined LANIS workspa
 - **Prerendering fails:** inspect the Node/Vite error from `scripts/prerender.mjs`. Public page imports and render-time code must work without browser globals; keep browser-only work in effects or lazy components. A missing `dist/index.html` means the Vite build has not completed.
 
 Authentication tokens, preferences, and some module data are stored in the browser. Use test accounts for authenticated development, and keep credentials, tokens, `.env.local`, and personal school data out of commits and bug reports.
+
+### Operator account previews
+
+The private admin portal can launch a read-only preview of the real UI through
+`#impersonate=<single-use-code>`. The fragment is removed before exchange.
+Preview authentication and account caches use namespaced sessionStorage; normal
+login storage, custom backend selection and push subscriptions remain isolated.
+A persistent banner identifies the account, counts down the 15-minute limit and
+ends the preview. Expired/used links and ended sessions have dedicated screens.
+
+Requires the matching `lanis_api` private broker; see its
+`docs/impersonation.md` for setup and the enforced route restrictions.
+Run `node scripts/test-preview-storage.cjs` for storage isolation. For browser
+verification, start Vite and set `BROWSER_EXECUTABLE` to an installed Chromium
+when running `node scripts/test-preview-browser.cjs`; all API responses are
+mocked and no real account credentials are used.

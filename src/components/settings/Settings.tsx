@@ -1,3 +1,4 @@
+import { isImpersonating, appStorage } from '../../utils/appStorage';
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTheme, ThemeColor } from '../../contexts/ThemeContext';
@@ -258,7 +259,7 @@ const AccountSettings: React.FC = () => {
       setDeleting(false);
       return;
     }
-    const deletionGeneration = beginAccountDataDeletion(freshToken, localStorage.getItem('auth_refresh_token') || '');
+    const deletionGeneration = beginAccountDataDeletion(freshToken, appStorage.getItem('auth_refresh_token') || '');
     try {
       const result = await authAPI.deleteAccount(freshToken);
       if (!result.success) {
@@ -750,7 +751,7 @@ const Settings: React.FC = () => {
   const [vertretungsplanOptionsStatus, setVertretungsplanOptionsStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [vertretungsplanOptionsError, setVertretungsplanOptionsError] = useState('');
 
-  const pushSupported = typeof window !== 'undefined'
+  const pushSupported = !isImpersonating && typeof window !== 'undefined'
     && 'Notification' in window
     && 'serviceWorker' in navigator
     && 'PushManager' in window;
@@ -908,6 +909,7 @@ const Settings: React.FC = () => {
   }, [token, pushSupported, section]);
 
   const getPushRegistration = async () => {
+    if (isImpersonating) throw new Error("Push ist in der Kontovorschau gesperrt.");
     if (!pushSupported) throw new Error('Dieser Browser unterstützt keine Push-Benachrichtigungen.');
     const existing = await navigator.serviceWorker.getRegistration();
     if (!existing) await navigator.serviceWorker.register('/sw.js');

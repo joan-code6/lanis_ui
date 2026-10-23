@@ -1,3 +1,4 @@
+import { appStorage } from './appStorage';
 import type { Module } from '../types';
 import { canWriteAccountData, captureAccountDataGeneration } from './accountDataWrites';
 import { notifyDemoCacheWrite } from './demoMode';
@@ -55,7 +56,7 @@ export function readModulesCache(owner: ModuleCacheOwner | null): CachedModule[]
   const key = cacheKey(owner);
   if (!key) return [];
   try {
-    const parsed: unknown = JSON.parse(localStorage.getItem(key) || '[]');
+    const parsed: unknown = JSON.parse(appStorage.getItem(key) || '[]');
     if (!Array.isArray(parsed)) return [];
     return parsed.filter((module): module is CachedModule => {
       if (!module || typeof module !== 'object') return false;
@@ -86,7 +87,7 @@ export function writeModulesCache(
   try {
     const value = JSON.stringify(modules);
     notifyDemoCacheWrite(key, value);
-    localStorage.setItem(key, value);
+    appStorage.setItem(key, value);
   } catch {
     // Caching is optional; live module discovery remains authoritative.
   }
