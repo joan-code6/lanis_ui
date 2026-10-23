@@ -1,4 +1,6 @@
 import React, { useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { agentReturnPath, agentBackendProposal } from '../../utils/agentBackend';
 import {
   ArrowPathIcon,
   ArrowTopRightOnSquareIcon,
@@ -28,8 +30,11 @@ const BACKEND_LOGOUT_TIMEOUT_MS = 5000;
 
 const CustomBackend: React.FC = () => {
   const { isAuthenticated, logout } = useAuth();
+  const [params] = useSearchParams();
+  const returnTo = agentReturnPath(params.get("returnTo"));
+  const proposedBackend = agentBackendProposal(params);
   const initialCustomUrl = useMemo(() => getCustomBackendUrl(), []);
-  const [backendUrl, setBackendUrl] = useState(initialCustomUrl || getApiBaseUrl());
+  const [backendUrl, setBackendUrl] = useState(proposedBackend || initialCustomUrl || getApiBaseUrl());
   const [requestState, setRequestState] = useState<RequestState>('idle');
   const [message, setMessage] = useState('');
 
@@ -84,7 +89,7 @@ const CustomBackend: React.FC = () => {
       setCustomBackendUrl(normalized);
       setRequestState('success');
       setMessage('Backend bestätigt. Lanis wird neu geladen …');
-      window.setTimeout(() => window.location.replace('/login'), 450);
+      window.setTimeout(() => window.location.replace(returnTo || '/login'), 450);
     } catch (error) {
       setRequestState('error');
       setMessage(error instanceof Error ? error.message : 'Das Backend konnte nicht geprüft werden.');
@@ -96,7 +101,7 @@ const CustomBackend: React.FC = () => {
     setMessage('Standard-Backend wird wiederhergestellt …');
     await prepareBackendSwitch();
     resetCustomBackendUrl();
-    window.location.replace('/login');
+    window.location.replace(returnTo || '/login');
   };
 
   return (

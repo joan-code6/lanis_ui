@@ -189,7 +189,7 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
     ...(hasNativeDateispeicher ? ['dateispeicher' as const] : []),
     ...(hasNativeDateiverteilung ? ['dateiverteilung' as const] : []),
     ...(hasNativeSubstitutionPlan ? ['vertretungsplan' as const] : []),
-    ...(hasDsbModule ? ['dsb' as const] : []),
+    ...(hasDsbModule && basePath !== '/demo' ? ['dsb' as const] : []),
     ...(hasWahlenModule ? ['wahlen' as const] : []),
     ...(hasVideokonferenzModule ? ['videokonferenz' as const] : []),
   ]);

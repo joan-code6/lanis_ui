@@ -59,6 +59,14 @@ function deferredRequest(status = 200, token = storage.getItem('auth_access_toke
   return { started, finish: () => settle(), result: () => deferredRequest.result };
 }
 (async () => {
+  // Incorrect credentials are a form error, not loss of an existing session.
+  const pendingApproval = '/login?' + new URLSearchParams({ returnTo: '/agents/authorize?request=opaque&issuer=https://school.example' });
+  window.location.href = pendingApproval;
+  await assert.rejects(testClient.post('/login', {}, { adapter: async config => {
+    throw new axios.AxiosError('Invalid credentials', undefined, config, {}, { status: 401, config });
+  } }));
+  assert.equal(window.location.href, pendingApproval, 'Failed sign-in must not navigate or discard the approval');
+  window.location.href = '';
   login('A');
   const generationA = lifecycle.captureAccountDataGeneration();
   const memoryGenerationA = memory.resourceCacheGeneration();

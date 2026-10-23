@@ -197,6 +197,30 @@ const PrivacyPolicy: React.FC = () => {
           </div>
 
           <div>
+            <h2 className="text-base font-semibold text-[#111] mb-3">7a. Externe Agenten</h2>
+            <p>
+              Wenn du einen externen Agenten wie ChatGPT oder Claude mit LANIS verbindest, bestätigst du
+              den Zugriff auf einer LANIS-Freigabeseite. Du wählst die Berechtigungen für jede Verbindung
+              einzeln. Eingeschränkter Zugriff erlaubt Lesen ohne Noten und Fehlzeiten. Vollzugriff
+              umfasst auch Änderungen und sensible Daten; unter Benutzerdefiniert wählst du einzelne
+              Berechtigungen. Das Backend speichert den Namen der Verbindung, den angefragten App-Namen, die
+              Rückkehradresse des Anbieters, Berechtigungen sowie Verbindungs- und Nutzungszeitpunkte.
+              Zugangstokens werden nur als Hash gespeichert. Dein Schulportal-Passwort wird nicht an
+              den Agenten übermittelt.
+            </p>
+            <p className="mt-2">
+              Bei einem Abruf erhält der Anbieter des Agenten die freigegebenen Schuldaten. Für die
+              weitere Verarbeitung dort gelten dessen Datenschutzbestimmungen. Unter Einstellungen →
+              Agents kannst du Berechtigungen reduzieren oder eine Verbindung trennen. Das beendet
+              weitere Abrufe; bereits beim Anbieter gespeicherte Inhalte werden dadurch nicht gelöscht.
+              Verbindungsmetadaten bleiben bis zur Löschung deines LANIS-Kontos erhalten. Eine
+              Freigabeanfrage gilt zehn Minuten, ein einmaliger Autorisierungscode zwei Minuten.
+              Zugriffstokens gelten höchstens eine Stunde; die erneuerbare Verbindung gilt höchstens
+              90 Tage und kann vorher widerrufen werden.
+            </p>
+          </div>
+
+          <div>
             <h2 className="text-base font-semibold text-[#111] mb-3">8. Zwecke und Rechtsgrundlagen</h2>
             <p>
               Das Backend erfasst nach der Anmeldung Profildaten aus dem Schulportal, darunter die dort
@@ -309,7 +333,7 @@ const PrivacyPolicy: React.FC = () => {
           <hr className="border-black/[0.06]" />
 
           <p className="text-xs text-[#bbb] pt-2">
-            Stand: 17. Oktober 2026
+            Stand: 23. Oktober 2026
           </p>
         </section>
       </div>

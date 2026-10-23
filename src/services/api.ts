@@ -11,6 +11,7 @@ import {
   WahlenSubmission,
 } from '../types';
 import { getMockResponse } from '../components/demo/mockApi';
+import { agentLoginPath } from '../utils/agentBackend';
 import { DEFAULT_API_BASE_URL, getApiBaseUrl } from '../utils/backendConfig';
 import {
   clearSignedOutAccountData,
@@ -1338,7 +1339,7 @@ apiClient.interceptors.response.use(
   },
   async (error) => {
     if (staleRequest(error.config)) return Promise.reject(new axios.CanceledError('Session changed'));
-    if (['/logout', '/notifications/unsubscribe'].includes(error.config?.url || '')) return Promise.reject(error);
+    if (['/login', '/logout', '/notifications/unsubscribe'].includes(error.config?.url || '')) return Promise.reject(error);
     if (isImpersonating && error.response?.status === 401) {
       window.dispatchEvent(new Event('lanis-preview-end'));
       return Promise.reject(error);
@@ -1400,7 +1401,9 @@ apiClient.interceptors.response.use(
       } catch (cleanupError) {
         console.warn('Failed to remove push subscription after authentication loss:', cleanupError);
       }
-      if (captureAccountDataGeneration() === signedOutGeneration) window.location.href = '/login';
+      if (captureAccountDataGeneration() === signedOutGeneration) {
+        window.location.href = agentLoginPath(window.location.pathname + window.location.search);
+      }
     }
     return Promise.reject(error);
   }
@@ -1439,5 +1442,43 @@ export const feedbackAPI = {
       { headers: { 'X-Session-Token': token } },
     );
     return response.data;
+  },
+};
+
+export type AccessMode = "restricted" | "full" | "custom";
+export interface AccessPresets { restricted: string[]; full: string[] | null }
+export interface AgentScope { title: string; description: string; group?: string; sensitive?: boolean }
+export interface AgentConnection {
+  id: string; name: string; client_name: string; client_id: string; redirect_origin: string;
+  scopes: string[]; requested_scopes?: string[]; created_at: number; last_used_at: number | null; revoked: boolean;
+}
+export interface AgentsOverview { connections: AgentConnection[]; scopes: Record<string, AgentScope>; mcp_url: string; presets: AccessPresets }
+export interface AgentAuthorization {
+  client_name: string; client_id: string; redirect_origin: string; verified: boolean;
+  scopes: (AgentScope & { id: string })[]; username: string; school_id: string; presets: AccessPresets;
+}
+function assertAgentBackend() {
+  if (getApiBaseUrl() !== API_BASE_URL) throw new axios.CanceledError('Backend changed. Reload LANIS.');
+}
+export const agentsAPI = {
+  async list(token: string): Promise<AgentsOverview> {
+    assertAgentBackend();
+    return (await apiClient.get('/agents', { headers: { 'X-Session-Token': token } })).data;
+  },
+  async update(token: string, id: string, name: string, scopes: string[], mode: AccessMode = "custom") {
+    assertAgentBackend();
+    return (await apiClient.patch(`/agents/${encodeURIComponent(id)}`, { name, scopes, mode }, { headers: { 'X-Session-Token': token } })).data;
+  },
+  async revoke(token: string, id: string) {
+    assertAgentBackend();
+    return (await apiClient.delete(`/agents/${encodeURIComponent(id)}`, { headers: { 'X-Session-Token': token } })).data;
+  },
+  async authorization(token: string, request: string): Promise<AgentAuthorization> {
+    assertAgentBackend();
+    return (await apiClient.get(`/agents/authorization/${encodeURIComponent(request)}`, { headers: { 'X-Session-Token': token } })).data;
+  },
+  async decide(token: string, request: string, approve: boolean, scopes: string[], name: string, mode: AccessMode = "custom"): Promise<{ redirect_url: string }> {
+    assertAgentBackend();
+    return (await apiClient.post(`/agents/authorization/${encodeURIComponent(request)}`, { approve, scopes, name, mode }, { headers: { 'X-Session-Token': token } })).data;
   },
 };
