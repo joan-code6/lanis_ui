@@ -55,7 +55,10 @@ const Connection: React.FC<{ connection: AgentConnection; overview: AgentsOvervi
 };
 
 export default function AgentsSettings() {
-  const { token } = useAuth();
+  const { token, isAuthenticated, user } = useAuth();
+  const account = user ? `${user.school_id}:${user.username}` : null;
+  const tokenRef = useRef(token);
+  useLayoutEffect(() => { tokenRef.current = token; }, [token]);
   const [params] = useSearchParams();
   let issuer = API_BASE_URL;
   let invalidIssuer = false;
@@ -69,22 +72,23 @@ export default function AgentsSettings() {
   const [provider, setProvider] = useState('Claude');
   const [copied, setCopied] = useState(false);
   const requestVersion = useRef(0);
-  const owner = useRef(token);
-  useLayoutEffect(() => { owner.current = token; }, [token]);
+  const owner = useRef(account);
+  useLayoutEffect(() => { owner.current = account; }, [account]);
   const applyChange = (id: string, changes: Partial<AgentConnection>) => {
-    if (owner.current !== token) return;
+    if (owner.current !== account) return;
     requestVersion.current++;
     setData(current => current ? { ...current, connections: current.connections.map(c => c.id === id ? { ...c, ...changes } : c) } : current);
   };
   const load = async () => {
-    if (!token || invalidIssuer || backendMismatch) return;
+    const currentToken = tokenRef.current;
+    if (!isAuthenticated || !currentToken || invalidIssuer || backendMismatch) return;
     const version = ++requestVersion.current;
     setError('');
-    try { const result = await agentsAPI.list(token); if (version === requestVersion.current) setData(result); }
+    try { const result = await agentsAPI.list(currentToken); if (version === requestVersion.current) setData(result); }
     catch { if (version === requestVersion.current) setError('Agenten konnten nicht geladen werden.'); }
     finally { if (version === requestVersion.current) setLoading(false); }
   };
-  useEffect(() => { setData(null); setLoading(true); void load(); return () => { requestVersion.current++; }; }, [token, invalidIssuer, backendMismatch]);
+  useEffect(() => { setData(null); setLoading(true); void load(); return () => { requestVersion.current++; }; }, [isAuthenticated, account, invalidIssuer, backendMismatch]);
   const copy = async () => {
     if (!data) return;
     try { await navigator.clipboard.writeText(data.mcp_url); setCopied(true); }

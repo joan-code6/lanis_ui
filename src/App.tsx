@@ -32,7 +32,7 @@ import Videokonferenz from './components/videokonferenz/Videokonferenz';
 import SchoolPage from './components/schools/SchoolPage';
 import SchoolDirectoryPage from './components/schools/SchoolDirectoryPage';
 import AgentAuthorization from './components/agents/AgentAuthorization';
-import { agentReturnPath } from './utils/agentBackend';
+import { agentLoginPath, agentReturnPath } from './utils/agentBackend';
 
 const LandingRoot: React.FC = () => {
   const { isAuthenticated } = useAuth();
@@ -45,9 +45,8 @@ const LandingRoot: React.FC = () => {
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated } = useAuth();
   const location = useLocation();
-  const returnTo = agentReturnPath(location.pathname + location.search);
   if (!isAuthenticated) {
-    return <Navigate to={returnTo ? `/login?${new URLSearchParams({ returnTo })}` : "/login"} replace />;
+    return <Navigate to={agentLoginPath(location.pathname + location.search)} replace />;
   }
   return <>{children}</>;
 };

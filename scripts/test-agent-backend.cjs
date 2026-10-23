@@ -128,3 +128,12 @@ test('issuer-less approvals remain bound to the selected backend after session e
   assert.equal(agents.agentLoginPath('/agents/authorize?request=opaque&issuer='), '/login');
   assert.equal(agents.agentLoginPath('//evil.example/agents/authorize?request=opaque'), '/login');
 });
+
+
+test('direct Agents settings visits return after login without an issuer', () => {
+  const { agents, backend } = loadRouting();
+  backend.setCustomBackendUrl('https://custom.example');
+  const login = new URL(agents.agentLoginPath('/settings/agents'), 'https://ui.example');
+  assert.equal(login.pathname, '/login');
+  assert.equal(login.searchParams.get('returnTo'), '/settings/agents?issuer=https%3A%2F%2Fcustom.example');
+});
