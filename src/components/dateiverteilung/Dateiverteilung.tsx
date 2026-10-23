@@ -1,3 +1,4 @@
+import { saveBlob } from '../../platform/files';
 import { FileDistributionSkeleton } from '../shared/ModuleLoadingSkeletons';
 import { useCachedResource } from '../../hooks/useCachedResource';
 import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
@@ -76,14 +77,7 @@ const Dateiverteilung: React.FC = () => {
     try {
       const download = await dateiverteilungAPI.downloadFile(token, file.download_url, controller.signal);
       if (controller.signal.aborted) return;
-      const objectUrl = URL.createObjectURL(download.blob);
-      const link = document.createElement('a');
-      link.href = objectUrl;
-      link.download = download.filename || file.name;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+      await saveBlob(download.blob, download.filename || file.name);
     } catch (cause) {
       if (axios.isCancel(cause)) return;
       setDownloadError(cause instanceof Error ? cause.message : 'Die Datei konnte nicht heruntergeladen werden.');

@@ -1,3 +1,6 @@
+import { canUseOfflineTimetable } from '../platform/offline';
+import { isAndroid, LanisNative } from '../platform/native';
+import { authStorage, flushAuthStorage } from '../platform/authStorage';
 import {
   SchoolListResponse,
   DistrictSchoolsResponse,
@@ -359,15 +362,15 @@ const REFRESH_TOKEN_KEY = 'auth_refresh_token';
 const TOKEN_EXPIRES_KEY = 'auth_expires_at';
 
 function getAccessToken(): string | null {
-  return localStorage.getItem(ACCESS_TOKEN_KEY);
+  return authStorage.getItem(ACCESS_TOKEN_KEY);
 }
 
 function getRefreshToken(): string | null {
-  return localStorage.getItem(REFRESH_TOKEN_KEY);
+  return authStorage.getItem(REFRESH_TOKEN_KEY);
 }
 
 function isTokenExpiringSoon(thresholdMs: number = 5 * 60 * 1000): boolean {
-  const expiresAt = localStorage.getItem(TOKEN_EXPIRES_KEY);
+  const expiresAt = authStorage.getItem(TOKEN_EXPIRES_KEY);
   if (!expiresAt) return true;
   return Date.now() > parseInt(expiresAt, 10) - thresholdMs;
 }
@@ -376,7 +379,7 @@ let refreshPromise: Promise<boolean> | null = null;
 
 async function refreshAccessToken(): Promise<boolean> {
   const writeGeneration = captureAccountDataGeneration();
-  const currentAccessToken = localStorage.getItem(ACCESS_TOKEN_KEY);
+  const currentAccessToken = authStorage.getItem(ACCESS_TOKEN_KEY);
   if (currentAccessToken) rememberAccountToken(currentAccessToken);
   const refreshTokenValue = getRefreshToken();
   if (!refreshTokenValue) return false;
@@ -388,8 +391,9 @@ async function refreshAccessToken(): Promise<boolean> {
 
     if (!canWriteAccountData(writeGeneration) || getRefreshToken() !== refreshTokenValue) return false;
     const expiresAt = Date.now() + response.data.expires_in * 1000;
-    localStorage.setItem(ACCESS_TOKEN_KEY, response.data.access_token);
-    localStorage.setItem(TOKEN_EXPIRES_KEY, expiresAt.toString());
+    authStorage.setItem(ACCESS_TOKEN_KEY, response.data.access_token);
+    authStorage.setItem(TOKEN_EXPIRES_KEY, expiresAt.toString());
+    await flushAuthStorage();
 
     return true;
   } catch {
@@ -613,6 +617,16 @@ export const messagesAPI = {
 
 // Browser push notification API
 export const notificationsAPI = {
+  async getAndroidConfig(token: string): Promise<{ success: boolean; configured: boolean }> {
+    try {
+      const response = await apiClient.get('/notifications/android/config', { headers: { 'X-Session-Token': token } });
+      return response.data;
+    } catch (error) {
+      // Older backends can serve the app without native push support.
+      if (axios.isAxiosError(error) && error.response?.status === 404) return { success: true, configured: false };
+      throw error;
+    }
+  },
   async getConfig(token: string, signal?: AbortSignal): Promise<NotificationConfigResponse> {
     const response = await apiClient.get<NotificationConfigResponse>('/notifications/config', {
       headers: { 'X-Session-Token': token },
@@ -942,10 +956,23 @@ export const calendarAPI = {
 // Timetable API
 export const timetableAPI = {
   async getResolvedTimetable(token: string, options: { view_mode: string; plan_mode: string; show_substitutions?: boolean; week_type?: 'A' | 'B'; refresh?: boolean }, signal?: AbortSignal): Promise<TimetableResponse> {
-    const response = await readAPI<TimetableResponse>('/stundenplan/view', {
-      headers: { 'X-Session-Token': token }, params: options, signal,
-    });
-    return response.data;
+    const cacheOwner = authStorage.getItem(REFRESH_TOKEN_KEY);
+    const writeGeneration = captureAccountDataGeneration();
+    try {
+      const response = await readAPI<TimetableResponse>('/stundenplan/view', {
+        headers: { 'X-Session-Token': token }, params: options, signal,
+      });
+      if (isAndroid && !window.location.pathname.startsWith('/demo') && cacheOwner && canWriteAccountData(writeGeneration) && options.show_substitutions !== false && response.data.success && options.plan_mode === 'personal' && options.view_mode === 'rolling' && !options.week_type) {
+        void LanisNative.saveTimetable({ data: response.data, owner: cacheOwner }).catch(() => {});
+      }
+      return response.data;
+    } catch (error) {
+      if (isAndroid && !window.location.pathname.startsWith('/demo') && !axios.isCancel(error) && canUseOfflineTimetable(axios.isAxiosError(error) ? error.response?.status : undefined, options, Boolean(signal?.aborted))) {
+        const cached = await LanisNative.getTimetable();
+        if (cached.data?.success && canWriteAccountData(writeGeneration) && cacheOwner === authStorage.getItem(REFRESH_TOKEN_KEY)) return { ...cached.data, offline_cached_at: cached.updatedAt };
+      }
+      throw error;
+    }
   },
   async getTimetable(token: string, signal?: AbortSignal): Promise<TimetableResponse> {
     const response = await apiClient.get<any>('/stundenplan', {
@@ -1362,9 +1389,10 @@ apiClient.interceptors.response.use(
               return Promise.reject(error);
             }
             const expiresAt = Date.now() + refreshResponse.data.expires_in * 1000;
-            localStorage.setItem(ACCESS_TOKEN_KEY, refreshResponse.data.access_token);
-            localStorage.setItem(TOKEN_EXPIRES_KEY, expiresAt.toString());
+            authStorage.setItem(ACCESS_TOKEN_KEY, refreshResponse.data.access_token);
+            authStorage.setItem(TOKEN_EXPIRES_KEY, expiresAt.toString());
 
+            await flushAuthStorage();
             // Retry the original request with the new token
             if (requestConfig) {
               requestConfig.headers['X-Session-Token'] = refreshResponse.data.access_token;
@@ -1395,7 +1423,10 @@ apiClient.interceptors.response.use(
       } catch (cleanupError) {
         console.warn('Failed to remove push subscription after authentication loss:', cleanupError);
       }
-      if (captureAccountDataGeneration() === signedOutGeneration) window.location.href = '/login';
+      if (captureAccountDataGeneration() === signedOutGeneration) {
+        await flushAuthStorage();
+        if (captureAccountDataGeneration() === signedOutGeneration) window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }

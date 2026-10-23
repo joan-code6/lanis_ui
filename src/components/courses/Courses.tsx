@@ -8,6 +8,7 @@ import { usePreferences } from '../../contexts/PreferencesContext';
 import { useNavigate, useParams } from 'react-router-dom';
 import { coursesAPI } from '../../services/api';
 import axios from 'axios';
+import { openBlob } from '../../platform/files';
 import SEO from '../seo/SEO';
 import { 
   CourseEntry,
@@ -300,15 +301,10 @@ const Courses: React.FC = () => {
         if (!course.success) throw error;
         blob = await coursesAPI.downloadFile(token, match[1]);
       }
-      const objectUrl = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = objectUrl;
-      link.download = filename || 'download';
-      link.click();
-      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+      await openBlob(blob, filename || 'download');
     } catch (error) {
       console.error('Could not download course attachment', error);
-      setError('Die Datei konnte nicht geladen werden. Bitte öffne den Kurs erneut und versuche es noch einmal.');
+      setError('Die Datei konnte nicht geöffnet werden. Versuche es erneut.');
     }
   };
   const { preferences } = usePreferences();
@@ -1218,6 +1214,7 @@ const Courses: React.FC = () => {
                     <a
                       key={index}
                       href={attachment.url}
+                      onClick={(event) => downloadCourseAttachment(event, attachment.url, attachment.name)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex items-center p-3 border border-surface-200 dark:border-surface-700 rounded-lg transition-colors"

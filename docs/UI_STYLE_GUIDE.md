@@ -34,7 +34,7 @@ Use theme-aware `primary-*` and `surface-*` tokens. Pair custom light surfaces a
 
 ## Intentional exceptions
 
-Messaging is a full-height split pane: retain its own scrolling, pane borders and compact controls. Its h1 uses `page-title page-title-compact` (18px at every breakpoint, same weight and colors). Calendar retains its height and scrolling constraints. Timetables retain their dense cells. These content layouts do not change the surrounding module typography or gutters.
+Messaging is a full-height split pane: retain its own scrolling, pane borders and compact controls. Fill the layout's available height with flex sizing instead of viewport heights so the demo bar, mobile header, Android navigation and status notices leave room for the panes. Only the inbox and conversation body scroll; pane headers and the reply composer stay visible. Its h1 uses `page-title page-title-compact` (18px at every breakpoint, same weight and colors). Calendar retains its height and scrolling constraints. Timetables retain their dense cells. These content layouts do not change the surrounding module typography or gutters.
 
 ## Review checklist
 

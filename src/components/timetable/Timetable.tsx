@@ -1,4 +1,4 @@
-import React, { useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { format, isToday } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { Link, useNavigate } from 'react-router-dom';
@@ -56,6 +56,16 @@ const Timetable: React.FC = () => {
   const timeSlots = data?.time_slots || [];
   const examsError = Boolean(data?.exams_error);
   const substitutionSources = data?.substitution_sources || [];
+  const cachedAt = data?.offline_cached_at;
+  const selectedDayRef = useRef('');
+  const [selectedDay, setSelectedDay] = useState('');
+
+  useEffect(() => {
+    const refreshOnResume = () => refresh();
+    window.addEventListener('lanis:resume', refreshOnResume);
+    window.addEventListener('online', refreshOnResume);
+    return () => { window.removeEventListener('lanis:resume', refreshOnResume); window.removeEventListener('online', refreshOnResume); };
+  }, [refresh]);
 
   const weekOverride = timetableViewMode === 'week' && hasAlternatingWeeks ? selectedWeek : undefined;
   const displayedExams = preferences.timetable.show_exams ? exams : [];
@@ -82,12 +92,30 @@ const Timetable: React.FC = () => {
   useLayoutEffect(() => {
     if (loading || !window.matchMedia('(max-width: 639px)').matches) return;
     const scroller = dayScrollerRef.current;
-    const today = scroller?.querySelector<HTMLElement>('[data-today="true"]');
-    if (scroller && today) scroller.scrollTo({
-      left: scroller.scrollLeft + today.getBoundingClientRect().left - scroller.getBoundingClientRect().left,
-      behavior: 'auto',
+    const cards = scroller ? [...scroller.querySelectorAll<HTMLElement>('[data-date]')] : [];
+    const day = cards.find(card => card.dataset.date === selectedDayRef.current)
+      || cards.find(card => card.dataset.today === 'true') || cards[0];
+    if (scroller && day) {
+      selectedDayRef.current = day.dataset.date || '';
+      setSelectedDay(selectedDayRef.current);
+      scroller.scrollTo({
+        left: scroller.scrollLeft + day.getBoundingClientRect().left - scroller.getBoundingClientRect().left - parseFloat(getComputedStyle(scroller).paddingLeft),
+        behavior: 'auto',
+      });
+    }
+  }, [loading, planMode, visibleDays, preferences.timetable.layout_mode]);
+
+  const selectDay = (date: string) => {
+    const scroller = dayScrollerRef.current;
+    const day = scroller && [...scroller.querySelectorAll<HTMLElement>('[data-date]')].find(card => card.dataset.date === date);
+    if (!scroller || !day) return;
+    selectedDayRef.current = date;
+    setSelectedDay(date);
+    scroller.scrollTo({
+      left: scroller.scrollLeft + day.getBoundingClientRect().left - scroller.getBoundingClientRect().left - parseFloat(getComputedStyle(scroller).paddingLeft),
+      behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
     });
-  }, [loading, planMode, visibleDays]);
+  };
 
   const openCourse = (lesson: TimetableLesson) => {
     if (lesson.course_id) navigate(`${basePath}/courses/${lesson.course_id}`);
@@ -127,6 +155,7 @@ const Timetable: React.FC = () => {
           )}
         </div>
 
+        {cachedAt && <p role="status" className="mb-4 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-200">Gespeicherter Stundenplan · Stand {new Date(cachedAt).toLocaleString('de-DE')}. Neuere Änderungen können fehlen.</p>}
         <div role="status" className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-surface-500 dark:text-surface-400">
           {loading && <span className="skeleton inline-block h-4 w-32" aria-hidden="true" />}
           {substitutionSources.map(source => <span key={source.name} className={source.error ? 'text-amber-700 dark:text-amber-300' : ''}>
@@ -172,12 +201,29 @@ const Timetable: React.FC = () => {
             <TimelineView days={visibleDays} exams={displayedExams} timeSlots={timeSlots} onOpenCourse={openCourse} />
           </div>
         ) : (
-          <div ref={dayScrollerRef} className="scrollbar-hide -mx-3 flex snap-x snap-mandatory gap-3 overflow-x-auto px-3 pb-3 sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 sm:pb-0 md:gap-4 xl:grid-cols-5">
+          <>
+          <div role="group" aria-label="Tag wählen" className="mb-3 flex gap-1.5 overflow-x-auto sm:hidden">
+            {visibleDays.map(day => {
+              const date = new Date(`${day.date}T12:00:00`);
+              const active = selectedDay === day.date;
+              return <button key={day.date} type="button" aria-pressed={active} aria-label={format(date, 'EEEE, d. MMMM', { locale: de })} onClick={() => selectDay(day.date)} className={`flex min-h-12 min-w-14 flex-1 flex-col items-center justify-center rounded-xl px-2 py-1 text-xs font-medium transition-colors ${active ? 'bg-primary-100 text-primary-800 dark:bg-primary-950 dark:text-primary-200' : 'text-surface-600 hover:bg-surface-100 dark:text-surface-400 dark:hover:bg-surface-800'}`}>
+                <span>{isToday(date) ? 'Heute' : format(date, 'EEEEEE', { locale: de })}</span>
+                <span className="text-sm font-semibold">{format(date, 'd.')}</span>
+              </button>;
+            })}
+          </div>
+          <div ref={dayScrollerRef} onScroll={event => {
+            const scroller = event.currentTarget;
+            const left = scroller.getBoundingClientRect().left + parseFloat(getComputedStyle(scroller).paddingLeft);
+            const nearest = [...scroller.querySelectorAll<HTMLElement>('[data-date]')].reduce<HTMLElement | undefined>((best, card) => !best || Math.abs(card.getBoundingClientRect().left - left) < Math.abs(best.getBoundingClientRect().left - left) ? card : best, undefined);
+            const date = nearest?.dataset.date;
+            if (date && date !== selectedDayRef.current) { selectedDayRef.current = date; setSelectedDay(date); }
+          }} className="scrollbar-hide -mx-3 flex snap-x snap-mandatory gap-3 overflow-x-auto px-3 pb-3 sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 sm:pb-0 md:gap-4 xl:grid-cols-3 2xl:grid-cols-5">
             {visibleDays.map(day => {
               const date = new Date(`${day.date}T12:00:00`);
               const today = isToday(date);
               return (
-                <section key={day.date} data-today={today ? 'true' : undefined} className={`card min-w-[84vw] snap-start !p-0 overflow-hidden sm:min-w-0 ${today ? '!border-primary-300 dark:!border-primary-700 ring-2 ring-primary-500/10' : ''}`}>
+                <section key={day.date} data-date={day.date} data-today={today ? 'true' : undefined} className={`card min-w-[84vw] snap-start !p-0 overflow-hidden sm:min-w-0 ${today ? '!border-primary-300 dark:!border-primary-700 ring-2 ring-primary-500/10' : ''}`}>
                   <div className={`border-b px-4 py-3 ${today ? 'bg-primary-50 dark:bg-primary-950/60' : 'bg-surface-50 dark:bg-surface-800/50'}`}>
                     <div className="flex items-center justify-between">
                       <h2 className="font-semibold text-surface-900 dark:text-white">{day.name || format(date, 'EEEE', { locale: de })}</h2>
@@ -195,7 +241,7 @@ const Timetable: React.FC = () => {
                     </div>)}
                     {timetableEntries(day.lessons, displayedExams.filter(exam => exam.date === day.date), timeSlots).map(({ lesson, exam, replaced }, index) => exam ? (
                       <article key={`exam-${exam.id}-${index}`} className="rounded-xl border border-violet-200 bg-violet-50 p-3 dark:border-violet-800 dark:bg-violet-950/40">
-                        <div className="mb-2 flex items-start justify-between gap-2">
+                        <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
                           <p className="flex items-center gap-1.5 text-xs font-semibold text-violet-700 dark:text-violet-300"><AcademicCapIcon className="h-4 w-4" aria-hidden="true" />{exam.type || 'Klausur'}</p>
                           {lesson.period != null && <span className="badge badge-surface">{lesson.period} Std.</span>}
                         </div>
@@ -229,7 +275,7 @@ const Timetable: React.FC = () => {
                           }
                         }}
                       >
-                        <div className="mb-2 flex items-start justify-between gap-2">
+                        <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
                           <div>
                             <p className={`font-semibold text-surface-900 dark:text-white ${lesson.cancelled ? 'line-through' : ''}`}>{lesson.subject}</p>
                             {lesson.class_name && <p className="text-xs text-surface-500">{lesson.class_name}</p>}
@@ -258,6 +304,7 @@ const Timetable: React.FC = () => {
               );
             })}
           </div>
+          </>
         )}
       </div>
     </div>
@@ -302,11 +349,11 @@ const HomeworkPreview: React.FC<{ homework?: TimetableLesson['homework']; compac
   const allDone = homework.every(item => item.done);
 
   return (
-    <div className={`${compact ? 'mt-1 p-1 sm:mt-2 sm:p-2' : 'mt-3 p-2.5'} rounded-lg border-l-4 text-left ${allDone ? 'border-emerald-400 bg-emerald-50 dark:border-emerald-500 dark:bg-emerald-950/35' : 'border-amber-400 bg-amber-50 dark:border-amber-500 dark:bg-amber-950/35'}`}>
-      <div className={`flex items-center justify-between gap-1 font-semibold uppercase tracking-wide ${allDone ? 'text-emerald-800 dark:text-emerald-200' : 'text-amber-800 dark:text-amber-200'} ${compact ? 'text-[8px] sm:text-[10px]' : 'text-[10px]'}`}>
-        <span className="flex items-center gap-1"><BookOpenIcon className={compact ? 'h-2.5 w-2.5 sm:h-3 sm:w-3' : 'h-3.5 w-3.5'} />{compact ? 'Hausaufgabe' : 'Hausaufgabe · nächste Stunde'}</span>
+    <div className={`${compact ? 'mt-1 p-1 sm:mt-2 sm:p-2' : 'mt-3 p-2.5'} min-w-0 rounded-lg border text-left ${allDone ? 'border-emerald-400 bg-emerald-50 dark:border-emerald-500 dark:bg-emerald-950/35' : 'border-amber-400 bg-amber-50 dark:border-amber-500 dark:bg-amber-950/35'}`}>
+      <div className={`flex flex-wrap items-center justify-between gap-x-2 gap-y-1 font-semibold ${allDone ? 'text-emerald-800 dark:text-emerald-200' : 'text-amber-800 dark:text-amber-200'} ${compact ? 'text-[8px] sm:text-[10px]' : 'text-xs'}`}>
+        <span className="flex items-center gap-1"><BookOpenIcon className={compact ? 'h-2.5 w-2.5 sm:h-3 sm:w-3' : 'h-3.5 w-3.5 shrink-0'} />Hausaufgabe</span>
         <span className={`flex items-center gap-0.5 ${allDone ? 'text-emerald-700 dark:text-emerald-300' : 'text-amber-700 dark:text-amber-300'}`}>
-          {allDone && <CheckCircleIcon className={compact ? 'h-2.5 w-2.5 sm:h-3 sm:w-3' : 'h-3.5 w-3.5'} />}
+          {allDone && <CheckCircleIcon className={compact ? 'h-2.5 w-2.5 sm:h-3 sm:w-3' : 'h-3.5 w-3.5 shrink-0'} />}
           {allDone ? 'Erledigt' : 'Offen'}
         </span>
       </div>
