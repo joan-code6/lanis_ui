@@ -1,4 +1,4 @@
-import { normalizeBackendUrl } from './backendConfig';
+import { getApiBaseUrl, normalizeBackendUrl } from './backendConfig';
 
 // Return destinations are limited to the two agent flows, never arbitrary URLs.
 export function agentReturnPath(value: string | null): string | null {
@@ -45,6 +45,15 @@ export function agentCallbackUrl(value: string, expectedHost: string): string {
 }
 
 export function agentLoginPath(destination: string): string {
-  const returnTo = agentReturnPath(destination);
+  let returnTo = agentReturnPath(destination);
+  if (!returnTo && destination.startsWith('/')) {
+    try {
+      const url = new URL(destination, 'https://lanis.invalid');
+      if (url.origin === 'https://lanis.invalid' && !url.searchParams.has('issuer')) {
+        url.searchParams.set('issuer', getApiBaseUrl());
+        returnTo = agentReturnPath(url.pathname + url.search + url.hash);
+      }
+    } catch { /* Invalid destinations use the ordinary login route. */ }
+  }
   return returnTo ? '/login?' + new URLSearchParams({ returnTo }) : '/login';
 }

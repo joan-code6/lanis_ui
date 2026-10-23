@@ -115,3 +115,16 @@ test('authentication loss preserves validated agent destinations through login',
     assert.equal(agents.agentLoginPath(path), '/login');
   }
 });
+
+
+test('issuer-less approvals remain bound to the selected backend after session expiry', () => {
+  const { agents, backend } = loadRouting();
+  backend.setCustomBackendUrl('https://custom.example/api');
+  const login = new URL(agents.agentLoginPath('/agents/authorize?request=opaque'), 'https://ui.example');
+  const approval = new URL(login.searchParams.get('returnTo'), 'https://ui.example');
+  assert.equal(approval.pathname, '/agents/authorize');
+  assert.equal(approval.searchParams.get('request'), 'opaque');
+  assert.equal(approval.searchParams.get('issuer'), 'https://custom.example/api');
+  assert.equal(agents.agentLoginPath('/agents/authorize?request=opaque&issuer='), '/login');
+  assert.equal(agents.agentLoginPath('//evil.example/agents/authorize?request=opaque'), '/login');
+});
