@@ -20,7 +20,7 @@ export default function StatusPage() {
   const tooltipPrefix = useId();
   const positionTooltip = (element: HTMLElement) => {
     const rect = element.getBoundingClientRect();
-    const width = 224;
+    const width = Math.min(288, document.documentElement.clientWidth - 16);
     const left = Math.max(8, Math.min(rect.left + rect.width / 2 - width / 2, document.documentElement.clientWidth - width - 8));
     element.style.setProperty('--tooltip-left', `${left - rect.left}px`);
   };
@@ -172,9 +172,43 @@ export default function StatusPage() {
                   onMouseEnter={event => positionTooltip(event.currentTarget)}
                   onFocus={event => positionTooltip(event.currentTarget)}
                   aria-describedby={`${tooltipPrefix}-${windowKey}-${index}`} aria-label={`${day.label}: ${statusLabels[day.status]}`}
-                  title={`${day.label}: ${statusLabels[day.status]}`}
                   className={`group relative min-w-0 outline-none ${historyBubbleClasses[windowKey]} ${statusColors[day.status]} focus-visible:ring-2 focus-visible:ring-primary-500`}>
-                  <span id={`${tooltipPrefix}-${windowKey}-${index}`} role="tooltip" className={`pointer-events-none absolute bottom-full z-20 mb-2 hidden w-56 rounded-lg border bg-white p-3 text-xs text-surface-700 shadow-lg group-hover:block group-focus:block dark:bg-surface-900 dark:text-surface-200 left-[var(--tooltip-left,0px)]`}>{day.label}: {statusLabels[day.status]}{day.incidents.map((incident, index) => <span key={index} className="mt-2 block border-t pt-2">{formatIncidentRange(incident)}<br />Bestätigte Checks: {incident.checks ?? 1} · Betroffene Dienste: {incident.affected_features?.map(name => name === 'login' ? 'Anmeldung' : 'Module').join(', ') || 'Unbekannt'}{incident.error && <code className="mt-2 block break-words">{incident.error}</code>}</span>)}</span>
+                  <span
+                    id={`${tooltipPrefix}-${windowKey}-${index}`}
+                    role="tooltip"
+                    className="pointer-events-auto absolute bottom-full left-[var(--tooltip-left,0px)] z-20 hidden w-72 max-w-[calc(100vw-1rem)] cursor-text select-text rounded-xl border border-surface-200 bg-white p-3 text-left text-xs text-surface-700 shadow-xl group-hover:block group-focus:block dark:border-surface-700 dark:bg-surface-900 dark:text-surface-200"
+                  >
+                    <span className="mb-3 block text-[10px] font-semibold uppercase tracking-[0.12em] text-surface-400">
+                      {day.incidents.length ? 'Störung' : 'Verfügbarkeit'} · {shortRange
+                        ? day.label.split(' · ')[0]
+                        : new Date(`${day.key}T00:00:00Z`).toLocaleDateString('de-DE', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })}
+                    </span>
+                    {shortRange && <span className="mb-3 block text-[11px] text-surface-500">{day.label.split(' · ').slice(1).join(' · ') || 'Keine Zeitverlaufsdaten'}</span>}
+                    {day.incidents.length === 0 && (
+                      <span className="flex items-center gap-2 font-semibold text-surface-900 dark:text-surface-100">
+                        <span className={`h-2 w-2 shrink-0 rounded-full ${statusColors[day.status]}`} />
+                        {statusLabels[day.status]}
+                      </span>
+                    )}
+                    <span className="space-y-3">
+                      {day.incidents.map((incident, incidentIndex) => (
+                        <span key={incidentIndex} className="block border-t border-surface-100 pt-3 first:border-0 first:pt-0 dark:border-surface-800">
+                          <span className="flex items-center gap-2 font-semibold text-surface-900 dark:text-surface-100">
+                            <span className={`h-2 w-2 shrink-0 rounded-full ${statusColors[incident.status]}`} />
+                            {statusLabels[incident.status]}
+                          </span>
+                          <span className="mt-1 block text-[11px] text-surface-500">{formatIncidentRange(incident)}</span>
+                          <span className="mt-2 flex flex-wrap gap-1.5">
+                            {incident.affected_features?.map(feature => (
+                              <span key={feature} className="rounded-md bg-surface-100 px-1.5 py-0.5 text-[10px] font-medium text-surface-600 dark:bg-surface-800 dark:text-surface-300">{feature === 'login' ? 'Anmeldung' : 'Module'}</span>
+                            ))}
+                            <span className="rounded-md bg-surface-100 px-1.5 py-0.5 text-[10px] text-surface-500 dark:bg-surface-800 dark:text-surface-400">{incident.checks ?? 1} bestätigte Checks</span>
+                          </span>
+                          {incident.error && <code className="mt-2 block break-words rounded-md bg-surface-50 px-2 py-1 text-[10px] text-surface-500 dark:bg-surface-950 dark:text-surface-400">{incident.error}</code>}
+                        </span>
+                      ))}
+                    </span>
+                  </span>
                 </span>
               ))}
             </div>
