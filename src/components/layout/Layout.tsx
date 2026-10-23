@@ -236,6 +236,7 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
   };
 
   const isDemo = basePath === '/demo';
+  const isMessagesPage = location.pathname.replace(/\/+$/, '') === `${basePath}/messages`;
 
   return (
     <PwaInstallProvider automaticPromotion={!isDemo && !androidPresentation}>
@@ -256,7 +257,7 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
         </div>
       </div>
 
-      <div className={'md:hidden absolute inset-x-0 h-14 z-30 flex items-center justify-between px-4 bg-white/80 dark:bg-surface-900/80 backdrop-blur-md border-b border-surface-100 dark:border-surface-800 ' + (isDemo ? 'top-10' : 'top-0')}>
+      <div className="md:hidden relative h-14 shrink-0 z-30 flex items-center justify-between px-4 bg-white/80 dark:bg-surface-900/80 backdrop-blur-md border-b border-surface-100 dark:border-surface-800">
         <button
           type="button"
           className="flex items-center justify-center h-11 w-11 rounded-lg text-surface-500 dark:text-surface-400 hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors"
@@ -284,9 +285,9 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
           <MagnifyingGlassIcon className="h-5 w-5" />
         </button>
       </div>
-      <main ref={mainRef} className={'flex-1 min-h-0 min-w-0 overflow-y-auto focus:outline-none pt-14 md:pt-0 transition-[margin] duration-300 ease-out ' + (isSidebarCollapsed ? 'md:ml-[60px]' : 'md:ml-64')}>
+      <main ref={mainRef} className={'flex-1 min-h-0 min-w-0 focus:outline-none transition-[margin] duration-300 ease-out ' + (isMessagesPage ? 'flex flex-col overflow-hidden ' : 'overflow-y-auto ') + (isSidebarCollapsed ? 'md:ml-[60px]' : 'md:ml-64')}>
         <BasePathProvider basePath={basePath}>
-          <div className="animate-fade-in">
+          <div className={'animate-fade-in' + (isMessagesPage ? ' flex flex-1 min-h-0 flex-col' : '')}>
             <AndroidConnectivity />
             {!isDemo && <OutageNotice />}
             {children}
