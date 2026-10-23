@@ -13,7 +13,7 @@ const makeStatus = () => ({ success: true, service: 'Schulportal Hessen', genera
   summary_windows: Object.fromEntries(['24h', '7d', '30d', '90d'].map(key => [key, { ...stats, period_days: 1 }])),
   history_windows: Object.fromEntries([['24h', 48, 1800000], ['7d', 28, 21600000]].map(([key, count, width]) => [key, Array.from({ length: count }, (_, index) => ({ ...stats, start: new Date(Date.now() - (count - index) * width).toISOString(), end: new Date(Date.now() - (count - index - 1) * width).toISOString(), status: index === count - 2 ? 'degraded' : index === 0 ? 'unknown' : 'up' }))])),
   daily: Array.from({ length: 90 }, (_, i) => ({ ...stats, day: new Date(Date.now() - (89 - i) * 86400000).toISOString().slice(0, 10), status: i % 9 === 0 ? 'down' : 'up' })),
-  incidents: [{ checked_at: new Date(Date.now() - 4 * 3600000).toISOString(), status: 'down', checks: 7, affected_features: ['modules'] }, { started_at: now, checked_at: now, resolved_at: now, duration_seconds: 0, status: 'down', checks: 2, affected_features: ['login'] }],
+  incidents: [{ started_at: new Date(Date.now() - 955 * 60000).toISOString(), resolved_at: now, duration_seconds: 955 * 60, status: 'down', checks: 2690, affected_features: ['login', 'modules'] }, { checked_at: new Date(Date.now() - 4 * 3600000).toISOString(), status: 'down', checks: 7, affected_features: ['modules'] }, { started_at: now, checked_at: now, resolved_at: now, duration_seconds: 0, status: 'down', checks: 2, affected_features: ['login'] }],
   measurement: { interval_seconds: 900, stale_after_seconds: 1800, period_start: now, period_end: now, description: 'Regelmäßige Prüfungen von Anmeldung und Modulen.' } });
 try {
   const page = await browser.newPage();
@@ -56,7 +56,8 @@ try {
     }
     assert.match(await page.$eval('main', el => el.textContent), /—.*\(0 Minuten\)/);
     assert.match(await page.$eval('main', el => el.textContent), /Bestätigte Checks: 2 · Betroffene Dienste: Anmeldung/);
-    assert.doesNotMatch(await page.$eval('main', el => el.textContent), /Resolved/);
+    assert.match(await page.$eval('main', el => el.textContent), /15 Stunden 55 Minuten/);
+    assert.doesNotMatch(await page.$eval('main', el => el.textContent), /Resolved|955 Minuten/);
     await page.screenshot({ path: `/tmp/lanis-status-${width}.png`, fullPage: true });
   }
   for (const state of ['down', 'stale', 'error']) {

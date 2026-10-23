@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { formatDuration } from '../utils/formatDuration';
 import { getApiBaseUrl } from '../utils/backendConfig';
 
 export type ServiceStatus = 'up' | 'degraded' | 'down' | 'unknown';
@@ -133,6 +134,5 @@ export function formatIncidentRange(incident: PublicIncident): string {
   const sameDay = start && new Date(start).toLocaleDateString('de-DE') === new Date(incident.resolved_at).toLocaleDateString('de-DE');
   const end = sameDay ? new Date(incident.resolved_at).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) : formatTimestamp(incident.resolved_at);
   const seconds = incident.duration_seconds ?? (Date.parse(incident.resolved_at) - Date.parse(start || '')) / 1000;
-  const minutes = Math.max(0, Math.floor(seconds / 60));
-  return `${formatTimestamp(start)} — ${end} (${minutes} ${minutes === 1 ? 'Minute' : 'Minuten'})`;
+  return `${formatTimestamp(start)} — ${end} (${formatDuration(seconds)})`;
 }
