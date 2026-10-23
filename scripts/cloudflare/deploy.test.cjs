@@ -49,6 +49,35 @@ test('artifact scripts, dotenv and configuration cannot change the deploy comman
   assert.match(fs.readFileSync(path.join(assets, '_headers'), 'utf8'), /noindex/);
 });
 
+test('client-rendered previews deploy without prerendered status HTML', t => {
+  const {root, assets, invoke} = fixture(t);
+  fs.rmSync(path.join(assets, 'status'), {recursive: true});
+  const result = invoke();
+  assert.equal(result.status, 0, result.stderr);
+  const invocation = JSON.parse(fs.readFileSync(path.join(root, 'invocation.json')));
+  assert.equal(invocation.config.name, 'lanis-ui-preview');
+  assert.equal(invocation.config.assets.not_found_handling, 'single-page-application');
+  assert.match(fs.readFileSync(path.join(assets, '_headers'), 'utf8'), /noindex/);
+});
+
+test('production still requires prerendered status HTML', t => {
+  const {root, assets, invoke} = fixture(t);
+  fs.rmSync(path.join(assets, 'status'), {recursive: true});
+  const result = invoke({DEPLOY_KIND: 'production'});
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /Missing status\/index.html/);
+  assert.equal(fs.existsSync(path.join(root, 'invocation.json')), false);
+});
+
+test('production with prerendered status HTML still deploys', t => {
+  const {root, invoke} = fixture(t);
+  const result = invoke({DEPLOY_KIND: 'production'});
+  assert.equal(result.status, 0, result.stderr);
+  const invocation = JSON.parse(fs.readFileSync(path.join(root, 'invocation.json')));
+  assert.equal(invocation.config.name, 'lanis-ui');
+  assert.equal(invocation.args[0], 'deploy');
+});
+
 test('symlinked artifacts fail before invoking Wrangler', t => {
   const {root, assets, invoke} = fixture(t);
   fs.symlinkSync(__filename, path.join(assets, 'linked-file'));

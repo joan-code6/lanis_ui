@@ -27,7 +27,7 @@ export const weekTypeForDate = (
   return Math.abs(offset) % 2 === 0 ? referenceWeek : referenceWeek === 'A' ? 'B' : 'A';
 };
 
-const datesForMode = (mode: TimetableViewMode, today: Date): Date[] => {
+export const timetableDatesForMode = (mode: TimetableViewMode, today: Date): Date[] => {
   const current = startOfDay(today);
   if (mode === 'rolling') {
     return Array.from({ length: 7 }, (_, index) => addDays(current, index))
@@ -109,7 +109,7 @@ export const projectTimetableDays = (
     ? parseDate(referenceWeekStart)
     : startOfWeek(parseDate(templateDays[0].date), { weekStartsOn: 1 });
 
-  return datesForMode(mode, today).flatMap(value => {
+  return timetableDatesForMode(mode, today).flatMap(value => {
     const template = templatesByWeekday.get(getDay(value));
     if (!template) return [];
     const activeWeek = forcedWeek || weekTypeForDate(value, referenceMonday, referenceWeek);

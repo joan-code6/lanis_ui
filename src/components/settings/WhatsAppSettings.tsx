@@ -172,9 +172,12 @@ const WhatsAppSettings: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="card flex items-center gap-3 text-sm text-surface-500">
-        <ArrowPathIcon className="h-5 w-5 animate-spin" />
-        WhatsApp-Status wird geladen…
+      <div className="card overflow-hidden !p-0" role="status" aria-busy="true" aria-label="WhatsApp-Status wird geladen">
+        <div className="flex items-start gap-4 border-b border-surface-100 px-5 py-5 dark:border-surface-800 sm:px-6">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"><ChatBubbleLeftRightIcon className="h-6 w-6" /></div>
+          <div className="min-w-0 flex-1"><h2 className="font-semibold text-surface-900 dark:text-surface-100">LANIS auf WhatsApp</h2><div className="skeleton mt-1 h-6 w-28" aria-hidden="true" /><div className="skeleton mt-3 h-6 w-full" aria-hidden="true" /></div>
+        </div>
+        <div className="px-5 py-5 sm:px-6" aria-hidden="true"><div className="skeleton h-10 w-40" /></div>
       </div>
     );
   }

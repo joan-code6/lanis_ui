@@ -6,6 +6,7 @@ test('native links preserve supported content destinations', () => {
   assert.equal(nativeRoute('https://lanis.arg-server.de/timetable'), '/timetable');
   assert.equal(nativeRoute('/courses/123?tab=homework#entry'), '/courses/123?tab=homework#entry');
   assert.equal(nativeRoute('https://localhost/settings/android'), '/settings/android');
+  for (const route of ['/dateiverteilung', '/videokonferenz', '/wahlen']) assert.equal(nativeRoute(route), route);
 });
 
 test('notifications cannot navigate to arbitrary sites or privileged routes', () => {
@@ -36,6 +37,7 @@ test('saved Android shortcuts recover from invalid or old preferences', () => {
   assert.deepEqual(normalizeAndroidTabs(['calendar', 'calendar', 'unknown', 3]), ['calendar']);
   assert.deepEqual(normalizeAndroidTabs(['settings', 'courses', 'search', 'messages']), ['settings', 'courses', 'search', 'messages']);
   assert.deepEqual(normalizeAndroidTabs([]), []);
+  assert.deepEqual(normalizeAndroidTabs(['dateiverteilung', 'videokonferenz']), ['dateiverteilung', 'videokonferenz']);
 });
 
 test('Android Back preserves demo mode when there is no browser history', () => {

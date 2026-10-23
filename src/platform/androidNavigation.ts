@@ -3,7 +3,7 @@ import { useSyncExternalStore } from 'react';
 const KEY = 'lanis_android_navigation';
 const EVENT = 'lanis:android-navigation';
 export const DEFAULT_ANDROID_TABS = ['dashboard', 'timetable', 'messages'];
-export const ANDROID_TAB_IDS = ['dashboard', 'timetable', 'messages', 'courses', 'calendar', 'study-groups', 'dateispeicher', 'vertretungsplan', 'dsb', 'wahlen', 'profile', 'settings', 'search'];
+export const ANDROID_TAB_IDS = ['dashboard', 'timetable', 'messages', 'courses', 'calendar', 'study-groups', 'dateispeicher', 'dateiverteilung', 'videokonferenz', 'vertretungsplan', 'dsb', 'wahlen', 'profile', 'settings', 'search'];
 export function normalizeAndroidTabs(value: unknown): string[] {
   return Array.isArray(value)
     ? [...new Set(value.filter((id): id is string => typeof id === 'string' && ANDROID_TAB_IDS.includes(id)))]

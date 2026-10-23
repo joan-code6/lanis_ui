@@ -1,11 +1,9 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import axios from 'axios';
 import { format, isToday } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   AcademicCapIcon,
-  ArrowPathIcon,
   BookOpenIcon,
   CalendarDaysIcon,
   CheckCircleIcon,
@@ -19,10 +17,11 @@ import { useBasePath } from '../../contexts/BasePathContext';
 import { usePreferences } from '../../contexts/PreferencesContext';
 import { timetableAPI } from '../../services/api';
 import { StudyGroupExam, TimetableDay, TimetableLesson, TimetableResponse } from '../../types';
-import { weekTypeForDate } from '../../utils/timetableView';
+import { timetableDatesForMode, weekTypeForDate } from '../../utils/timetableView';
 import SEO from '../seo/SEO';
+import TimetableSkeleton from './TimetableSkeleton';
 import { layoutTimetableEntries, TimetableEntry, timetableEntries } from '../../utils/timetableExams';
-import { createTimetableRefreshTracker } from '../../utils/timetableRefresh';
+import { useCachedResource } from '../../hooks/useCachedResource';
 import {
   contrastingTextColour,
   defaultTimetableClassColours,
@@ -34,77 +33,53 @@ const Timetable: React.FC = () => {
   const { preferences } = usePreferences();
   const navigate = useNavigate();
   const basePath = useBasePath();
-  const [visibleDays, setVisibleDays] = useState<TimetableDay[]>([]);
-  const [hasAlternatingWeeks, setHasAlternatingWeeks] = useState(false);
-  const [activeWeek, setActiveWeek] = useState<'A' | 'B' | undefined>();
-  const [referenceWeekStart, setReferenceWeekStart] = useState<string>();
   const timetableViewMode = preferences.timetable.view_mode;
   const [planMode, setPlanMode] = useState<'personal' | 'all'>('personal');
   const [selectedWeek, setSelectedWeek] = useState<'A' | 'B' | undefined>();
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [cachedAt, setCachedAt] = useState<number>();
-  const [reloadKey, setReloadKey] = useState(0);
-  const [exams, setExams] = useState<StudyGroupExam[]>([]);
-  const [timeSlots, setTimeSlots] = useState<NonNullable<TimetableResponse['time_slots']>>([]);
-  const [examsError, setExamsError] = useState(false);
-  const [substitutionSources, setSubstitutionSources] = useState<{ name: string; error: boolean; updated?: string | null }[]>([]);
-  const refreshTracker = useRef(createTimetableRefreshTracker());
   const dayScrollerRef = useRef<HTMLDivElement>(null);
+  const { data, loading, refreshing, error, refresh } = useCachedResource(
+    JSON.stringify(['timetable', timetableViewMode, planMode, selectedWeek,
+      preferences.vertretungsplan.class_override, preferences.timetable.show_substitutions, format(new Date(), 'yyyy-MM-dd')]),
+    async (signal, force) => {
+      const response = await timetableAPI.getResolvedTimetable(token!, {
+        view_mode: timetableViewMode, plan_mode: planMode, show_substitutions: preferences.timetable.show_substitutions, week_type: selectedWeek, refresh: force,
+      }, signal);
+      if (!response.success) throw new Error(response.message || 'Der Stundenplan konnte nicht geladen werden.');
+      return response;
+    },
+  );
+  const visibleDays = data?.days || [];
+  const hasAlternatingWeeks = Boolean(data?.has_alternating_weeks);
+  const activeWeek = data?.active_week;
+  const referenceWeekStart = data?.week_start;
+  const exams = data?.exams || [];
+  const timeSlots = data?.time_slots || [];
+  const examsError = Boolean(data?.exams_error);
+  const substitutionSources = data?.substitution_sources || [];
+  const cachedAt = data?.offline_cached_at;
   const selectedDayRef = useRef('');
   const [selectedDay, setSelectedDay] = useState('');
 
   useEffect(() => {
-    if (!token) return;
-    const controller = new AbortController();
-    setLoading(true);
-    setError('');
-    setExams([]);
-    setExamsError(false);
-    setSubstitutionSources([]);
-
-    const refresh = refreshTracker.current.shouldRefresh(reloadKey);
-    timetableAPI.getResolvedTimetable(token, { view_mode: timetableViewMode, plan_mode: planMode, show_substitutions: preferences.timetable.show_substitutions, week_type: selectedWeek, refresh }, controller.signal)
-      .then(response => {
-        if (controller.signal.aborted) return;
-        if (!response.success) throw new Error(response.message || 'Der Stundenplan konnte nicht geladen werden.');
-        refreshTracker.current.markSuccessful(reloadKey);
-        setVisibleDays(response.days || []);
-        setCachedAt(response.offline_cached_at);
-        setHasAlternatingWeeks(Boolean(response.has_alternating_weeks));
-        setSubstitutionSources(response.substitution_sources || []);
-        setActiveWeek(response.active_week);
-        setReferenceWeekStart(response.week_start);
-        setExams(response.exams || []);
-        setTimeSlots(response.time_slots || []);
-        setExamsError(Boolean(response.exams_error));
-      })
-      .catch(err => {
-        if (controller.signal.aborted || axios.isCancel(err)) return;
-        setError(err.response?.data?.detail || err.message || 'Der Stundenplan konnte nicht geladen werden.');
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setLoading(false);
-      });
-
-    return () => controller.abort();
-  }, [token, reloadKey, timetableViewMode, planMode, selectedWeek, preferences.vertretungsplan.class_override, preferences.timetable.show_substitutions]);
-
-  useEffect(() => {
-    const refresh = () => setReloadKey(value => value + 1);
-    window.addEventListener('lanis:resume', refresh);
-    window.addEventListener('online', refresh);
-    return () => { window.removeEventListener('lanis:resume', refresh); window.removeEventListener('online', refresh); };
-  }, []);
+    const refreshOnResume = () => refresh();
+    window.addEventListener('lanis:resume', refreshOnResume);
+    window.addEventListener('online', refreshOnResume);
+    return () => { window.removeEventListener('lanis:resume', refreshOnResume); window.removeEventListener('online', refreshOnResume); };
+  }, [refresh]);
 
   const weekOverride = timetableViewMode === 'week' && hasAlternatingWeeks ? selectedWeek : undefined;
   const displayedExams = preferences.timetable.show_exams ? exams : [];
   const visibleExamCount = visibleDays.reduce((total, day) => total + displayedExams.filter(exam => exam.date === day.date).length, 0);
   const noticeCount = visibleDays.reduce((total, day) => total + (day.substitutionNotices || []).length, 0);
   const lessonCount = useMemo(() => visibleDays.reduce((total, day) => total + day.lessons.length, 0), [visibleDays]);
-  const firstVisibleDate = visibleDays[0]?.date ? new Date(`${visibleDays[0].date}T12:00:00`) : undefined;
+  const loadingDates = timetableDatesForMode(timetableViewMode, new Date());
+  const firstVisibleDate = visibleDays[0]?.date
+    ? new Date(`${visibleDays[0].date}T12:00:00`)
+    : loading ? loadingDates[0] : undefined;
   const lastVisibleDay = visibleDays[visibleDays.length - 1];
-  const lastVisibleDate = lastVisibleDay?.date ? new Date(`${lastVisibleDay.date}T12:00:00`) : undefined;
+  const lastVisibleDate = lastVisibleDay?.date
+    ? new Date(`${lastVisibleDay.date}T12:00:00`)
+    : loading ? loadingDates[loadingDates.length - 1] : undefined;
   const displayedWeekTypes = useMemo(() => {
     if (weekOverride) return [weekOverride];
     if (!activeWeek || !referenceWeekStart) return [];
@@ -147,12 +122,12 @@ const Timetable: React.FC = () => {
   };
 
   return (
-    <div className="min-h-full px-3 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
+    <div className="min-h-full module-padding">
       <SEO title="Stundenplan" description="Dein persönlicher Stundenplan im Schulportal Hessen." path="/timetable" noindex />
       <div className="mx-auto max-w-7xl">
-        <header className="mb-4 sm:mb-6">
-          <h1 className="text-2xl font-bold tracking-tight text-surface-900 dark:text-white sm:text-3xl">Stundenplan</h1>
-          <div className="mt-1.5 flex flex-wrap items-center gap-2 text-sm text-surface-500 dark:text-surface-400">
+        <header className="page-header">
+          <h1 className="page-title">Stundenplan</h1>
+          <div className="page-subtitle flex flex-wrap items-center gap-2">
             {firstVisibleDate && lastVisibleDate && (
               <span>{format(firstVisibleDate, "d. MMMM", { locale: de })} – {format(lastVisibleDate, "d. MMMM yyyy", { locale: de })}</span>
             )}
@@ -182,34 +157,36 @@ const Timetable: React.FC = () => {
 
         {cachedAt && <p role="status" className="mb-4 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-200">Gespeicherter Stundenplan · Stand {new Date(cachedAt).toLocaleString('de-DE')}. Neuere Änderungen können fehlen.</p>}
         <div role="status" className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-surface-500 dark:text-surface-400">
+          {loading && <span className="skeleton inline-block h-4 w-32" aria-hidden="true" />}
           {substitutionSources.map(source => <span key={source.name} className={source.error ? 'text-amber-700 dark:text-amber-300' : ''}>
             {source.name}: {source.error ? 'nicht geladen – Änderungen können fehlen' : source.updated ? `Stand ${formatSourceDate(source.updated)}` : 'abgeglichen'}
           </span>)}
-          <button type="button" disabled={loading} onClick={() => setReloadKey(value => value + 1)} className="font-medium text-primary-600 disabled:opacity-50 dark:text-primary-400">Aktualisieren</button>
+          <button type="button" disabled={loading || refreshing} onClick={refresh} className="font-medium text-primary-600 disabled:opacity-50 dark:text-primary-400">Aktualisieren</button>
         </div>
 
         {preferences.timetable.show_exams && examsError && (
           <div role="status" className="mb-4 flex flex-wrap items-center gap-2 text-sm text-surface-500 dark:text-surface-400">
             <span>Klausurtermine aus Lerngruppen konnten nicht geladen werden.</span>
-            <button type="button" className="font-medium text-primary-600 dark:text-primary-400" onClick={() => setReloadKey(value => value + 1)}>Erneut versuchen</button>
+            <button type="button" className="font-medium text-primary-600 dark:text-primary-400" onClick={refresh}>Erneut versuchen</button>
           </div>
         )}
 
+        {error && data && (
+          <p role="status" className="mb-4 text-sm text-amber-700 dark:text-amber-300">Aktualisierung fehlgeschlagen. Der zuletzt geladene Stand wird angezeigt. {error}</p>
+        )}
         {loading ? (
-          <div className="card flex min-h-64 items-center justify-center">
-            <div className="text-center text-surface-500"><ArrowPathIcon className="mx-auto mb-3 h-7 w-7 animate-spin text-primary-500" />Stundenplan wird geladen …</div>
-          </div>
-        ) : error ? (
+          <TimetableSkeleton dates={loadingDates} layoutMode={preferences.timetable.layout_mode} />
+        ) : error && !data ? (
           <div className="card flex min-h-64 flex-col items-center justify-center text-center">
             <CalendarDaysIcon className="mb-3 h-10 w-10 text-red-400" />
             <h2 className="font-semibold text-surface-900 dark:text-white">Stundenplan nicht verfügbar</h2>
             <p className="mt-1 max-w-md text-sm text-surface-500">{error}</p>
-            <button className="btn btn-secondary mt-4" onClick={() => setReloadKey(value => value + 1)}>Erneut versuchen</button>
+            <button className="btn btn-secondary mt-4" onClick={refresh}>Erneut versuchen</button>
           </div>
         ) : lessonCount === 0 && visibleExamCount === 0 && noticeCount === 0 ? (
           <div className="card flex min-h-64 flex-col items-center justify-center text-center">
             <CalendarDaysIcon className="mb-3 h-10 w-10 text-surface-300" />
-            <h2 className="font-semibold text-surface-900 dark:text-white">Keine Stunden eingetragen</h2>
+            <h2 className="empty-state-title">Keine Stunden eingetragen</h2>
             <p className="mt-1 text-sm text-surface-500">Für diese Woche wurden keine Unterrichtsstunden gefunden.</p>
           </div>
         ) : preferences.timetable.layout_mode === 'compact' ? (

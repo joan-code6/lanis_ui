@@ -3,6 +3,7 @@ import AndroidNavigation from '../android/AndroidNavigation';
 import AndroidConnectivity from '../android/AndroidConnectivity';
 import { androidPresentation } from '../../platform/native';
 import React from 'react';
+import { modulePreloadOrder, prefetchModule } from '../../utils/modulePrefetch';
 import { useAuth } from '../../contexts/AuthContext';
 import { usePreferences } from '../../contexts/PreferencesContext';
 import { BasePathProvider } from '../../contexts/BasePathContext';
@@ -25,8 +26,10 @@ import {
   ClipboardDocumentListIcon,
   ClipboardDocumentCheckIcon,
   FolderIcon,
+  DocumentDuplicateIcon,
   MagnifyingGlassIcon,
   MinusIcon,
+  VideoCameraIcon,
   ChatBubbleBottomCenterTextIcon,
   XMarkIcon as CloseIcon,
 } from '@heroicons/react/24/outline';
@@ -69,10 +72,13 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
   const [isFeedbackOpen, setIsFeedbackOpen] = React.useState(false);
   const feedbackOpenerRef = React.useRef<HTMLButtonElement | null>(null);
   const closeFeedbackDialog = React.useCallback(() => setIsFeedbackOpen(false), []);
+  const [preloadModules, setPreloadModules] = React.useState<CachedModule[]>([]);
   const [hasNativeDateispeicher, setHasNativeDateispeicher] = React.useState(false);
+  const [hasNativeDateiverteilung, setHasNativeDateiverteilung] = React.useState(false);
   const [hasNativeSubstitutionPlan, setHasNativeSubstitutionPlan] = React.useState(false);
   const [hasDsbModule, setHasDsbModule] = React.useState(false);
   const [hasWahlenModule, setHasWahlenModule] = React.useState(false);
+  const [hasVideokonferenzModule, setHasVideokonferenzModule] = React.useState(false);
   const mainRef = React.useRef<HTMLElement>(null);
   const pwaRef = React.useRef<any>(null);
   const menuRef = React.useRef<HTMLDivElement>(null);
@@ -132,11 +138,14 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
     const writeGeneration = captureAccountDataGeneration();
     const abortController = new AbortController();
     const applyModuleAvailability = (modules: CachedModule[]) => {
+      setPreloadModules(modules);
       const availability = getModuleAvailability(modules);
       setHasNativeDateispeicher(availability.hasNativeDateispeicher);
+      setHasNativeDateiverteilung(availability.hasNativeDateiverteilung);
       setHasNativeSubstitutionPlan(availability.hasNativeSubstitutionPlan);
       setHasDsbModule(availability.hasDsbModule);
       setHasWahlenModule(availability.hasWahlenModule);
+      setHasVideokonferenzModule(availability.hasVideokonferenzModule);
     };
     const cachedModules = readModulesCache(user);
     applyModuleAvailability(cachedModules);
@@ -160,6 +169,19 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
   }, [token, user?.school_id, user?.username]);
 
   React.useEffect(() => {
+    if (!token || !preloadModules.length) return;
+    let cancelled = false;
+    const timer = window.setTimeout(async () => {
+      for (const id of modulePreloadOrder(preloadModules, preferences)) {
+        if (cancelled) break;
+        if (window.location.pathname.replace(/^\/demo/, '').split('/')[1] === id) continue;
+        await prefetchModule(id, token, preferences);
+      }
+    }, 500);
+    return () => { cancelled = true; window.clearTimeout(timer); };
+  }, [token, preloadModules, preferences]);
+
+  React.useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (isFeedbackOpen || showLogoutConfirmation) return;
       if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'f')) {
@@ -177,7 +199,9 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
     divider: { name: 'Trennlinie', href: '#divider', icon: MinusIcon },
     dashboard: { name: 'Dashboard', href: `${basePath}/dashboard`, icon: HomeIcon },
     messages: { name: 'Nachrichten', href: `${basePath}/messages`, icon: ChatBubbleLeftRightIcon },
+    videokonferenz: { name: 'Videokonferenz', href: `${basePath}/videokonferenz`, icon: VideoCameraIcon },
     dateispeicher: { name: 'Dateispeicher', href: `${basePath}/dateispeicher`, icon: FolderIcon },
+    dateiverteilung: { name: 'Dateiverteilung', href: `${basePath}/dateiverteilung`, icon: DocumentDuplicateIcon },
     vertretungsplan: { name: 'Vertretungsplan', href: `${basePath}/vertretungsplan`, icon: ClipboardDocumentListIcon },
     dsb: { name: 'DSBmobile', href: `${basePath}/dsb`, icon: ClipboardDocumentListIcon },
     courses: { name: 'Mein Unterricht', href: `${basePath}/courses`, icon: AcademicCapIcon },
@@ -186,14 +210,15 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
     'study-groups': { name: 'Lerngruppen', href: `${basePath}/study-groups`, icon: UserGroupIcon },
     calendar: { name: 'Kalender', href: `${basePath}/calendar`, icon: CalendarDaysIcon },
     profile: { name: 'Profil', href: `${basePath}/profile`, icon: UserIcon },
-    settings: { name: 'Einstellungen', href: `${basePath}/settings`, icon: Cog6ToothIcon },
   } satisfies Record<SidebarItemId, { name: string; href: string; icon: React.ComponentType<React.SVGProps<SVGSVGElement>> }>;
   const availableItems = new Set<SidebarItemId>([
-    'search', 'divider', 'dashboard', 'messages', 'courses', 'timetable', 'study-groups', 'calendar', 'profile', 'settings',
+    'search', 'divider', 'dashboard', 'messages', 'courses', 'timetable', 'study-groups', 'calendar', 'profile',
     ...(hasNativeDateispeicher ? ['dateispeicher' as const] : []),
+    ...(hasNativeDateiverteilung ? ['dateiverteilung' as const] : []),
     ...(hasNativeSubstitutionPlan ? ['vertretungsplan' as const] : []),
     ...(hasDsbModule ? ['dsb' as const] : []),
     ...(hasWahlenModule ? ['wahlen' as const] : []),
+    ...(hasVideokonferenzModule ? ['videokonferenz' as const] : []),
   ]);
   const navigation = normalizeSidebarOrder(preferences.sidebar.order)
     .filter(id => !preferences.sidebar.hidden_items.includes(id))
@@ -259,7 +284,7 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
           <MagnifyingGlassIcon className="h-5 w-5" />
         </button>
       </div>
-      <main ref={mainRef} className={'flex-1 min-h-0 overflow-y-auto focus:outline-none pt-14 md:pt-0 transition-[margin] duration-300 ease-out ' + (isSidebarCollapsed ? 'md:ml-[60px]' : 'md:ml-64')}>
+      <main ref={mainRef} className={'flex-1 min-h-0 min-w-0 overflow-y-auto focus:outline-none pt-14 md:pt-0 transition-[margin] duration-300 ease-out ' + (isSidebarCollapsed ? 'md:ml-[60px]' : 'md:ml-64')}>
         <BasePathProvider basePath={basePath}>
           <div className="animate-fade-in">
             <AndroidConnectivity />
@@ -274,8 +299,10 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
         onClose={() => setIsSearchOpen(false)}
         basePath={basePath}
         hasNativeDateispeicher={hasNativeDateispeicher}
+        hasNativeDateiverteilung={hasNativeDateiverteilung}
         hasNativeSubstitutionPlan={hasNativeSubstitutionPlan}
         hasDsbModule={hasDsbModule}
+        hasVideokonferenzModule={hasVideokonferenzModule}
       />
       {showLogoutConfirmation && <div ref={logoutRef} role="dialog" aria-modal="true" aria-labelledby="logout-title" tabIndex={-1} className="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div className="absolute inset-0 bg-surface-950/50" onClick={closeLogout} />
@@ -336,7 +363,7 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
           >
             <AppIcon alt="Schulportal" className={`${isCollapsed ? 'h-10 w-10' : 'h-9 w-9'} rounded-xl transition-opacity duration-200 ${isCollapsed ? 'group-hover:opacity-0' : ''}`} />
             <div className={`overflow-hidden transition-all duration-300 ${isCollapsed ? 'w-0 opacity-0' : 'w-32 opacity-100'}`}>
-              <h1 className="whitespace-nowrap text-base font-semibold text-surface-900 dark:text-surface-100 tracking-tight">Schulportal</h1>
+              <span className="whitespace-nowrap text-base font-semibold text-surface-900 dark:text-surface-100 tracking-tight">Schulportal</span>
               <p className="whitespace-nowrap text-[11px] text-surface-500 dark:text-surface-400 font-medium tracking-wide uppercase">Hessen</p>
             </div>
             {isCollapsed && (
@@ -429,6 +456,8 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
                 <Link
                   key={item.id}
                   to={item.href}
+                  onMouseEnter={() => token && void prefetchModule(item.id, token, preferences)}
+                  onFocus={() => token && void prefetchModule(item.id, token, preferences)}
                   style={{ animationDelay: `${index * 60}ms` }}
                   className={`nav-link ${isCollapsed ? 'mx-auto h-10 w-10 justify-center gap-0 px-0' : ''} ${isActive ? 'nav-link-active' : ''}`}
                   title={isCollapsed ? item.name : undefined}
@@ -466,6 +495,18 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
                 </span>
               </button>
             )}
+            <Link
+              to={`${basePath}/settings`}
+              className={`nav-link ${isCollapsed ? 'mx-auto h-10 w-10 justify-center gap-0 px-0' : ''} ${location.pathname === `${basePath}/settings` || location.pathname.startsWith(`${basePath}/settings/`) ? 'nav-link-active' : ''}`}
+              title={isCollapsed ? 'Einstellungen' : undefined}
+              aria-label="Einstellungen"
+              onClick={() => setIsSidebarOpen(false)}
+            >
+              <Cog6ToothIcon className="nav-link-icon" />
+              <span className={`overflow-hidden whitespace-nowrap transition-[max-width,opacity] duration-300 ${isCollapsed ? 'max-w-0 opacity-0' : 'max-w-48 opacity-100'}`}>
+                Einstellungen
+              </span>
+            </Link>
             <div className="relative">
               <button
                 onClick={() => { setIsSidebarOpen(false); setShowLogoutConfirmation(true); }}

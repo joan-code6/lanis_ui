@@ -3,7 +3,9 @@ export const SIDEBAR_ITEM_IDS = [
   'divider',
   'dashboard',
   'messages',
+  'videokonferenz',
   'dateispeicher',
+  'dateiverteilung',
   'vertretungsplan',
   'dsb',
   'courses',
@@ -12,7 +14,6 @@ export const SIDEBAR_ITEM_IDS = [
   'study-groups',
   'calendar',
   'profile',
-  'settings',
 ] as const;
 
 export type SidebarItemId = typeof SIDEBAR_ITEM_IDS[number];
@@ -21,7 +22,9 @@ export const DEFAULT_SIDEBAR_ORDER: SidebarItemId[] = [
   'search',
   'dashboard',
   'messages',
+  'videokonferenz',
   'dateispeicher',
+  'dateiverteilung',
   'vertretungsplan',
   'dsb',
   'courses',
@@ -30,7 +33,6 @@ export const DEFAULT_SIDEBAR_ORDER: SidebarItemId[] = [
   'study-groups',
   'calendar',
   'profile',
-  'settings',
 ];
 
 export const isDivider = (id: string): boolean => id === 'divider' || id.startsWith('divider-');
@@ -40,7 +42,9 @@ export const SIDEBAR_ITEM_LABELS: Record<string, string> = {
   divider: 'Trennlinie',
   dashboard: 'Dashboard',
   messages: 'Nachrichten',
+  videokonferenz: 'Videokonferenz',
   dateispeicher: 'Dateispeicher',
+  dateiverteilung: 'Dateiverteilung',
   vertretungsplan: 'Vertretungsplan',
   dsb: 'DSBmobile',
   courses: 'Mein Unterricht',
@@ -49,7 +53,6 @@ export const SIDEBAR_ITEM_LABELS: Record<string, string> = {
   'study-groups': 'Lerngruppen',
   calendar: 'Kalender',
   profile: 'Profil',
-  settings: 'Einstellungen',
 };
 
 export const getSidebarLabel = (id: string): string => {
@@ -58,7 +61,7 @@ export const getSidebarLabel = (id: string): string => {
 };
 
 export const normalizeSidebarOrder = (order: string[]): string[] => {
-  const normalized = [...new Set(order)];
+  const normalized = [...new Set(order)].filter(id => id !== 'settings');
 
   for (const missingItem of DEFAULT_SIDEBAR_ORDER) {
     if (normalized.includes(missingItem)) continue;

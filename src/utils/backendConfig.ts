@@ -87,7 +87,7 @@ export function resetCustomBackendUrl(): void {
   window.localStorage.removeItem(CUSTOM_BACKEND_STORAGE_KEY);
 }
 
-export async function clearBackendScopedStorage(): Promise<void> {
+export async function clearBackendScopedStorage(preserveDeletionRecovery = false): Promise<void> {
   for (const key of BACKEND_SCOPED_STORAGE_KEYS) {
     if (key.startsWith('auth_')) authStorage.removeItem(key);
     else window.localStorage.removeItem(key);
@@ -98,7 +98,7 @@ export async function clearBackendScopedStorage(): Promise<void> {
       window.localStorage.removeItem(key);
     }
   }
-  await clearNativeSession();
+  await clearNativeSession(preserveDeletionRecovery);
   for (const key of BACKEND_SCOPED_COOKIE_KEYS) {
     document.cookie = `${key}=;max-age=0;path=/;SameSite=Lax`;
   }

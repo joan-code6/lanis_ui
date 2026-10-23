@@ -20,6 +20,7 @@ const context = {
   exports: exportsObject,
   require(name) {
     if (name === '../platform/authStorage') return { authStorage: storage, async flushAuthStorage() {} };
+    if (name === './resourceCache') return resourceCache;
     assert.equal(name, './backendConfig');
     return { CUSTOM_BACKEND_STORAGE_KEY: 'lanis_custom_backend_url', clearBackendScopedStorage() {} };
   },
@@ -28,6 +29,10 @@ const context = {
   navigator: {},
   console,
 };
+const resourceCache = {};
+vm.runInNewContext(ts.transpileModule(fs.readFileSync(path.join(__dirname, '../src/utils/resourceCache.ts'), 'utf8'), {
+  compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
+}).outputText, { exports: resourceCache, AbortController });
 const source = fs.readFileSync(path.join(__dirname, '../src/utils/accountDataWrites.ts'), 'utf8');
 vm.runInNewContext(ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText, context);
 const lifecycle = exportsObject;
@@ -60,7 +65,12 @@ const lifecycle = exportsObject;
       };
     },
   };
+  const memoryGeneration = resourceCache.resourceCacheGeneration();
+  resourceCache.updateResource('private', 'cached-account-data', memoryGeneration);
   assert(await lifecycle.purgeDeletedAccountBrowserData());
+  assert.equal(resourceCache.readResource('private').data, undefined, 'deletion clears the session cache');
+  resourceCache.updateResource('private', 'late-account-data', memoryGeneration);
+  assert.equal(resourceCache.readResource('private').data, undefined, 'old UI callbacks cannot restore deleted data');
   assert.equal(closedNotifications, 2, 'Existing OS notifications must be dismissed');
   assert(unsubscribed);
   assert.equal(storage.getItem('profile_cache'), null);

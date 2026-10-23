@@ -1,5 +1,5 @@
 const origins = new Set(['https://lanis.arg-server.de', 'https://localhost']);
-const allowedPath = /^\/(dashboard|timetable|messages|vertretungsplan|dsb|courses|calendar|settings|profile|dateispeicher|study-groups)(\/|$)/;
+const allowedPath = /^\/(dashboard|timetable|messages|vertretungsplan|dsb|courses|calendar|settings|profile|dateispeicher|dateiverteilung|videokonferenz|wahlen|study-groups)(\/|$)/;
 
 export function nativeRoute(value: string): string | null {
   try {

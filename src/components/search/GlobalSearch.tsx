@@ -1,7 +1,8 @@
+import { readPersonalCache } from '../../utils/accountDataWrites';
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { authAPI, messagesAPI, calendarAPI, coursesAPI, appsAPI, searchAPI, studyGroupsAPI, timetableAPI } from '../../services/api';
+import { authAPI, messagesAPI, calendarAPI, coursesAPI, appsAPI, searchAPI, studyGroupsAPI, timetableAPI, dateiverteilungAPI } from '../../services/api';
 import type { SemanticSearchResult } from '../../services/api';
 import { readModulesCache } from '../../utils/moduleCache';
 import type { CachedModule } from '../../utils/moduleCache';
@@ -16,10 +17,11 @@ import {
   Cog6ToothIcon,
   ClipboardDocumentListIcon,
   FolderIcon,
-  ArrowPathIcon,
+  DocumentDuplicateIcon,
   ClockIcon,
   UserGroupIcon,
   XMarkIcon,
+  VideoCameraIcon,
 } from '@heroicons/react/24/outline';
 
 interface SearchItem {
@@ -37,8 +39,10 @@ interface GlobalSearchProps {
   onClose: () => void;
   basePath?: string;
   hasNativeDateispeicher?: boolean;
+  hasNativeDateiverteilung?: boolean;
   hasNativeSubstitutionPlan?: boolean;
   hasDsbModule?: boolean;
+  hasVideokonferenzModule?: boolean;
 }
 
 interface NavigationItem {
@@ -65,6 +69,8 @@ function moduleInAppHref(
   const coreRoute = coreRoutes.find(([source]) => moduleLinks.includes(source))?.[1];
   if (coreRoute) return `${basePath}/${coreRoute}`;
   const isDateispeicher = moduleName.includes('dateispeicher') || moduleLinks.includes('/dateispeicher.php');
+  const isDateiverteilung = moduleName.includes('dateiverteilung') || moduleLinks.includes('/dateiverteilung.php');
+  const isVideokonferenz = moduleName.includes('videokonferenz') || moduleLinks.includes('/videokonferenz.php');
   const isWahlen = moduleName.includes('wahlen') || moduleLinks.includes('/oberstufenwahl.php');
   const isDsbModule = moduleName.includes('dsb') || moduleLinks.includes('dsb');
   const isNativeSubstitutionPlan = !isDsbModule && (
@@ -73,8 +79,11 @@ function moduleInAppHref(
   const nativePlanHref = planNavigation.find(item => item.href.endsWith('/vertretungsplan'))?.href;
   const dsbHref = planNavigation.find(item => item.href.endsWith('/dsb'))?.href;
   const dateispeicherHref = planNavigation.find(item => item.href.endsWith('/dateispeicher'))?.href;
+  const dateiverteilungHref = planNavigation.find(item => item.href.endsWith('/dateiverteilung'))?.href;
   const wahlenHref = `${basePath}/wahlen`;
   return (isDateispeicher && (dateispeicherHref || `${basePath}/dateispeicher`))
+    || (isDateiverteilung && (dateiverteilungHref || `${basePath}/dateiverteilung`))
+    || (isVideokonferenz && `${basePath}/videokonferenz`)
     || (isWahlen && wahlenHref)
     || (isNativeSubstitutionPlan && (nativePlanHref || `${basePath}/vertretungsplan`))
     || (isDsbModule && (dsbHref || `${basePath}/dsb`))
@@ -87,6 +96,7 @@ const CATEGORY_ICONS: Record<string, React.ComponentType<{ className?: string }>
   Unterricht: AcademicCapIcon,
   Kalender: CalendarDaysIcon,
   Module: HomeIcon,
+  Dateiverteilung: DocumentDuplicateIcon,
   Vertretungsplan: ClipboardDocumentListIcon,
   Stundenplan: ClockIcon,
   Lerngruppen: UserGroupIcon,
@@ -135,7 +145,7 @@ function searchCacheData(
   const results: SearchItem[] = [];
 
   try {
-    const raw = basePath === '/demo' ? null : localStorage.getItem('messages_cache');
+    const raw = basePath === '/demo' ? null : readPersonalCache('messages_cache');
     if (raw) {
       const msgs = JSON.parse(raw);
       if (Array.isArray(msgs)) {
@@ -162,7 +172,7 @@ function searchCacheData(
   } catch {}
 
   try {
-    const raw = basePath === '/demo' ? null : localStorage.getItem('courses_cache');
+    const raw = basePath === '/demo' ? null : readPersonalCache('courses_cache');
     if (raw) {
       const entries = JSON.parse(raw);
       if (Array.isArray(entries)) {
@@ -196,7 +206,7 @@ function searchCacheData(
   }
 
   try {
-    const raw = basePath === '/demo' ? null : localStorage.getItem('dsb_plan_cache_v2');
+    const raw = basePath === '/demo' ? null : readPersonalCache('dsb_plan_cache_v2');
     if (raw) {
       const data = JSON.parse(raw);
       for (const t of data?.tables || []) {
@@ -215,7 +225,7 @@ function searchCacheData(
   } catch {}
 
   try {
-    const raw = basePath === '/demo' ? null : localStorage.getItem('username_cache');
+    const raw = basePath === '/demo' ? null : readPersonalCache('username_cache');
     if (raw) {
       const p = JSON.parse(raw);
       const data = p?.data || p;
@@ -236,7 +246,7 @@ function searchCacheData(
   } catch {}
 
   try {
-    const raw = basePath === '/demo' ? null : localStorage.getItem('profile_cache');
+    const raw = basePath === '/demo' ? null : readPersonalCache('profile_cache');
     if (raw) {
       const profile = JSON.parse(raw);
       if (searchText(query, profile)) {
@@ -279,8 +289,10 @@ export default function GlobalSearch({
   onClose,
   basePath = '',
   hasNativeDateispeicher = false,
+  hasNativeDateiverteilung = false,
   hasNativeSubstitutionPlan = false,
   hasDsbModule = false,
+  hasVideokonferenzModule = false,
 }: GlobalSearchProps) {
   const { token, user } = useAuth();
   const navigate = useNavigate();
@@ -299,9 +311,13 @@ export default function GlobalSearch({
   const [semanticResults, setSemanticResults] = useState<SearchItem[]>([]);
 
   const planNavigation = useMemo<NavigationItem[]>(() => {
-    const moduleItems: NavigationItem[] = hasNativeDateispeicher
-      ? [{ name: 'Dateispeicher', href: `${basePath}/dateispeicher`, icon: FolderIcon, cat: 'Module' }]
-      : [];
+    const moduleItems: NavigationItem[] = [
+      ...(hasNativeDateispeicher ? [{ name: 'Dateispeicher', href: `${basePath}/dateispeicher`, icon: FolderIcon, cat: 'Module' }] : []),
+      ...(hasNativeDateiverteilung ? [{ name: 'Dateiverteilung', href: `${basePath}/dateiverteilung`, icon: DocumentDuplicateIcon, cat: 'Module' }] : []),
+    ];
+    if (hasVideokonferenzModule) {
+      moduleItems.push({ name: 'Videokonferenz', href: `${basePath}/videokonferenz`, icon: VideoCameraIcon, cat: 'Module' });
+    }
     if (hasNativeSubstitutionPlan) {
       return [
         ...moduleItems,
@@ -312,7 +328,7 @@ export default function GlobalSearch({
     return hasDsbModule
       ? [...moduleItems, { name: 'Vertretungsplan', href: `${basePath}/dsb`, icon: ClipboardDocumentListIcon, cat: 'Vertretungsplan' }]
       : moduleItems;
-  }, [basePath, hasDsbModule, hasNativeDateispeicher, hasNativeSubstitutionPlan]);
+  }, [basePath, hasDsbModule, hasNativeDateispeicher, hasNativeDateiverteilung, hasNativeSubstitutionPlan, hasVideokonferenzModule]);
 
   const cachedModules = readModulesCache(user);
   const cacheResults = useMemo(
@@ -465,6 +481,16 @@ export default function GlobalSearch({
           }));
           return [...groups, ...exams];
         }),
+        ...(hasNativeDateiverteilung ? [dateiverteilungAPI.getOverview(token, false, controller.signal).then(res => (
+          !res.success ? [] : res.distributions.filter(distribution => searchText(query, distribution)).map(distribution => ({
+            id: `api-distribution-${distribution.id}`,
+            title: distribution.title,
+            subtitle: [distribution.source, distribution.created_at].filter(Boolean).join(' · '),
+            category: 'Dateiverteilung',
+            icon: DocumentDuplicateIcon,
+            href: `${basePath}/dateiverteilung`,
+          }))
+        ))] : []),
         authAPI.getUserProfile(token, controller.signal).then(res => {
           if (!res.success || !searchText(query, res.data)) return [];
           return [{ id: 'api-profile', title: 'Dein Profil', subtitle: 'Profildaten', category: 'Profil', icon: UserIcon, href: '/profile' }];
@@ -485,7 +511,7 @@ export default function GlobalSearch({
       controller.abort();
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [query, token, isOpen]);
+  }, [basePath, hasNativeDateiverteilung, planNavigation, query, token, isOpen]);
 
   // ── Semantic search (parallel to Tier 2) ────────────────────────
 
@@ -604,9 +630,8 @@ export default function GlobalSearch({
           )}
 
           {showLoading && (
-            <div className="flex items-center gap-3 px-4 py-4 text-sm text-surface-500 dark:text-surface-400">
-              <ArrowPathIcon className="h-4 w-4 animate-spin text-primary-500" />
-              Suche läuft...
+            <div role="status" aria-busy="true" aria-label="Suchergebnisse werden geladen">
+              {[0, 1, 2].map(i => <div key={i} className="flex items-center gap-3 rounded-xl px-3 py-2.5" aria-hidden="true"><div className="skeleton h-8 w-8 shrink-0 rounded-lg" /><div className="min-w-0 flex-1"><div className="skeleton h-5 w-3/4" /><div className="skeleton mt-1 h-4 w-1/2" /></div></div>)}
             </div>
           )}
 

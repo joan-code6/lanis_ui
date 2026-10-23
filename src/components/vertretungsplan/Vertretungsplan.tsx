@@ -1,5 +1,6 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import axios from 'axios';
+import { SubstitutionPlanSkeleton } from '../shared/ModuleLoadingSkeletons';
+import { useCachedResource } from '../../hooks/useCachedResource';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   ArrowPathIcon,
   CalendarDaysIcon,
@@ -8,7 +9,7 @@ import {
 import { useAuth } from '../../contexts/AuthContext';
 import { usePreferences } from '../../contexts/PreferencesContext';
 import { vertretungsplanAPI } from '../../services/api';
-import { VertretungsplanDay, VertretungsplanEntry, VertretungsplanOptionsResponse, VertretungsplanResponse } from '../../types';
+import { VertretungsplanDay, VertretungsplanEntry } from '../../types';
 import SEO from '../seo/SEO';
 
 function parsePortalDate(value: string): Date | null {
@@ -152,85 +153,25 @@ const PlanField: React.FC<{ label: string; value: string | null }> = ({ label, v
 const Vertretungsplan: React.FC = () => {
   const { token } = useAuth();
   const { preferences } = usePreferences();
-  const previousToken = useRef<string | null>(null);
-  const [plan, setPlan] = useState<VertretungsplanResponse | null>(null);
-  const [options, setOptions] = useState<VertretungsplanOptionsResponse>({
-    success: false,
-    own_class: '',
-    available_classes: [],
-  });
   const [activeDay, setActiveDay] = useState('');
   const [selectedClass, setSelectedClass] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [optionsLoading, setOptionsLoading] = useState(true);
-  const [optionsRequestSucceeded, setOptionsRequestSucceeded] = useState(false);
-  const [error, setError] = useState('');
-  const [reloadKey, setReloadKey] = useState(0);
-
-  useEffect(() => {
-    const tokenChanged = previousToken.current !== token;
-    previousToken.current = token;
-    if (!token) {
-      setLoading(false);
-      setOptionsLoading(false);
-      setOptionsRequestSucceeded(false);
-      return undefined;
-    }
-
-    const controller = new AbortController();
-    setLoading(true);
-    setOptionsLoading(true);
-    setOptionsRequestSucceeded(false);
-    setError('');
-    if (tokenChanged) {
-      setOptions({ success: false, own_class: '', available_classes: [] });
-      setSelectedClass(null);
-    }
-
-    const load = async () => {
-      const optionsPromise = vertretungsplanAPI.getOptions(token, controller.signal)
-        .then(result => {
-          if (!result.success) {
-            throw new Error(result.error || 'Die Klassen konnten nicht geladen werden.');
-          }
-          return result;
-        })
-        .catch(optionsError => {
-          if (!axios.isCancel(optionsError)) {
-            console.warn('Failed to load Vertretungsplan class options:', optionsError);
-          }
-          return null;
-        });
-      const response = await vertretungsplanAPI.getPlan(token, reloadKey > 0, controller.signal);
-      if (controller.signal.aborted) return;
-      if (!response.success) {
-        throw new Error(response.error || 'Der Vertretungsplan konnte nicht geladen werden.');
-      }
-      const days = Array.isArray(response.days) ? response.days : [];
-      setPlan({ ...response, days, count: response.count || 0 });
-      setActiveDay(current => days.some(day => day.date === current) ? current : (days[0]?.date || ''));
-      // Class metadata is optional; show the plan as soon as its required request is ready.
-      setLoading(false);
-
-      const optionsResponse = await optionsPromise;
-      if (controller.signal.aborted) return;
-      if (optionsResponse) setOptions(optionsResponse);
-      setOptionsRequestSucceeded(optionsResponse !== null);
-      setOptionsLoading(false);
-    };
-
-    load()
-      .catch(err => {
-        if (axios.isCancel(err)) return;
-        setPlan(null);
-        setError(err instanceof Error ? err.message : 'Der Vertretungsplan konnte nicht geladen werden.');
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setLoading(false);
-      });
-
-    return () => controller.abort();
-  }, [token, reloadKey]);
+  const { data: plan, loading, refreshing, error, refresh: refreshPlan } = useCachedResource(
+    'substitution-plan', async (signal, force) => {
+      const response = await vertretungsplanAPI.getPlan(token!, force, signal);
+      if (!response.success) throw new Error(response.error || 'Der Vertretungsplan konnte nicht geladen werden.');
+      return { ...response, days: Array.isArray(response.days) ? response.days : [], count: response.count || 0 };
+    },
+  );
+  const { data: cachedOptions, loading: optionsLoading, refresh: refreshOptions } = useCachedResource(
+    'substitution-options', async signal => {
+      const response = await vertretungsplanAPI.getOptions(token!, signal);
+      if (!response.success) throw new Error(response.error || 'Die Klassen konnten nicht geladen werden.');
+      return response;
+    },
+  );
+  const options = cachedOptions || { success: false, own_class: '', available_classes: [] };
+  const optionsRequestSucceeded = Boolean(cachedOptions);
+  const refresh = () => { refreshPlan(); refreshOptions(); };
 
   const days = plan?.days || [];
   const activeDayData = days.find(day => day.date === activeDay) || days[0];
@@ -320,7 +261,7 @@ const Vertretungsplan: React.FC = () => {
   }
 
   return (
-    <div className="min-h-full px-3 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
+    <div className="min-h-full module-padding">
       <SEO
         title="Vertretungsplan"
         description="Dein nativer Vertretungsplan aus dem Schulportal Hessen."
@@ -328,10 +269,10 @@ const Vertretungsplan: React.FC = () => {
         noindex
       />
       <div className="mx-auto max-w-7xl">
-        <header className="mb-4 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:items-start sm:justify-between">
+        <header className="page-header page-header-actions">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-surface-900 dark:text-white sm:text-3xl">Vertretungsplan</h1>
-            <div className="mt-1.5 flex flex-wrap items-center gap-2 text-sm text-surface-500 dark:text-surface-400">
+            <h1 className="page-title">Vertretungsplan</h1>
+            <div className="page-subtitle flex flex-wrap items-center gap-2">
               <span>Direkt aus dem Schulportal Hessen</span>
               {plan?.last_updated && (
                 <span className="whitespace-nowrap text-xs text-surface-400 dark:text-surface-500">
@@ -343,8 +284,8 @@ const Vertretungsplan: React.FC = () => {
           <button
             type="button"
             className="btn btn-secondary self-start"
-            onClick={() => setReloadKey(value => value + 1)}
-            disabled={loading}
+            onClick={refresh}
+            disabled={loading || refreshing}
           >
             <ArrowPathIcon className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             Aktualisieren
@@ -353,19 +294,14 @@ const Vertretungsplan: React.FC = () => {
 
         {error && (
           <div className="card mb-6 border-red-200 bg-red-50 text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300">
-            <h2 className="font-semibold">Vertretungsplan nicht verfügbar</h2>
-            <p className="mt-1 text-sm">{error}</p>
+            <h2 className="font-semibold">{plan ? 'Aktualisierung fehlgeschlagen' : 'Vertretungsplan nicht verfügbar'}</h2>
+            <p className="mt-1 text-sm">{plan && 'Aktualisierung fehlgeschlagen. Der zuletzt geladene Stand wird angezeigt. '}{error}</p>
           </div>
         )}
 
         {loading ? (
-          <div className="card flex min-h-64 items-center justify-center">
-            <div className="text-center text-surface-500">
-              <ArrowPathIcon className="mx-auto mb-3 h-7 w-7 animate-spin text-primary-500" />
-              Vertretungsplan wird geladen …
-            </div>
-          </div>
-        ) : !error && plan?.available === false ? (
+          <SubstitutionPlanSkeleton />
+        ) : plan?.available === false ? (
           <div className="card flex min-h-64 flex-col items-center justify-center text-center">
             <InformationCircleIcon className="mb-3 h-10 w-10 text-surface-300" />
             <h2 className="font-semibold text-surface-900 dark:text-white">Native Vertretungsplan nicht verfügbar</h2>
@@ -373,7 +309,7 @@ const Vertretungsplan: React.FC = () => {
               Dieses Schulportal-Konto stellt keinen nativen Vertretungsplan bereit.
             </p>
           </div>
-        ) : !error && plan ? (
+        ) : plan ? (
           <>
             {days.length > 0 && (
               <div className="mb-4 flex gap-2 overflow-x-auto pb-1" aria-label="Tage im Vertretungsplan">

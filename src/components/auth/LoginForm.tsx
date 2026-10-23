@@ -82,11 +82,18 @@ function fuzzyScore(query: string, target: string): number {
   return total / qTokens.length;
 }
 
-const LoginForm: React.FC = () => {
+export interface FixedSchool { id: string; name: string; location: string }
+
+interface LoginFormProps {
+  /** Embedded card mode: school is preselected (search field hidden) and no page chrome is rendered. */
+  fixedSchool?: FixedSchool;
+}
+
+const LoginForm: React.FC<LoginFormProps> = ({ fixedSchool }) => {
   const { login } = useAuth();
   const { isDark, isOled, themeMode, setThemeMode } = useTheme();
   const [formData, setFormData] = useState({
-    school_id: '',
+    school_id: fixedSchool?.id ?? '',
     username: '',
     password: '',
   });
@@ -107,6 +114,7 @@ const LoginForm: React.FC = () => {
   const [error, setError] = useState('');
 
   useEffect(() => {
+    if (fixedSchool) return;
     const savedSchoolId = getCookie('lastSchoolId');
     const savedSchoolName = getCookie('lastSchoolName');
     const savedSchoolLocation = getCookie('lastSchoolLocation');
@@ -134,6 +142,7 @@ const LoginForm: React.FC = () => {
   };
 
   useEffect(() => {
+    if (fixedSchool) return;
     const abortController = new AbortController();
     setSchoolsLoading(true);
     setSchoolsFailed(false);
@@ -214,6 +223,11 @@ const LoginForm: React.FC = () => {
     if (isLoading || !formData.school_id) return;
     setIsLoading(true);
     setError('');
+    if (fixedSchool) {
+      setCookie('lastSchoolId', fixedSchool.id);
+      setCookie('lastSchoolName', fixedSchool.name);
+      setCookie('lastSchoolLocation', fixedSchool.location);
+    }
     const success = await login(formData);
     if (!success) {
       setError(navigator.onLine ? 'Anmeldung fehlgeschlagen. Prüfe deine Zugangsdaten.' : 'Offline. Prüfe deine Verbindung.');
@@ -230,22 +244,7 @@ const LoginForm: React.FC = () => {
     setThemeMode(nextMode);
   };
 
-  return (
-    <div className="min-h-[100dvh] bg-surface-50 dark:bg-surface-950 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 relative">
-      <SEO
-        title="Anmelden"
-        description="Melde dich bei Lanis an — der modernen Benutzeroberfläche für das Schulportal Hessen. Wähle deine Schule aus und logge dich ein."
-        path="/login"
-        noindex
-      />
-      <button
-        onClick={cycleTheme}
-        className="absolute top-4 right-4 flex min-h-11 items-center gap-1.5 px-3 py-2 text-xs font-medium text-surface-500 dark:text-surface-400 hover:text-surface-700 dark:hover:text-surface-300 hover:bg-surface-100 dark:hover:bg-surface-800 rounded-xl transition-all duration-200 active:scale-95"
-        title="Design wechseln"
-      >
-        {isOled ? <MoonIcon className="h-4 w-4" /> : isDark ? <SunIcon className="h-4 w-4" /> : <MoonIcon className="h-4 w-4" />}
-        {isOled ? 'OLED' : isDark ? 'Dunkel' : 'Hell'}
-      </button>
+  const card = (
       <div className="w-full max-w-sm">
         <div className="text-center mb-10">
             <AppIcon alt="Schulportal" className="mx-auto h-14 w-14 rounded-2xl mb-6 shadow-soft-md" />
@@ -259,6 +258,7 @@ const LoginForm: React.FC = () => {
 
         <form className="space-y-5" onSubmit={handleSubmit} aria-busy={isLoading}>
           <div className="space-y-4">
+            {!fixedSchool && (
             <div ref={schoolFieldRef} className="relative" onBlur={event => {
               if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setShowSchoolDropdown(false);
             }}>
@@ -336,6 +336,7 @@ const LoginForm: React.FC = () => {
                 </div>
               )}
             </div>
+            )}
 
             <div>
               <label htmlFor="username" className="label">
@@ -449,6 +450,27 @@ const LoginForm: React.FC = () => {
           </div>
         </form>
       </div>
+  );
+
+  if (fixedSchool) return card;
+
+  return (
+    <div className="min-h-[100dvh] bg-surface-50 dark:bg-surface-950 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 relative">
+      <SEO
+        title="Anmelden"
+        description="Melde dich bei Lanis an — der modernen Benutzeroberfläche für das Schulportal Hessen. Wähle deine Schule aus und logge dich ein."
+        path="/login"
+        noindex
+      />
+      <button
+        onClick={cycleTheme}
+        className="absolute top-4 right-4 flex min-h-11 items-center gap-1.5 px-3 py-2 text-xs font-medium text-surface-500 dark:text-surface-400 hover:text-surface-700 dark:hover:text-surface-300 hover:bg-surface-100 dark:hover:bg-surface-800 rounded-xl transition-all duration-200 active:scale-95"
+        title="Design wechseln"
+      >
+        {isOled ? <MoonIcon className="h-4 w-4" /> : isDark ? <SunIcon className="h-4 w-4" /> : <MoonIcon className="h-4 w-4" />}
+        {isOled ? 'OLED' : isDark ? 'Dunkel' : 'Hell'}
+      </button>
+      {card}
     </div>
   );
 };

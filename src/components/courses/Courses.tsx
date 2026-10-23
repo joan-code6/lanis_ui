@@ -1,3 +1,6 @@
+import { useCachedState } from '../../hooks/useCachedState';
+import { readPersonalCache, writePersonalCache } from '../../utils/accountDataWrites';
+import { CoursesGridSkeleton, CourseEntriesSkeleton } from '../shared/LoadingSkeletons';
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useBasePath } from '../../contexts/BasePathContext';
@@ -13,12 +16,11 @@ import {
   CourseDetails,
   CourseMark,
   CourseDetailEntry,
+  EntryUpload,
   EntryDetailsResponse,
   EntryDetails,
   WeeklyViewResponse,
   WeeklyEntry,
-  SubmissionsResponse,
-  Submission 
 } from '../../types';
 import {
   AcademicCapIcon,
@@ -36,6 +38,7 @@ import {
   ChartBarIcon,
   ListBulletIcon,
   Squares2X2Icon,
+  ArrowUpTrayIcon,
 } from '@heroicons/react/24/outline';
 import { format, parseISO } from 'date-fns';
 import { de } from 'date-fns/locale';
@@ -44,7 +47,7 @@ import { isDemoRoute, notifyDemoCacheWrite } from '../../utils/demoMode';
 import { canWriteAccountData, captureAccountDataGeneration } from '../../utils/accountDataWrites';
 import { normalizeCourseList } from '../../utils/courseNormalization';
 
-type ViewMode = 'overview' | 'course-detail' | 'weekly' | 'submissions' | 'entry-detail';
+type ViewMode = 'overview' | 'course-detail' | 'weekly' | 'entry-detail';
 type CourseDetailTab = 'history' | 'performance' | 'exams';
 
 const courseDetailTabs: Array<{
@@ -64,10 +67,38 @@ const EmptyCourseTab: React.FC<{
 }> = ({ icon, title, description }) => (
   <div className="card py-12 text-center">
     {icon}
-    <h3 className="mt-3 text-sm font-medium text-surface-900 dark:text-surface-100">{title}</h3>
+    <h3 className="mt-3 empty-state-title">{title}</h3>
     <p className="mt-1 text-sm text-surface-500 dark:text-surface-400">{description}</p>
   </div>
 );
+
+const UploadButtons: React.FC<{
+  uploads?: EntryUpload[];
+  onOpen: (upload: EntryUpload) => void;
+}> = ({ uploads = [], onOpen }) => {
+  if (uploads.length === 0) return null;
+  return (
+    <div className="mt-4 flex flex-wrap gap-2" aria-label="Abgaben">
+      {uploads.map((upload) => (
+        <button
+          key={upload.id}
+          type="button"
+          onClick={() => onOpen(upload)}
+          className={clsx(
+            'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500',
+            upload.status === 'open'
+              ? 'border-primary-200 bg-primary-50 text-primary-800 hover:bg-primary-100 dark:border-primary-900/70 dark:bg-primary-950/30 dark:text-primary-200 dark:hover:bg-primary-950/60'
+              : 'border-surface-200 bg-surface-100 text-surface-600 hover:bg-surface-200 dark:border-surface-700 dark:bg-surface-800 dark:text-surface-300 dark:hover:bg-surface-700',
+          )}
+        >
+          {upload.status === 'open' ? <ArrowUpTrayIcon className="h-3.5 w-3.5" /> : <DocumentTextIcon className="h-3.5 w-3.5" />}
+          {upload.title}
+          {upload.uploaded_count !== null && upload.uploaded_count !== undefined && <span className="opacity-70">· {upload.uploaded_count}</span>}
+        </button>
+      ))}
+    </div>
+  );
+};
 
 const CoursePerformance: React.FC<{ marks?: CourseMark[] }> = ({ marks = [] }) => {
   if (marks.length === 0) {
@@ -89,7 +120,7 @@ const CoursePerformance: React.FC<{ marks?: CourseMark[] }> = ({ marks = [] }) =
           <article key={`${mark.name}-${mark.date}-${index}`} className="card">
             <div className="flex items-center justify-between gap-4">
               <div className="min-w-0">
-                <h3 className="truncate text-base font-semibold text-surface-900 dark:text-surface-100">
+                <h3 className="truncate item-title">
                   {mark.name}
                 </h3>
                 <p className="mt-1 text-sm text-surface-500 dark:text-surface-400">{mark.date}</p>
@@ -209,7 +240,7 @@ const CourseExams: React.FC<{ exams?: string[] }> = ({ exams = [] }) => {
               <DocumentTextIcon className="h-5 w-5 text-primary-600 dark:text-primary-400" />
             </div>
             <div className="min-w-0 flex-1">
-              <h3 className="text-base font-semibold text-surface-900 dark:text-surface-100">{exam.title}</h3>
+              <h3 className="item-title">{exam.title}</h3>
               {(exam.date || exam.hours || exam.duration) ? (
                 <div className="mt-4 grid gap-2 text-sm sm:grid-cols-3">
                   {exam.date && (
@@ -280,24 +311,27 @@ const Courses: React.FC = () => {
   const navigate = useNavigate();
   const { id: courseIdFromUrl } = useParams();
   const basePath = useBasePath();
-  const [viewMode, setViewMode] = useState<ViewMode>('overview');
-  // Cached courses state
-  const [courses, setCourses] = useState<CourseEntry[]>(() => {
-    const cached = isDemoRoute() ? null : localStorage.getItem('courses_cache');
-    return cached ? JSON.parse(cached) : [];
+  const [viewMode, setViewMode] = useState<ViewMode>(courseIdFromUrl ? 'course-detail' : 'overview');
+  const [courses, setCourses, hasCourses] = useCachedState<CourseEntry[]>('courses', () => {
+    try {
+      const cached = isDemoRoute() ? null : readPersonalCache('courses_cache');
+      const parsed: unknown = cached ? JSON.parse(cached) : null;
+      return Array.isArray(parsed) ? parsed : [];
+    } catch { return []; }
   });
-  const [isUpdating, setIsUpdating] = useState(false);
-  const [selectedCourse, setSelectedCourse] = useState<CourseDetailsResponse | null>(null);
+  const [isUpdating, setIsUpdating] = useState(true);
+  const [selectedCourse, setSelectedCourse, hasCourse] = useCachedState<CourseDetailsResponse | null>(`course:${courseIdFromUrl || ''}`, null);
   const [selectedEntry, setSelectedEntry] = useState<EntryDetails | null>(null);
-  const [weeklyEntries, setWeeklyEntries] = useState<WeeklyEntry[]>([]);
-  const [submissions, setSubmissions] = useState<Submission[]>([]);
+  const [entryCache, setEntryCache] = useCachedState<Record<string, EntryDetails>>('course-entries', {});
+  const [weeklyEntries, setWeeklyEntries, hasWeekly] = useCachedState<WeeklyEntry[]>('courses-weekly', []);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [filterAttendance, setFilterAttendance] = useState<string>('all');
   const [showOnlyHomework, setShowOnlyHomework] = useState(false);
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
   const [detailViewMode, setDetailViewMode] = useState<'cards' | 'timeline'>('cards');
-  const [dynamicAttendanceOptions, setDynamicAttendanceOptions] = useState<string[]>([]);
+  const dynamicAttendanceOptions = [...new Set((selectedCourse?.entries || []).map(entry => entry.attendance.trim()).filter(Boolean))]
+    .filter(att => !['anwesend', 'entschuldigt', 'unentschuldigt', 'fehlend'].includes(att.toLowerCase()));
   const [courseDetailTab, setCourseDetailTab] = useState<CourseDetailTab>('history');
   const completedHomeworkDisplay = preferences.homework.completed_display;
 
@@ -310,7 +344,7 @@ const Courses: React.FC = () => {
   // Early return if no token
   if (!token) {
     return (
-      <div className="p-6">
+      <div className="module-page">
         <div className="text-center py-12">
           <h3 className="text-lg font-medium text-surface-900 dark:text-surface-100">Nicht authentifiziert</h3>
           <p className="text-surface-500 dark:text-surface-400">Bitte melden Sie sich an, um Kurse zu sehen.</p>
@@ -330,13 +364,11 @@ const Courses: React.FC = () => {
     if (!token) return;
     if (!courseIdFromUrl) {
       setViewMode('overview');
-      setSelectedCourse(null);
       return;
     }
     const abortController = new AbortController();
     setViewMode('course-detail');
-    setSelectedCourse(null);
-    setIsLoading(true);
+    setIsLoading(!hasCourse);
     loadCourseDetails(courseIdFromUrl, abortController.signal);
     return () => abortController.abort();
   }, [token, courseIdFromUrl]);
@@ -359,7 +391,7 @@ const Courses: React.FC = () => {
         if (canWriteAccountData(writeGeneration)) {
           const cachedCourses = JSON.stringify(courseList);
           notifyDemoCacheWrite('courses_cache', cachedCourses);
-          localStorage.setItem('courses_cache', cachedCourses);
+          writePersonalCache('courses_cache', cachedCourses, writeGeneration);
         }
       } else {
         setError('Fehler beim Laden der Kurse.');
@@ -371,12 +403,13 @@ const Courses: React.FC = () => {
       setError('Fehler beim Laden der Kurse.');
       setIsLoading(false);
     } finally {
-      setIsUpdating(false);
+      if (!signal?.aborted) setIsUpdating(false);
     }
   };
 
   const loadCourseDetails = async (courseId: string, signal?: AbortSignal) => {
     if (!token) return;
+    setIsUpdating(true);
     const writeGeneration = captureAccountDataGeneration();
 
     try {
@@ -395,7 +428,7 @@ const Courses: React.FC = () => {
             if (canWriteAccountData(writeGeneration)) {
               const cachedCourses = JSON.stringify(courseList);
               notifyDemoCacheWrite('courses_cache', cachedCourses);
-              localStorage.setItem('courses_cache', cachedCourses);
+              writePersonalCache('courses_cache', cachedCourses, writeGeneration);
             }
             const matchingCourse = courseList.find(course => course.book_id === courseId);
             if (matchingCourse?.name?.trim()) {
@@ -404,12 +437,6 @@ const Courses: React.FC = () => {
           }
         }
         setSelectedCourse(resolvedCourse);
-        
-        const presetAttendance = ['anwesend', 'entschuldigt', 'unentschuldigt', 'fehlend'];
-        const allAttendances = response.entries.map((entry: CourseDetailEntry) => entry.attendance.trim()).filter(Boolean);
-        const uniqueAttendances = [...new Set(allAttendances)];
-        const dynamicOptions = uniqueAttendances.filter((att) => !presetAttendance.includes(att.toLowerCase()));
-        setDynamicAttendanceOptions(dynamicOptions);
       } else {
         setError('Fehler beim Laden der Kursdetails.');
       }
@@ -419,6 +446,8 @@ const Courses: React.FC = () => {
       console.error('Error loading course details:', error);
       setError('Fehler beim Laden der Kursdetails.');
       setIsLoading(false);
+    } finally {
+      if (!signal?.aborted) setIsUpdating(false);
     }
   };
 
@@ -426,11 +455,15 @@ const Courses: React.FC = () => {
     if (!token) return;
 
     try {
-      setIsLoading(true);
+      const cachedEntry = entryCache[url];
+      setSelectedEntry(cachedEntry || null);
+      if (cachedEntry) setViewMode('entry-detail');
+      setIsLoading(!cachedEntry);
       setError('');
       const response = await coursesAPI.getEntryDetails(token, url);
       
       if (response.success) {
+        setEntryCache(current => ({ ...current, [url]: response.entry }));
         setSelectedEntry(response.entry);
         setViewMode('entry-detail');
       } else {
@@ -448,7 +481,8 @@ const Courses: React.FC = () => {
     if (!token) return;
 
     try {
-      setIsLoading(true);
+      setViewMode('weekly');
+      setIsLoading(!hasWeekly);
       setError('');
       const response = await coursesAPI.getWeeklyView(token);
       
@@ -466,30 +500,8 @@ const Courses: React.FC = () => {
     }
   };
 
-  const loadSubmissions = async () => {
-    if (!token) return;
-
-    try {
-      setIsLoading(true);
-      setError('');
-      const response = await coursesAPI.getSubmissions(token);
-      
-      if (response.success) {
-        setSubmissions(response.submissions);
-        setViewMode('submissions');
-      } else {
-        setError('Fehler beim Laden der Abgaben.');
-      }
-      setIsLoading(false);
-    } catch (error) {
-      console.error('Error loading submissions:', error);
-      setError('Fehler beim Laden der Abgaben.');
-      setIsLoading(false);
-    }
-  };
-
   const toggleHomework = async (courseId: string, entryId: string, currentDone: boolean) => {
-    if (!token) return;
+    if (!token || isUpdating) return;
     const writeGeneration = captureAccountDataGeneration();
     const newDone = !currentDone;
 
@@ -509,7 +521,7 @@ const Courses: React.FC = () => {
       course.entry_id === entryId ? { ...course, homework_done: newDone } : course
     ));
 
-    const cached = localStorage.getItem('courses_cache');
+    const cached = readPersonalCache('courses_cache');
     if (cached) {
       const parsed = JSON.parse(cached);
       const updated = parsed.map((c: CourseEntry) =>
@@ -518,7 +530,7 @@ const Courses: React.FC = () => {
       if (canWriteAccountData(writeGeneration)) {
         const cachedCourses = JSON.stringify(updated);
         notifyDemoCacheWrite('courses_cache', cachedCourses);
-        localStorage.setItem('courses_cache', cachedCourses);
+        writePersonalCache('courses_cache', cachedCourses, writeGeneration);
       }
     }
 
@@ -559,82 +571,127 @@ const Courses: React.FC = () => {
   const goBack = () => {
     if (viewMode === 'entry-detail') {
       setViewMode('course-detail');
-    } else if (viewMode === 'submissions' || viewMode === 'weekly') {
+    } else if (viewMode === 'weekly') {
       setViewMode('overview');
     } else {
       navigate(`${basePath}/courses`);
     }
   };
 
-  const getSubmissionStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'submitted':
-      case 'abgegeben':
-        return 'text-green-600 bg-green-100';
-      case 'overdue':
-      case 'überfällig':
-        return 'text-red-600 bg-red-100';
-      case 'pending':
-      case 'ausstehend':
-        return 'text-yellow-600 bg-yellow-100';
-      default:
-        return 'text-surface-600 dark:text-surface-400 bg-surface-200 dark:bg-surface-700';
-    }
+  const openUpload = (upload: EntryUpload) => {
+    navigate(`${basePath}/courses/submissions/${encodeURIComponent(upload.detail_ref)}`);
   };
 
-  // Show course detail skeleton when navigating to a course
-  if (viewMode === 'course-detail' && !selectedCourse) {
-    return (
-      <div className="p-6">
-        <div className="animate-pulse space-y-6">
-          <div className="flex items-center gap-4 mb-8">
-            <div className="h-8 w-8 bg-surface-300 dark:bg-surface-600 rounded-lg" />
-            <div className="h-8 bg-surface-300 dark:bg-surface-600 rounded w-48" />
-          </div>
-          <div className="card">
-            <div className="flex gap-4">
-              <div className="h-10 w-24 bg-surface-300 dark:bg-surface-600 rounded-lg" />
-              <div className="h-10 w-32 bg-surface-300 dark:bg-surface-600 rounded-lg" />
-            </div>
-          </div>
-          <div className="space-y-4">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="card">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="h-10 w-10 bg-surface-300 dark:bg-surface-600 rounded-lg" />
-                  <div className="space-y-2 flex-1">
-                    <div className="h-4 bg-surface-300 dark:bg-surface-600 rounded w-1/3" />
-                    <div className="h-3 bg-surface-300 dark:bg-surface-600 rounded w-1/4" />
-                  </div>
-                </div>
-                <div className="h-5 bg-surface-300 dark:bg-surface-600 rounded w-3/4 mb-3" />
-                <div className="h-4 bg-surface-300 dark:bg-surface-600 rounded w-full" />
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  }
 
-  // Show overview skeleton only when on overview and loading
-  if (isLoading && (!courses || courses.length === 0) && viewMode === 'overview') {
-    return (
-      <div className="p-6">
-        <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-surface-300 dark:bg-surface-600 rounded w-1/4"></div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="h-32 bg-surface-300 dark:bg-surface-600 rounded-lg"></div>
-            ))}
-          </div>
-        </div>
+  const courseTabs = (
+    <div className="card p-1">
+      <div className="flex flex-wrap gap-1" role="tablist" aria-label="Kursansicht">
+        {courseDetailTabs.map((tab) => {
+          const Icon = tab.icon;
+          const isActive = courseDetailTab === tab.id;
+
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              role="tab"
+              aria-selected={isActive}
+              aria-controls={`course-tabpanel-${tab.id}`}
+              onClick={() => setCourseDetailTab(tab.id)}
+              className={clsx(
+                'flex min-w-[7rem] flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
+                isActive
+                  ? 'bg-primary-600 text-white'
+                  : 'text-surface-600 hover:bg-surface-100 dark:text-surface-400 dark:hover:bg-surface-700',
+              )}
+            >
+              <Icon className="h-4 w-4" />
+              {tab.label}
+            </button>
+          );
+        })}
       </div>
-    );
-  }
+    </div>
+  );
+
+  const courseFilters = (
+              <div className="card">
+                <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                <div className="flex items-center gap-1.5">
+                  <FunnelIcon className="h-3.5 w-3.5 text-surface-500 dark:text-surface-400" />
+                  <span className="text-xs font-medium text-surface-700 dark:text-surface-300 hidden sm:inline">Filter:</span>
+                </div>
+
+                <select
+                  value={filterAttendance}
+                  onChange={(e) => setFilterAttendance(e.target.value)}
+                  className="text-xs sm:text-sm border border-surface-300 dark:border-surface-600 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white dark:bg-surface-800 text-surface-700 dark:text-surface-300 min-w-0"
+                >
+                  <option value="all">Alle Einträge</option>
+                  <option value="anwesend">Anwesend</option>
+                  <option value="entschuldigt">Entschuldigt</option>
+                  <option value="unentschuldigt">Unentschuldigt</option>
+                  <option value="fehlend">Fehlend</option>
+                  {dynamicAttendanceOptions.map((option) => (
+                    <option key={option} value={option}>{option}</option>
+                  ))}
+                </select>
+
+                <button
+                  onClick={() => setShowOnlyHomework(!showOnlyHomework)}
+                  className={clsx(
+                    "text-xs sm:text-sm px-2.5 py-1.5 rounded-lg transition-colors whitespace-nowrap",
+                    showOnlyHomework
+                      ? "bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-300 border border-yellow-300 dark:border-yellow-700"
+                      : "bg-surface-200 dark:bg-surface-700 text-surface-600 dark:text-surface-400 border border-surface-300 dark:border-surface-600 hover:bg-surface-200 dark:hover:bg-surface-700"
+                  )}
+                >
+                  {showOnlyHomework ? '✓ ' : ''}Nur HA
+                </button>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setSortOrder(sortOrder === 'newest' ? 'oldest' : 'newest')}
+                  className="text-xs sm:text-sm px-2.5 py-1.5 rounded-lg bg-surface-200 dark:bg-surface-700 text-surface-700 dark:text-surface-300 hover:bg-surface-200 dark:hover:bg-surface-700 transition-colors border border-surface-300 dark:border-surface-600 whitespace-nowrap"
+                >
+                  {sortOrder === 'newest' ? '↓ Neu' : '↑ Alt'}
+                </button>
+
+                <div className="flex border border-surface-300 dark:border-surface-600 rounded-lg overflow-hidden">
+                  <button
+                    onClick={() => setDetailViewMode('cards')}
+                    className={clsx(
+                      "p-2 transition-colors",
+                      detailViewMode === 'cards'
+                        ? "bg-primary-600 text-white"
+                        : "bg-surface-50 dark:bg-surface-800 text-surface-600 dark:text-surface-400 hover:bg-surface-100 dark:hover:bg-surface-700"
+                    )}
+                    title="Kartenansicht"
+                  >
+                    <Squares2X2Icon className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={() => setDetailViewMode('timeline')}
+                    className={clsx(
+                      "p-2 transition-colors",
+                      detailViewMode === 'timeline'
+                        ? "bg-primary-600 text-white"
+                        : "bg-surface-50 dark:bg-surface-800 text-surface-600 dark:text-surface-400 hover:bg-surface-100 dark:hover:bg-surface-700"
+                    )}
+                    title="Timeline-Ansicht"
+                  >
+                    <ListBulletIcon className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+            </div>
+  );
 
   return (
-    <div className="p-6">
+    <div className="module-page">
       <SEO
         title="Mein Unterricht"
         description="Lanis Unterricht — Deine Kurse, Aufgaben und Materialien aus dem Schulportal Hessen im Überblick."
@@ -644,7 +701,7 @@ const Courses: React.FC = () => {
       {/* Spinner indicator for updating */}
       
       {/* Header */}
-      <div className="mb-8">
+      <div className="page-header">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex min-w-0 items-center">
             {viewMode !== 'overview' && (
@@ -656,15 +713,14 @@ const Courses: React.FC = () => {
               </button>
             )}
             <div className="min-w-0">
-              <h1 className="break-words text-3xl font-bold text-surface-900 dark:text-surface-100">
+              <h1 className="page-title break-words">
                 {viewMode === 'overview' && 'Mein Unterricht'}
                 {viewMode === 'course-detail' && selectedCourseName}
                 {viewMode === 'weekly' && 'Wochenansicht'}
-                {viewMode === 'submissions' && 'Abgaben'}
                 {viewMode === 'entry-detail' && selectedEntry?.title}
               </h1>
-              {viewMode === 'course-detail' && selectedCourse && (
-                <p className="text-surface-600 dark:text-surface-400 mt-1">Lehrer: {selectedCourse.teacher_full}</p>
+              {viewMode === 'course-detail' && (
+                <p className="page-subtitle">Lehrer: {selectedCourse ? selectedCourse.teacher_full : <span className="skeleton inline-block h-5 sm:h-6 w-32 align-middle" aria-hidden="true" />}</p>
               )}
             </div>
           </div>
@@ -672,7 +728,7 @@ const Courses: React.FC = () => {
           {viewMode === 'overview' && (
             <div className="flex w-full flex-col gap-3 sm:w-auto sm:shrink-0 sm:flex-row">
               <button
-                onClick={loadSubmissions}
+                onClick={() => navigate(`${basePath}/courses/submissions`)}
                 className="btn btn-secondary w-full sm:w-auto"
               >
                 <ClockIcon className="h-4 w-4 mr-2" />
@@ -697,12 +753,12 @@ const Courses: React.FC = () => {
       )}
 
       {/* Content */}
-      {viewMode === 'overview' && (
+      {viewMode === 'overview' && (isLoading && !hasCourses && courses.length === 0 ? <CoursesGridSkeleton /> : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {!courses || courses.length === 0 ? (
             <div className="col-span-full text-center py-12">
               <AcademicCapIcon className="mx-auto h-12 w-12 text-surface-400 dark:text-surface-500" />
-              <h3 className="mt-2 text-sm font-medium text-surface-900 dark:text-surface-100">Keine Kurse</h3>
+              <h3 className="mt-2 empty-state-title">Keine Kurse</h3>
               <p className="mt-1 text-sm text-surface-500 dark:text-surface-400">
                 Es sind noch keine Kurse verfügbar.
               </p>
@@ -719,7 +775,7 @@ const Courses: React.FC = () => {
                     <AcademicCapIcon className="h-6 w-6 text-white" />
                   </div>
                   <div className="ml-4 flex-1">
-                    <h3 className="text-lg font-semibold text-surface-900 dark:text-surface-100">{course.name}</h3>
+                    <h3 className="section-title">{course.name}</h3>
                     <p className="text-sm text-surface-600 dark:text-surface-400">{course.teacher_full_name}</p>
                   </div>
                   <ChevronRightIcon className="h-5 w-5 text-surface-400 dark:text-surface-500" />
@@ -776,120 +832,31 @@ const Courses: React.FC = () => {
             ))
           )}
         </div>
+      ))}
+
+      {viewMode === 'course-detail' && !selectedCourse && (
+        <div className="space-y-6">
+          {courseTabs}
+          <div id={`course-tabpanel-${courseDetailTab}`} role="tabpanel" aria-label={courseDetailTabs.find(tab => tab.id === courseDetailTab)?.label}>
+            {courseDetailTab === 'history' && courseFilters}
+            <div className="mt-6"><CourseEntriesSkeleton /></div>
+          </div>
+        </div>
       )}
 
       {viewMode === 'course-detail' && selectedCourse && (
         <div className="space-y-6">
-          <div className="card p-1">
-            <div className="flex flex-wrap gap-1" role="tablist" aria-label="Kursansicht">
-              {courseDetailTabs.map((tab) => {
-                const Icon = tab.icon;
-                const isActive = courseDetailTab === tab.id;
-
-                return (
-                  <button
-                    key={tab.id}
-                    type="button"
-                    role="tab"
-                    aria-selected={isActive}
-                    aria-controls={`course-tabpanel-${tab.id}`}
-                    onClick={() => setCourseDetailTab(tab.id)}
-                    className={clsx(
-                      'flex min-w-[7rem] flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
-                      isActive
-                        ? 'bg-primary-600 text-white'
-                        : 'text-surface-600 hover:bg-surface-100 dark:text-surface-400 dark:hover:bg-surface-700',
-                    )}
-                  >
-                    <Icon className="h-4 w-4" />
-                    {tab.label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+          {courseTabs}
 
           {courseDetailTab === 'history' && (
             <div id="course-tabpanel-history" role="tabpanel" aria-label="Historie" className="space-y-6">
               {/* Filters and Controls */}
-              <div className="card">
-                <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center justify-between gap-3">
-              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                <div className="flex items-center gap-1.5">
-                  <FunnelIcon className="h-3.5 w-3.5 text-surface-500 dark:text-surface-400" />
-                  <span className="text-xs font-medium text-surface-700 dark:text-surface-300 hidden sm:inline">Filter:</span>
-                </div>
-                
-                <select
-                  value={filterAttendance}
-                  onChange={(e) => setFilterAttendance(e.target.value)}
-                  className="text-xs sm:text-sm border border-surface-300 dark:border-surface-600 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white dark:bg-surface-800 text-surface-700 dark:text-surface-300 min-w-0"
-                >
-                  <option value="all">Alle Einträge</option>
-                  <option value="anwesend">Anwesend</option>
-                  <option value="entschuldigt">Entschuldigt</option>
-                  <option value="unentschuldigt">Unentschuldigt</option>
-                  <option value="fehlend">Fehlend</option>
-                  {dynamicAttendanceOptions.map((option) => (
-                    <option key={option} value={option}>{option}</option>
-                  ))}
-                </select>
-
-                <button
-                  onClick={() => setShowOnlyHomework(!showOnlyHomework)}
-                  className={clsx(
-                    "text-xs sm:text-sm px-2.5 py-1.5 rounded-lg transition-colors whitespace-nowrap",
-                    showOnlyHomework 
-                      ? "bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-300 border border-yellow-300 dark:border-yellow-700" 
-                      : "bg-surface-200 dark:bg-surface-700 text-surface-600 dark:text-surface-400 border border-surface-300 dark:border-surface-600 hover:bg-surface-200 dark:hover:bg-surface-700"
-                  )}
-                >
-                  {showOnlyHomework ? '✓ ' : ''}Nur HA
-                </button>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setSortOrder(sortOrder === 'newest' ? 'oldest' : 'newest')}
-                  className="text-xs sm:text-sm px-2.5 py-1.5 rounded-lg bg-surface-200 dark:bg-surface-700 text-surface-700 dark:text-surface-300 hover:bg-surface-200 dark:hover:bg-surface-700 transition-colors border border-surface-300 dark:border-surface-600 whitespace-nowrap"
-                >
-                  {sortOrder === 'newest' ? '↓ Neu' : '↑ Alt'}
-                </button>
-
-                <div className="flex border border-surface-300 dark:border-surface-600 rounded-lg overflow-hidden">
-                  <button
-                    onClick={() => setDetailViewMode('cards')}
-                    className={clsx(
-                      "p-2 transition-colors",
-                      detailViewMode === 'cards'
-                        ? "bg-primary-600 text-white"
-                        : "bg-surface-50 dark:bg-surface-800 text-surface-600 dark:text-surface-400 hover:bg-surface-100 dark:hover:bg-surface-700"
-                    )}
-                    title="Kartenansicht"
-                  >
-                    <Squares2X2Icon className="h-4 w-4" />
-                  </button>
-                  <button
-                    onClick={() => setDetailViewMode('timeline')}
-                    className={clsx(
-                      "p-2 transition-colors",
-                      detailViewMode === 'timeline'
-                        ? "bg-primary-600 text-white"
-                        : "bg-surface-50 dark:bg-surface-800 text-surface-600 dark:text-surface-400 hover:bg-surface-100 dark:hover:bg-surface-700"
-                    )}
-                    title="Timeline-Ansicht"
-                  >
-                    <ListBulletIcon className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
-            </div>
-            </div>
+              {courseFilters}
 
           {!selectedCourse.entries || selectedCourse.entries.length === 0 ? (
             <div className="text-center py-12">
               <DocumentTextIcon className="mx-auto h-12 w-12 text-surface-400 dark:text-surface-500" />
-              <h3 className="mt-2 text-sm font-medium text-surface-900 dark:text-surface-100">Keine Einträge</h3>
+              <h3 className="mt-2 empty-state-title">Keine Einträge</h3>
               <p className="mt-1 text-sm text-surface-500 dark:text-surface-400">
                 Für diesen Kurs sind noch keine Einträge vorhanden.
               </p>
@@ -938,7 +905,7 @@ const Courses: React.FC = () => {
                 return (
                   <div className="text-center py-12 card">
                     <FunnelIcon className="mx-auto h-12 w-12 text-surface-400 dark:text-surface-500" />
-                    <h3 className="mt-2 text-sm font-medium text-surface-900 dark:text-surface-100">Keine passenden Einträge</h3>
+                    <h3 className="mt-2 empty-state-title">Keine passenden Einträge</h3>
                     <p className="mt-1 text-sm text-surface-500 dark:text-surface-400">
                       Versuchen Sie, die Filter anzupassen.
                     </p>
@@ -1005,7 +972,7 @@ const Courses: React.FC = () => {
                       </div>
                       
                       {/* Topic */}
-                      <h4 className="text-lg font-semibold text-surface-900 dark:text-surface-100 mb-3">{entry.thema}</h4>
+                      <h4 className="section-title mb-3">{entry.thema}</h4>
 
                       {/* Content / Description */}
                       {entry.content && (
@@ -1024,6 +991,7 @@ const Courses: React.FC = () => {
                               <span className="text-sm font-semibold text-yellow-900 dark:text-yellow-200">Hausaufgaben</span>
                             </div>
                             <button
+                              disabled={isUpdating}
                               onClick={(e) => {
                                 e.stopPropagation();
                                 toggleHomework(selectedCourse.course_id, entry.entry_id, entry.homework_done);
@@ -1088,6 +1056,7 @@ const Courses: React.FC = () => {
                           </div>
                         </div>
                       )}
+                      <UploadButtons uploads={entry.uploads} onOpen={openUpload} />
                     </div>
                   ))}
                 </div>
@@ -1135,7 +1104,7 @@ const Courses: React.FC = () => {
                             </div>
                           </div>
                           
-                          <h4 className="text-base font-semibold text-surface-900 dark:text-surface-100 mb-3">{entry.thema}</h4>
+                          <h4 className="item-title mb-3">{entry.thema}</h4>
 
                           {entry.content && (
                             <div
@@ -1150,6 +1119,7 @@ const Courses: React.FC = () => {
                                 <ClockIcon className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
                                 <span className="text-xs font-semibold text-yellow-900 dark:text-yellow-200">Hausaufgaben</span>
                                 <button
+                                  disabled={isUpdating}
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     toggleHomework(selectedCourse.course_id, entry.entry_id, entry.homework_done);
@@ -1191,6 +1161,7 @@ const Courses: React.FC = () => {
                               ))}
                             </div>
                           )}
+                          <UploadButtons uploads={entry.uploads} onOpen={openUpload} />
                         </div>
                       </div>
                     ))}
@@ -1234,7 +1205,7 @@ const Courses: React.FC = () => {
 
             {selectedEntry.attachments && selectedEntry.attachments.length > 0 && (
               <div>
-                <h3 className="text-lg font-semibold text-surface-900 dark:text-surface-100 mb-3 flex items-center">
+                <h3 className="section-title mb-3 flex items-center">
                   <PaperClipIcon className="h-5 w-5 mr-2" />
                   Anhänge
                 </h3>
@@ -1280,7 +1251,7 @@ const Courses: React.FC = () => {
           {!weeklyEntries || weeklyEntries.length === 0 ? (
             <div className="text-center py-12">
               <CalendarDaysIcon className="mx-auto h-12 w-12 text-surface-400 dark:text-surface-500" />
-              <h3 className="mt-2 text-sm font-medium text-surface-900 dark:text-surface-100">Keine Einträge diese Woche</h3>
+              <h3 className="mt-2 empty-state-title">Keine Einträge diese Woche</h3>
               <p className="mt-1 text-sm text-surface-500 dark:text-surface-400">
                 Für diese Woche sind keine Unterrichtseinträge vorhanden.
               </p>
@@ -1308,69 +1279,6 @@ const Courses: React.FC = () => {
         </div>
       )}
 
-      {viewMode === 'submissions' && isLoading && (
-        <div className="animate-pulse space-y-3">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="card">
-              <div className="flex items-center justify-between">
-                <div className="flex-1 space-y-2">
-                  <div className="h-4 bg-surface-300 dark:bg-surface-600 rounded w-1/3" />
-                  <div className="h-3 bg-surface-300 dark:bg-surface-600 rounded w-2/3" />
-                  <div className="h-3 bg-surface-300 dark:bg-surface-600 rounded w-1/4" />
-                </div>
-                <div className="h-8 w-16 bg-surface-300 dark:bg-surface-600 rounded-lg" />
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {viewMode === 'submissions' && !isLoading && (
-        <div className="space-y-4">
-          {!submissions || submissions.length === 0 ? (
-            <div className="text-center py-12">
-              <ClockIcon className="mx-auto h-12 w-12 text-surface-400" />
-              <h3 className="mt-2 text-sm font-medium text-surface-900 dark:text-surface-100">Keine Abgaben</h3>
-              <p className="mt-1 text-sm text-surface-500 dark:text-surface-400">
-                Derzeit sind keine Abgaben fällig.
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {submissions.map((submission) => (
-                <div key={submission.id} className="card">
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between mb-2">
-                        <h4 className="font-medium text-surface-900 dark:text-surface-100">{submission.title}</h4>
-                        <span className={clsx(
-                          'px-2 py-1 rounded-full text-xs font-medium',
-                          getSubmissionStatusColor(submission.status)
-                        )}>
-                          {submission.status}
-                        </span>
-                      </div>
-                      <p className="text-sm text-surface-600 dark:text-surface-400 mb-1">{submission.course}</p>
-                      <div className="flex items-center text-sm text-surface-600 dark:text-surface-400">
-                        <ClockIcon className="h-4 w-4 mr-1" />
-                        <span>Fällig: {formatDateTime(submission.due_date)}</span>
-                      </div>
-                    </div>
-                    <a
-                      href={submission.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="ml-4 btn btn-secondary"
-                    >
-                      Öffnen
-                    </a>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
     </div>
   );
 };

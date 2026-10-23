@@ -520,7 +520,20 @@ export interface CourseDetailEntry {
   homework_done: boolean;
   attendance: string;
   files: EntryAttachment[];
+  uploads?: EntryUpload[];
   content?: string;
+}
+
+export interface EntryUpload {
+  id: string;
+  detail_ref: string;
+  title: string;
+  status: 'open' | 'closed' | string;
+  date_text?: string | null;
+  uploaded?: string | null;
+  uploaded_count?: number | null;
+  course_id?: string;
+  entry_id?: string;
 }
 
 export interface CourseMark {
@@ -595,17 +608,74 @@ export interface WeeklyViewResponse {
 
 export interface Submission {
   id: string;
+  detail_ref: string;
+  course_id: string;
+  entry_id: string;
   title: string;
-  course: string;
-  due_date: string;
-  status: string;
-  url: string;
-  [key: string]: any;
+  course_name: string;
+  status: 'open' | 'closed' | string;
+  date_text?: string | null;
+  uploaded?: string | null;
+  uploaded_count?: number | null;
 }
 
 export interface SubmissionsResponse {
   success: boolean;
   submissions: Submission[];
+  error?: string;
+}
+
+export interface SubmissionFile {
+  name: string;
+  index: string;
+  time?: string | null;
+  comment?: string | null;
+  person?: string | null;
+  download_ref: string;
+  public?: boolean;
+}
+
+export interface SubmissionDetail extends Submission {
+  upload_id: string;
+  start?: string | null;
+  deadline?: string | null;
+  automatic_deletion?: string | null;
+  allows_multiple_files?: boolean | null;
+  allows_multiple_attempts?: boolean | null;
+  visibility?: string | null;
+  allowed_file_types: string[];
+  max_file_size?: string | null;
+  additional_text?: string | null;
+  own_files: SubmissionFile[];
+  public_files: SubmissionFile[];
+  can_upload: boolean;
+  can_delete: boolean;
+}
+
+export interface SubmissionDetailResponse {
+  success: boolean;
+  submission?: SubmissionDetail;
+  error?: string;
+}
+
+export interface SubmissionUploadStatus {
+  name: string;
+  status: string;
+  message?: string | null;
+}
+
+export interface SubmissionUploadResponse {
+  success: boolean;
+  files: SubmissionUploadStatus[];
+  all_succeeded?: boolean;
+  error?: string;
+}
+
+export interface SubmissionDeleteResponse {
+  success: boolean;
+  code?: string;
+  message?: string;
+  error?: string;
 }
 
 // Common types
@@ -828,6 +898,36 @@ export interface VertretungsplanOptionsResponse {
   error?: string;
 }
 
+export type VideoRoomStatus = 'open' | 'waiting' | 'closed' | 'unknown';
+
+export interface VideoRoomLink {
+  label: string;
+  url: string;
+}
+
+export interface VideoRoom {
+  id: string;
+  name: string;
+  teachers: string[];
+  status: VideoRoomStatus;
+  status_label: string;
+  join_url: string | null;
+  can_join: boolean;
+  links: VideoRoomLink[];
+}
+
+export interface VideoRoomsResponse {
+  success: boolean;
+  available: boolean;
+  source: 'schulportal';
+  status_live: boolean;
+  rooms: VideoRoom[];
+  count: number;
+  open_count: number;
+  updated_label?: string | null;
+  error?: string;
+}
+
 export interface CustomLesson {
   /** Backwards-compatible ISO date whose weekday identifies the recurring day. */
   date: string;
@@ -898,6 +998,39 @@ export interface DateispeicherSearchResponse {
   query: string;
   results: unknown;
   source?: string;
+  error?: string;
+}
+
+// Native Schulportal targeted file-distribution types
+export interface DateiverteilungFile {
+  id: string;
+  name: string;
+  size?: string;
+  download_url: string;
+}
+
+export interface DateiverteilungLink {
+  label: string;
+  url: string;
+}
+
+export interface DateiverteilungDistribution {
+  id: string;
+  title: string;
+  description?: string;
+  source: string;
+  created_at?: string;
+  unread: boolean;
+  files: DateiverteilungFile[];
+  links: DateiverteilungLink[];
+}
+
+export interface DateiverteilungResponse {
+  success: boolean;
+  distributions: DateiverteilungDistribution[];
+  distribution_count: number;
+  file_count: number;
+  unread_count: number;
   error?: string;
 }
 

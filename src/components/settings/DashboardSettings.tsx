@@ -89,7 +89,7 @@ const DashboardSettings: React.FC = () => {
               <BellAlertIcon className="h-5 w-5" />
             </span>
             <div>
-              <h2 className="text-base font-semibold text-surface-900 dark:text-surface-100">Hinweisbanner</h2>
+              <h2 className="item-title">Hinweisbanner</h2>
               <p className="mt-1 text-sm leading-6 text-surface-500">
                 Neue Nachrichten und Änderungen am Schultag direkt über den Apps anzeigen.
               </p>
@@ -105,7 +105,7 @@ const DashboardSettings: React.FC = () => {
       </div>
 
       <div className={clsx('card transition-opacity', !dashboard.notifications_enabled && 'pointer-events-none opacity-50')}>
-        <h2 className="text-base font-semibold text-surface-900 dark:text-surface-100">Quellen</h2>
+        <h2 className="item-title">Quellen</h2>
         <p className="mt-1 text-sm text-surface-500">Leere Quellen werden im Banner automatisch ausgeblendet.</p>
         <div className="mt-4 divide-y divide-surface-100 dark:divide-surface-800">
           {sourceRows.map(row => {
@@ -138,7 +138,7 @@ const DashboardSettings: React.FC = () => {
       </div>
 
       <div className={clsx('card transition-opacity', !dashboard.notifications_enabled && 'pointer-events-none opacity-50')}>
-        <h2 className="text-base font-semibold text-surface-900 dark:text-surface-100">Verhalten</h2>
+        <h2 className="item-title">Verhalten</h2>
         <div className="mt-4 space-y-5">
           <div className="flex items-start gap-3">
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-surface-100 text-surface-600 dark:bg-surface-800 dark:text-surface-300">

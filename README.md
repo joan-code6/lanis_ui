@@ -76,12 +76,15 @@ node scripts/test-timetable-refresh.cjs
 The status page has a Puppeteer smoke check. With the development server already running:
 
 ```sh
-STATUS_UI_URL=http://localhost:3000 node scripts/status-smoke.mjs
+CHROME_BIN=/path/to/chrome STATUS_UI_URL=http://localhost:3000 node scripts/status-smoke.mjs
 ```
 
-It checks mobile and desktop layouts and simulated service states, and writes screenshots to `/tmp/lanis-status-*.png`. It requires a usable Chrome installation; set `CHROME_BIN` to an executable path if needed.
+It checks mobile and desktop layouts and simulated service states, and writes screenshots to `/tmp/lanis-status-*.png`. It uses `puppeteer-core` with your installed Chrome; `CHROME_BIN` is required. This manual check is separate from the build and CI, which do not install or launch a browser.
 
-There is no `npm test` script. An `npm run lint` script exists, but ESLint and its configuration are not included in this checkout, so it is not currently a ready-to-run validation step.
+`npm test` runs the account-data lifecycle, timetable, lossless image conversion,
+and deployment regression checks. CI runs these checks before building.
+An `npm run lint` script exists, but ESLint and its configuration are not included
+in this checkout, so it is not currently a ready-to-run validation step.
 
 ## Build and hosting
 
@@ -92,23 +95,114 @@ npm run build
 npm run preview
 ```
 
-The build runs TypeScript checking and Vite, then npm automatically runs `postbuild`. That step uses Puppeteer to prerender `/` and `/status` into `dist/`, temporarily serving the build on port **5179**.
+Before `npm run dev` and `npm run build`, npm generates lossless WebP versions
+of the five landing-page screenshots with the existing Sharp dependency.
+`LandingImage` uses these files through `<picture>` with the original PNG as a
+fallback. Feature screenshots below the hero load lazily. PNG editing sources remain in `public/landing/`; generated files in
+`public/landing/optimized/` are ignored by Git. Run `npm run images:optimize`
+after changing a source image during development. Conversion errors fail the
+command, and the regression check verifies every decoded pixel is preserved.
+Icons and Open Graph images keep their existing formats.
 
-- If Chrome or its runtime libraries are unavailable, prerendering normally logs a warning and skips that step.
-- Set `PRERENDER_STRICT=1` to fail on an unavailable browser instead.
-- Set `SKIP_PRERENDER=1` to explicitly skip prerendering.
+The build then runs TypeScript checking and Vite, then npm automatically runs `postbuild`.
+That step renders the actual public and school React components directly into
+`dist/` using React's server renderer. Vite loads the TSX in middleware mode;
+there is no HTTP listener, Chrome installation, browser automation, fixed delay,
+or browser navigation. School metadata is fetched with bounded concurrency
+and cached between builds, as described below.
 
-For example, a release environment that requires prerendered output can use:
+The page components and their `SEO` metadata are the source of the generated
+HTML; there is no second hand-written version of either page. Static content is
+visible without JavaScript, including the landing page's animated sections.
+Live status measurements and the consent-based school map load only in the
+browser. The client mounts normally, preserving stored themes and backend
+selection. This is build-time generation, not a server needed at runtime.
 
-```sh
-PRERENDER_STRICT=1 npm run build
-```
+Rendering failures fail the build. `SKIP_PRERENDER=1` explicitly skips generation
+for local troubleshooting and PR previews. CI prerenders only production builds
+from pushes and scheduled runs on `main`; PRs still run TypeScript and Vite and
+deploy a client-rendered preview without fetching or caching school data.
+`PRERENDER_STRICT` is no longer needed or used.
 
 Host the contents of **`dist/`** as a static site over HTTPS. Configure the host to serve existing assets and prerendered pages first, then fall back to **`/index.html`** for client-side routes such as `/login`, `/dashboard`, and `/demo/messages`. The app uses root-relative routes and assets, so deploy it at the domain root unless you also adapt those paths.
 
 Set `VITE_API_URL` **before building** for the target environment. Changing server environment variables after uploading `dist/` does not rewrite the compiled API URL. The Vite dev proxy is not part of the static deployment.
 
 The service worker is registered automatically in production and caches the app shell. PWA and push behavior should be checked in a secure browser context with a compatible backend; shell caching does not make every module fully usable offline.
+
+## GitHub Actions deployment
+
+The pipeline has two workflows:
+
+1. **Frontend build** (`.github/workflows/build.yml`) checks out the change,
+   installs dependencies with `npm ci`, builds the static site, runs the existing
+   deployment checks, and uploads `frontend-dist`.
+2. **Cloudflare deployment** (`.github/workflows/deploy.yml`) runs trusted code
+   from the default branch, validates the source run and current commit, and
+   publishes the static artifact. PR builds never receive Cloudflare credentials.
+
+The host is **Cloudflare Workers Static Assets** (configured by
+`scripts/cloudflare/deploy.cjs`), not Cloudflare Pages. Production uses `lanis-ui`;
+PR previews use versions of the separate `lanis-ui-preview` Worker, with
+`noindex, nofollow` headers. Superseded builds are rejected before publishing.
+
+Both workflows cache **npm downloads**, not `node_modules` or complete build
+artifacts. The separate school cache described below stores public data and
+asset-independent markup. Frontend cache keys include the lockfile hash, Node version,
+OS and event type, keeping PR and main caches separate. Deployment uses its own
+cache prefix and lockfile. No fallback keys are used. A cache miss only requires
+downloading packages again; installs still use lockfile integrity checks.
+
+The deployment workflow copies the dedicated manifest and lockfile from
+`scripts/cloudflare/tooling/` into a temporary directory and runs `npm ci` there.
+This keeps the privileged deployment tool separate from frontend dependencies
+and untrusted artifact contents. To update Wrangler, update that manifest and
+lockfile together; keep the root manifest's local Wrangler version aligned.
+The checked-in Actions are pinned to commit SHAs.
+
+## School pages and SEO generation
+
+`/schulen` links to every school from the live lanis_api directory. Canonical
+school URLs are `/schule/<numeric-school-id>`: IDs avoid duplicate-name clashes
+and keep links stable when schools change names. Old unambiguous name URLs
+continue to resolve in the browser and navigate to the canonical ID URL.
+
+After Vite, `scripts/prerender.mjs` renders the real React school pages into
+`dist/schule/<id>.html` (served without `.html` by Cloudflare), including school identity, login card, proxied
+images when available, SEO metadata and structured data. The directory and all
+generated school URLs are written to `dist/sitemap.xml`. The source sitemap in
+`public/` covers the fixed public routes for local development. School pages
+are indexable in production; the existing preview deployment adds `noindex`.
+
+Public profile data and asset-independent rendered markup are cached in
+`.cache/school-pages/`, restored by Actions between builds. School data comes
+from lanis_api (`GET /schools`, `GET /schools/<id>/data`); image traffic uses its
+`/logo` and `/campus` endpoints. There are no bundled school-specific fixtures.
+
+- Directory freshness: 12 hours. Profile freshness: 20 hours.
+- Cold/expired profiles: at most two concurrent requests, 20 seconds each, with
+  a seven-minute overall refresh budget. Browser rendering never runs in CI.
+- Temporary profile failures reuse the previous profile for up to seven days.
+  A newly discovered school whose profile is unavailable still gets a page
+  with its real directory name/city and no invented image or palette. These
+  directory-only records retry after one hour; the browser also refreshes its
+  displayed profile independently.
+- Markup is reused only when the school data, renderer source, dependencies,
+  API base and Node major version match. Every page is assembled with the
+  **current build's** HTML shell and hashed JS/CSS links. Changing source code
+  may regenerate markup; unrelated identical builds reuse it.
+- Browser-safe JSON bootstrap data lets school pages mount with their content
+  immediately. React still restores account state and saved themes normally.
+  Login requires JavaScript; static forms cannot submit credentials with GET.
+- A daily Actions run at **03:17 UTC** refreshes and deploys public data even
+  without a code change. The deployment validator accepts only a successful
+  scheduled run for the current main commit and the trusted repository.
+- Only production builds on `main` restore and save the school-page cache;
+  PR previews skip it. Missing/corrupt cache entries are rebuilt.
+
+No runtime rendering service, headless browser, or school-by-school image
+download is needed for generation. Source code is in
+`src/components/schools/`, `src/entry-prerender.tsx`, and `scripts/school-cache.mjs`.
 
 ## Where to make changes
 
@@ -138,7 +232,7 @@ Work in a dedicated Git worktree when contributing in the combined LANIS workspa
 - **The app still contacts an old backend:** reset the saved override at `/set-custom-backend`, then check `.env.local` and restart Vite. Deployed bundles require a rebuild to pick up a new default URL.
 - **Refreshing a nested route returns 404:** configure the static host's SPA fallback to `/index.html`.
 - **Old UI remains after deployment:** check the service worker and caches in browser developer tools. Unregister the worker and reload to diagnose stale shell assets; clearing site storage also removes saved sessions and preferences.
-- **Prerendering fails:** check Chrome availability, its system libraries, and whether port 5179 is free. See the prerender environment options above.
+- **Prerendering fails:** inspect the Node/Vite error from `scripts/prerender.mjs`. Public page imports and render-time code must work without browser globals; keep browser-only work in effects or lazy components. A missing `dist/index.html` means the Vite build has not completed.
 
 Authentication tokens, preferences, and some module data are stored in the browser. Use test accounts for authenticated development, and keep credentials, tokens, `.env.local`, and personal school data out of commits and bug reports.
 

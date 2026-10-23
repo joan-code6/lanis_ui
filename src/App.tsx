@@ -12,6 +12,7 @@ import Dashboard from './components/dashboard/Dashboard';
 import Messages from './components/messages/Messages';
 import Courses from './components/courses/Courses';
 import AttendanceOverview from './components/courses/AttendanceOverview';
+import Submissions from './components/submissions/Submissions';
 import Kalender from './components/calendar/Kalender';
 import Profile from './components/profile/Profile';
 import Settings from './components/settings/Settings';
@@ -23,11 +24,15 @@ import PrivacyPolicy from './components/legal/PrivacyPolicy';
 import Timetable from './components/timetable/Timetable';
 import StudyGroups from './components/study-groups/StudyGroups';
 import Dateispeicher from './components/dateispeicher/Dateispeicher';
+import Dateiverteilung from './components/dateiverteilung/Dateiverteilung';
 import Vertretungsplan from './components/vertretungsplan/Vertretungsplan';
 import CustomBackend from './components/settings/CustomBackend';
 import Onboarding from './components/onboarding/Onboarding';
 import Wahlen from './components/wahlen/Wahlen';
 import StatusPage from './components/status/StatusPage';
+import Videokonferenz from './components/videokonferenz/Videokonferenz';
+import SchoolPage from './components/schools/SchoolPage';
+import SchoolDirectoryPage from './components/schools/SchoolDirectoryPage';
 
 const LandingRoot: React.FC = () => {
   const { isAuthenticated } = useAuth();
@@ -79,18 +84,24 @@ const AppRoutes: React.FC = () => {
         <Route path="/impressum" element={<Impressum />} />
         <Route path="/privacy-policy" element={<PrivacyPolicy />} />
         <Route path="/set-custom-backend" element={<CustomBackend />} />
+        <Route path="/schule/:schoolId" element={<SchoolPage />} />
+        <Route path="/schulen" element={<SchoolDirectoryPage />} />
         <Route path="/demo" element={<DemoRoute />}>
           <Route index element={<Navigate to="/demo/dashboard" replace />} />
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="messages" element={<Messages />} />
           <Route path="courses" element={<Courses />} />
+          <Route path="courses/submissions" element={<Submissions />} />
+          <Route path="courses/submissions/:id" element={<Submissions />} />
           <Route path="courses/attendance" element={<AttendanceOverview />} />
           <Route path="courses/:id" element={<Courses />} />
           <Route path="calendar" element={<Kalender />} />
           <Route path="timetable" element={<Timetable />} />
           <Route path="study-groups" element={<StudyGroups />} />
           <Route path="dateispeicher" element={<Dateispeicher />} />
+          <Route path="dateiverteilung" element={<Dateiverteilung />} />
           <Route path="vertretungsplan" element={<Vertretungsplan />} />
+          <Route path="videokonferenz" element={<Videokonferenz />} />
           <Route path="dsb" element={<Dsbmobile />} />
           <Route path="profile" element={<Profile />} />
           <Route path="settings/*" element={<Settings />} />
@@ -121,13 +132,17 @@ const AppRoutes: React.FC = () => {
                     <Route path="/dashboard" element={<Dashboard />} />
                     <Route path="/messages" element={<Messages />} />
                     <Route path="/courses" element={<Courses />} />
+                    <Route path="/courses/submissions" element={<Submissions />} />
+                    <Route path="/courses/submissions/:id" element={<Submissions />} />
                     <Route path="/courses/attendance" element={<AttendanceOverview />} />
                     <Route path="/courses/:id" element={<Courses />} />
                     <Route path="/calendar" element={<Kalender />} />
                     <Route path="/timetable" element={<Timetable />} />
                     <Route path="/study-groups" element={<StudyGroups />} />
                     <Route path="/dateispeicher" element={<Dateispeicher />} />
+                    <Route path="/dateiverteilung" element={<Dateiverteilung />} />
                     <Route path="/vertretungsplan" element={<Vertretungsplan />} />
+                    <Route path="/videokonferenz" element={<Videokonferenz />} />
                     <Route path="/dsb" element={<Dsbmobile />} />
                     <Route path="/wahlen" element={<Wahlen />} />
                     <Route path="/profile" element={<Profile />} />

@@ -54,10 +54,15 @@ export async function clearNativeSession(preserveDeletionRecovery = false): Prom
   const recoveryKey = '__lanis_account_deletion_recovery';
   const recovery = preserveDeletionRecovery ? values[recoveryKey] : undefined;
   values = recovery ? { [recoveryKey]: recovery } : {};
-  await writes;
-  await LanisNative.clearSession();
-  if (recovery) await LanisNative.saveSession({ values: { ...values }, backend });
-  persistenceError = undefined;
+  const snapshot = { ...values };
+  writes = writes.then(async () => {
+    try {
+      await LanisNative.clearSession();
+      if (recovery) await LanisNative.saveSession({ values: snapshot, backend });
+      persistenceError = undefined;
+    } catch (error) { persistenceError = error; }
+  });
+  await flushAuthStorage();
 }
 
 export async function reloadNativeCredentials(): Promise<void> {

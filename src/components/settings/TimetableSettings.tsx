@@ -437,11 +437,9 @@ const TimetableSettings: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="card flex min-h-72 items-center justify-center">
-        <div className="text-center text-sm text-surface-500">
-          <ArrowPathIcon className="mx-auto mb-3 h-7 w-7 animate-spin text-primary-500" />
-          Stundenplan wird vorbereitet …
-        </div>
+      <div className="space-y-5" role="status" aria-busy="true" aria-label="Stundenplan wird vorbereitet">
+        <section className="card flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div className="flex min-w-0 items-start gap-3"><CalendarDaysIcon className="mt-0.5 h-5 w-5 shrink-0 text-primary-500" /><div><span className="font-medium text-surface-900 dark:text-white">Standardansicht</span><p className="mt-0.5 text-xs text-surface-500">Wird mit deinem Lanis-Konto synchronisiert.</p></div></div><div className="skeleton h-11 w-full sm:w-52" aria-hidden="true" /></section>
+        <div className="card" aria-hidden="true"><div className="skeleton h-6 w-40" /><div className="mt-4 grid grid-cols-5 gap-2">{[0, 1, 2, 3, 4].map(i => <div key={i} className="skeleton h-64 w-full" />)}</div></div>
       </div>
     );
   }
@@ -587,7 +585,7 @@ const TimetableSettings: React.FC = () => {
           </button>
           <div className="mb-5 flex items-start justify-between gap-4">
             <div>
-              <h3 className="text-lg font-semibold text-surface-900 dark:text-white">
+              <h3 className="section-title">
                 {isNew ? 'Neue Stunde' : draft.subject || 'Stunde bearbeiten'}
               </h3>
             </div>

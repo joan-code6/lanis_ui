@@ -1,6 +1,6 @@
 import { canUseOfflineTimetable } from '../platform/offline';
 import { isAndroid, LanisNative } from '../platform/native';
-import { authStorage, flushAuthStorage, clearNativeSession } from '../platform/authStorage';
+import { authStorage, flushAuthStorage } from '../platform/authStorage';
 import {
   SchoolListResponse,
   DistrictSchoolsResponse,
@@ -15,6 +15,9 @@ import {
 import { getMockResponse } from '../components/demo/mockApi';
 import { DEFAULT_API_BASE_URL, getApiBaseUrl } from '../utils/backendConfig';
 import {
+  clearSignedOutAccountData,
+  rememberAccountToken,
+  canUseAccountToken,
   canWriteAccountData,
   captureAccountDataGeneration,
   isAccountDataDeletionInProgress,
@@ -150,7 +153,8 @@ export const schoolListAPI = {
     };
   },
 };
-import axios, { AxiosInstance } from 'axios';
+import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
+import { downloadFilename } from '../utils/downloadFilename';
 import {
   LoginRequest,
   LoginResponse,
@@ -174,6 +178,9 @@ import {
   EntryDetailsResponse,
   WeeklyViewResponse,
   SubmissionsResponse,
+  SubmissionDetailResponse,
+  SubmissionUploadResponse,
+  SubmissionDeleteResponse,
   HealthResponse,
   CalendarOverviewResponse,
   CalendarEventsResponse,
@@ -191,6 +198,8 @@ import {
   ClassLinksResponse,
   DateispeicherNodeResponse,
   DateispeicherSearchResponse,
+  VideoRoomsResponse,
+  DateiverteilungResponse,
   StudyGroupsResponse,
   NotificationConfigResponse,
   DashboardNotificationsResponse,
@@ -216,6 +225,72 @@ const apiClient: AxiosInstance = axios.create({
     'Content-Type': 'application/json',
   },
 });
+
+// Only speculative reads are retained; ordinary reads and refreshes stay live.
+const speculativeReads = new Map<string, { promise: Promise<AxiosResponse>; expires: number }>();
+let speculativeScope = '';
+
+export function clearPrefetchedData(): void {
+  speculativeReads.clear();
+}
+
+export function readAPI<T = unknown>(url: string, config: AxiosRequestConfig = {}, prefetch = false): Promise<AxiosResponse<T>> {
+  const token = String(config.headers?.['X-Session-Token'] || '');
+  const generation = captureAccountDataGeneration();
+  const scope = `${generation}:${token}:${window.location.pathname.startsWith('/demo')}`;
+  if (scope !== speculativeScope) {
+    clearPrefetchedData();
+    speculativeScope = scope;
+  }
+  if (config.signal?.aborted || (token && !canUseAccountToken(token) && !window.location.pathname.startsWith('/demo'))) {
+    return Promise.reject(new axios.CanceledError('Session changed'));
+  }
+  const params = Object.entries(config.params || {})
+    .filter(([name, value]) => value !== undefined && !(name === 'refresh' && value === false))
+    .sort(([a], [b]) => a.localeCompare(b));
+  const key = JSON.stringify([url, params]);
+  for (const [key, entry] of speculativeReads) {
+    if (entry.expires <= Date.now()) speculativeReads.delete(key);
+  }
+  if (config.params?.refresh === true) {
+    // A live refresh supersedes the older speculative response for these params.
+    speculativeReads.delete(JSON.stringify([url, params.filter(([name]) => name !== 'refresh')]));
+    speculativeReads.delete(key);
+    return apiClient.get<T>(url, config);
+  }
+  const cached = speculativeReads.get(key);
+  if (cached) {
+    // Hand off once so a subsequent manual reload always reaches the server.
+    if (prefetch) return cached.promise as Promise<AxiosResponse<T>>;
+    speculativeReads.delete(key);
+    const retry = (): Promise<AxiosResponse<T>> => {
+      if (generation !== captureAccountDataGeneration() || config.signal?.aborted
+        || (token && !canUseAccountToken(token) && !window.location.pathname.startsWith('/demo'))) {
+        return Promise.reject(new axios.CanceledError('Session changed'));
+      }
+      // A speculative failure must not replace the navigation's own live read.
+      return apiClient.get<T>(url, config);
+    };
+    return cached.promise.then(response => (
+      (response.data as { success?: boolean } | null)?.success === false
+        ? retry()
+        : response as AxiosResponse<T>
+    ), retry);
+  }
+  if (!prefetch) return apiClient.get<T>(url, config);
+  const entry = { promise: apiClient.get<T>(url, config), expires: Infinity };
+  speculativeReads.set(key, entry);
+  // Bound memory even when many different detail links are hovered.
+  if (speculativeReads.size > 50) speculativeReads.delete(speculativeReads.keys().next().value!);
+  void entry.promise.then(response => {
+    if ((response.data as { success?: boolean } | null)?.success === false) {
+      if (speculativeReads.get(key) === entry) speculativeReads.delete(key);
+    } else entry.expires = Date.now() + 30_000;
+  }, () => {
+    if (speculativeReads.get(key) === entry) speculativeReads.delete(key);
+  });
+  return entry.promise;
+}
 
 // Startup deletion recovery must verify or refresh a session without the normal
 // auth interceptors clearing credentials before the result can be evaluated.
@@ -304,6 +379,8 @@ let refreshPromise: Promise<boolean> | null = null;
 
 async function refreshAccessToken(): Promise<boolean> {
   const writeGeneration = captureAccountDataGeneration();
+  const currentAccessToken = authStorage.getItem(ACCESS_TOKEN_KEY);
+  if (currentAccessToken) rememberAccountToken(currentAccessToken);
   const refreshTokenValue = getRefreshToken();
   if (!refreshTokenValue) return false;
 
@@ -312,7 +389,7 @@ async function refreshAccessToken(): Promise<boolean> {
       refresh_token: refreshTokenValue,
     } as TokenRefreshRequest);
 
-    if (!canWriteAccountData(writeGeneration)) return false;
+    if (!canWriteAccountData(writeGeneration) || getRefreshToken() !== refreshTokenValue) return false;
     const expiresAt = Date.now() + response.data.expires_in * 1000;
     authStorage.setItem(ACCESS_TOKEN_KEY, response.data.access_token);
     authStorage.setItem(TOKEN_EXPIRES_KEY, expiresAt.toString());
@@ -443,7 +520,7 @@ export const appsAPI = {
 // Oberstufenwahl / Wahlen API
 export const wahlenAPI = {
   async getElections(token: string, signal?: AbortSignal): Promise<WahlenOverviewResponse> {
-    const response = await apiClient.get<WahlenOverviewResponse>('/wahlen', {
+    const response = await readAPI<WahlenOverviewResponse>('/wahlen', {
       headers: { 'X-Session-Token': token },
       signal,
     });
@@ -476,7 +553,7 @@ export const messagesAPI = {
     last: number = 0,
     signal?: AbortSignal,
   ): Promise<MessagesResponse> {
-    const response = await apiClient.get<MessagesResponse>('/nachrichten/headers', {
+    const response = await readAPI<MessagesResponse>('/nachrichten/headers', {
       headers: { 'X-Session-Token': token },
       params: { get_type: getType, last },
       signal,
@@ -689,7 +766,7 @@ export async function unsubscribeBrowserPushSubscription(
 // Courses API
 export const coursesAPI = {
   async getCourses(token: string, signal?: AbortSignal): Promise<CoursesResponse> {
-    const response = await apiClient.get<CoursesResponse>('/meinunterricht', {
+    const response = await readAPI<CoursesResponse>('/meinunterricht', {
       headers: { 'X-Session-Token': token },
       signal,
     });
@@ -738,11 +815,81 @@ export const coursesAPI = {
     return response.data;
   },
 
-  async getSubmissions(token: string, signal?: AbortSignal): Promise<SubmissionsResponse> {
+  async getSubmissions(token: string, signal?: AbortSignal, refresh = false): Promise<SubmissionsResponse> {
     const response = await apiClient.get<SubmissionsResponse>('/meinunterricht/submissions', {
       headers: { 'X-Session-Token': token },
+      params: refresh ? { refresh: true } : undefined,
       signal,
     });
+    return response.data;
+  },
+
+  async getSubmission(token: string, detailRef: string, signal?: AbortSignal, refresh = false): Promise<SubmissionDetailResponse> {
+    const response = await apiClient.get<SubmissionDetailResponse>(
+      `/meinunterricht/submissions/${encodeURIComponent(detailRef)}`,
+      { headers: { 'X-Session-Token': token }, signal, params: refresh ? { refresh: true } : undefined },
+    );
+    return response.data;
+  },
+
+  async uploadSubmissionFiles(
+    token: string,
+    detail: { course_id: string; entry_id: string; upload_id: string },
+    files: File[],
+    signal?: AbortSignal,
+  ): Promise<SubmissionUploadResponse> {
+    const form = new FormData();
+    form.append('course_id', detail.course_id);
+    form.append('entry_id', detail.entry_id);
+    form.append('upload_id', detail.upload_id);
+    files.forEach(file => form.append('files', file, file.name));
+    const response = await apiClient.post<SubmissionUploadResponse>(
+      '/meinunterricht/submissions/upload',
+      form,
+      {
+        headers: {
+          'X-Session-Token': token,
+          'Content-Type': 'multipart/form-data',
+        },
+        // Large transfers must not inherit the 30-second JSON request deadline.
+        // Callers can still cancel through the supplied AbortSignal.
+        timeout: 0,
+        signal,
+      },
+    );
+    return response.data;
+  },
+
+  async deleteSubmissionFile(
+    token: string,
+    detail: { course_id: string; entry_id: string; upload_id: string },
+    fileIndex: string,
+    signal?: AbortSignal,
+  ): Promise<SubmissionDeleteResponse> {
+    const form = new FormData();
+    form.append('course_id', detail.course_id);
+    form.append('entry_id', detail.entry_id);
+    form.append('upload_id', detail.upload_id);
+    form.append('file_index', fileIndex);
+    const response = await apiClient.delete<SubmissionDeleteResponse>(
+      '/meinunterricht/submissions/file',
+      {
+        headers: {
+          'X-Session-Token': token,
+          'Content-Type': 'multipart/form-data',
+        },
+        data: form,
+        signal,
+      },
+    );
+    return response.data;
+  },
+
+  async downloadSubmissionFile(token: string, fileRef: string, signal?: AbortSignal): Promise<Blob> {
+    const response = await apiClient.get<Blob>(
+      `/meinunterricht/submissions/file/${encodeURIComponent(fileRef)}`,
+      { headers: { 'X-Session-Token': token }, responseType: 'blob', timeout: 0, signal },
+    );
     return response.data;
   },
 
@@ -769,7 +916,7 @@ export const coursesAPI = {
 // Calendar API
 export const calendarAPI = {
   async getOverview(token: string, signal?: AbortSignal): Promise<CalendarOverviewResponse> {
-    const response = await apiClient.get<CalendarOverviewResponse>('/kalender', {
+    const response = await readAPI<CalendarOverviewResponse>('/kalender', {
       headers: { 'X-Session-Token': token },
       signal,
     });
@@ -788,7 +935,7 @@ export const calendarAPI = {
     } = {},
     signal?: AbortSignal,
   ): Promise<CalendarEventsResponse> {
-    const response = await apiClient.get<CalendarEventsResponse>('/kalender/events', {
+    const response = await readAPI<CalendarEventsResponse>('/kalender/events', {
       headers: { 'X-Session-Token': token },
       params: options,
       signal,
@@ -812,7 +959,7 @@ export const timetableAPI = {
     const cacheOwner = authStorage.getItem(REFRESH_TOKEN_KEY);
     const writeGeneration = captureAccountDataGeneration();
     try {
-      const response = await apiClient.get<TimetableResponse>('/stundenplan/view', {
+      const response = await readAPI<TimetableResponse>('/stundenplan/view', {
         headers: { 'X-Session-Token': token }, params: options, signal,
       });
       if (isAndroid && !window.location.pathname.startsWith('/demo') && cacheOwner && canWriteAccountData(writeGeneration) && options.show_substitutions !== false && response.data.success && options.plan_mode === 'personal' && options.view_mode === 'rolling' && !options.week_type) {
@@ -910,7 +1057,7 @@ export const timetableAPI = {
 // Native Schulportal file-storage API
 export const dateispeicherAPI = {
   async getNode(token: string, folderId = 0, refresh = false, signal?: AbortSignal): Promise<DateispeicherNodeResponse> {
-    const response = await apiClient.get<DateispeicherNodeResponse>('/dateispeicher', {
+    const response = await readAPI<DateispeicherNodeResponse>('/dateispeicher', {
       headers: { 'X-Session-Token': token },
       params: { folder_id: folderId, refresh },
       signal,
@@ -937,10 +1084,35 @@ export const dateispeicherAPI = {
   },
 };
 
+// Native Schulportal targeted file-distribution API
+export const dateiverteilungAPI = {
+  async getOverview(token: string, refresh = false, signal?: AbortSignal): Promise<DateiverteilungResponse> {
+    const response = await readAPI<DateiverteilungResponse>('/dateiverteilung', {
+      headers: { 'X-Session-Token': token },
+      params: { refresh },
+      signal,
+    });
+    return response.data;
+  },
+
+  async downloadFile(token: string, downloadUrl: string, signal?: AbortSignal): Promise<{ blob: Blob; filename: string | null }> {
+    const response = await apiClient.get<Blob>('/dateiverteilung/file', {
+      headers: { 'X-Session-Token': token },
+      params: { url: downloadUrl },
+      responseType: 'blob',
+      signal,
+    });
+    return {
+      blob: response.data,
+      filename: downloadFilename(response.headers['content-disposition']),
+    };
+  },
+};
+
 // Native Schulportal substitution plan API
 export const vertretungsplanAPI = {
   async getPlan(token: string, refresh = false, signal?: AbortSignal): Promise<VertretungsplanResponse> {
-    const response = await apiClient.get<VertretungsplanResponse>('/vertretungsplan', {
+    const response = await readAPI<VertretungsplanResponse>('/vertretungsplan', {
       headers: { 'X-Session-Token': token },
       params: { refresh },
       signal,
@@ -964,6 +1136,18 @@ export const vertretungsplanAPI = {
       const response = await apiClient.get<VertretungsplanOptionsResponse>('/vertretungsplan/options', config);
       return response.data;
     }
+  },
+};
+
+// Native Schulportal video rooms. Join links may be short-lived and user-bound.
+export const videokonferenzAPI = {
+  async getRooms(token: string, refresh = false, signal?: AbortSignal): Promise<VideoRoomsResponse> {
+    const response = await readAPI<VideoRoomsResponse>('/videokonferenz', {
+      headers: { 'X-Session-Token': token },
+      params: { refresh },
+      signal,
+    });
+    return response.data;
   },
 };
 
@@ -1042,7 +1226,7 @@ export const settingsAPI = {
 // Study Groups API
 export const studyGroupsAPI = {
   async getStudyGroups(token: string, signal?: AbortSignal): Promise<StudyGroupsResponse> {
-    const response = await apiClient.get<StudyGroupsResponse>('/lerngruppen', {
+    const response = await readAPI<StudyGroupsResponse>('/lerngruppen', {
       headers: { 'X-Session-Token': token },
       signal,
     });
@@ -1053,7 +1237,7 @@ export const studyGroupsAPI = {
 // DSB Mobile API
 export const dsbAPI = {
   async getSchoolPlan(token: string, refresh = false, signal?: AbortSignal): Promise<DSBPlanResponse> {
-    const response = await apiClient.get<DSBPlanResponse>('/dsb/school-plan', {
+    const response = await readAPI<DSBPlanResponse>('/dsb/school-plan', {
       headers: { 'X-Session-Token': token }, params: { refresh }, signal,
     });
     return response.data;
@@ -1123,9 +1307,19 @@ export const searchAPI = {
   },
 };
 
+// Keep each response and retry attached to the session that initiated it.
+const requestGenerations = new WeakMap<object, number>();
+const staleRequest = (config: object | undefined): boolean => {
+  const generation = config && requestGenerations.get(config);
+  return generation !== undefined && generation !== captureAccountDataGeneration();
+};
+
 // Request interceptor - mock all API calls in demo mode + auto-refresh token
 apiClient.interceptors.request.use(
   async (config) => {
+    if (config.method && config.method !== 'get') clearPrefetchedData();
+    const generation = captureAccountDataGeneration();
+    requestGenerations.set(config, generation);
     // Demo mode: mock all responses
     if (localStorage.getItem('__demo_mode') === '1' && window.location.pathname.startsWith('/demo')) {
       config.adapter = (mockConfig: any) => {
@@ -1143,13 +1337,17 @@ apiClient.interceptors.request.use(
     }
 
     // Auto-refresh access token if it has an X-Session-Token header
-    if (config.headers?.['X-Session-Token']) {
+    if (config.headers?.['X-Session-Token'] && !['/logout', '/notifications/unsubscribe'].includes(config.url || '')) {
+      if (!canUseAccountToken(String(config.headers['X-Session-Token']))) {
+        throw new axios.CanceledError('Session changed');
+      }
       const freshToken = await ensureValidToken();
       if (freshToken) {
         config.headers['X-Session-Token'] = freshToken;
       }
     }
 
+    if (generation !== captureAccountDataGeneration()) throw new axios.CanceledError('Session changed');
     return config;
   },
   (error) => {
@@ -1160,9 +1358,13 @@ apiClient.interceptors.request.use(
 // Response interceptor to handle 401 — try refresh once then redirect
 apiClient.interceptors.response.use(
   (response) => {
+    if (response.config.method && response.config.method !== 'get') clearPrefetchedData();
+    if (staleRequest(response.config)) throw new axios.CanceledError('Session changed');
     return response;
   },
   async (error) => {
+    if (staleRequest(error.config)) return Promise.reject(new axios.CanceledError('Session changed'));
+    if (['/logout', '/notifications/unsubscribe'].includes(error.config?.url || '')) return Promise.reject(error);
     if (error.response?.status === 401 && localStorage.getItem('__demo_mode') !== '1') {
       if (isAccountDataDeletionInProgress()) return Promise.reject(error);
       // Don't try to refresh if the request was already to /auth/refresh
@@ -1183,7 +1385,7 @@ apiClient.interceptors.response.use(
               refresh_token: refreshTokenValue,
             } as TokenRefreshRequest);
 
-            if (!canWriteAccountData(writeGeneration)) {
+            if (!canWriteAccountData(writeGeneration) || getRefreshToken() !== refreshTokenValue) {
               return Promise.reject(error);
             }
             const expiresAt = Date.now() + refreshResponse.data.expires_in * 1000;
@@ -1211,18 +1413,20 @@ apiClient.interceptors.response.use(
         }
       }
 
+      // A failed refresh may belong to an account that has since signed out.
+      if (staleRequest(error.config)) return Promise.reject(new axios.CanceledError('Session changed'));
+      clearSignedOutAccountData();
+      const signedOutGeneration = captureAccountDataGeneration();
       // Clear auth state and redirect to login
       try {
         await unsubscribeBrowserPushSubscription();
       } catch (cleanupError) {
         console.warn('Failed to remove push subscription after authentication loss:', cleanupError);
       }
-      authStorage.removeItem(ACCESS_TOKEN_KEY);
-      authStorage.removeItem(REFRESH_TOKEN_KEY);
-      authStorage.removeItem(TOKEN_EXPIRES_KEY);
-      authStorage.removeItem('auth_user');
-      await clearNativeSession();
-      window.location.href = '/login';
+      if (captureAccountDataGeneration() === signedOutGeneration) {
+        await flushAuthStorage();
+        if (captureAccountDataGeneration() === signedOutGeneration) window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }

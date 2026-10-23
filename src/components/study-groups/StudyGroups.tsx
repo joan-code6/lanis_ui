@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import axios from 'axios';
+import React, { useMemo } from 'react';
+import { useCachedResource } from '../../hooks/useCachedResource';
 import { useNavigate } from 'react-router-dom';
 import { format, parseISO } from 'date-fns';
 import { de } from 'date-fns/locale';
@@ -14,8 +14,8 @@ import {
 import { useAuth } from '../../contexts/AuthContext';
 import { useBasePath } from '../../contexts/BasePathContext';
 import { studyGroupsAPI } from '../../services/api';
-import { StudyGroup, StudyGroupExam } from '../../types';
 import SEO from '../seo/SEO';
+import type { StudyGroupExam } from '../../types';
 
 const formatExamDate = (date: string | null) => {
   if (!date) return 'Datum offen';
@@ -30,34 +30,13 @@ const StudyGroups: React.FC = () => {
   const { token } = useAuth();
   const navigate = useNavigate();
   const basePath = useBasePath();
-  const [groups, setGroups] = useState<StudyGroup[]>([]);
-  const [exams, setExams] = useState<StudyGroupExam[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [reloadKey, setReloadKey] = useState(0);
-
-  useEffect(() => {
-    if (!token) return;
-    const controller = new AbortController();
-    setLoading(true);
-    setError('');
-
-    studyGroupsAPI.getStudyGroups(token, controller.signal)
-      .then(response => {
-        if (!response.success) throw new Error(response.error || 'Die Lerngruppen konnten nicht geladen werden.');
-        setGroups(response.groups || []);
-        setExams(response.exams || []);
-      })
-      .catch(err => {
-        if (axios.isCancel(err)) return;
-        setError(err.response?.data?.detail || err.message || 'Die Lerngruppen konnten nicht geladen werden.');
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setLoading(false);
-      });
-
-    return () => controller.abort();
-  }, [token, reloadKey]);
+  const { data, loading, error, refresh } = useCachedResource('study-groups', async signal => {
+    const response = await studyGroupsAPI.getStudyGroups(token!, signal);
+    if (!response.success) throw new Error(response.error || 'Die Lerngruppen konnten nicht geladen werden.');
+    return response;
+  });
+  const groups = data?.groups || [];
+  const exams = data?.exams || [];
 
   const upcomingExams = useMemo(() => {
     const today = new Date();
@@ -68,7 +47,7 @@ const StudyGroups: React.FC = () => {
   }, [exams]);
 
   return (
-    <div className="p-4 sm:p-6 max-w-7xl mx-auto">
+    <div className="module-page">
       <SEO
         title="Lerngruppen"
         description="Deine Lerngruppen, Lehrkräfte und Klausurtermine im Schulportal Hessen."
@@ -80,18 +59,20 @@ const StudyGroups: React.FC = () => {
         <p className="page-subtitle">Kurse, Lehrkräfte und anstehende Klausuren</p>
       </div>
 
+      {error && data && <p role="status" className="mb-4 text-sm text-amber-700 dark:text-amber-300">Aktualisierung fehlgeschlagen. Der zuletzt geladene Stand wird angezeigt. {error}</p>}
       {loading ? (
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {Array.from({ length: 4 }).map((_, index) => <div key={index} className="skeleton h-40" />)}
+        <div aria-busy="true" aria-label="Lerngruppen werden geladen">
+          <div className="mb-3 flex items-center gap-2"><AcademicCapIcon className="h-5 w-5 text-primary-600 dark:text-primary-400" /><h2 className="text-lg font-semibold text-surface-900 dark:text-surface-100">Meine Gruppen</h2></div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {Array.from({ length: 4 }).map((_, index) => <div key={index} className="card !p-5" aria-hidden="true"><div className="flex justify-between gap-3"><div className="flex-1"><div className="skeleton h-6 w-40 max-w-full" /><div className="skeleton mt-1 h-[22px] w-20" /></div><div className="h-10 w-10 shrink-0 rounded-xl bg-primary-50 dark:bg-primary-950 flex items-center justify-center"><UserGroupIcon className="h-5 w-5 text-primary-600 dark:text-primary-400" /></div></div><div className="mt-4 border-t pt-4"><p className="mb-2 text-xs font-medium uppercase tracking-wide text-surface-400">Lehrkräfte</p><div className="flex gap-2 py-1.5 items-center"><div className="skeleton h-8 w-8 rounded-full" /><div className="skeleton h-5 w-32" /></div></div></div>)}
           </div>
         </div>
-      ) : error ? (
+      ) : error && !data ? (
         <div className="card flex min-h-64 flex-col items-center justify-center text-center">
           <UserGroupIcon className="mb-3 h-10 w-10 text-red-400" />
           <h2 className="font-semibold text-surface-900 dark:text-surface-100">Lerngruppen nicht verfügbar</h2>
           <p className="mt-1 max-w-md text-sm text-surface-500 dark:text-surface-400">{error}</p>
-          <button className="btn btn-secondary mt-4" onClick={() => setReloadKey(value => value + 1)}>
+          <button className="btn btn-secondary mt-4" onClick={refresh}>
             <ArrowPathIcon className="mr-2 h-4 w-4" />Erneut versuchen
           </button>
         </div>
@@ -107,7 +88,7 @@ const StudyGroups: React.FC = () => {
             <section aria-labelledby="upcoming-exams">
               <div className="mb-3 flex items-center gap-2">
                 <CalendarDaysIcon className="h-5 w-5 text-primary-600 dark:text-primary-400" />
-                <h2 id="upcoming-exams" className="text-lg font-semibold text-surface-900 dark:text-surface-100">Anstehende Klausuren</h2>
+                <h2 id="upcoming-exams" className="section-title">Anstehende Klausuren</h2>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
                 {upcomingExams.map(exam => <ExamCard key={exam.id} exam={exam} />)}
@@ -118,7 +99,7 @@ const StudyGroups: React.FC = () => {
           <section aria-labelledby="group-list">
             <div className="mb-3 flex items-center gap-2">
               <AcademicCapIcon className="h-5 w-5 text-primary-600 dark:text-primary-400" />
-              <h2 id="group-list" className="text-lg font-semibold text-surface-900 dark:text-surface-100">Meine Gruppen</h2>
+              <h2 id="group-list" className="section-title">Meine Gruppen</h2>
               <span className="badge badge-surface">{groups.length}</span>
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

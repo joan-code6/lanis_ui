@@ -93,8 +93,9 @@ function applyPrimaryTheme(color: ThemeColor) {
   applyThemeAssets(color);
 }
 
-export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const ThemeProvider: React.FC<{ children: React.ReactNode; initialColor?: ThemeColor }> = ({ children, initialColor }) => {
   const [themeMode, setThemeModeState] = useState<ThemeMode>(() => {
+    if (typeof window === 'undefined') return 'system';
     const storedMode = localStorage.getItem(THEME_MODE_KEY);
     if (storedMode === 'system' || storedMode === 'light' || storedMode === 'dark' || storedMode === 'oled') {
       return storedMode;
@@ -105,9 +106,10 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     if (storedDark === 'false') return 'light';
     return 'system';
   });
-  const [systemDark, setSystemDark] = useState(() => window.matchMedia('(prefers-color-scheme: dark)').matches);
+  const [systemDark, setSystemDark] = useState(() => typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches);
 
   const [themeColor, setThemeColorState] = useState<ThemeColor>(() => {
+    if (typeof window === 'undefined') return initialColor ?? 'ruby';
     const storedTheme = localStorage.getItem(THEME_COLOR_KEY);
     return isThemeColor(storedTheme) ? storedTheme : 'ruby';
   });

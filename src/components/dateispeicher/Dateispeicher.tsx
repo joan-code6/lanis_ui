@@ -1,4 +1,6 @@
 import { saveBlob } from '../../platform/files';
+import { FileStorageSkeleton } from '../shared/ModuleLoadingSkeletons';
+import { useCachedResource } from '../../hooks/useCachedResource';
 import React, { FormEvent, useEffect, useRef, useState } from 'react';
 import axios from 'axios';
 import {
@@ -14,7 +16,6 @@ import { dateispeicherAPI } from '../../services/api';
 import {
   DateispeicherFile,
   DateispeicherFolder,
-  DateispeicherNodeResponse,
 } from '../../types';
 import SEO from '../seo/SEO';
 
@@ -126,22 +127,12 @@ function normaliseSearchResults(raw: unknown): SearchCollections {
 
 const Dateispeicher: React.FC = () => {
   const { token } = useAuth();
-  const [node, setNode] = useState<DateispeicherNodeResponse | null>(null);
   const [folderId, setFolderId] = useState(0);
   const [breadcrumbs, setBreadcrumbs] = useState<Breadcrumb[]>([{ id: 0, name: 'Dateispeicher' }]);
   const [query, setQuery] = useState('');
   const [submittedQuery, setSubmittedQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<SearchCollections | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [searching, setSearching] = useState(false);
   const [downloadingId, setDownloadingId] = useState<number | null>(null);
-  const [folderError, setFolderError] = useState('');
-  const [searchError, setSearchError] = useState('');
   const [downloadError, setDownloadError] = useState('');
-  const [reloadKey, setReloadKey] = useState(0);
-  const [searchKey, setSearchKey] = useState(0);
-  const forceFolderRefresh = useRef(false);
-  const forceSearchRefresh = useRef(false);
   const downloadControllerRef = useRef<AbortController | null>(null);
 
   const cancelDownload = () => {
@@ -153,65 +144,20 @@ const Dateispeicher: React.FC = () => {
 
   useEffect(() => () => downloadControllerRef.current?.abort(), []);
 
-  useEffect(() => {
-    if (!token) {
-      setLoading(false);
-      return undefined;
-    }
-
-    const controller = new AbortController();
-    const refresh = forceFolderRefresh.current;
-    forceFolderRefresh.current = false;
-    setLoading(true);
-    setFolderError('');
-    setDownloadError('');
-    setNode(null);
-    dateispeicherAPI.getNode(token, folderId, refresh, controller.signal)
-      .then(response => {
-        if (!response.success) throw new Error(response.error || 'Der Dateispeicher konnte nicht geladen werden.');
-        setNode(response);
-      })
-      .catch(err => {
-        if (axios.isCancel(err)) return;
-        setFolderError(err instanceof Error ? err.message : 'Der Dateispeicher konnte nicht geladen werden.');
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setLoading(false);
-      });
-
-    return () => controller.abort();
-  }, [token, folderId, reloadKey]);
-
-  useEffect(() => {
-    if (!token || !submittedQuery) {
-      setSearchResults(null);
-      setSearching(false);
-      return undefined;
-    }
-
-    const controller = new AbortController();
-    const refresh = forceSearchRefresh.current;
-    forceSearchRefresh.current = false;
-    setSearching(true);
-    setSearchError('');
-    setDownloadError('');
-    setSearchResults(null);
-    dateispeicherAPI.search(token, submittedQuery, refresh, controller.signal)
-      .then(response => {
-        if (!response.success) throw new Error(response.error || 'Die Dateisuche konnte nicht durchgeführt werden.');
-        setSearchResults(normaliseSearchResults(response.results));
-      })
-      .catch(err => {
-        if (axios.isCancel(err)) return;
-        setSearchResults(null);
-        setSearchError(err instanceof Error ? err.message : 'Die Dateisuche konnte nicht durchgeführt werden.');
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setSearching(false);
-      });
-
-    return () => controller.abort();
-  }, [token, submittedQuery, searchKey]);
+  const { data: node, loading, error: folderError, refresh: refreshFolder } = useCachedResource(
+    `dateispeicher:${folderId}`, async (signal, force) => {
+      const response = await dateispeicherAPI.getNode(token!, folderId, force, signal);
+      if (!response.success) throw new Error(response.error || 'Der Dateispeicher konnte nicht geladen werden.');
+      return response;
+    },
+  );
+  const { data: searchResults, loading: searching, error: searchError, refresh: refreshSearch } = useCachedResource(
+    `dateispeicher-search:${submittedQuery}`, async (signal, force) => {
+      const response = await dateispeicherAPI.search(token!, submittedQuery, force, signal);
+      if (!response.success) throw new Error(response.error || 'Die Dateisuche konnte nicht durchgeführt werden.');
+      return normaliseSearchResults(response.results);
+    }, Boolean(submittedQuery),
+  );
 
   const isSearchMode = submittedQuery.length > 0;
 
@@ -235,7 +181,6 @@ const Dateispeicher: React.FC = () => {
     setBreadcrumbs(nextBreadcrumbs);
     setFolderId(folder.id);
     setSubmittedQuery('');
-    setSearchResults(null);
   };
 
   const openBreadcrumb = (breadcrumb: Breadcrumb, index: number) => {
@@ -243,7 +188,6 @@ const Dateispeicher: React.FC = () => {
     setBreadcrumbs(breadcrumbs.slice(0, index + 1));
     setFolderId(breadcrumb.id);
     setSubmittedQuery('');
-    setSearchResults(null);
   };
 
   const submitSearch = (event: FormEvent) => {
@@ -251,15 +195,13 @@ const Dateispeicher: React.FC = () => {
     cancelDownload();
     const value = query.trim();
     setSubmittedQuery(value);
-    setSearchKey(key => key + 1);
+    if (value === submittedQuery) refreshSearch();
   };
 
   const clearSearch = () => {
     cancelDownload();
     setQuery('');
     setSubmittedQuery('');
-    setSearchResults(null);
-    setSearchError('');
     setDownloadError('');
   };
 
@@ -301,13 +243,13 @@ const Dateispeicher: React.FC = () => {
   }
 
   return (
-    <div className="min-h-full px-3 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
+    <div className="min-h-full module-padding">
       <SEO title="Dateispeicher" description="Deine Dateien aus dem nativen Dateispeicher des Schulportal Hessen." noindex />
       <div className="mx-auto max-w-7xl">
-        <header className="mb-4 flex flex-col gap-4 sm:mb-6 sm:flex-row sm:items-start sm:justify-between">
+        <header className="page-header page-header-actions">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-surface-900 dark:text-white sm:text-3xl">Dateispeicher</h1>
-            <p className="mt-1.5 text-sm text-surface-500 dark:text-surface-400">Dateien und Ordner direkt aus dem Schulportal Hessen</p>
+            <h1 className="page-title">Dateispeicher</h1>
+            <p className="page-subtitle">Dateien und Ordner direkt aus dem Schulportal Hessen</p>
           </div>
           <button
             type="button"
@@ -315,11 +257,9 @@ const Dateispeicher: React.FC = () => {
             onClick={() => {
               cancelDownload();
               if (isSearchMode) {
-                forceSearchRefresh.current = true;
-                setSearchKey(value => value + 1);
+                refreshSearch();
               } else {
-                forceFolderRefresh.current = true;
-                setReloadKey(value => value + 1);
+                refreshFolder();
               }
             }}
             disabled={busy}
@@ -386,12 +326,7 @@ const Dateispeicher: React.FC = () => {
         )}
 
         {busy ? (
-          <div className="card flex min-h-64 items-center justify-center">
-            <div className="text-center text-surface-500">
-              <ArrowPathIcon className="mx-auto mb-3 h-7 w-7 animate-spin text-primary-500" />
-              {isSearchMode ? 'Dateispeicher wird durchsucht …' : 'Dateispeicher wird geladen …'}
-            </div>
-          </div>
+          <FileStorageSkeleton />
         ) : (
           <>
             {visibleFolders.length > 0 && (
@@ -453,7 +388,7 @@ const Dateispeicher: React.FC = () => {
             ) : visibleFolders.length === 0 && !requestError ? (
               <div className="card flex min-h-64 flex-col items-center justify-center text-center">
                 <FolderIcon className="mb-3 h-10 w-10 text-surface-300" />
-                <h2 className="font-semibold text-surface-900 dark:text-white">Keine Dateien gefunden</h2>
+                <h2 className="empty-state-title">Keine Dateien gefunden</h2>
                 <p className="mt-1 max-w-md text-sm text-surface-500 dark:text-surface-400">
                   {isSearchMode ? 'Für diese Suche wurden keine Dateien oder Ordner gefunden.' : 'In diesem Ordner sind derzeit keine Dateien hinterlegt.'}
                 </p>

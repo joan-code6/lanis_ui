@@ -7,15 +7,19 @@ export type CachedModule = Module;
 export interface ModuleAvailability {
   hasDsbModule: boolean;
   hasNativeDateispeicher: boolean;
+  hasNativeDateiverteilung: boolean;
   hasNativeSubstitutionPlan: boolean;
   hasWahlenModule: boolean;
+  hasVideokonferenzModule: boolean;
 }
 
 export function getModuleAvailability(modules: CachedModule[]): ModuleAvailability {
   let hasDsbModule = false;
   let hasNativeDateispeicher = false;
+  let hasNativeDateiverteilung = false;
   let hasNativeSubstitutionPlan = false;
   let hasWahlenModule = false;
+  let hasVideokonferenzModule = false;
 
   for (const module of modules) {
     const links = `${module.url} ${module.direct_url || ''}`.toLowerCase();
@@ -24,13 +28,15 @@ export function getModuleAvailability(modules: CachedModule[]): ModuleAvailabili
 
     hasDsbModule ||= isDsb;
     hasNativeDateispeicher ||= links.includes('/dateispeicher.php') || name.includes('dateispeicher');
+    hasNativeDateiverteilung ||= links.includes('/dateiverteilung.php') || name.includes('dateiverteilung');
     hasNativeSubstitutionPlan ||= !isDsb && (
       links.includes('/vertretungsplan.php') || name.includes('vertretungsplan')
     );
     hasWahlenModule ||= links.includes('/oberstufenwahl.php') || name.includes('wahlen');
+    hasVideokonferenzModule ||= links.includes('/videokonferenz.php') || name.includes('videokonferenz');
   }
 
-  return { hasDsbModule, hasNativeDateispeicher, hasNativeSubstitutionPlan, hasWahlenModule };
+  return { hasDsbModule, hasNativeDateispeicher, hasNativeDateiverteilung, hasNativeSubstitutionPlan, hasWahlenModule, hasVideokonferenzModule };
 }
 
 interface ModuleCacheOwner {

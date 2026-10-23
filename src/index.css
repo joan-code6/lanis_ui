@@ -398,12 +398,37 @@ html[data-theme="moss"] {
     @apply text-primary-600 dark:text-primary-400;
   }
 
+  /* Module layout and type contracts: docs/UI_STYLE_GUIDE.md */
+  .module-padding {
+    @apply mx-auto w-full max-w-7xl p-4 sm:p-6;
+  }
+
+  .module-page {
+    @apply mx-auto w-full max-w-7xl p-4 sm:p-6;
+  }
+
+  .page-header-actions {
+    @apply flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between;
+  }
+
+  .section-title {
+    @apply text-lg font-semibold text-surface-900 dark:text-surface-100;
+  }
+
+  .item-title {
+    @apply text-base font-semibold text-surface-900 dark:text-surface-100;
+  }
+
   .page-header {
     @apply mb-6 sm:mb-8;
   }
 
   .page-title {
     @apply text-2xl sm:text-3xl font-bold text-surface-900 dark:text-surface-100 tracking-tight;
+  }
+
+  .page-title-compact {
+    @apply text-lg sm:text-lg;
   }
 
   .page-subtitle {
