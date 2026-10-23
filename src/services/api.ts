@@ -1338,7 +1338,7 @@ apiClient.interceptors.response.use(
   },
   async (error) => {
     if (staleRequest(error.config)) return Promise.reject(new axios.CanceledError('Session changed'));
-    if (['/logout', '/notifications/unsubscribe'].includes(error.config?.url || '')) return Promise.reject(error);
+    if (['/login', '/logout', '/notifications/unsubscribe'].includes(error.config?.url || '')) return Promise.reject(error);
     if (error.response?.status === 401 && localStorage.getItem('__demo_mode') !== '1') {
       if (isAccountDataDeletionInProgress()) return Promise.reject(error);
       // Don't try to refresh if the request was already to /auth/refresh
