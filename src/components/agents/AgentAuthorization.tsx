@@ -8,7 +8,7 @@ import AppIcon from '../AppIcon';
 import AccessPicker from './AccessPicker';
 import { API_BASE_URL } from '../../services/api';
 import { CUSTOM_BACKEND_STORAGE_KEY, normalizeBackendUrl } from '../../utils/backendConfig';
-import { agentBackendSwitchPath } from '../../utils/agentBackend';
+import { agentBackendSwitchPath, agentCallbackUrl } from '../../utils/agentBackend';
 
 export default function AgentAuthorization() {
   const { isAuthenticated, token, user } = useAuth();
@@ -56,9 +56,7 @@ export default function AgentAuthorization() {
     setBusy(true); setError('');
     try {
       const result = await agentsAPI.decide(token, request, approve, scopes, data.client_name, mode);
-      const target = new URL(result.redirect_url);
-      if (!['https:', 'http:'].includes(target.protocol) || target.host !== data.redirect_origin) throw new Error('Invalid callback');
-      window.location.assign(target.href);
+      window.location.assign(agentCallbackUrl(result.redirect_url, data.redirect_origin));
     } catch (error: any) {
       const gone = error?.response?.status === 410;
       setExpired(gone); setError(gone ? 'Anfrage abgelaufen. Im Agenten erneut verbinden.' : 'Nicht gespeichert. Bitte erneut versuchen.'); setBusy(false);

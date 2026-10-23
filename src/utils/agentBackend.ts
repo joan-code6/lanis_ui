@@ -34,3 +34,12 @@ export function agentBackendProposal(params: URLSearchParams): string | null {
   const returnTo = agentReturnPath(params.get('returnTo'));
   return returnTo ? new URL(returnTo, 'https://lanis.invalid').searchParams.get('issuer') : null;
 }
+
+// Normalize both hosts with the callback scheme, including explicit default ports.
+export function agentCallbackUrl(value: string, expectedHost: string): string {
+  const target = new URL(value);
+  if (!['https:', 'http:'].includes(target.protocol)) throw new Error('Invalid callback');
+  const expected = new URL(`${target.protocol}//${expectedHost}`);
+  if (target.host !== expected.host) throw new Error('Invalid callback');
+  return target.href;
+}

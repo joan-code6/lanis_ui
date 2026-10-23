@@ -84,3 +84,18 @@ test('backend proposal ignores an independently injected backend and requires a 
   params.delete('returnTo');
   assert.equal(agents.agentBackendProposal(params), null);
 });
+
+
+test('callback hosts normalize default ports and still reject mismatches', () => {
+  const { agents } = loadRouting();
+  for (const [url, host] of [
+    ['https://claude.ai:443/callback?code=x', 'claude.ai:443'],
+    ['http://localhost:80/callback', 'localhost:80'],
+    ['http://localhost:8123/callback', 'localhost:8123'],
+  ]) assert.equal(agents.agentCallbackUrl(url, host), new URL(url).href);
+  for (const [url, host] of [
+    ['https://evil.example/callback', 'claude.ai:443'],
+    ['https://claude.ai:444/callback', 'claude.ai:443'],
+    ['javascript:alert(1)', 'claude.ai'],
+  ]) assert.throws(() => agents.agentCallbackUrl(url, host));
+});
