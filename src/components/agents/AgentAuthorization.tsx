@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { useAuth } from '../../contexts/AuthContext';
@@ -11,7 +11,10 @@ import { CUSTOM_BACKEND_STORAGE_KEY, normalizeBackendUrl } from '../../utils/bac
 import { agentBackendSwitchPath } from '../../utils/agentBackend';
 
 export default function AgentAuthorization() {
-  const { isAuthenticated, token } = useAuth();
+  const { isAuthenticated, token, user } = useAuth();
+  const tokenRef = useRef(token);
+  useLayoutEffect(() => { tokenRef.current = token; }, [token]);
+  const account = user ? `${user.school_id}:${user.username}` : null;
   const [params] = useSearchParams();
   const request = params.get('request') || '';
   let issuer = API_BASE_URL;
@@ -33,10 +36,11 @@ export default function AgentAuthorization() {
   const [busy, setBusy] = useState(false);
   const [retry, setRetry] = useState(0);
   useEffect(() => {
-    if (!token || !request || invalidIssuer || backendMismatch) return;
+    const currentToken = tokenRef.current;
+    if (!isAuthenticated || !currentToken || !request || invalidIssuer || backendMismatch) return;
     let cancelled = false;
     setError(''); setData(null); setExpired(false); setBusy(false);
-    agentsAPI.authorization(token, request).then(result => {
+    agentsAPI.authorization(currentToken, request).then(result => {
       if (cancelled) return;
       setData(result); setMode(result.presets.restricted.length ? 'restricted' : 'custom'); setScopes(result.presets.restricted);
     }).catch(error => {
@@ -45,7 +49,7 @@ export default function AgentAuthorization() {
       setExpired(gone); setError(gone ? 'Anfrage abgelaufen. Im Agenten erneut verbinden.' : 'Anfrage konnte nicht geladen werden.');
     });
     return () => { cancelled = true; };
-  }, [token, request, retry, invalidIssuer, backendMismatch]);
+  }, [isAuthenticated, account, request, retry, invalidIssuer, backendMismatch]);
   const selectMode = (next: AccessMode) => { setMode(next); if (next !== 'custom') setScopes(data?.presets[next] || []); };
   const decide = async (approve: boolean) => {
     if (!token || !data || busy || invalidIssuer || backendMismatch) return;

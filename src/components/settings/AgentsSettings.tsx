@@ -39,7 +39,7 @@ const Connection: React.FC<{ connection: AgentConnection; overview: AgentsOvervi
   };
   return <article className="py-5 first:pt-0 last:pb-0">
     <div className="flex items-center gap-3">
-      <ProviderIcon name={c.name} />
+      <ProviderIcon name={c.client_name} />
       <div className="min-w-0 flex-1"><h3 className="item-title break-words">{c.name}</h3><p className="mt-0.5 text-xs text-surface-500">{accessLabels[describeAccess(c.scopes, presets)]}{c.last_used_at ? ` · ${new Date(c.last_used_at * 1000).toLocaleDateString('de-DE')}` : ''}</p></div>
       <button className="btn btn-ghost shrink-0" aria-expanded={editing} onClick={() => { setEditing(!editing); setName(c.name); setScopes(c.scopes); setMode(describeAccess(c.scopes, presets)); }}>{editing ? 'Schließen' : 'Verwalten'}</button>
     </div>
