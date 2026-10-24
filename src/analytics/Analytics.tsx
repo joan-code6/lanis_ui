@@ -47,7 +47,7 @@ export default function Analytics() {
   if (!analyticsConfigured() || consent !== null || location.pathname.startsWith('/demo')) return null;
   return <aside aria-label="Optionale Nutzungsanalyse" className="fixed bottom-4 left-4 right-4 z-[90] mx-auto max-w-sm rounded-2xl border border-surface-200 bg-white p-5 text-surface-900 shadow-soft-lg dark:border-surface-700 dark:bg-surface-900 dark:text-surface-100 sm:bottom-6 sm:left-auto sm:right-6 sm:mx-0">
     <h2 className="font-semibold">Hilf uns, Lanis zu verbessern</h2>
-    <p className="mt-2 text-sm">Optionale Nutzungsanalyse mit PostHog (EU). Zufällige lokale Kennung, keine Schulportal-Inhalte oder Aufzeichnungen. Freiwillig und jederzeit widerrufbar. <Link className="underline" to="/privacy-policy">Datenschutz</Link></p>
+    <p className="mt-2 text-sm">Mit deiner Zustimmung erfassen wir über PostHog (EU), welche Funktionen du nutzt. Dafür speichern wir eine zufällige Kennung auf deinem Gerät, erfassen aber keine Schulportal-Inhalte oder Bildschirmaufzeichnungen. Du kannst deine Zustimmung jederzeit widerrufen. <Link className="underline" to="/privacy-policy">Datenschutz</Link></p>
     <div className="mt-4 flex flex-wrap gap-3">
       <button type="button" className="btn btn-primary" onClick={() => setConsent('granted')}>Zustimmen</button>
       <button type="button" className="btn btn-secondary" onClick={() => setConsent('denied')}>Ablehnen</button>
