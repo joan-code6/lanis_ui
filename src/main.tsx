@@ -1,3 +1,4 @@
+import AnalyticsErrorBoundary from './analytics/AnalyticsErrorBoundary'
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import '@khmyznikov/pwa-install'
@@ -26,7 +27,7 @@ bootObserver.observe(appRoot, { childList: true })
 
 ReactDOM.createRoot(appRoot).render(
   <React.StrictMode>
-    <App />
+    <AnalyticsErrorBoundary><App /></AnalyticsErrorBoundary>
   </React.StrictMode>,
 )
 

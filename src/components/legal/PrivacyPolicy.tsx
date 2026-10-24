@@ -1,3 +1,4 @@
+import { AnalyticsControls } from '../../analytics/Analytics';
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { API_BASE_URL } from '../../services/api';
@@ -330,10 +331,20 @@ const PrivacyPolicy: React.FC = () => {
             </p>
           </div>
 
+          <div>
+            <h2 className="text-base font-semibold text-[#111] mb-3">12. Optionale Nutzungsanalyse mit PostHog</h2>
+            <p>Wenn du zustimmst, verwenden wir PostHog mit dem EU-Erfassungsdienst über unseren Proxy t.lanis.arg-server.de. Wir erfassen, welche Funktionen du nutzt, welche Schritte gelingen oder fehlschlagen und wie lange Seiten und API-Anfragen brauchen. Wir messen auch Web Vitals und unterscheiden zwischengespeicherte von frisch geladenen Ansichten. Dazu gehören bereinigte Seitennamen, fest definierte Aktionen, technische Statuswerte sowie Browser- und Sitzungskennungen. Nach der Anmeldung verknüpfen wir diese Ereignisse über eine zufällige Kontokennung mit deinem LANIS-Konto. Nur unser Backend kann diese Kennung deinem Konto zuordnen. So können wir wiederkehrende Probleme und die Nutzung über mehrere Geräte hinweg untersuchen.</p>
+            <p className="mt-2">PostHog erhält keine Zugangsdaten, Schulportal-Inhalte, Suchtexte oder ursprünglichen Fehlertexte. Bei Fehlern übertragen wir bereinigte Stackframes und eine Diagnosekennung an PostHog. Zusätzlich speichern wir im Backend bis zu sieben Tage technische Anfragekennungen, bereinigte Endpunktnamen, Statuswerte und Laufzeiten, damit berechtigte Administratoren Fehler einem Konto zuordnen können. Die ursprüngliche Fehlermeldung und der Stacktrace können Angaben aus dem aktuellen Anwendungskontext enthalten. Sie werden ausschließlich an unser authentifiziertes Backend gesendet, dort mit einem serverseitigen Schlüssel verschlüsselt und nach spätestens sieben Tagen gelöscht. Berechtigte Administratoren können diese Diagnose über die Kennung abrufen; der Zugriff wird protokolliert. Passwörter und Sitzungstoken werden nicht als Verschlüsselungsschlüssel verwendet.</p>
+            <p className="mt-2">Sitzungsaufzeichnungen, automatisches Erfassen von Formularinhalten und Konsolenaufzeichnungen sind deaktiviert. Die IP-Adresse wird für die Netzwerkverbindung technisch verarbeitet; ihre Speicherung als Ereigniseigenschaft und die Standortanreicherung sind deaktiviert. Deine Entscheidung und die Analysekennung werden lokal gespeichert.</p>
+            <p className="mt-2">Du kannst die Analyse ohne Einschränkung der App ablehnen oder hier jederzeit für die Zukunft widerrufen. Dabei löschen wir die lokale Analysekennung und stoppen weitere Analyseübertragungen. Bereits übermittelte Ereignisse werden dadurch nicht gelöscht. Bei einer Kontolöschung entfernen wir die Kontozuordnung und die Diagnosen in unserem Backend. Daten, die bereits bei PostHog liegen, werden dadurch nicht automatisch gelöscht. Die Analyse umfasst nur Nutzende mit Einwilligung und bildet deshalb nicht die gesamte Nutzung ab.</p>
+            <a href="https://posthog.com/privacy" className="underline">Datenschutzhinweise von PostHog</a>
+            <div className="mt-4"><AnalyticsControls /></div>
+          </div>
+
           <hr className="border-black/[0.06]" />
 
           <p className="text-xs text-[#bbb] pt-2">
-            Stand: 23. Oktober 2026
+            Stand: 24. Oktober 2026
           </p>
         </section>
       </div>

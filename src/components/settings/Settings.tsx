@@ -1,3 +1,5 @@
+import { capture } from '../../analytics/client';
+import { AnalyticsControls } from '../../analytics/Analytics';
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTheme, ThemeColor } from '../../contexts/ThemeContext';
@@ -1013,6 +1015,7 @@ const Settings: React.FC = () => {
       if (!response.success || !response.preferences) {
         throw new Error('Benachrichtigungseinstellungen konnten nicht gespeichert werden.');
       }
+      void capture('settings_updated', { section: 'notifications' });
       const savedPreferences = { ...defaultNotificationPreferences, ...response.preferences };
       setNotificationPrefs(savedPreferences);
       setVertretungsplanClassesInput(savedPreferences.vertretungsplan_classes.join(', '));
@@ -1053,6 +1056,7 @@ const Settings: React.FC = () => {
         if (!response.success || !response.preferences) {
           throw new Error('Benachrichtigungseinstellungen konnten nicht aktiviert werden.');
         }
+        void capture('settings_updated', { section: 'notifications' });
         const savedPreferences = { ...defaultNotificationPreferences, ...response.preferences };
         setNotificationPrefs(savedPreferences);
         setVertretungsplanClassesInput(savedPreferences.vertretungsplan_classes.join(', '));
@@ -1173,7 +1177,7 @@ const Settings: React.FC = () => {
       {section === 'whatsapp' && <WhatsAppSettings />}
       {section === 'sidebar' && <SidebarSettings isDemo={isDemo} />}
       {section === 'agents' && <AgentsSettings />}
-      {section === 'account' && <AccountSettings />}
+      {section === 'account' && <div className="space-y-6"><AccountSettings /><AnalyticsControls /></div>}
 
       <div className="space-y-6">
         {section === 'appearance' && (

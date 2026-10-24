@@ -1,3 +1,4 @@
+import { capture } from '../analytics/client';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import {
   clearDeferredInstallPrompt,
@@ -153,6 +154,7 @@ export const PwaInstallProvider: React.FC<{
   }, []);
 
   const dismissPromotion = useCallback(() => {
+    void capture('install_dismissed', { permanent: readPromotionState().dismissalCount + 1 >= 2 });
     setHiddenForSession(true);
     updatePromotionState(current => {
       const dismissalCount = current.dismissalCount + 1;
@@ -166,6 +168,7 @@ export const PwaInstallProvider: React.FC<{
   }, [updatePromotionState]);
 
   const requestInstall = useCallback(async (source: 'promotion' | 'settings' = 'settings'): Promise<InstallResult> => {
+    void capture('install_requested', { source });
     if (availability === 'ios-safari' || availability === 'ios-browser') {
       const pwa = document.querySelector('pwa-install') as PwaInstallElement | null;
       if (!pwa) return 'unavailable';

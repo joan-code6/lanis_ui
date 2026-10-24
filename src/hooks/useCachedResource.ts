@@ -1,3 +1,6 @@
+import { startExperience } from '../analytics/experience';
+import { capture, analyticsEpoch } from '../analytics/client';
+import { resourceLabel } from '../analytics/experience';
 import { captureAccountDataGeneration } from '../utils/accountDataWrites';
 import { useCallback, useEffect, useRef, useSyncExternalStore } from 'react';
 import { useAuth } from '../contexts/AuthContext';
@@ -17,13 +20,28 @@ export function useCachedResource<T>(
   const getSnapshot = useCallback(() => readResource<T>(key), [key]);
   const snapshot = useSyncExternalStore(subscribe, getSnapshot);
   const refresh = useCallback(() => {
-    if (key) void refreshResource(key, loadRef.current, true);
-  }, [key]);
+    if (key) {
+      const epoch = analyticsEpoch(); const page = window.location.pathname; const done = startExperience(resource);
+      void refreshResource(key, loadRef.current, true).then(() => {
+        if (epoch !== analyticsEpoch()) return;
+        const state = readResource<T>(key);
+        done(state.error ? 'failed' : 'ready');
+        void capture('content_refreshed', { resource: resourceLabel(resource), outcome: state.error ? 'failed' : 'ready' }, page);
+      });
+    }
+  }, [key, resource]);
 
   useEffect(() => {
     if (!key) return;
-    void refreshResource(key, loadRef.current);
-    // Requests belong to the cache and may complete after navigation.
+    const done = startExperience(resource);
+    const cached = readResource<T>(key);
+    if (cached.data !== undefined) done('ready', true, Math.max(0, Date.now() - cached.updatedAt));
+    void refreshResource(key, loadRef.current).then(() => {
+      if (!cancelled && cached.data === undefined) done(readResource<T>(key).error ? 'failed' : 'ready');
+    });
+    let cancelled = false;
+    // Cache requests may continue after navigation; view timing must stop.
+    return () => { cancelled = true; };
   }, [key]);
 
   return {
