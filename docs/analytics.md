@@ -1,7 +1,7 @@
 # LANIS UI analytics
 
 PostHog receives explicitly opted-in browser events through `https://t.lanis.arg-server.de`, forwarding to the EU PostHog project.
-The integration lives in `src/analytics`. No LANIS API server instrumentation is added.
+The integration lives in `src/analytics`, with corresponding authenticated identity and encrypted diagnostic endpoints in lanis_api. Deploy that backend change first; otherwise events remain browser-only and diagnostic uploads fail gracefully.
 The private PostHog administration key must never enter a Vite environment variable,
 source file, test artifact or browser bundle.
 
@@ -27,31 +27,39 @@ of this change.
 ## Consent and identity
 
 - The compact prompt sits at the bottom right on desktop and centered at the bottom on mobile. Accept appears first as the primary action; decline uses the secondary button.
-- Consent is browser-local, versioned by `lanis_analytics_consent_v1`.
+- Consent is browser-local, versioned by `lanis_analytics_consent_v2`.
 - It can be changed from the privacy policy and Settings → Datenschutz und Konto.
 - Withdrawal prevents new captures and clears local SDK identity persistence.
   Already transmitted requests cannot be recalled and historical events remain.
 - Changes synchronize across tabs through the storage event. Blocked local
   storage fails closed. Consent withdrawal during SDK loading cancels capture.
-- Random browser identifiers are never associated with a LANIS account. No
-  `identify`, account ID, school ID or server correlation headers are used.
+- After login, `/analytics/identity` returns a stable opaque `la_…` account reference. `identify` merges the consenting anonymous journey into that account. School/usernames never enter PostHog; authorized backend operators can resolve the reference.
+- Previous v1 anonymous consent must be renewed for account linkage; previous refusals remain refusals. Changing accounts resets the SDK identity; rotating a session token for the same account preserves it.
 - Logout rotates the random identifier without waiting for analytics delivery.
-- This is pseudonymous analytics, not a count of accounts or all visitors. Browser
+- Counts mix anonymous browsers and identified consenting accounts, never all visitors. Browser
   resets, shared devices, logout, declined consent, blockers and network failures
   affect counts. Install completion depends on browser `appinstalled` support.
 
-## Event contract (schema version 2)
+## Event contract (schema version 3)
 
-Every event has `app=lanis_ui`, `schema_version=2`, `environment=production`,
-a sanitized `page`/`$pathname`, random SDK identity/session metadata, disabled
-person processing and disabled GeoIP enrichment. The public token is retained
-for ingestion. Other SDK properties are removed before transmission, including
+Every event has `app=lanis_ui`, `schema_version=3`, `environment=production`,
+a sanitized `page`/`$pathname`, opaque identity/session metadata, identified-only person profiles and disabled GeoIP enrichment. `account_ref` appears only after successful backend identification; `release` is the build SHA or `local`. The public token is retained
+for ingestion. Coarse browser/OS names, browser major version and device type are retained from closed vocabularies to diagnose compatibility. Other SDK properties are removed before transmission, including
 full URLs, referrers, campaign parameters, page titles, initial person properties,
 error objects, element text, school IDs and account details. Unknown event names
 and unknown property keys/values are rejected.
 
 | Event | Trigger | Additional allowed properties |
 | --- | --- | --- |
+| `$identify` | Successful backend account lookup | Opaque account reference and anonymous merge ID; no person traits |
+| `$exception` | Browser error, rejected promise, React boundary, API 5xx/network failure | Fixed generic message, asset-only stack frames, `error_origin`, optional `diagnostic_id`/`request_id` |
+| `api_request_completed` | Every eligible Axios attempt, including retries and cancellation | Static endpoint template, method, status, duration_ms, outcome, optional business_success, correlation UUIDs |
+| `analytics_identity_unavailable` | Backend lookup fails; throttled retry after 60 seconds | None |
+| `ui_interaction` | Semantic button/link/checkbox/radio/select click | Control type and sanitized internal destination, no labels/values/DOM IDs |
+| `page_engagement` | Route exit, page hide or visibility transition | Visible active_ms, document scroll_depth bucket; background time excluded |
+| `page_visibility_changed` | Tab visibility changes | visible/hidden |
+| `network_status_changed` | Browser network status changes | online/offline |
+| `resource_load_failed` | Script, stylesheet or image error | Resource type, no source URL |
 | `$pageview` | Initial eligible page, consent grant, or route change | None |
 | `login_started` | Login submission reaches the auth context | None |
 | `login_succeeded` | Authentication succeeds and the session is accepted | None |
@@ -93,7 +101,7 @@ unauthorized, forbidden, rate_limited, server, client. No request body, response
 body, URL, status text or exception message is included. Identical
 module/failure combinations are throttled independently to one event per ten seconds. Request
 failures can include recoverable authentication retries; they are not a measure
-of final user-visible failures or an API error rate (no request denominator).
+of final user-visible failures. Use `api_request_completed` as the attempt denominator, filtered by outcome; retries count separately. HTTP success may still carry `business_success=false`.
 
 Page labels use a closed route list. Course IDs become `/courses/:id`; unknown
 paths become `/other`. Query strings and hash changes do not create pageviews.
@@ -110,9 +118,9 @@ an event property.
 
 ## SDK safeguards
 
-Autocapture, replay, console capture, exception autocapture, heatmaps, performance
+SDK autocapture, replay, console capture, exception autocapture, heatmaps, performance
 capture, surveys, feature flags, toolbar dependencies, and automatic pageviews
-are disabled. SDK batches are disabled to avoid retaining unsent batches across
+are disabled. Explicit sanitized listeners supply clicks and native `$exception` events instead. SDK batches are disabled to avoid retaining unsent batches across
 consent changes. Failed requests may still complete or retry after the browser
 already handed them to its networking layer. Analytics failures are best effort
 and must not block authentication or school workflows.
@@ -160,7 +168,7 @@ identity storage removal and regrant. Model tests also cover closed event/proper
 vocabularies, safe routes, development/demo suppression, deduplication and SDK
 import races. Authenticated school flows are not exercised with real school data.
 
-## Learning reports (schema v2)
+## Learning reports (schema v2 and v3)
 
 [LANIS UI — Journeys and retention](https://eu.posthog.com/project/214484/dashboard/1051719)
 adds eight reports beside the existing reliability board:
@@ -208,3 +216,18 @@ The local browser regression suite continues to intercept all outbound traffic
 and verifies that ordinary captures use the proxy, with no direct-host bypass.
 
 Configuration follows the [PostHog reverse-proxy guidance](https://posthog.com/docs/advanced/proxy) and [JavaScript configuration reference](https://posthog.com/docs/libraries/js/config).
+
+
+## Account diagnostics and operating limits (v3)
+
+The browser sends `X-LANIS-Analytics-Consent: account-v2` only after current consent. Authenticated identity/diagnostic requests use the existing session header, never send that header to PostHog, and are aborted on logout/account change/withdrawal. Raw error details go directly to lanis_api, encrypted at rest with AES-GCM and a domain-separated server key. Never use passwords, session IDs or frontend secrets as keys. Seven-day expiry, 20 uploads/minute/account, 100 retained/account and 5,000 total bound the vault. Error deduplication limits browser reports to 20/minute and one matching type/stack/origin per ten seconds.
+
+Every backend response has `X-LANIS-Request-ID`. Operators can use a PostHog account reference, diagnostic reference or request UUID with the audited admin endpoints documented in lanis_api `docs/analytics.md`. The ordinary account export contains references/metadata; account deletion removes the mapping and encrypted backend records. It does not erase historical PostHog events automatically. Withdrawal stops future capture; requests already handed to the network may finish.
+
+Backend request events are optional: configure backend `POSTHOG_PROJECT_KEY` (public `phc_` ingestion key) and `POSTHOG_HOST=https://t.lanis.arg-server.de`. They use `app=lanis_api` and `backend_request_completed`, with static route templates, response status/duration and request UUID. They require the consent header and a live session, exclude analytics/admin routes and never include bodies/query strings. Delivery is bounded and best effort; frontend and backend request events are different views of the same attempt, so do not sum them as requests.
+
+No source maps are uploaded by this change. PostHog can group exceptions by safe asset filename/line/column; diagnosing original source requires the matching release's build artifacts. Generic messages intentionally sacrifice message-based grouping. No recordings or arbitrary DOM/form capture are enabled. Document scroll depth does not measure scrolling inside nested module panes. Time on a hidden/closed page is best effort, subject to browser unload/network limits.
+
+Existing dashboards include v2 browser data. Filter `schema_version=3` and `account_ref is set` for account-based reporting; old events cannot be retroactively linked. Feature flags are deployment controls, not an event taxonomy; no unused flags are created merely to match events.
+
+[LANIS — Accounts and diagnostics](https://eu.posthog.com/project/214484/dashboard/1052059) provides six verified native v3 reports: identified active accounts, browser API outcomes, p95 endpoint latency, exceptions/affected accounts, visible engagement segments, and account-linkage failures. It deliberately excludes v2 data. Queries currently return zero/no data until rollout. The connector lacks Data Catalog and dashboard-template scopes; these reports are operational definitions, not approved catalog metrics.

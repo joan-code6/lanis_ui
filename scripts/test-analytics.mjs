@@ -11,7 +11,7 @@ assert.equal(policy.routeLabel('/demo/messages'), '/messages');
 assert.equal(policy.routeLabel('/settings/arbitrary-private-value'), '/other');
 assert.equal(policy.routeLabel('/unknown/person@example.com'), '/other');
 assert.equal(policy.routeLabel('/settings/account/'), '/settings/account');
-assert.equal(policy.sanitizeEventProperties('$identify', {}), null);
+assert.equal(policy.sanitizeEventProperties('$identify', {$set:{email:'PRIVATE'}}).$set, undefined);
 assert.equal(policy.sanitizeEventProperties('$snapshot', {}), null);
 assert.equal(policy.sanitizeEventProperties('constructor', {}), null);
 const dirty = {done:true, subject:'PRIVATE', token:'PRIVATE', $current_url:'PRIVATE', $set:{email:'PRIVATE'}, $exception_message:'PRIVATE', distinct_id:'random_browser_id_12345'};
@@ -23,19 +23,22 @@ assert.equal(clean.$ip, null);
 assert.equal(policy.sanitizeEventProperties('api_request_failed', {module:'PRIVATE',failure:'PRIVATE'}).module, undefined);
 
 // Isolated browser/SDK model tests: exercise actual client module and consent races.
-async function harness({production=true, deferred=false,host='https://t.lanis.arg-server.de',returnCapture=false}={}) {
+async function harness({production=true, deferred=false,host='https://t.lanis.arg-server.de',returnCapture=false,fetcher=async()=>({ok:false})}={}) {
   const storage = new Map(); const sent=[]; const calls=[];
   const browser = new EventTarget(); browser.location={pathname:'/messages'};
   let resolveImport;
   const gate = deferred ? new Promise(resolve=>{resolveImport=resolve}) : Promise.resolve();
-  let config; let optedOut=false;
+  let config; let optedOut=false;let distinctId='random_browser_id_12345';
   const instance={
-    capture(event, properties) { if(!optedOut) {const result=config.before_send({event, properties:{...properties,token:'PUBLIC',distinct_id:'random_browser_id_12345',$current_url:'PRIVATE', $set:{email:'PRIVATE'}}}); if(result)sent.push(result);if(returnCapture)return result;}},
+    capture(event, properties) { if(!optedOut) {const result=config.before_send({event, properties:{...properties,token:'PUBLIC',distinct_id:distinctId,$current_url:'PRIVATE', $set:{email:'PRIVATE'}}}); if(result)sent.push(result);if(returnCapture)return result;}},
+    get_distinct_id(){return distinctId;},
+    identify(reference){const anonymous=distinctId;distinctId=reference;calls.push(['identify',reference]);instance.capture('$identify',{$anon_distinct_id:anonymous});},
+    captureException(error,properties){instance.capture('$exception',{...properties,$exception_list:[{type:error.name,value:error.message,stacktrace:{type:'raw',frames:[]}}]});},
     set_config(value){calls.push(['config',value]);},
-    opt_in_capturing(){optedOut=false;}, opt_out_capturing(){optedOut=true;calls.push(['optout']);}, reset(){calls.push(['reset']);},
+    opt_in_capturing(){optedOut=false;}, opt_out_capturing(){optedOut=true;calls.push(['optout']);}, reset(){distinctId='random_browser_id_reset';calls.push(['reset']);},
   };
   const sdk={init(key,value){assert.equal(key,'phc_testpublic');config=value;calls.push(['init']);return instance;}};
-  const context=vm.createContext({window:browser,localStorage:{getItem:key=>storage.get(key)??null,setItem:(key,value)=>storage.set(key,value)},Event,Promise});
+  const context=vm.createContext({window:browser,localStorage:{getItem:key=>storage.get(key)??null,setItem:(key,value)=>storage.set(key,value)},Event,Promise,AbortController,setTimeout,clearTimeout,fetch:fetcher});
   const policyModule=new vm.SourceTextModule(policyCode,{context}); await policyModule.link(()=>{}); await policyModule.evaluate();
   const sdkModule=new vm.SyntheticModule(['default'],function(){this.setExport('default',sdk)},{context});await sdkModule.link(()=>{});await sdkModule.evaluate();
   const source=await readFile(new URL('../src/analytics/client.ts',import.meta.url),'utf8');
@@ -100,3 +103,54 @@ failure({code:'ERR_CANCELED'});assert.equal(failures.length,3);
 failure({code:'ETIMEDOUT',config:{url:'/kalender/events'}});assert.equal(failures[3].properties.failure,'timeout');
 assert.equal(JSON.stringify(failures).includes('PRIVATE'),false);
 console.log('API failure sanitization, independent throttling, cancellation and timeout checks passed.');
+
+const accountRef='la_'+'a'.repeat(32);const anotherRef='la_'+'b'.repeat(32);
+const ownBackendRequests=[];
+const accounts=await harness({returnCapture:true,fetcher:async(url,options)=>{
+ ownBackendRequests.push({url,options});
+ return {ok:true,json:async()=>url.endsWith('/identity')?{account_ref:options.headers['X-Session-Token']==='private-token-a'?accountRef:anotherRef}:{diagnostic_id:'ld_'+'d'.repeat(32)}};
+}});
+accounts.api.configureAccountAnalytics('private-token-a','https://backend.example','private-school:private-student');
+await accounts.api.capture('login_succeeded');assert.equal(ownBackendRequests.length,0,'no account lookup before consent');
+accounts.api.setConsent('granted');await accounts.api.capture('login_succeeded');
+assert.equal(accounts.sent.find(x=>x.event==='login_succeeded').properties.account_ref,accountRef);
+assert.equal(accounts.sent.find(x=>x.event==='login_succeeded').properties.distinct_id,accountRef);
+assert.equal(accounts.sent.find(x=>x.event==='login_succeeded').properties.$process_person_profile,true);
+assert.equal(ownBackendRequests[0].options.headers['X-LANIS-Analytics-Consent'],'account-v2');
+assert.equal(JSON.stringify(accounts.sent).includes('private-'),false);
+accounts.api.configureAccountAnalytics('private-token-b','https://backend.example','private-school:another-student');
+await accounts.api.capture('login_succeeded');assert.equal(accounts.sent.at(-1).properties.account_ref,anotherRef);
+accounts.api.resetAnalyticsIdentity();await accounts.api.capture('login_started');assert.equal(accounts.sent.at(-1).properties.account_ref,undefined);
+const oldConsent=await harness();oldConsent.storage.set('lanis_analytics_consent_v1','granted');assert.equal(oldConsent.api.getConsent(),null);
+oldConsent.storage.set('lanis_analytics_consent_v1','denied');assert.equal(oldConsent.api.getConsent(),'denied');
+const unsafeException=policy.sanitizeEventProperties('$exception',{$exception_list:[{type:'TypeError',value:'PRIVATE',stacktrace:{frames:[{filename:'https://app.example/assets/index-ABC123.js?token=PRIVATE',lineno:3,colno:5,vars:{password:'PRIVATE'},function:'PRIVATE'},{filename:'/school/private-student'}]}}]});
+assert.equal(JSON.stringify(unsafeException).includes('PRIVATE'),false);assert.equal(unsafeException.$exception_list[0].stacktrace.frames.length,1);
+assert.equal(policy.endpointLabel('/meinunterricht/course/PRIVATE?secret=PRIVATE'),'/meinunterricht/course/:id');
+console.log('Account linking, account switching, consent upgrade and exception redaction checks passed.');
+
+// API timing, status/body outcome, and revocation must use the original consent epoch.
+let enabled=true, epoch=1, clock=100; const requestEvents=[];
+const requestContext=vm.createContext({performance:{now:()=>clock},window:{location:{pathname:'/messages'}},crypto:{randomUUID:()=> '12345678-1234-1234-1234-123456789abc'}});
+const requestClient=new vm.SyntheticModule(['analyticsEnabled','analyticsEpoch','capture'],function(){
+ this.setExport('analyticsEnabled',()=>enabled);this.setExport('analyticsEpoch',()=>epoch);
+ this.setExport('capture',(event,props,page)=>requestEvents.push({event,props,page}));
+},{context:requestContext});await requestClient.link(()=>{});await requestClient.evaluate();
+const requestPolicy=new vm.SyntheticModule(['endpointLabel'],function(){this.setExport('endpointLabel',policy.endpointLabel);},{context:requestContext});await requestPolicy.link(()=>{});await requestPolicy.evaluate();
+const requestSource=await readFile(new URL('../src/analytics/requestTelemetry.ts',import.meta.url),'utf8');
+const requestModule=new vm.SourceTextModule(ts.transpileModule(requestSource,{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2020}}).outputText,{context:requestContext});
+await requestModule.link(spec=>spec==='./client'?requestClient:requestPolicy);await requestModule.evaluate();
+const config={url:'/nachrichten/PRIVATE?query=PRIVATE',method:'post',headers:{}};
+requestModule.namespace.startApiRequest(config);clock=350;
+assert.equal(config.headers['X-LANIS-Analytics-Consent'],'account-v2');
+requestModule.namespace.finishApiRequest(config,{status:200,data:{success:false}});
+assert.equal(requestEvents.length,1);assert.equal(requestEvents[0].props.duration_ms,250);
+assert.equal(requestEvents[0].props.business_success,false);assert.equal(requestEvents[0].props.outcome,'http_error');
+assert.equal(JSON.stringify(requestEvents).includes('PRIVATE'),false);
+requestModule.namespace.startApiRequest(config);epoch++;
+requestModule.namespace.finishApiRequest(config,{status:200});assert.equal(requestEvents.length,1,'old consent epoch must not reappear after regrant');
+enabled=false;requestModule.namespace.startApiRequest(config);
+assert.equal(config.headers['X-LANIS-Analytics-Consent'],undefined,'retries strip old consent headers');
+assert.equal(config.headers['X-LANIS-Client-Request-ID'],undefined);
+console.log('API attempt timing, business outcomes and consent revocation regression checks passed.');
+
+const device=policy.sanitizeEventProperties('$pageview',{$browser:'Chrome',$os:'Linux',$device_type:'Desktop',$browser_version:130.4});assert.equal(device.$browser,'Chrome');assert.equal(device.$browser_version,130);assert.equal(policy.sanitizeEventProperties('$pageview',{$browser:'PRIVATE',$os:'PRIVATE'}).$browser,'Other');

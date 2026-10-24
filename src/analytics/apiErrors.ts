@@ -9,7 +9,7 @@ const modules: Record<string, string> = {
 const lastFailureAt = new Map<string, number>();
 
 /** Do not pass Axios errors to PostHog: they contain credentials and response bodies. */
-export function captureApiFailure(error: { code?: string; config?: { url?: string }; response?: { status?: number } }): void {
+export function captureApiFailure(error: { code?: string; config?: { url?: string }; response?: { status?: number; headers?: Record<string, unknown> } }): void {
   if (error.code === 'ERR_CANCELED') return;
   const prefix = (error.config?.url || '').split('?')[0].split('/')[1];
   const module = modules[prefix] || 'other';
@@ -21,5 +21,5 @@ export function captureApiFailure(error: { code?: string; config?: { url?: strin
   const now = Date.now();
   if (now - (lastFailureAt.get(signature) || 0) < 10000) return;
   lastFailureAt.set(signature, now);
-  void capture('api_request_failed', { module, failure });
+  void capture('api_request_failed', { module, failure, endpoint: '/' + (Object.prototype.hasOwnProperty.call(modules, prefix) ? prefix : 'other'), status: status || 0, request_id: error.response?.headers?.['x-lanis-request-id'] });
 }

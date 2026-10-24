@@ -1,3 +1,4 @@
+import { startApiRequest, finishApiRequest } from '../analytics/requestTelemetry';
 import { captureApiFailure } from '../analytics/apiErrors';
 import {
   SchoolListResponse,
@@ -1323,6 +1324,7 @@ apiClient.interceptors.request.use(
     }
 
     if (generation !== captureAccountDataGeneration()) throw new axios.CanceledError('Session changed');
+    startApiRequest(config);
     return config;
   },
   (error) => {
@@ -1335,10 +1337,12 @@ apiClient.interceptors.response.use(
   (response) => {
     if (response.config.method && response.config.method !== 'get') clearPrefetchedData();
     if (staleRequest(response.config)) throw new axios.CanceledError('Session changed');
+    finishApiRequest(response.config, response);
     return response;
   },
   async (error) => {
     if (staleRequest(error.config)) return Promise.reject(new axios.CanceledError('Session changed'));
+    finishApiRequest(error.config, error.response, error.code);
     captureApiFailure(error);
     if (['/login', '/logout', '/notifications/unsubscribe'].includes(error.config?.url || '')) return Promise.reject(error);
     if (error.response?.status === 401 && localStorage.getItem('__demo_mode') !== '1') {

@@ -1,4 +1,5 @@
-import { capture, resetAnalyticsIdentity } from '../analytics/client';
+import { getApiBaseUrl } from '../utils/backendConfig';
+import { capture, configureAccountAnalytics, resetAnalyticsIdentity } from '../analytics/client';
 import { clearResourceCache } from '../utils/resourceCache';
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { AuthContextType, LoginRequest, User } from '../types';
@@ -210,6 +211,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         }
         return false;
       }
+      configureAccountAnalytics(response.access_token, getApiBaseUrl(), `${response.school_id}:${response.username.toLowerCase()}`);
       void capture('login_succeeded');
       writeGeneration = captureAccountDataGeneration();
 

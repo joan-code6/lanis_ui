@@ -54,6 +54,7 @@ jobs:
         run: npm run build
         env:
           NODE_ENV: production
+          VITE_APP_RELEASE: ${{ github.sha }}
           SKIP_PRERENDER: ${{ github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'schedule') && '0' || '1' }}
           VITE_API_URL: https://lanis-backend.joancode.dev
           # Production analytics only; PR previews never receive the project key.

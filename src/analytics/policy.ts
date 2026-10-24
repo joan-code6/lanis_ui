@@ -27,7 +27,14 @@ export const eventRules = {
     module: ['auth', 'messages', 'courses', 'calendar', 'timetable', 'files', 'substitution', 'settings', 'notifications', 'other'],
     failure: ['network', 'timeout', 'unauthorized', 'forbidden', 'rate_limited', 'server', 'client'],
   },
-  '$pageview': {},
+  '$pageview': {}, '$identify': {}, '$exception': {},
+  analytics_identity_unavailable: {},
+  api_request_completed: { outcome: ['success', 'http_error', 'network_error', 'cancelled'], method: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'] },
+  ui_interaction: { control: ['button', 'link', 'checkbox', 'radio', 'select'] },
+  resource_load_failed: { resource_type: ['script', 'stylesheet', 'image', 'other'] },
+  page_engagement: {},
+  page_visibility_changed: { state: ['visible', 'hidden'] },
+  network_status_changed: { state: ['online', 'offline'] },
 } as const;
 export type AnalyticsEvent = keyof typeof eventRules;
 
@@ -54,13 +61,41 @@ export function sanitizeEventProperties(event: string, properties: Record<string
   for (const [key, values] of Object.entries(rules)) {
     if (values.includes(properties[key])) safe[key] = properties[key];
   }
-  // SDK identity/session IDs are random browser identifiers, never LANIS account IDs.
-  for (const key of ['distinct_id', '$session_id', '$window_id', '$device_id']) {
+  for (const key of ['request_id', 'client_request_id']) {
+    if (typeof properties[key] === 'string' && /^[a-f0-9]{8}-[a-f0-9-]{27}$/.test(properties[key] as string)) safe[key] = properties[key];
+  }
+  if (typeof properties.diagnostic_id === 'string' && /^ld_[a-f0-9]{32}$/.test(properties.diagnostic_id)) safe.diagnostic_id = properties.diagnostic_id;
+  if (event === 'ui_interaction' && typeof properties.destination === 'string') safe.destination = routeLabel(properties.destination);
+  if (event === 'page_engagement') {
+    if (typeof properties.active_ms === 'number' && Number.isFinite(properties.active_ms)) safe.active_ms = Math.round(Math.max(0, Math.min(properties.active_ms, 3600000)));
+    if ([0, 25, 50, 75, 100].includes(Number(properties.scroll_depth))) safe.scroll_depth = properties.scroll_depth;
+  }
+  if (event.startsWith('api_request_')) {
+    safe.endpoint = endpointLabel(properties.endpoint);
+    if (Number.isInteger(properties.status) && Number(properties.status) >= 0 && Number(properties.status) <= 599) safe.status = properties.status;
+    if (typeof properties.duration_ms === 'number' && Number.isFinite(properties.duration_ms)) safe.duration_ms = Math.round(Math.max(0, Math.min(properties.duration_ms, 3600000)));
+    if (typeof properties.business_success === 'boolean') safe.business_success = properties.business_success;
+  }
+  if (event === '$exception') {
+    const list = sanitizedExceptionList(properties.$exception_list);
+    if (!list.length) return null;
+    safe.$exception_list = list;
+    safe.$exception_level = 'error';
+    if (['error', 'rejection', 'react', 'api'].includes(String(properties.error_origin))) safe.error_origin = properties.error_origin;
+  }
+  // Only opaque SDK identifiers and validated backend account references survive.
+  for (const key of ['distinct_id', '$session_id', '$window_id', '$device_id', '$anon_distinct_id']) {
     const value = properties[key];
     if (typeof value === 'string' && /^[a-zA-Z0-9_-]{10,80}$/.test(value)) safe[key] = value;
   }
+  const browsers = ['Chrome', 'Chrome iOS', 'Firefox', 'Firefox iOS', 'Microsoft Edge', 'Safari', 'Mobile Safari', 'Android Mobile', 'Opera', 'Samsung Internet'];
+  if (typeof properties.$browser === 'string') safe.$browser = browsers.includes(properties.$browser) ? properties.$browser : 'Other';
+  const systems = ['Windows', 'Mac OS X', 'Linux', 'iOS', 'Android', 'Chrome OS'];
+  if (typeof properties.$os === 'string') safe.$os = systems.includes(properties.$os) ? properties.$os : 'Other';
+  if (['Desktop', 'Mobile', 'Tablet'].includes(String(properties.$device_type))) safe.$device_type = properties.$device_type;
+  if (typeof properties.$browser_version === 'number' && Number.isFinite(properties.$browser_version) && properties.$browser_version >= 0 && properties.$browser_version <= 10000) safe.$browser_version = Math.floor(properties.$browser_version);
   safe.app = 'lanis_ui';
-  safe.schema_version = 2;
+  safe.schema_version = 3;
   safe.environment = 'production';
   safe.$process_person_profile = false;
   safe.$geoip_disable = true;
@@ -95,3 +130,38 @@ export const engagedFeatures: Partial<Record<AnalyticsEvent, string>> = {
   message_sent: 'messages', message_replied: 'messages', homework_updated: 'homework',
   file_download_succeeded: 'files', search_result_selected: 'search',
 };
+
+const apiRoots = new Set(['login', 'logout', 'auth', 'benutzer', 'account', 'health', 'modules', 'apps', 'nachrichten', 'notifications', 'dashboard', 'whatsapp', 'meinunterricht', 'kalender', 'stundenplan', 'dateispeicher', 'dateiverteilung', 'vertretungsplan', 'settings', 'lerngruppen', 'dsb', 'search', 'wahlen', 'videokonferenz', 'agents', 'school-list', 'cache', 'feedback']);
+const apiSegments = new Set(['refresh', 'export', 'deletion', 'recover', 'headers', 'conversation', 'search', 'send', 'reply', 'mark-read', 'preferences', 'config', 'subscription', 'unsubscribe', 'test', 'notifications', 'read', 'read-all', 'status', 'pairing', 'link', 'preview', 'attendance', 'course', 'entry', 'weekly', 'submissions', 'homework-done', 'events', 'event', 'view', 'file', 'options', 'timetable', 'lessons', 'class-links', 'semantic', 'plan', 'upload', 'download', 'files', 'delete', 'authorization', 'district']);
+/** Preserve static API structure and replace every unknown/resource segment. */
+export function endpointLabel(value: unknown): string {
+  if (typeof value !== 'string' || !value.startsWith('/') || value.startsWith('//')) return '/other';
+  const parts = value.split(/[?#]/)[0].split('/').filter(Boolean);
+  if (!apiRoots.has(parts[0])) return '/other';
+  return '/' + parts.slice(0, 6).map((part, index) => index === 0 || apiSegments.has(part) ? part : ':id').join('/');
+}
+
+export function assetLabel(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined;
+  const path = value.replace(/^https?:\/\/[^/]+/, '').split(/[?#]/)[0];
+  return /^\/assets\/[A-Za-z0-9_-]{1,100}\.js$/.test(path) ? path : undefined;
+}
+
+const exceptionTypes = new Set(['Error', 'TypeError', 'RangeError', 'ReferenceError', 'SyntaxError', 'URIError', 'EvalError', 'AggregateError', 'NetworkError', 'SecurityError', 'AbortError']);
+export function errorType(value: unknown): string { return typeof value === 'string' && exceptionTypes.has(value) ? value : 'Error'; }
+
+export function sanitizedExceptionList(value: unknown): object[] {
+  if (!Array.isArray(value)) return [];
+  return value.slice(0, 5).filter(item => item && typeof item === 'object').map(item => ({
+    type: errorType(item.type), value: 'Application error; details are held by LANIS.',
+    mechanism: { type: 'generic', handled: item.mechanism?.handled === true },
+    stacktrace: { type: 'raw', frames: (Array.isArray(item.stacktrace?.frames) ? item.stacktrace.frames : []).slice(-30).flatMap((frame: Record<string, unknown>) => {
+      if (!frame || typeof frame !== 'object') return [];
+      const filename = assetLabel(frame.filename);
+      if (!filename) return [];
+      return [{ filename, platform: 'web:javascript', in_app: true,
+        ...(Number.isInteger(frame.lineno) && Number(frame.lineno) > 0 && Number(frame.lineno) < 10000000 ? { lineno: frame.lineno } : {}),
+        ...(Number.isInteger(frame.colno) && Number(frame.colno) >= 0 && Number(frame.colno) < 10000000 ? { colno: frame.colno } : {}) }];
+    }) },
+  }));
+}
