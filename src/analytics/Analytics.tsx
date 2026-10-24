@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { startWebVitals } from './experience';
 import { useAuth } from '../contexts/AuthContext';
 import { getApiBaseUrl } from '../utils/backendConfig';
 import { startErrorTracking } from './errors';
@@ -51,7 +52,7 @@ export default function Analytics() {
       window.removeEventListener('appinstalled', installed);
     };
   }, []);
-  useEffect(() => { void capturePage(); }, [location.pathname, consent]);
+  useEffect(() => { void capturePage(); startWebVitals(); }, [location.pathname, consent]);
   useEffect(() => {
     if (consent !== 'granted') return;
     let started = performance.now();

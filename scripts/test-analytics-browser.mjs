@@ -66,6 +66,7 @@ try {
   const events=[];ph.on('eventCaptured',event=>events.push(JSON.parse(JSON.stringify(event))));
   c.configureAccountAnalytics('fake-account-a','https://analytics-backend.invalid','school:PRIVATE-student');
   await c.capture('login_succeeded');
+  window._posthogChunkIds = { 'Error\n    at app (https://app.example/assets/index-test123.js:1:1)': '12345678-1234-1234-1234-123456789abc' };
   const err=new TypeError('PRIVATE error detail');err.stack='TypeError: PRIVATE error detail\n    at app (https://app.example/assets/index-test123.js:10:20)';
   const {reportException}=await import('/src/analytics/errors.ts');await reportException(err,'error');
   c.configureAccountAnalytics('fake-account-b','https://analytics-backend.invalid','school:PRIVATE-other');
@@ -79,6 +80,7 @@ try {
  const exception=linked.find(e=>e.event==='$exception');assert.ok(exception,'native PostHog error tracking event');
  assert.equal(exception.properties.diagnostic_id,'ld_'+'d'.repeat(32));
  assert.ok(exception.properties.$exception_list[0].stacktrace.frames.length>0,'safe asset stack frames survive');
+ assert.equal(exception.properties.$exception_list[0].stacktrace.frames[0].chunk_id,'12345678-1234-1234-1234-123456789abc','source map chunk metadata survives sanitization');
  assert.ok(privateDiagnostics.some(d=>d.message==='PRIVATE error detail'),'original diagnostic goes only to own backend');
  assert.deepEqual(errors,[]);
  console.log('Real SDK browser checks passed: no pre-consent requests/storage, sanitized payloads, no replay/config, withdrawal, storage removal, regrant.');

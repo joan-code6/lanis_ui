@@ -1435,7 +1435,7 @@ export type FeedbackCategory = 'feature' | 'bug' | 'general';
 export const feedbackAPI = {
   async submit(
     token: string,
-    payload: { category: FeedbackCategory; title: string; details: string; page: string },
+    payload: { category: FeedbackCategory; title: string; details: string; page: string; support_context?: { release: string; page: string; request_ids: string[] } },
   ): Promise<{ success: boolean; id: number }> {
     const response = await apiClient.post<{ success: boolean; id: number }>(
       '/feedback',

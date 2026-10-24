@@ -30,6 +30,11 @@ export const eventRules = {
   '$pageview': {}, '$identify': {}, '$exception': {},
   analytics_identity_unavailable: {},
   api_request_completed: { outcome: ['success', 'http_error', 'network_error', 'cancelled'], method: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'] },
+  content_ready: { outcome: ['ready', 'failed'], cached: [true, false] },
+  content_refreshed: { outcome: ['ready', 'failed'] },
+  message_read: {},
+  web_vital: { metric: ['CLS', 'FCP', 'INP', 'LCP', 'TTFB'], rating: ['good', 'needs-improvement', 'poor'] },
+  feedback_submitted: { category: ['feature', 'bug', 'general'], context_attached: [true, false] },
   ui_interaction: { control: ['button', 'link', 'checkbox', 'radio', 'select'] },
   resource_load_failed: { resource_type: ['script', 'stylesheet', 'image', 'other'] },
   page_engagement: {},
@@ -66,6 +71,12 @@ export function sanitizeEventProperties(event: string, properties: Record<string
   }
   if (typeof properties.diagnostic_id === 'string' && /^ld_[a-f0-9]{32}$/.test(properties.diagnostic_id)) safe.diagnostic_id = properties.diagnostic_id;
   if (event === 'ui_interaction' && typeof properties.destination === 'string') safe.destination = routeLabel(properties.destination);
+  if (event === 'web_vital' && typeof properties.value === 'number' && Number.isFinite(properties.value)) safe.value = Math.max(0, Math.min(properties.value, 3600000));
+  if (event === 'content_ready' || event === 'content_refreshed') {
+    const names = ['dsb', 'study-groups', 'videokonferenz', 'wahlen', 'timetable', 'attendance', 'calendar', 'dateiverteilung', 'dateispeicher', 'dateispeicher-search', 'vertretungsplan', 'vertretungsplan-options', 'other'];
+    safe.resource = names.includes(String(properties.resource)) ? properties.resource : 'other';
+    for (const key of ['duration_ms', 'stale_ms']) if (typeof properties[key] === 'number' && Number.isFinite(properties[key])) safe[key] = Math.round(Math.max(0, Math.min(Number(properties[key]), 604800000)));
+  }
   if (event === 'page_engagement') {
     if (typeof properties.active_ms === 'number' && Number.isFinite(properties.active_ms)) safe.active_ms = Math.round(Math.max(0, Math.min(properties.active_ms, 3600000)));
     if ([0, 25, 50, 75, 100].includes(Number(properties.scroll_depth))) safe.scroll_depth = properties.scroll_depth;
@@ -160,6 +171,7 @@ export function sanitizedExceptionList(value: unknown): object[] {
       const filename = assetLabel(frame.filename);
       if (!filename) return [];
       return [{ filename, platform: 'web:javascript', in_app: true,
+        ...(typeof frame.chunk_id === 'string' && /^[a-f0-9-]{36}$/.test(frame.chunk_id) ? { chunk_id: frame.chunk_id } : {}),
         ...(Number.isInteger(frame.lineno) && Number(frame.lineno) > 0 && Number(frame.lineno) < 10000000 ? { lineno: frame.lineno } : {}),
         ...(Number.isInteger(frame.colno) && Number(frame.colno) >= 0 && Number(frame.colno) < 10000000 ? { colno: frame.colno } : {}) }];
     }) },

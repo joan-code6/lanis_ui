@@ -222,6 +222,7 @@ const Messages: React.FC = () => {
           WeitereEmpfaenger: displayName(msg.WeitereEmpfaenger),
         }));
         setConversations(current => ({ ...current, [conversationId]: transformedMessages }));
+        void capture('message_read');
         setError('');
       } else {
         if (response && typeof response === 'object' && 'error' in response) {

@@ -15,7 +15,7 @@ export async function reportException(error: unknown, origin: 'error' | 'rejecti
   const frames: string[] = [];
   for (const match of rawStack.matchAll(/((?:https?:\/\/[^/\s)]+)?\/assets\/[A-Za-z0-9_-]+\.js):(\d+):(\d+)/g)) {
     const file = assetLabel(match[1]);
-    if (file) frames.push(`    at app (${file}:${match[2]}:${match[3]})`);
+    if (file) frames.push(`    at app (${match[1]}:${match[2]}:${match[3]})`);
     if (frames.length >= 30) break;
   }
   const fallback = assetLabel(source?.filename);

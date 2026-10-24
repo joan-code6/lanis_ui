@@ -138,7 +138,8 @@ const requestClient=new vm.SyntheticModule(['analyticsEnabled','analyticsEpoch',
 const requestPolicy=new vm.SyntheticModule(['endpointLabel'],function(){this.setExport('endpointLabel',policy.endpointLabel);},{context:requestContext});await requestPolicy.link(()=>{});await requestPolicy.evaluate();
 const requestSource=await readFile(new URL('../src/analytics/requestTelemetry.ts',import.meta.url),'utf8');
 const requestModule=new vm.SourceTextModule(ts.transpileModule(requestSource,{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2020}}).outputText,{context:requestContext});
-await requestModule.link(spec=>spec==='./client'?requestClient:requestPolicy);await requestModule.evaluate();
+const supportModule=new vm.SyntheticModule(['rememberRequest'],function(){this.setExport('rememberRequest',()=>{});},{context:requestContext});await supportModule.link(()=>{});await supportModule.evaluate();
+await requestModule.link(spec=>spec==='./client'?requestClient:spec==='./supportContext'?supportModule:requestPolicy);await requestModule.evaluate();
 const config={url:'/nachrichten/PRIVATE?query=PRIVATE',method:'post',headers:{}};
 requestModule.namespace.startApiRequest(config);clock=350;
 assert.equal(config.headers['X-LANIS-Analytics-Consent'],'account-v2');
@@ -154,3 +155,28 @@ assert.equal(config.headers['X-LANIS-Client-Request-ID'],undefined);
 console.log('API attempt timing, business outcomes and consent revocation regression checks passed.');
 
 const device=policy.sanitizeEventProperties('$pageview',{$browser:'Chrome',$os:'Linux',$device_type:'Desktop',$browser_version:130.4});assert.equal(device.$browser,'Chrome');assert.equal(device.$browser_version,130);assert.equal(policy.sanitizeEventProperties('$pageview',{$browser:'PRIVATE',$os:'PRIVATE'}).$browser,'Other');
+
+const experienceSource=await readFile(new URL('../src/analytics/experience.ts',import.meta.url),'utf8');
+let frames=[];let experienceClock=100;let experienceEpoch=1;const experienceEvents=[];
+const experienceContext=vm.createContext({performance:{now:()=>experienceClock},window:{location:{pathname:'/timetable'}},requestAnimationFrame:fn=>frames.push(fn)});
+const experienceClient=new vm.SyntheticModule(['analyticsEnabled','analyticsEpoch','capture'],function(){this.setExport('analyticsEnabled',()=>true);this.setExport('analyticsEpoch',()=>experienceEpoch);this.setExport('capture',(event,props,page)=>experienceEvents.push({event,props,page}));},{context:experienceContext});await experienceClient.link(()=>{});await experienceClient.evaluate();
+const experienceModule=new vm.SourceTextModule(ts.transpileModule(experienceSource,{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2020}}).outputText,{context:experienceContext});await experienceModule.link(()=>experienceClient);await experienceModule.evaluate();
+assert.equal(experienceModule.namespace.resourceLabel('dateispeicher-search:PRIVATE'),'dateispeicher-search');
+assert.equal(experienceModule.namespace.resourceLabel('["timetable","PRIVATE"]'),'timetable');
+const finishView=experienceModule.namespace.startExperience('dateispeicher:PRIVATE');experienceClock=200;finishView('ready',true,300);
+while(frames.length)frames.shift()();assert.equal(experienceEvents[0].props.duration_ms,100);assert.equal(JSON.stringify(experienceEvents).includes('PRIVATE'),false);
+const staleView=experienceModule.namespace.startExperience('calendar');staleView('ready');experienceEpoch++;while(frames.length)frames.shift()();assert.equal(experienceEvents.length,1);
+const frame=policy.sanitizedExceptionList([{type:'Error',stacktrace:{frames:[{filename:'/assets/app.js',lineno:1,colno:2,chunk_id:'12345678-1234-1234-1234-123456789abc',vars:{secret:'PRIVATE'}}]}}])[0].stacktrace.frames[0];assert.ok(frame.chunk_id);assert.equal(frame.vars,undefined);
+console.log('Visible content timing, private resource classification, stale epochs and source-map chunk identifiers passed.');
+
+let supportAllowed=true, supportEpoch=1;
+const supportContextModel=vm.createContext({window:{location:{pathname:'/courses/PRIVATE'}}});
+const supportClientModel=new vm.SyntheticModule(['analyticsEnabled','analyticsEpoch'],function(){this.setExport('analyticsEnabled',()=>supportAllowed);this.setExport('analyticsEpoch',()=>supportEpoch);},{context:supportContextModel});await supportClientModel.link(()=>{});await supportClientModel.evaluate();
+const supportPolicyModel=new vm.SyntheticModule(['routeLabel'],function(){this.setExport('routeLabel',policy.routeLabel);},{context:supportContextModel});await supportPolicyModel.link(()=>{});await supportPolicyModel.evaluate();
+const supportSource=await readFile(new URL('../src/analytics/supportContext.ts',import.meta.url),'utf8');
+const supportCode=ts.transpileModule(supportSource,{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2020}}).outputText.replaceAll('import.meta.env',JSON.stringify({VITE_APP_RELEASE:'abcdef012345'}));
+const supportModel=new vm.SourceTextModule(supportCode,{context:supportContextModel});await supportModel.link(spec=>spec==='./client'?supportClientModel:supportPolicyModel);await supportModel.evaluate();
+for(let n=0;n<12;n++)supportModel.namespace.rememberRequest(`12345678-1234-1234-1234-${String(n).padStart(12,'0')}`);
+assert.equal(supportModel.namespace.supportContext().request_ids.length,10);assert.equal(supportModel.namespace.supportContext().page,'/courses/:id');
+supportEpoch++;assert.equal(supportModel.namespace.supportContext().request_ids.length,0);supportAllowed=false;assert.equal(supportModel.namespace.supportContext(),undefined);
+console.log('Optional feedback context is bounded, route-sanitized and cleared across consent/account epochs.');

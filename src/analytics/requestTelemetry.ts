@@ -1,3 +1,4 @@
+import { rememberRequest } from './supportContext';
 import { analyticsEnabled, analyticsEpoch, capture } from './client';
 import { endpointLabel } from './policy';
 
@@ -26,6 +27,7 @@ export function finishApiRequest(config: Config | undefined, response?: { status
   if (!sample) return;
   pending.delete(config);
   if (!analyticsEnabled() || sample.epoch !== analyticsEpoch()) return;
+  rememberRequest(response?.headers?.['x-lanis-request-id']);
   const status = response?.status || 0;
   const data = response?.data;
   const businessSuccess = data && typeof data === 'object' && 'success' in data && typeof data.success === 'boolean' ? data.success : undefined;
