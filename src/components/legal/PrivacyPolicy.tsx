@@ -1,3 +1,4 @@
+import { AnalyticsControls } from '../../analytics/Analytics';
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { API_BASE_URL } from '../../services/api';
@@ -330,10 +331,18 @@ const PrivacyPolicy: React.FC = () => {
             </p>
           </div>
 
+          <div>
+            <h2 className="text-base font-semibold text-[#111] mb-3">12. Optionale Nutzungsanalyse mit PostHog</h2>
+            <p>Nur mit deiner vorherigen Einwilligung verwenden wir PostHog mit dem EU-Erfassungsdienst, um die Nutzung von Funktionen und technische Fehlerkategorien zu messen. Wir senden bereinigte Seitennamen, fest definierte Aktionen und zufällige Browser- und Sitzungskennungen. Die Browserkennung und deine Entscheidung werden lokal gespeichert. Wir verknüpfen diese Kennungen nicht mit deinem LANIS-Konto. Namen, Schulkennung, Zugangsdaten, Nachrichten, Noten, Dateinamen, Suchtexte, vollständige URLs und Fehlertexte werden nicht übertragen. Sitzungsaufzeichnungen, automatisches Klicktracking und Konsolenaufzeichnungen sind deaktiviert. Die IP-Adresse wird für die Netzwerkverbindung technisch verarbeitet; ihre Speicherung als Ereigniseigenschaft und die Standortanreicherung sind deaktiviert.</p>
+            <p className="mt-2">Du kannst die Analyse ohne Einschränkung der App ablehnen oder hier jederzeit für die Zukunft widerrufen. Dabei löschen wir die lokale Analysekennung. Bereits übermittelte Ereignisse werden dadurch nicht gelöscht. Die Analyse umfasst nur Browser mit Einwilligung und bildet daher nicht alle Nutzenden ab.</p>
+            <a href="https://posthog.com/privacy" className="underline">Datenschutzhinweise von PostHog</a>
+            <div className="mt-4"><AnalyticsControls /></div>
+          </div>
+
           <hr className="border-black/[0.06]" />
 
           <p className="text-xs text-[#bbb] pt-2">
-            Stand: 23. Oktober 2026
+            Stand: 24. Oktober 2026
           </p>
         </section>
       </div>

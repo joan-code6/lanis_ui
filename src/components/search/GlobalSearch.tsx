@@ -1,3 +1,4 @@
+import { capture } from '../../analytics/client';
 import { readPersonalCache } from '../../utils/accountDataWrites';
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -523,6 +524,8 @@ export default function GlobalSearch({
     return () => { if (semanticTimerRef.current) clearTimeout(semanticTimerRef.current); };
   }, [query, token]);
 
+  useEffect(() => { if (isOpen) void capture('search_opened'); }, [isOpen]);
+
   // cleanup on unmount
   useEffect(() => {
     return () => {
@@ -534,6 +537,7 @@ export default function GlobalSearch({
   // ── actions ─────────────────────────────────────────────────────
 
   const executeAction = useCallback((item: SearchItem) => {
+    void capture('search_result_selected');
     onClose();
     if (item.href) navigate(item.href);
     item.action?.();

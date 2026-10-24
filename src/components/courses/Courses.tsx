@@ -1,3 +1,4 @@
+import { capture } from '../../analytics/client';
 import { useCachedState } from '../../hooks/useCachedState';
 import { readPersonalCache, writePersonalCache } from '../../utils/accountDataWrites';
 import { CoursesGridSkeleton, CourseEntriesSkeleton } from '../shared/LoadingSkeletons';
@@ -540,6 +541,7 @@ const Courses: React.FC = () => {
 
     try {
       await coursesAPI.toggleHomework(token, courseId, entryId, newDone);
+      void capture('homework_updated', { done: newDone });
     } catch (error) {
       console.error('Error toggling homework:', error);
     }

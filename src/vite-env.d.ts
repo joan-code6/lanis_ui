@@ -2,7 +2,8 @@
 
 interface ImportMetaEnv {
   readonly VITE_API_URL: string
-  // more env variables...
+  readonly VITE_POSTHOG_KEY: string
+  readonly VITE_POSTHOG_HOST: string
 }
 
 interface ImportMeta {

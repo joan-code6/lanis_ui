@@ -1,3 +1,4 @@
+import { capture } from '../../analytics/client';
 import { ConversationSkeleton } from '../shared/ModuleLoadingSkeletons';
 import { useCachedState } from '../../hooks/useCachedState';
 import { readPersonalCache, writePersonalCache } from '../../utils/accountDataWrites';
@@ -300,6 +301,7 @@ const Messages: React.FC = () => {
       };
       const response = await messagesAPI.sendMessage(token, messageRequest);
       if (response.success) {
+        void capture('message_sent');
         setShowCompose(false);
         setComposeData({ recipients: [], subject: '', content: '' });
         await loadMessages();
@@ -323,6 +325,7 @@ const Messages: React.FC = () => {
       };
       const response = await messagesAPI.replyMessage(token, replyRequest);
       if (response.success) {
+        void capture('message_replied');
         setReplyBody('');
         await loadConversation(selectedConversation);
       }

@@ -1,3 +1,4 @@
+import { capture } from '../../analytics/client';
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -165,6 +166,7 @@ const Onboarding: React.FC = () => {
   };
 
   const skip = () => {
+    void capture('onboarding_skipped');
     const original = originalPreferencesRef.current || preferences;
     appearanceToRestoreRef.current = original.appearance;
     setThemeMode(original.appearance.theme_mode);
@@ -180,6 +182,7 @@ const Onboarding: React.FC = () => {
   };
 
   const complete = () => {
+    void capture('onboarding_completed');
     appearanceToRestoreRef.current = { theme_mode: themeMode, theme_color: themeColor || originalPreferencesRef.current?.appearance.theme_color || preferences.appearance.theme_color };
     void updatePreferences({
       appearance: { theme_mode: themeMode, ...(themeColor ? { theme_color: themeColor } : {}) },

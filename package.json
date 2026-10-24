@@ -9,6 +9,7 @@
     "clsx": "^2.0.0",
     "date-fns": "^2.30.0",
     "leaflet": "^1.9.4",
+    "posthog-js": "^1.438.21",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-helmet-async": "^3.0.0",
@@ -40,7 +41,8 @@
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
     "deploy": "wrangler deploy",
-    "deploy:preview": "wrangler versions upload"
+    "deploy:preview": "wrangler versions upload",
+    "test:analytics": "node --experimental-vm-modules scripts/test-analytics.mjs"
   },
   "browserslist": {
     "production": [
