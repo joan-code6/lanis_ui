@@ -1,3 +1,4 @@
+import { capture } from '../../analytics/client';
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { calendarAPI } from '../../services/api';
@@ -224,11 +225,12 @@ const Kalender: React.FC = () => {
     });
   }, [calendarDays, categorizedEvents]);
 
-  const goToPrevMonth = () => setCurrentDate(subMonths(currentDate, 1));
-  const goToNextMonth = () => setCurrentDate(addMonths(currentDate, 1));
-  const goToToday = () => setCurrentDate(new Date());
+  const goToPrevMonth = () => { void capture('calendar_navigated', { direction: 'previous' }); setCurrentDate(subMonths(currentDate, 1)); };
+  const goToNextMonth = () => { void capture('calendar_navigated', { direction: 'next' }); setCurrentDate(addMonths(currentDate, 1)); };
+  const goToToday = () => { void capture('calendar_navigated', { direction: 'today' }); setCurrentDate(new Date()); };
 
   const handleEventClick = (event: CalendarEvent) => {
+    void capture('calendar_event_opened');
     setSelectedEvent(event);
   };
 
@@ -260,7 +262,7 @@ const Kalender: React.FC = () => {
             </button>
             <div className="flex bg-surface-100 dark:bg-surface-800 rounded-xl overflow-hidden border border-surface-200 dark:border-surface-700">
               <button
-                onClick={() => setCalendarViewMode('month')}
+                onClick={() => { if (calendarViewMode !== 'month') void capture('calendar_view_changed', { view: 'month' }); setCalendarViewMode('month'); }}
                 className={clsx(
                   'p-2 transition-colors',
                   calendarViewMode === 'month'
@@ -272,7 +274,7 @@ const Kalender: React.FC = () => {
                 <Squares2X2Icon className="h-4 w-4" />
               </button>
               <button
-                onClick={() => setCalendarViewMode('list')}
+                onClick={() => { if (calendarViewMode !== 'list') void capture('calendar_view_changed', { view: 'list' }); setCalendarViewMode('list'); }}
                 className={clsx(
                   'p-2 transition-colors border-l border-surface-200 dark:border-surface-700',
                   calendarViewMode === 'list'

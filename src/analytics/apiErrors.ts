@@ -6,8 +6,7 @@ const modules: Record<string, string> = {
   stundenplan: 'timetable', dateispeicher: 'files', vertretungsplan: 'substitution',
   settings: 'settings', notifications: 'notifications',
 };
-let previous = '';
-let previousAt = 0;
+const lastFailureAt = new Map<string, number>();
 
 /** Do not pass Axios errors to PostHog: they contain credentials and response bodies. */
 export function captureApiFailure(error: { code?: string; config?: { url?: string }; response?: { status?: number } }): void {
@@ -15,12 +14,12 @@ export function captureApiFailure(error: { code?: string; config?: { url?: strin
   const prefix = (error.config?.url || '').split('?')[0].split('/')[1];
   const module = modules[prefix] || 'other';
   const status = error.response?.status;
-  const failure = error.code === 'ECONNABORTED' ? 'timeout'
+  const failure = (error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT') ? 'timeout'
     : !status ? 'network' : status === 401 ? 'unauthorized' : status === 403 ? 'forbidden'
       : status === 429 ? 'rate_limited' : status >= 500 ? 'server' : 'client';
   const signature = `${module}:${failure}`;
   const now = Date.now();
-  if (signature === previous && now - previousAt < 10000) return;
-  previous = signature; previousAt = now;
+  if (now - (lastFailureAt.get(signature) || 0) < 10000) return;
+  lastFailureAt.set(signature, now);
   void capture('api_request_failed', { module, failure });
 }

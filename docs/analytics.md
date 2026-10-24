@@ -1,6 +1,6 @@
 # LANIS UI analytics
 
-PostHog receives explicitly opted-in browser events through its EU ingestion host.
+PostHog receives explicitly opted-in browser events through `https://t.lanis.arg-server.de`, forwarding to the EU PostHog project.
 The integration lives in `src/analytics`. No LANIS API server instrumentation is added.
 The private PostHog administration key must never enter a Vite environment variable,
 source file, test artifact or browser bundle.
@@ -11,7 +11,7 @@ Set these **build-time** variables in the UI hosting environment:
 
 ```dotenv
 VITE_POSTHOG_KEY=<public project key from PostHog, starting with phc_>
-VITE_POSTHOG_HOST=https://eu.i.posthog.com
+VITE_POSTHOG_HOST=https://t.lanis.arg-server.de
 ```
 
 The current local worktree has an ignored `.env.local` configured for EU project
@@ -20,7 +20,7 @@ named “Default project”; changing project settings needs project administrat
 access that the connected PostHog tools do not have.
 
 The SDK is loaded only after consent. Missing/invalid configuration, a `phx_` key,
-a non-EU ingestion host, Vite development mode and demo mode all disable capture.
+an untrusted ingestion host, Vite development mode and demo mode all disable capture. Only the configured LANIS proxy and the direct EU ingestion origin are accepted.
 There is no permissive fallback token or host. No production deployment is part
 of this change.
 
@@ -40,9 +40,9 @@ of this change.
   resets, shared devices, logout, declined consent, blockers and network failures
   affect counts. Install completion depends on browser `appinstalled` support.
 
-## Event contract (schema version 1)
+## Event contract (schema version 2)
 
-Every event has `app=lanis_ui`, `schema_version=1`, `environment=production`,
+Every event has `app=lanis_ui`, `schema_version=2`, `environment=production`,
 a sanitized `page`/`$pathname`, random SDK identity/session metadata, disabled
 person processing and disabled GeoIP enrichment. The public token is retained
 for ingestion. Other SDK properties are removed before transmission, including
@@ -58,27 +58,40 @@ and unknown property keys/values are rejected.
 | `login_failed` | Authentication fails | None |
 | `logout_completed` | Local authentication state is cleared | None |
 | `onboarding_completed` | User completes onboarding locally | None |
-| `onboarding_skipped` | User skips onboarding locally | None |
+| `onboarding_skipped` | User skips onboarding locally | `step`: fixed onboarding step |
 | `search_opened` | Global search opens | None |
-| `search_result_selected` | A global search result is activated | None |
+| `search_result_selected` | A global search result is activated | `category`: navigation, messages, courses, calendar, timetable, groups, modules, people, other |
 | `file_search_submitted` | A nonempty file search is submitted | None |
 | `file_folder_opened` | A file storage folder is selected | None |
 | `file_download_succeeded` | File retrieved and browser download dispatched | None |
 | `file_download_failed` | File download fails, excluding cancellation | None |
 | `message_sent` | API confirms sending a new message | None |
 | `message_replied` | API confirms sending a reply | None |
-| `homework_updated` | Homework update request resolves | `done`: boolean |
+| `homework_updated` | API explicitly confirms successful update | `done`: boolean |
 | `settings_updated` | Local preference change or confirmed notification save | `section`: appearance, dashboard, timetable, homework, sidebar, notifications |
 | `install_requested` | Install selected from promotion or settings | `source`: promotion, settings |
 | `install_dismissed` | Install prompt dismissed | `permanent`: boolean |
 | `app_installed` | Browser emits `appinstalled` | None |
 | `api_request_failed` | API request rejects, excluding cancellation | `module`, `failure` enums below |
+| `onboarding_step_viewed` | A loaded onboarding step is displayed; consecutive repeats deduplicated | `step`: welcome, appearance, dashboard, timetable, homework, guide |
+| `onboarding_step_completed` | Continue or Finish is selected; local progression, not server-sync confirmation | `step`: same vocabulary |
+| `search_session_completed` | A nonempty global-search dialog closes or a result is selected; once per dialog | `outcome`: selected/dismissed; `result_count`: 0, 1, 2-5, 6-20, 21+; `keyword_state`: complete/pending/not_requested |
+| `course_opened` | A course link is activated from list or timetable | `source`: course_list/timetable |
+| `course_tab_selected` | A different course detail tab is selected | `tab`: history/performance/exams |
+| `course_filter_changed` | Homework-only filter is toggled | `homework_only`: boolean |
+| `course_view_changed` | A different detail layout is selected | `view`: cards/timeline |
+| `timetable_scope_changed` | Personal/full timetable scope is changed | `scope`: personal/all |
+| `timetable_week_changed` | An alternate-week control is selected; no actual week/date recorded | None |
+| `calendar_view_changed` | Month/list view is changed | `view`: month/list |
+| `calendar_navigated` | Previous/next month or today selected | `direction`: previous/next/today |
+| `calendar_event_opened` | A calendar entry is clicked, without its content or ID | None |
+| `feature_engaged` | Derived once when the SDK accepts a supported deliberate-interaction event | `feature`: courses/timetable/calendar/messages/homework/files/search |
 
 API `module` is one of auth, messages, courses, calendar, timetable, files,
 substitution, settings, notifications, other. `failure` is one of network, timeout,
 unauthorized, forbidden, rate_limited, server, client. No request body, response
-body, URL, status text or exception message is included. Consecutive identical
-module/failure combinations are throttled to one event per ten seconds. Request
+body, URL, status text or exception message is included. Identical
+module/failure combinations are throttled independently to one event per ten seconds. Request
 failures can include recoverable authentication retries; they are not a measure
 of final user-visible failures or an API error rate (no request denominator).
 
@@ -146,3 +159,52 @@ results and ingestion requests, disabled replay/config loading, withdrawal,
 identity storage removal and regrant. Model tests also cover closed event/property
 vocabularies, safe routes, development/demo suppression, deduplication and SDK
 import races. Authenticated school flows are not exercised with real school data.
+
+## Learning reports (schema v2)
+
+[LANIS UI — Journeys and retention](https://eu.posthog.com/project/214484/dashboard/1051719)
+adds eight reports beside the existing reliability board:
+
+- Login → accepted session → meaningful interaction, ordered within one hour.
+- Welcome viewed → welcome/appearance/dashboard/timetable/homework completed → onboarding completed, within 24 hours. The optional first-school guide is excluded.
+- Search opened → result selected, within ten minutes. This browser funnel can span repeated dialogs; use session outcomes alongside it.
+- Selected versus dismissed search dialogs, one event per closed nonempty dialog.
+- Visible-result buckets when a dialog is dismissed after keyword requests complete.
+- Meaningful interactions grouped by feature.
+- Daily first-observed interaction retention, 14 intervals.
+- Weekly first-observed app-page retention, eight intervals, excluding public/legal pages.
+
+`feature_engaged` is derived from course open/tab selection, timetable scope/week
+selection, calendar event open/navigation, successful messages/homework/download,
+and search-result selection. It does not include passive reading, failed actions,
+settings, installation or onboarding. It is an interaction metric, not a canonical
+activation definition. Counts measure actions, not unique accounts or benefit.
+A regular timetable reader can be retained in the app-page chart while absent
+from the interaction-retention chart.
+
+Search result buckets describe the last query's **visible** results at closure,
+not all queries typed. Optional semantic search may still be pending. A zero
+bucket after keyword completion can identify a problem worth inspecting; it does
+not prove that every search backend returned zero matches. No query text, length,
+result title, rank, recipient name, content or ID is collected.
+
+Consent granted midway can omit earlier funnel steps. A browser that skips
+onboarding is expected to drop out of the completion funnel; the skipped event
+records its last step. Back navigation can repeat step events. SDK acceptance
+and a dispatched download do not prove network delivery or an operating-system
+file save. Definitions are documented and versioned operational reports, not
+approved Data Catalog metrics. Live user funnels remain unvalidated until the
+UI is deployed and consenting users generate traffic.
+
+## Proxy verification
+
+The proxy's `/e/` endpoint and CORS preflight were checked for the LANIS origin.
+A real PostHog SDK capture received HTTP 200 through the proxy. An isolated
+`analytics_integration_verified` event with `app=lanis_ui_verification` was also
+queried successfully from EU project 214484. These technical test events contain
+no school/account data, do not create person profiles and are excluded from both
+dashboards' `app=lanis_ui` filters. They are not shipped as production UI events.
+The local browser regression suite continues to intercept all outbound traffic
+and verifies that ordinary captures use the proxy, with no direct-host bypass.
+
+Configuration follows the [PostHog reverse-proxy guidance](https://posthog.com/docs/advanced/proxy) and [JavaScript configuration reference](https://posthog.com/docs/libraries/js/config).

@@ -1,5 +1,5 @@
 import type { PostHog } from 'posthog-js';
-import { AnalyticsEvent, routeLabel, sanitizeEventProperties } from './policy';
+import { AnalyticsEvent, engagedFeatures, routeLabel, sanitizeEventProperties } from './policy';
 
 export const CONSENT_KEY = 'lanis_analytics_consent_v1';
 export const CONSENT_EVENT = 'lanis:analytics-consent';
@@ -19,7 +19,7 @@ export function getConsent(): Consent {
 
 export function analyticsConfigured(): boolean {
   return import.meta.env.PROD && /^phc_[a-zA-Z0-9]+$/.test(import.meta.env.VITE_POSTHOG_KEY || '')
-    && import.meta.env.VITE_POSTHOG_HOST === 'https://eu.i.posthog.com';
+    && ['https://t.lanis.arg-server.de', 'https://eu.i.posthog.com'].includes(import.meta.env.VITE_POSTHOG_HOST);
 }
 
 function isDemo(): boolean {
@@ -98,7 +98,11 @@ export async function capture(event: AnalyticsEvent, properties: Record<string, 
   const page = routeLabel(window.location.pathname);
   await initializeAnalytics();
   if (!allowed() || currentGeneration !== generation) return;
-  try { client?.capture(event, { ...properties, page }); } catch { /* Best effort. */ }
+  try {
+    const result = client?.capture(event, { ...properties, page });
+    const feature = engagedFeatures[event];
+    if (result && feature) client?.capture('feature_engaged', { feature, page });
+  } catch { /* Best effort. */ }
 }
 
 export async function capturePage(): Promise<void> {

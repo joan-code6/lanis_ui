@@ -21,7 +21,7 @@ try {
   else {outbound.push({url,body:request.postData()});await request.respond({status:200,contentType:'application/json',headers:{'Access-Control-Allow-Origin':'*'},body:'{"status":1}'});}
  });
  await page.goto('http://127.0.0.1:5198/privacy-policy?private=SECRET',{waitUntil:'networkidle0'});
- assert.equal(outbound.some(r=>r.url.includes('posthog')),false,'no PostHog traffic before consent');
+ assert.equal(outbound.some(r=>(new URL(r.url).hostname === 't.lanis.arg-server.de' || new URL(r.url).hostname.endsWith('.posthog.com'))),false,'no PostHog traffic before consent');
  assert.equal(await page.evaluate(()=>Object.keys(localStorage).some(k=>k.startsWith('ph_'))),false);
  await page.evaluate(async()=>{
   const client=await import('/src/analytics/client.ts');client.setConsent('granted');await client.initializeAnalytics();
@@ -34,9 +34,10 @@ try {
   return result;
  },sdkURL);
  await new Promise(r=>setTimeout(r,300));
- const requests=outbound.filter(r=>r.url.includes('posthog'));
+ const requests=outbound.filter(r=>(new URL(r.url).hostname === 't.lanis.arg-server.de' || new URL(r.url).hostname.endsWith('.posthog.com')));
  console.log('PostHog request paths:',requests.map(r=>new URL(r.url).pathname));
- assert.ok(requests.length>0,'SDK sends event after consent');
+ assert.ok(requests.length>0,'SDK sends event through configured proxy after consent');
+ assert.ok(requests.every(r=>new URL(r.url).origin==='https://t.lanis.arg-server.de'));
  assert.equal(JSON.stringify(requests).includes('SECRET'),false,'URLs, subjects and query strings excluded');
  assert.equal(requests.some(r=>r.url.includes('/s/') || r.url.includes('/flags') || r.url.includes('/config')),false,'replay and remote config disabled');
  const event=captured;

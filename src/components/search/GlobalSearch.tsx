@@ -1,3 +1,4 @@
+import { resultCountBucket, searchCategory } from '../../analytics/policy';
 import { capture } from '../../analytics/client';
 import { readPersonalCache } from '../../utils/accountDataWrites';
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
@@ -524,7 +525,23 @@ export default function GlobalSearch({
     return () => { if (semanticTimerRef.current) clearTimeout(semanticTimerRef.current); };
   }, [query, token]);
 
-  useEffect(() => { if (isOpen) void capture('search_opened'); }, [isOpen]);
+  const wasOpen = useRef(false);
+  const reportedSearch = useRef(false);
+  const reportSearch = (outcome: 'selected' | 'dismissed') => {
+    if (reportedSearch.current || !query.trim()) return;
+    reportedSearch.current = true;
+    void capture('search_session_completed', {
+      outcome, result_count: resultCountBucket(combinedResults.length),
+      keyword_state: tier === 3 ? 'complete' : token ? 'pending' : 'not_requested',
+    });
+  };
+  useEffect(() => {
+    if (isOpen && !wasOpen.current) {
+      reportedSearch.current = false;
+      void capture('search_opened');
+    } else if (!isOpen && wasOpen.current) reportSearch('dismissed');
+    wasOpen.current = isOpen;
+  }, [isOpen]);
 
   // cleanup on unmount
   useEffect(() => {
@@ -537,11 +554,12 @@ export default function GlobalSearch({
   // ── actions ─────────────────────────────────────────────────────
 
   const executeAction = useCallback((item: SearchItem) => {
-    void capture('search_result_selected');
+    reportSearch('selected');
+    void capture('search_result_selected', { category: searchCategory(item.category) });
     onClose();
     if (item.href) navigate(item.href);
     item.action?.();
-  }, [onClose, navigate]);
+  }, [onClose, navigate, query, combinedResults.length, tier, token]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Escape') { e.preventDefault(); onClose(); return; }

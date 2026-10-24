@@ -58,7 +58,7 @@ jobs:
           VITE_API_URL: https://lanis-backend.joancode.dev
           # Production analytics only; PR previews never receive the project key.
           VITE_POSTHOG_KEY: ${{ github.ref == 'refs/heads/main' && vars.VITE_POSTHOG_KEY || '' }}
-          VITE_POSTHOG_HOST: https://eu.i.posthog.com
+          VITE_POSTHOG_HOST: https://t.lanis.arg-server.de
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: frontend-dist
