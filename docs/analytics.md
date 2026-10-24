@@ -26,7 +26,7 @@ of this change.
 
 ## Consent and identity
 
-- The prompt offers equally styled accept and decline actions.
+- The compact prompt sits at the bottom right on desktop and centered at the bottom on mobile. Accept appears first as the primary action; decline uses the secondary button.
 - Consent is browser-local, versioned by `lanis_analytics_consent_v1`.
 - It can be changed from the privacy policy and Settings → Datenschutz und Konto.
 - Withdrawal prevents new captures and clears local SDK identity persistence.
