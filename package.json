@@ -44,7 +44,8 @@
     "preview": "vite preview",
     "deploy": "wrangler deploy",
     "deploy:preview": "wrangler versions upload",
-    "test:analytics": "node --experimental-vm-modules scripts/test-analytics.mjs"
+    "test:analytics": "node --experimental-vm-modules scripts/test-analytics.mjs",
+    "test:push": "node --test scripts/test-browser-push.cjs"
   },
   "browserslist": {
     "production": [

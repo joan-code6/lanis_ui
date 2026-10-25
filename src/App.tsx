@@ -1,5 +1,6 @@
 import Analytics from './analytics/Analytics';
 import React from 'react';
+import BrowserPushRuntime from './components/BrowserPushRuntime';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -81,6 +82,7 @@ const AppRoutes: React.FC = () => {
   return (
     <Router>
       <Analytics />
+      <BrowserPushRuntime />
       <Routes>
         <Route path="/" element={<LandingRoot />} />
         <Route path="/landing" element={<Navigate to="/" replace />} />
