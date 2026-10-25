@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { startWebVitals } from './experience';
+import { authAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { getApiBaseUrl } from '../utils/backendConfig';
 import { startErrorTracking } from './errors';
@@ -30,7 +31,7 @@ export default function Analytics() {
   const location = useLocation();
   const { token, user } = useAuth();
   useEffect(() => {
-    configureAccountAnalytics(token, getApiBaseUrl(), `${user?.school_id || ''}:${user?.username?.toLowerCase() || ''}`);
+    configureAccountAnalytics(token, getApiBaseUrl(), `${user?.school_id || ''}:${user?.username?.toLowerCase() || ''}`, authAPI.getValidSessionToken);
   }, [token, user?.school_id, user?.username]);
   useEffect(() => startErrorTracking(), []);
   const [consent, update] = useState(getConsent);

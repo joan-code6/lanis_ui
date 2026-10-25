@@ -143,7 +143,7 @@ function searchCacheData(
   const results: SearchItem[] = [];
 
   try {
-    const raw = basePath === '/demo' ? null : readPersonalCache('messages_cache');
+    const raw = basePath === '/demo' ? null : readPersonalCache('messages_cache_v2');
     if (raw) {
       const msgs = JSON.parse(raw);
       if (Array.isArray(msgs)) {

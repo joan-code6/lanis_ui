@@ -180,3 +180,17 @@ for(let n=0;n<12;n++)supportModel.namespace.rememberRequest(`12345678-1234-1234-
 assert.equal(supportModel.namespace.supportContext().request_ids.length,10);assert.equal(supportModel.namespace.supportContext().page,'/courses/:id');
 supportEpoch++;assert.equal(supportModel.namespace.supportContext().request_ids.length,0);supportAllowed=false;assert.equal(supportModel.namespace.supportContext(),undefined);
 console.log('Optional feedback context is bounded, route-sanitized and cleared across consent/account epochs.');
+
+let currentSession='refreshed-private-token';const refreshedRequests=[];
+const rotation=await harness({fetcher:async(url,options)=>{refreshedRequests.push(options.headers['X-Session-Token']);return {ok:true,json:async()=>url.endsWith('/identity')?{account_ref:'la_'+'e'.repeat(32)}:{diagnostic_id:'ld_'+'f'.repeat(32)}};}});
+rotation.api.configureAccountAnalytics('expired-private-token','https://backend.example','same-account',async()=>currentSession);
+rotation.api.setConsent('granted');await rotation.api.capture('login_succeeded');
+assert.equal(refreshedRequests[0],'refreshed-private-token');
+currentSession='next-private-token';await rotation.api.storeDiagnostic('error',new Error('private'));
+assert.equal(refreshedRequests[1],'next-private-token');
+let unblockSession;const staleSession=new Promise(resolve=>{unblockSession=resolve});
+rotation.api.configureAccountAnalytics('old','https://backend.example','same-account',()=>staleSession);
+const staleDiagnostic=rotation.api.storeDiagnostic('error',new Error('private'));
+rotation.api.resetAnalyticsIdentity();unblockSession('obsolete');await staleDiagnostic;
+assert.equal(refreshedRequests.length,2,'logout while resolving a token cannot send diagnostics');
+console.log('Analytics uses refreshed session tokens and rejects stale token resolutions after logout.');

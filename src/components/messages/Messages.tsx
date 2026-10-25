@@ -48,9 +48,9 @@ const Messages: React.FC = () => {
   const [searchParams] = useSearchParams();
   const [messages, setMessages, hasMessages] = useCachedState<MessageHeader[]>('messages', () => {
     try {
-      const cached = isDemoRoute() ? null : readPersonalCache('messages_cache');
+      const cached = isDemoRoute() ? null : readPersonalCache('messages_cache_v2');
       const parsed: unknown = cached ? JSON.parse(cached) : null;
-      return Array.isArray(parsed) ? parsed.map((message: MessageHeader) => ({ ...message, Betreff: htmlToText(message.Betreff) })) : [];
+      return Array.isArray(parsed) ? parsed : [];
     } catch { return []; }
   });
   const [isUpdating, setIsUpdating] = useState(false);
@@ -185,8 +185,8 @@ const Messages: React.FC = () => {
         setMessages(resolved);
         if (canWriteAccountData(writeGeneration)) {
           const cachedMessages = JSON.stringify(resolved);
-          notifyDemoCacheWrite('messages_cache', cachedMessages);
-          writePersonalCache('messages_cache', cachedMessages, writeGeneration);
+          notifyDemoCacheWrite('messages_cache_v2', cachedMessages);
+          writePersonalCache('messages_cache_v2', cachedMessages, writeGeneration);
         }
       } else {
         setError('Fehler beim Laden der Nachrichten.');

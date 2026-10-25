@@ -7,7 +7,7 @@ const BACKEND_SCOPED_STORAGE_KEYS = [
   'auth_user',
   'school_cache',
   'modules_cache',
-  'messages_cache',
+  'messages_cache', 'messages_cache_v2',
   'courses_cache',
   'profile_cache',
   'username_cache',

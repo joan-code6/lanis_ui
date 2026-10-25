@@ -211,7 +211,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         }
         return false;
       }
-      configureAccountAnalytics(response.access_token, getApiBaseUrl(), `${response.school_id}:${response.username.toLowerCase()}`);
+      configureAccountAnalytics(response.access_token, getApiBaseUrl(), `${response.school_id}:${response.username.toLowerCase()}`, authAPI.getValidSessionToken);
       void capture('login_succeeded');
       writeGeneration = captureAccountDataGeneration();
 

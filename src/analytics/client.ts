@@ -9,22 +9,23 @@ let loading: Promise<void> | undefined;
 let loadingGeneration = 0;
 let lastPage: string | undefined;
 let generation = 0;
-let accountContext: { token: string; backend: string; key: string } | undefined;
+let accountContext: { token: string; backend: string; key: string; resolveToken?: () => Promise<string | null> } | undefined;
 let accountRef: string | undefined;
 let identityPending: Promise<void> | undefined;
 let identityRetryAt = 0;
 const pendingRequests = new Set<AbortController>();
 
-export function configureAccountAnalytics(token: string | null, backend: string, key: string): void {
+export function configureAccountAnalytics(token: string | null, backend: string, key: string, resolveToken?: () => Promise<string | null>): void {
   if (!token) { if (accountContext) resetAnalyticsIdentity(); return; }
   const nextKey = backend + '|' + key;
   if (accountContext?.key === nextKey) {
     if (accountContext.token !== token) identityRetryAt = 0;
     accountContext.token = token;
+    if (resolveToken) accountContext.resolveToken = resolveToken;
     return;
   }
   if (accountContext || accountRef) resetAnalyticsIdentity();
-  accountContext = { token, backend: backend.replace(/\/$/, ''), key: nextKey };
+  accountContext = { token, backend: backend.replace(/\/$/, ''), key: nextKey, resolveToken };
   identityRetryAt = 0;
 }
 
@@ -34,14 +35,17 @@ export function analyticsEpoch(): number { return generation; }
 async function accountRequest(path: string, body?: object): Promise<Record<string, unknown> | null> {
   const context = accountContext;
   if (!context || !allowed()) return null;
+  const epoch = generation;
   const controller = new AbortController();
   pendingRequests.add(controller);
   const timeout = setTimeout(() => controller.abort(), 5000);
   try {
+    const token = context.resolveToken ? await context.resolveToken() : context.token;
+    if (!token || epoch !== generation || context !== accountContext || !allowed() || controller.signal.aborted) return null;
     const response = await fetch(context.backend + path, {
       method: body ? 'POST' : 'GET', credentials: 'omit', cache: 'no-store',
       referrerPolicy: 'no-referrer', signal: controller.signal,
-      headers: { 'X-Session-Token': context.token, 'X-LANIS-Analytics-Consent': 'account-v2',
+      headers: { 'X-Session-Token': token, 'X-LANIS-Analytics-Consent': 'account-v2',
         ...(body ? { 'Content-Type': 'application/json' } : {}) },
       ...(body ? { body: JSON.stringify(body) } : {}),
     });
