@@ -17,7 +17,12 @@ const TermsOfService: React.FC = () => (
   <div className="min-h-screen bg-[#fcfcf9] text-[#1a1a1a] font-['Outfit',sans-serif]">
     <SEO title="Nutzungsbedingungen" description="Nutzungsbedingungen für LANIS und die Verbindung mit externen Agenten." path="/terms-of-service" noindex />
     <main className="max-w-2xl mx-auto px-6 py-24">
-      <Link to="/" className="inline-block text-sm text-[#777] hover:text-[#333] mb-12">← Zurück zur Startseite</Link>
+      <Link to="/" className="inline-flex items-center gap-2 text-sm text-[#999] hover:text-[#555] transition-colors mb-12">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+            <path d="M9 3L5 7L9 11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          Zurück zur Startseite
+        </Link>
       <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-[#111] mb-2">Nutzungsbedingungen</h1>
       <p className="text-sm text-[#777] mb-16">LANIS und externe Agenten · Stand: 25. Oktober 2026</p>
       <div className="space-y-10 text-[14px] leading-relaxed text-[#555]">
