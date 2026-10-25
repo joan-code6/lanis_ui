@@ -32,6 +32,7 @@ import StatusPage from './components/status/StatusPage';
 import Videokonferenz from './components/videokonferenz/Videokonferenz';
 import SchoolPage from './components/schools/SchoolPage';
 import SchoolDirectoryPage from './components/schools/SchoolDirectoryPage';
+import TermsOfService from './components/legal/TermsOfService';
 import AgentAuthorization from './components/agents/AgentAuthorization';
 import { agentLoginPath, agentReturnPath } from './utils/agentBackend';
 
@@ -88,6 +89,7 @@ const AppRoutes: React.FC = () => {
         <Route path="/agents/authorize" element={<AgentAuthorization />} />
         <Route path="/impressum" element={<Impressum />} />
         <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+        <Route path="/terms-of-service" element={<TermsOfService />} />
         <Route path="/set-custom-backend" element={<CustomBackend />} />
         <Route path="/schule/:schoolId" element={<SchoolPage />} />
         <Route path="/schulen" element={<SchoolDirectoryPage />} />

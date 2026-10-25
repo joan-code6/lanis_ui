@@ -502,6 +502,7 @@ const Landingpage: React.FC<LandingpageProps> = ({ hero, seo }) => {
           <Link to="/privacy-policy" className="text-[11px] text-[#bbb] dark:text-surface-500 hover:text-[#888] dark:hover:text-surface-300 transition-colors">
             Datenschutz
           </Link>
+          <Link to="/terms-of-service" className="text-[11px] text-[#bbb] dark:text-surface-500 hover:text-[#888] dark:hover:text-surface-300 transition-colors">Nutzungsbedingungen</Link>
           <Link to="/set-custom-backend" className="text-[11px] text-[#bbb] dark:text-surface-500 hover:text-[#888] dark:hover:text-surface-300 transition-colors">
             Eigenes Backend
           </Link>

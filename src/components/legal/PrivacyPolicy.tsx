@@ -201,7 +201,7 @@ const PrivacyPolicy: React.FC = () => {
             <p>
               Wenn du einen externen Agenten wie ChatGPT oder Claude mit LANIS verbindest, bestätigst du
               den Zugriff auf einer LANIS-Freigabeseite. Du wählst die Berechtigungen für jede Verbindung
-              einzeln. Eingeschränkter Zugriff erlaubt Lesen ohne Noten und Fehlzeiten. Vollzugriff
+              einzeln. Eingeschränkter Zugriff erlaubt gewöhnliche Lesefunktionen ohne persönliche Profildaten, Noten, Fehlzeiten, persönliche Videokonferenzlinks oder Schreibaktionen. Vollzugriff
               umfasst auch Änderungen und sensible Daten; unter Benutzerdefiniert wählst du einzelne
               Berechtigungen. Das Backend speichert den Namen der Verbindung, den angefragten App-Namen, die
               Rückkehradresse des Anbieters, Berechtigungen sowie Verbindungs- und Nutzungszeitpunkte.
@@ -209,7 +209,7 @@ const PrivacyPolicy: React.FC = () => {
               den Agenten übermittelt.
             </p>
             <p className="mt-2">
-              Bei einem Abruf erhält der Anbieter des Agenten die freigegebenen Schuldaten. Für die
+              Bei einem Abruf erhält der Anbieter des Agenten die angeforderten, freigegebenen Schuldaten, etwa Aufgaben, Pläne, Nachrichten oder Dateien und bei gesonderter Freigabe persönliche Profildaten, Noten, Fehlzeiten und persönliche Videokonferenzlinks. Schreibfreigaben ermöglichen zusätzlich die ausdrücklich beauftragten Änderungen, etwa Nachrichtenversand, Abgaben oder Schulwahlen. Für die
               weitere Verarbeitung dort gelten dessen Datenschutzbestimmungen. Unter Einstellungen →
               Agents kannst du Berechtigungen reduzieren oder eine Verbindung trennen. Das beendet
               weitere Abrufe; bereits beim Anbieter gespeicherte Inhalte werden dadurch nicht gelöscht.
@@ -333,7 +333,7 @@ const PrivacyPolicy: React.FC = () => {
           <hr className="border-black/[0.06]" />
 
           <p className="text-xs text-[#bbb] pt-2">
-            Stand: 23. Oktober 2026
+            Stand: 25. Oktober 2026
           </p>
         </section>
       </div>

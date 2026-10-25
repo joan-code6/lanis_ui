@@ -5,6 +5,8 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import { AuthProvider } from './contexts/AuthContext';
 import Landingpage from './components/landing/Landingpage';
 import StatusPage from './components/status/StatusPage';
+import PrivacyPolicy from './components/legal/PrivacyPolicy';
+import TermsOfService from './components/legal/TermsOfService';
 import { SchoolLandingPage, themeForColor } from './components/schools/SchoolPage';
 import SchoolDirectoryPage from './components/schools/SchoolDirectoryPage';
 import { schoolPath, type SchoolProfile, type SchoolListItem } from './components/schools/schoolData';
@@ -14,12 +16,15 @@ export { DEFAULT_API_BASE_URL } from './utils/backendConfig';
 export const routes = [
   { path: '/', file: 'index.html' },
   { path: '/status', file: 'status.html' },
+  { path: '/privacy-policy', file: 'privacy-policy/index.html' },
+  { path: '/terms-of-service', file: 'terms-of-service/index.html' },
   { path: '/schulen', file: 'schulen.html' },
 ];
 
 export function render(path: string, data: { school?: SchoolProfile; schools?: SchoolListItem[] } = {}) {
   const { school, schools } = data;
   const page = school && path === schoolPath(school.school_id) ? <SchoolLandingPage school={school} />
+    : path === '/privacy-policy' ? <PrivacyPolicy /> : path === '/terms-of-service' ? <TermsOfService />
     : path === '/' ? <Landingpage /> : path === '/status' ? <StatusPage />
       : path === '/schulen' && schools?.length ? <SchoolDirectoryPage initialSchools={schools} /> : null;
   if (!page) throw new Error(`No prerender data/component for ${path}`);
