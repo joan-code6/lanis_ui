@@ -1466,10 +1466,6 @@ export const agentsAPI = {
     assertAgentBackend();
     return (await apiClient.get(`/agents/${encodeURIComponent(id)}/schedules`, { headers: { 'X-Session-Token': token } })).data;
   },
-  async createSchedule(token: string, id: string, task: { prompt: string; cron: string; timezone: string }) {
-    assertAgentBackend();
-    return (await apiClient.post(`/agents/${encodeURIComponent(id)}/schedules`, task, { headers: { 'X-Session-Token': token } })).data;
-  },
   async deleteSchedule(token: string, id: string, schedule: string) {
     assertAgentBackend();
     return (await apiClient.delete(`/agents/${encodeURIComponent(id)}/schedules/${encodeURIComponent(schedule)}`, { headers: { 'X-Session-Token': token } })).data;
