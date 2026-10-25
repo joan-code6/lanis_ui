@@ -168,31 +168,34 @@ const PrivacyPolicy: React.FC = () => {
           </div>
 
           <div>
-            <h2 className="text-base font-semibold text-[#111] mb-3">7. WhatsApp-Assistent</h2>
+            <h2 className="text-base font-semibold text-[#111] mb-3">7. Signal- und WhatsApp-Assistenten</h2>
             <p>
-              Wenn du den optionalen WhatsApp-Assistenten aktiv mit deinem Konto verbindest, verarbeitet
-              das Backend eine abgeleitete Kennung deiner WhatsApp-Nummer, die letzten vier Ziffern zur
-              Anzeige, den Zeitpunkt der Verknüpfung und deine Einstellung zu Nachrichtenvorschauen. Ein
-              kurzzeitig gültiger Einmalcode stellt die Verbindung her. Dein Schulportal-Passwort wird
-              dabei nicht an WhatsApp übermittelt.
+              Wenn du Signal oder WhatsApp unter Agenten verbindest, wählst du die Berechtigungen
+              für diese Verbindung. Ein zehn Minuten gültiger Einmalcode verknüpft den Chat mit
+              deinem LANIS-Konto. Das Backend speichert eine abgeleitete Absenderkennung, die
+              verschlüsselte Empfängeradresse, die Freigaben und Verbindungszeitpunkte. Dein
+              Schulportal-Passwort wird nicht an Signal, WhatsApp oder den KI-Dienst übermittelt.
             </p>
             <p className="mt-2">
-              Nachrichten, die du an den Assistenten sendest, und seine Antworten werden über die
-              WhatsApp Business Platform von Meta verarbeitet. Wenn ein KI-Anbieter eingerichtet ist,
-              erhält dieser deine Frage, den zur Verarbeitung verwendeten Gesprächsverlauf und die
-              Ergebnisse der vom Assistenten abgerufenen LANIS-Funktionen. Darin können personenbezogene
-              schulische Inhalte enthalten sein. Gespeicherte Schulportal-Zugangsdaten und die
-              WhatsApp-Nummer werden nicht automatisch als Kontodaten an den KI-Anbieter übergeben.
-              Angaben, die du selbst in eine Nachricht schreibst, sind jedoch Teil dieser Nachricht.
-              Beim bereitgestellten Standard-Backend wird der begrenzte Gesprächsverlauf verschlüsselt
-              gespeichert. Seine Frist läuft 24 Stunden nach der letzten Aktualisierung ab und beginnt
-              bei weiteren Nachrichten erneut. Beim Trennen der Verbindung wird er gelöscht. Bei einem selbst eingestellten Backend richten sich Schutzmaßnahmen
-              und Speicherfristen nach den Angaben seines Betreibers.
-              Antworten können von dir angeforderte
-              schulische Angaben enthalten, etwa Stundenplan, Vertretungen, Aufgaben, Termine oder – nur
-              nach gesonderter Aktivierung – Absender und Betreff ungelesener Nachrichten. Änderungen im
-              Schulportal werden erst nach einer zusätzlichen ausdrücklichen Bestätigung ausgeführt. Du kannst die
-              Verbindung jederzeit in den Einstellungen oder mit dem Befehl „STOP“ trennen.
+              Chatnachrichten und Antworten werden je nach gewähltem Kanal über Signal und eine vom
+              Backend-Betreiber eingerichtete Signal-Bridge oder über die WhatsApp Business Platform
+              von Meta verarbeitet. Der zentral konfigurierte KI-Dienst erhält deine Frage, den
+              verwendeten Gesprächsverlauf und die Ergebnisse freigegebener LANIS-Funktionen. Darin
+              können personenbezogene schulische Inhalte enthalten sein. Die Empfängeradresse wird
+              nicht automatisch als Kontodatum an den KI-Dienst übergeben. Angaben, die du selbst
+              in Nachrichten schreibst, sind Teil dieser Nachrichten.
+            </p>
+            <p className="mt-2">
+              Das Backend speichert höchstens zwölf Gesprächsnachrichten verschlüsselt für
+              24 Stunden nach der letzten Aktualisierung. Von dir angeforderte Zeitpläne und ihre
+              Aufgabenbeschreibungen werden verschlüsselt gespeichert, bis du sie löschst oder die
+              Verbindung trennst. Geplante Aufgaben lesen nur Daten innerhalb deiner aktuellen
+              Freigaben; Schulportal-Änderungen im Chat benötigen eine zusätzliche ausdrückliche
+              Bestätigung. Berechtigungsänderungen löschen den gespeicherten Gesprächsverlauf und
+              ausstehende Bestätigungen. Du kannst die Verbindung jederzeit unter Agenten oder mit
+              „STOP“ trennen; dabei werden auch geplante Aufgaben gelöscht. Ausführungszeitpunkte
+              und Status werden ohne Gesprächsinhalte bis zu 30 Tage gespeichert. Bei einem selbst
+              eingestellten Backend gelten die Angaben seines Betreibers.
             </p>
           </div>
 
@@ -248,7 +251,7 @@ const PrivacyPolicy: React.FC = () => {
               funktionsfähigen Bereitstellung der Anwendung, der Ermittlung der Größe der Nutzerbasis,
               der Fehleranalyse bei Supportanfragen sowie der Überprüfung des erfolgreichen Zugangs
               eingeladener Testpersonen. Freiwillige Push-Benachrichtigungen und die
-              WhatsApp-Verknüpfung werden nur nach deiner ausdrücklichen Aktivierung eingerichtet; soweit
+              Signal- oder WhatsApp-Verknüpfung werden nur nach deiner ausdrücklichen Aktivierung eingerichtet; soweit
               eine Einwilligung erforderlich ist, gilt Art. 6 Abs. 1 lit. a DSGVO.
             </p>
           </div>
@@ -264,8 +267,9 @@ const PrivacyPolicy: React.FC = () => {
               Abschnitt 5 beschriebenen Anfragedaten. Nach dem Laden der Schulkarte empfängt die OpenStreetMap Foundation die
               in Abschnitt 5 beschriebenen Verbindungsdaten. Bei Nutzung von Push-Benachrichtigungen wird außerdem der Push-Dienst des
               Browsers oder Betriebssystems einbezogen. Beim freiwilligen WhatsApp-Assistenten wird
-              außerdem die WhatsApp Business Platform von Meta und gegebenenfalls der konfigurierte
-              KI-Anbieter einbezogen. Bei konfigurierten Betreiberbenachrichtigungen wird Discord wie in
+              die WhatsApp Business Platform von Meta und der zentral konfigurierte
+              KI-Anbieter einbezogen. Bei Signal sind Signal, die vom Betreiber eingerichtete Bridge
+              und derselbe KI-Dienst beteiligt. Bei konfigurierten Betreiberbenachrichtigungen wird Discord wie in
               Abschnitt 8 beschrieben einbezogen. Lokal gespeicherte Daten bleiben erhalten, bis sie
               durch die Anwendung entfernt oder ersetzt werden oder du die Website-Daten im Browser
               löschst. Eine Abmeldung entfernt nicht automatisch sämtliche lokalen Einstellungen und Caches.
@@ -277,8 +281,9 @@ const PrivacyPolicy: React.FC = () => {
                   <li>Profil, Einstellungen, eigene Stunden, Klassenverknüpfungen, Push-Abos sowie Login- und Aktivitätsdaten: bis zur Löschung des LANIS-Kontos;</li>
                   <li>gewöhnliche Antwort-Caches: regelmäßig 10 Minuten; Profil-, App- und Moduldaten höchstens 30 Tage;</li>
                   <li>private Ausfall-Snapshots: höchstens 24 Stunden; gemeinsam genutzte heruntergeladene Unterrichtsdateien: höchstens 30 Tage;</li>
-                  <li>WhatsApp-Gesprächsverlauf: 24 Stunden nach der letzten Aktualisierung; Einmalcodes und ausstehende Bestätigungen: 10 Minuten;</li>
-                  <li>externe WhatsApp-Nachrichten-IDs zur Verhinderung doppelter Verarbeitung: 7 Tage.</li>
+                  <li>Signal- und WhatsApp-Gesprächsverlauf: höchstens zwölf Nachrichten für 24 Stunden nach der letzten Aktualisierung; Einmalcodes und ausstehende Bestätigungen: 10 Minuten;</li>
+                  <li>geplante Agentenaufgaben: bis zur Löschung oder Trennung; Ausführungsstatus ohne Gesprächsinhalte: 30 Tage;</li>
+                  <li>abgeleitete Signal- und WhatsApp-Nachrichtenkennungen zur Verhinderung doppelter Verarbeitung: 7 Tage;</li>
                 </ul>
                 <p>
                   Technische Zugriffs- und Betriebsprotokolle des Standard-Backends dienen der

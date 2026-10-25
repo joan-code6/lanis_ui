@@ -203,7 +203,7 @@ const settingsSections: Array<{
 ];
 
 const sectionMeta: Record<SettingsSection, { title: string; subtitle: string }> = {
-  agents: { title: 'Agents', subtitle: 'ChatGPT, Claude und andere Agenten verbinden.' },
+  agents: { title: 'Agents', subtitle: 'ChatGPT, Claude, Signal und WhatsApp verbinden.' },
   home: { title: 'Einstellungen', subtitle: 'Passe dein Schulportal an.' },
   account: { title: 'Datenschutz und Konto', subtitle: 'Exportiere deine LANIS-Daten oder lösche dein LANIS-Konto.' },
   appearance: { title: 'Erscheinungsbild', subtitle: 'Farben und Oberfläche an deine Gewohnheiten anpassen.' },

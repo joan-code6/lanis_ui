@@ -661,13 +661,29 @@ export function getMockResponse(url: string, method: string, config: any): { dat
   // Agent settings: illustrative connections only; no real OAuth grants.
   if (u === '/agents' && method === 'get') return { status: 200, data: {
     mcp_url: 'https://lanis.example/mcp',
+    channels: { signal: true, whatsapp: true },
     scopes: {"schoolwork:read": {"title": "Unterricht lesen", "description": "Kurse und Hausaufgaben", "group": "Unterricht"}, "schoolwork:write": {"title": "Hausaufgaben ändern", "description": "Erledigt-Status ändern", "group": "Unterricht"}, "timetable:read": {"title": "Stundenplan lesen", "description": "Stunden und Vertretungen", "group": "Stundenplan"}, "timetable:write": {"title": "Stundenplan ändern", "description": "Eigene Stunden bearbeiten", "group": "Stundenplan"}, "calendar:read": {"title": "Kalender lesen", "description": "Schultermine", "group": "Kalender"}, "messages:read": {"title": "Nachrichten lesen", "description": "Übersicht und bereits geladene Inhalte", "group": "Nachrichten"}, "messages:mark-read": {"title": "Öffnen & als gelesen markieren", "description": "Neue Inhalte laden und als gelesen markieren", "group": "Nachrichten"}, "messages:write": {"title": "Nachrichten senden", "description": "Senden und antworten", "group": "Nachrichten"}, "files:read": {"title": "Dateien lesen", "description": "Dateispeicher und Dateiverteilung", "group": "Dateien"}, "submissions:read": {"title": "Abgaben lesen", "description": "Aufgaben und Abgabedetails", "group": "Abgaben"}, "submissions:write": {"title": "Abgaben ändern", "description": "Dateien hochladen und entfernen", "group": "Abgaben"}, "elections:read": {"title": "Wahlen lesen", "description": "Formulare und Optionen", "group": "Wahlen"}, "elections:write": {"title": "Wahlen abgeben", "description": "Auswahl verbindlich absenden", "group": "Wahlen"}, "profile:read": {"title": "Profil lesen", "description": "Schulprofil und Module", "group": "Profil"}, "grades:read": {"title": "Noten lesen", "description": "Leistungen eines Kurses", "group": "Sensible Daten", "sensitive": true}, "attendance:read": {"title": "Fehlzeiten lesen", "description": "Anwesenheit und Fehlstunden", "group": "Sensible Daten", "sensitive": true}, "preferences:read": {"title": "Einstellungen lesen", "description": "Persönliche LANIS-Einstellungen", "group": "Einstellungen"}, "preferences:write": {"title": "Einstellungen ändern", "description": "Persönliche LANIS-Einstellungen anpassen", "group": "Einstellungen"}},
     presets: {"restricted": ["schoolwork:read", "timetable:read", "calendar:read", "messages:read", "files:read", "submissions:read", "elections:read", "profile:read", "preferences:read"], "full": ["schoolwork:read", "schoolwork:write", "timetable:read", "timetable:write", "calendar:read", "messages:read", "messages:mark-read", "messages:write", "files:read", "submissions:read", "submissions:write", "elections:read", "elections:write", "profile:read", "grades:read", "attendance:read", "preferences:read", "preferences:write"]},
     connections: readMockStorage('lanis_demo_agents') ?? [
+      { id: 'demo-signal', channel: 'signal', name: 'Signal', client_name: 'Signal', client_id: 'hosted:signal', redirect_origin: 'LANIS Backend', scopes: ['schoolwork:read'], created_at: Date.now()/1000 - 86400, last_used_at: null, revoked: false },
       { id: 'demo-chatgpt', name: 'Mein Lernassistent', client_name: 'ChatGPT', client_id: 'demo', redirect_origin: 'chatgpt.com', requested_scopes: ["schoolwork:read", "schoolwork:write", "timetable:read", "timetable:write", "calendar:read", "messages:read", "messages:mark-read", "messages:write", "files:read", "submissions:read", "submissions:write", "elections:read", "elections:write", "profile:read", "grades:read", "attendance:read", "preferences:read", "preferences:write"], scopes: ["schoolwork:read", "timetable:read", "calendar:read", "messages:read", "files:read", "submissions:read", "elections:read", "profile:read", "preferences:read"], created_at: Date.now()/1000 - 86400*5, last_used_at: Date.now()/1000 - 600, revoked: false },
       { id: 'demo-claude', name: 'Claude', client_name: 'Claude', client_id: 'demo-claude', redirect_origin: 'claude.ai', requested_scopes: ["schoolwork:read", "schoolwork:write", "timetable:read", "timetable:write", "calendar:read", "messages:read", "messages:mark-read", "messages:write", "files:read", "submissions:read", "submissions:write", "elections:read", "elections:write", "profile:read", "grades:read", "attendance:read", "preferences:read", "preferences:write"], scopes: ['schoolwork:read'], created_at: Date.now()/1000 - 86400, last_used_at: null, revoked: false },
     ],
   } };
+  if (/^\/agents\/channels\/(signal|whatsapp)\/pairing$/.test(u) && method === 'post') return { status: 200, data: { message: 'LANIS DEMO-CODE', number: '+49 000 000000 (Demo)', expires_at: Date.now()/1000 + 600 } };
+  if (u.includes('/schedules')) {
+    const key = 'lanis_demo_schedules_' + u.split('/')[2];
+    const storedRows = readMockStorage(key);
+    const rows: any[] = Array.isArray(storedRows) ? storedRows : [];
+    if (method === 'get') return { status: 200, data: { schedules: rows } };
+    if (method === 'post') {
+      const payload = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
+      const row = { ...payload, id: 'demo-' + Date.now(), enabled: true, next_run: Date.now()/1000 + 86400 };
+      writeMockStorage(key, [...rows, row]);
+      return { status: 200, data: row };
+    }
+    if (method === 'delete') { writeMockStorage(key, rows.filter(row => row.id !== u.split('/')[4])); return { status: 200, data: { success: true } }; }
+  }
   if (u.startsWith('/agents/') && ['patch', 'delete'].includes(method)) {
     const overview = getMockResponse('/agents', 'get', {});
     const id = u.split('/')[2];

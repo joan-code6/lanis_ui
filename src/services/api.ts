@@ -1446,9 +1446,10 @@ export interface AccessPresets { restricted: string[]; full: string[] | null }
 export interface AgentScope { title: string; description: string; group?: string; sensitive?: boolean }
 export interface AgentConnection {
   id: string; name: string; client_name: string; client_id: string; redirect_origin: string;
-  scopes: string[]; requested_scopes?: string[]; created_at: number; last_used_at: number | null; revoked: boolean;
+  channel?: 'signal' | 'whatsapp'; scopes: string[]; requested_scopes?: string[]; created_at: number; last_used_at: number | null; revoked: boolean;
 }
-export interface AgentsOverview { connections: AgentConnection[]; scopes: Record<string, AgentScope>; mcp_url: string; presets: AccessPresets }
+export interface HostedSchedule { id: string; prompt: string; cron?: string; at?: string; timezone?: string; next_run: number; enabled: boolean; last_status?: string }
+export interface AgentsOverview { channels?: { signal: boolean; whatsapp: boolean }; connections: AgentConnection[]; scopes: Record<string, AgentScope>; mcp_url: string; presets: AccessPresets }
 export interface AgentAuthorization {
   client_name: string; client_id: string; redirect_origin: string; verified: boolean;
   scopes: (AgentScope & { id: string })[]; username: string; school_id: string; presets: AccessPresets;
@@ -1457,6 +1458,22 @@ function assertAgentBackend() {
   if (getApiBaseUrl() !== API_BASE_URL) throw new axios.CanceledError('Backend changed. Reload LANIS.');
 }
 export const agentsAPI = {
+  async pairChannel(token: string, channel: 'signal' | 'whatsapp', name: string, scopes: string[], mode: AccessMode) {
+    assertAgentBackend();
+    return (await apiClient.post(`/agents/channels/${channel}/pairing`, { name, scopes, mode }, { headers: { 'X-Session-Token': token } })).data;
+  },
+  async schedules(token: string, id: string): Promise<{ schedules: HostedSchedule[] }> {
+    assertAgentBackend();
+    return (await apiClient.get(`/agents/${encodeURIComponent(id)}/schedules`, { headers: { 'X-Session-Token': token } })).data;
+  },
+  async createSchedule(token: string, id: string, task: { prompt: string; cron: string; timezone: string }) {
+    assertAgentBackend();
+    return (await apiClient.post(`/agents/${encodeURIComponent(id)}/schedules`, task, { headers: { 'X-Session-Token': token } })).data;
+  },
+  async deleteSchedule(token: string, id: string, schedule: string) {
+    assertAgentBackend();
+    return (await apiClient.delete(`/agents/${encodeURIComponent(id)}/schedules/${encodeURIComponent(schedule)}`, { headers: { 'X-Session-Token': token } })).data;
+  },
   async list(token: string): Promise<AgentsOverview> {
     assertAgentBackend();
     return (await apiClient.get('/agents', { headers: { 'X-Session-Token': token } })).data;
