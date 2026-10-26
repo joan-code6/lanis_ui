@@ -2,6 +2,8 @@ import { authStorage, flushAuthStorage } from '../../platform/authStorage';
 import { saveBlob } from '../../platform/files';
 import AndroidSettings from '../android/AndroidSettings';
 import { androidPresentation } from '../../platform/native';
+import { capture } from '../../analytics/client';
+import { AnalyticsControls } from '../../analytics/Analytics';
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTheme, ThemeColor } from '../../contexts/ThemeContext';
@@ -63,6 +65,7 @@ import TimetableSettings from './TimetableSettings';
 import VertretungsplanSettings from './VertretungsplanSettings';
 import HomeworkSettings from './HomeworkSettings';
 import WhatsAppSettings from './WhatsAppSettings';
+import AgentsSettings from './AgentsSettings';
 import DashboardSettings from './DashboardSettings';
 import {
   DEFAULT_SIDEBAR_ORDER,
@@ -128,7 +131,7 @@ const pushSubscriptionToPayload = (subscription: PushSubscription): PushSubscrip
   };
 };
 
-type SettingsSection = 'home' | 'account' | 'appearance' | 'dashboard' | 'timetable' | 'homework' | 'vertretungsplan' | 'notifications' | 'whatsapp' | 'app' | 'sidebar' | 'android';
+type SettingsSection = 'home' | 'android' | 'agents' | 'account' | 'appearance' | 'dashboard' | 'timetable' | 'homework' | 'vertretungsplan' | 'notifications' | 'whatsapp' | 'app' | 'sidebar';
 
 const settingsSections: Array<{
   id: Exclude<SettingsSection, 'home'>;
@@ -180,6 +183,12 @@ const settingsSections: Array<{
     icon: BellAlertIcon,
   },
   {
+    id: 'agents',
+    title: 'Agents',
+    description: 'ChatGPT, Claude und weitere Agenten sicher mit LANIS verbinden.',
+    icon: SparklesIcon,
+  },
+  {
     id: 'whatsapp',
     title: 'WhatsApp-Assistent',
     description: 'Schulinfos im Chat.',
@@ -202,6 +211,7 @@ const settingsSections: Array<{
 
 const sectionMeta: Record<SettingsSection, { title: string; subtitle: string }> = {
   android: { title: 'Android und Widgets', subtitle: '' },
+  agents: { title: 'Agents', subtitle: 'ChatGPT, Claude und andere Agenten verbinden.' },
   home: { title: 'Einstellungen', subtitle: 'Passe dein Schulportal an.' },
   account: { title: 'Datenschutz und Konto', subtitle: 'Exportiere deine LANIS-Daten oder lösche dein LANIS-Konto.' },
   appearance: { title: 'Erscheinungsbild', subtitle: '' },
@@ -1007,6 +1017,7 @@ const Settings: React.FC = () => {
       if (!response.success || !response.preferences) {
         throw new Error('Benachrichtigungseinstellungen konnten nicht gespeichert werden.');
       }
+      void capture('settings_updated', { section: 'notifications' });
       const savedPreferences = { ...defaultNotificationPreferences, ...response.preferences };
       setNotificationPrefs(savedPreferences);
       setVertretungsplanClassesInput(savedPreferences.vertretungsplan_classes.join(', '));
@@ -1047,6 +1058,7 @@ const Settings: React.FC = () => {
         if (!response.success || !response.preferences) {
           throw new Error('Benachrichtigungseinstellungen konnten nicht aktiviert werden.');
         }
+        void capture('settings_updated', { section: 'notifications' });
         const savedPreferences = { ...defaultNotificationPreferences, ...response.preferences };
         setNotificationPrefs(savedPreferences);
         setVertretungsplanClassesInput(savedPreferences.vertretungsplan_classes.join(', '));
@@ -1166,9 +1178,10 @@ const Settings: React.FC = () => {
       {section === 'vertretungsplan' && <VertretungsplanSettings />}
       {section === 'whatsapp' && <WhatsAppSettings />}
       {section === 'sidebar' && <SidebarSettings isDemo={isDemo} />}
-      {section === 'account' && <AccountSettings />}
       {section === 'android' && <AndroidSettings />}
       {section === 'notifications' && androidPresentation && <AndroidSettings notificationsOnly />}
+      {section === 'agents' && <AgentsSettings />}
+      {section === 'account' && <div className="space-y-6"><AccountSettings /><AnalyticsControls /></div>}
 
       <div className="space-y-6">
         {section === 'appearance' && (

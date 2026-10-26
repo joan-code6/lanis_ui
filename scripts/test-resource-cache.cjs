@@ -26,6 +26,8 @@ vm.runInNewContext(ts.transpileModule(fs.readFileSync('src/hooks/useCachedResour
     if (name.endsWith('/AuthContext')) return { useAuth: () => auth };
     if (name.endsWith('/backendConfig')) return { getApiBaseUrl: () => backend };
     if (name.endsWith('/accountDataWrites')) return { captureAccountDataGeneration: () => loginGeneration };
+    if (name === '../analytics/experience') return { startExperience: () => () => {}, resourceLabel: () => 'other' };
+    if (name === '../analytics/client') return { capture: () => {}, analyticsEpoch: () => 0 };
     if (name.endsWith('/resourceCache')) return loaded.exports;
     if (name === 'react') return {};
     throw new Error(`Unexpected hook dependency: ${name}`);

@@ -37,6 +37,8 @@ jobs:
         run: npm ci --no-audit --no-fund
       - name: Run frontend regression checks
         run: npm test
+      - name: Verify analytics privacy and consent
+        run: npm run test:analytics
       - name: Cache public school data and rendered markup
         if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'schedule')
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
@@ -52,8 +54,25 @@ jobs:
         run: npm run build
         env:
           NODE_ENV: production
+          VITE_APP_RELEASE: ${{ github.sha }}
+          # Only trusted production builds may access the private source-map upload token.
+          POSTHOG_API_KEY: ${{ github.ref == 'refs/heads/main' && secrets.POSTHOG_API_KEY || '' }}
           SKIP_PRERENDER: ${{ github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'schedule') && '0' || '1' }}
           VITE_API_URL: https://lanis-backend.joancode.dev
+          # Production analytics only; PR previews never receive the project key.
+          VITE_POSTHOG_KEY: ${{ github.ref == 'refs/heads/main' && vars.VITE_POSTHOG_KEY || '' }}
+          VITE_POSTHOG_HOST: https://t.lanis.arg-server.de
+      - name: Confirm source maps are private
+        run: |
+          if find dist -name '*.map' -print -quit | grep -q .; then
+            echo '::error::Source maps must not enter the public deployment artifact'
+            exit 1
+          fi
+          if [ "$HAS_SOURCEMAP_TOKEN" != true ]; then
+            echo '::warning::POSTHOG_API_KEY is missing; source map upload is disabled'
+          fi
+        env:
+          HAS_SOURCEMAP_TOKEN: ${{ github.ref == 'refs/heads/main' && secrets.POSTHOG_API_KEY != '' }}
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: frontend-dist

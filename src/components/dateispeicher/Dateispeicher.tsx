@@ -1,4 +1,5 @@
 import { saveBlob } from '../../platform/files';
+import { capture } from '../../analytics/client';
 import { FileStorageSkeleton } from '../shared/ModuleLoadingSkeletons';
 import { useCachedResource } from '../../hooks/useCachedResource';
 import React, { FormEvent, useEffect, useRef, useState } from 'react';
@@ -162,6 +163,7 @@ const Dateispeicher: React.FC = () => {
   const isSearchMode = submittedQuery.length > 0;
 
   const openFolder = (folder: DateispeicherFolder) => {
+    void capture('file_folder_opened');
     cancelDownload();
     const existingIndex = breadcrumbs.findIndex(item => item.id === folder.id);
     const parentIndex = typeof folder.parent_folder_id === 'number'
@@ -194,6 +196,7 @@ const Dateispeicher: React.FC = () => {
     event.preventDefault();
     cancelDownload();
     const value = query.trim();
+    if (value) void capture('file_search_submitted');
     setSubmittedQuery(value);
     if (value === submittedQuery) refreshSearch();
   };
@@ -214,8 +217,10 @@ const Dateispeicher: React.FC = () => {
     try {
       const blob = await dateispeicherAPI.downloadFile(token, file.id, controller.signal);
       await saveBlob(blob, file.name);
+      void capture('file_download_succeeded');
     } catch (err) {
       if (axios.isCancel(err)) return;
+      void capture('file_download_failed');
       setDownloadError(err instanceof Error ? err.message : 'Die Datei konnte nicht heruntergeladen werden.');
     } finally {
       if (downloadControllerRef.current === controller) {

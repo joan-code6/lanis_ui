@@ -28,7 +28,7 @@ function validateFiles(directory) {
 validateFiles(assets);
 // PR previews use the SPA fallback; only production requires prerendered HTML.
 const requiredFiles = ['index.html', 'sw.js'];
-if (kind === 'production') requiredFiles.push('status/index.html');
+if (kind === 'production') requiredFiles.push('status.html');
 for (const file of requiredFiles) {
   const target = path.join(assets, file);
   if (!fs.existsSync(target) || !fs.statSync(target).isFile()) throw new Error(`Missing ${file}`);

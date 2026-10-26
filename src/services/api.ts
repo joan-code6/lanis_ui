@@ -1,6 +1,8 @@
 import { canUseOfflineTimetable } from '../platform/offline';
 import { isAndroid, LanisNative } from '../platform/native';
 import { authStorage, flushAuthStorage } from '../platform/authStorage';
+import { startApiRequest, finishApiRequest } from '../analytics/requestTelemetry';
+import { captureApiFailure } from '../analytics/apiErrors';
 import {
   SchoolListResponse,
   DistrictSchoolsResponse,
@@ -13,6 +15,7 @@ import {
   WahlenSubmission,
 } from '../types';
 import { getMockResponse } from '../components/demo/mockApi';
+import { agentLoginPath } from '../utils/agentBackend';
 import { DEFAULT_API_BASE_URL, getApiBaseUrl } from '../utils/backendConfig';
 import {
   clearSignedOutAccountData,
@@ -661,9 +664,10 @@ export const notificationsAPI = {
     return response.data;
   },
 
-  async registerSubscription(token: string, subscription: PushSubscriptionPayload): Promise<{ success: boolean }> {
+  async registerSubscription(token: string, subscription: PushSubscriptionPayload, signal?: AbortSignal): Promise<{ success: boolean }> {
     const response = await apiClient.post<{ success: boolean }>('/notifications/subscription', subscription, {
       headers: { 'X-Session-Token': token },
+      signal,
     });
     return response.data;
   },
@@ -1348,6 +1352,7 @@ apiClient.interceptors.request.use(
     }
 
     if (generation !== captureAccountDataGeneration()) throw new axios.CanceledError('Session changed');
+    startApiRequest(config);
     return config;
   },
   (error) => {
@@ -1360,11 +1365,14 @@ apiClient.interceptors.response.use(
   (response) => {
     if (response.config.method && response.config.method !== 'get') clearPrefetchedData();
     if (staleRequest(response.config)) throw new axios.CanceledError('Session changed');
+    finishApiRequest(response.config, response);
     return response;
   },
   async (error) => {
     if (staleRequest(error.config)) return Promise.reject(new axios.CanceledError('Session changed'));
-    if (['/logout', '/notifications/unsubscribe'].includes(error.config?.url || '')) return Promise.reject(error);
+    finishApiRequest(error.config, error.response, error.code);
+    captureApiFailure(error);
+    if (['/login', '/logout', '/notifications/unsubscribe'].includes(error.config?.url || '')) return Promise.reject(error);
     if (error.response?.status === 401 && localStorage.getItem('__demo_mode') !== '1') {
       if (isAccountDataDeletionInProgress()) return Promise.reject(error);
       // Don't try to refresh if the request was already to /auth/refresh
@@ -1425,7 +1433,7 @@ apiClient.interceptors.response.use(
       }
       if (captureAccountDataGeneration() === signedOutGeneration) {
         await flushAuthStorage();
-        if (captureAccountDataGeneration() === signedOutGeneration) window.location.href = '/login';
+        if (captureAccountDataGeneration() === signedOutGeneration) window.location.href = agentLoginPath(window.location.pathname + window.location.search);
       }
     }
     return Promise.reject(error);
@@ -1457,7 +1465,7 @@ export type FeedbackCategory = 'feature' | 'bug' | 'general';
 export const feedbackAPI = {
   async submit(
     token: string,
-    payload: { category: FeedbackCategory; title: string; details: string; page: string },
+    payload: { category: FeedbackCategory; title: string; details: string; page: string; support_context?: { release: string; page: string; request_ids: string[] } },
   ): Promise<{ success: boolean; id: number }> {
     const response = await apiClient.post<{ success: boolean; id: number }>(
       '/feedback',
@@ -1465,5 +1473,43 @@ export const feedbackAPI = {
       { headers: { 'X-Session-Token': token } },
     );
     return response.data;
+  },
+};
+
+export type AccessMode = "restricted" | "full" | "custom";
+export interface AccessPresets { restricted: string[]; full: string[] | null }
+export interface AgentScope { title: string; description: string; group?: string; sensitive?: boolean }
+export interface AgentConnection {
+  id: string; name: string; client_name: string; client_id: string; redirect_origin: string;
+  scopes: string[]; requested_scopes?: string[]; created_at: number; last_used_at: number | null; revoked: boolean;
+}
+export interface AgentsOverview { connections: AgentConnection[]; scopes: Record<string, AgentScope>; mcp_url: string; presets: AccessPresets }
+export interface AgentAuthorization {
+  client_name: string; client_id: string; redirect_origin: string; verified: boolean;
+  scopes: (AgentScope & { id: string })[]; username: string; school_id: string; presets: AccessPresets;
+}
+function assertAgentBackend() {
+  if (getApiBaseUrl() !== API_BASE_URL) throw new axios.CanceledError('Backend changed. Reload LANIS.');
+}
+export const agentsAPI = {
+  async list(token: string): Promise<AgentsOverview> {
+    assertAgentBackend();
+    return (await apiClient.get('/agents', { headers: { 'X-Session-Token': token } })).data;
+  },
+  async update(token: string, id: string, name: string, scopes: string[], mode: AccessMode = "custom") {
+    assertAgentBackend();
+    return (await apiClient.patch(`/agents/${encodeURIComponent(id)}`, { name, scopes, mode }, { headers: { 'X-Session-Token': token } })).data;
+  },
+  async revoke(token: string, id: string) {
+    assertAgentBackend();
+    return (await apiClient.delete(`/agents/${encodeURIComponent(id)}`, { headers: { 'X-Session-Token': token } })).data;
+  },
+  async authorization(token: string, request: string): Promise<AgentAuthorization> {
+    assertAgentBackend();
+    return (await apiClient.get(`/agents/authorization/${encodeURIComponent(request)}`, { headers: { 'X-Session-Token': token } })).data;
+  },
+  async decide(token: string, request: string, approve: boolean, scopes: string[], name: string, mode: AccessMode = "custom"): Promise<{ redirect_url: string }> {
+    assertAgentBackend();
+    return (await apiClient.post(`/agents/authorization/${encodeURIComponent(request)}`, { approve, scopes, name, mode }, { headers: { 'X-Session-Token': token } })).data;
   },
 };

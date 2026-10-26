@@ -13,7 +13,7 @@ export { DEFAULT_API_BASE_URL } from './utils/backendConfig';
 
 export const routes = [
   { path: '/', file: 'index.html' },
-  { path: '/status', file: 'status/index.html' },
+  { path: '/status', file: 'status.html' },
   { path: '/schulen', file: 'schulen.html' },
 ];
 

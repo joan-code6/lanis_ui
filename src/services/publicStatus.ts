@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { formatDuration } from '../utils/formatDuration';
 import { getApiBaseUrl } from '../utils/backendConfig';
 
 export type ServiceStatus = 'up' | 'degraded' | 'down' | 'unknown';
@@ -34,6 +35,7 @@ export interface PublicStatus {
   current: Observation & { stale: boolean };
   summary: Availability & { period_days: number };
   summary_windows?: Record<'24h' | '7d' | '30d' | '90d', Availability & { period_days: number; latency: { overall: { median: number | null; p95: number | null }; features: Record<string, { median: number | null; p95: number | null }> } }>;
+  history_windows?: Record<'24h' | '7d', (Availability & { start: string; end: string; status: ServiceStatus })[]>;
   daily: (Availability & { day: string; status: ServiceStatus })[];
   incidents: PublicIncident[];
   measurement: { interval_seconds: number; incident_interval_seconds: number; stale_after_seconds: number; period_start: string; period_end: string; description: string };
@@ -56,7 +58,7 @@ export function incidentsForDay(incidents: PublicIncident[], day: string): Publi
       ? incidentStart + 1
       : incident.resolved_at ? Date.parse(incident.resolved_at) : Date.now();
     return Number.isFinite(incidentStart) && Number.isFinite(incidentEnd)
-      && incidentStart < end && incidentEnd > start;
+      && incidentStart < end && Math.max(incidentStart + 1, incidentEnd) > start;
   });
 }
 export function getEffectiveDailyStatus(day: string, dailyStatus: ServiceStatus, incidents: PublicIncident[]): ServiceStatus {
@@ -124,4 +126,13 @@ export function usePublicStatus(enabled = true) {
     return () => { active = false; controller?.abort(); };
   }, [enabled, revision]);
   return { data, loading, error, status: freshStatus(data), refresh: () => setRevision(value => value + 1) };
+}
+
+export function formatIncidentRange(incident: PublicIncident): string {
+  const start = incident.started_at || incident.checked_at || null;
+  if (!incident.resolved_at) return `${formatTimestamp(start)} — ${Object.prototype.hasOwnProperty.call(incident, 'resolved_at') ? 'Noch aktiv' : 'Historische Messung'}`;
+  const sameDay = start && new Date(start).toLocaleDateString('de-DE') === new Date(incident.resolved_at).toLocaleDateString('de-DE');
+  const end = sameDay ? new Date(incident.resolved_at).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) : formatTimestamp(incident.resolved_at);
+  const seconds = incident.duration_seconds ?? (Date.parse(incident.resolved_at) - Date.parse(start || '')) / 1000;
+  return `${formatTimestamp(start)} — ${end} (${formatDuration(seconds)})`;
 }

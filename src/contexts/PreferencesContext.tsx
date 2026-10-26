@@ -1,3 +1,4 @@
+import { capture } from '../analytics/client';
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { useAuth } from './AuthContext';
 import { useTheme } from './ThemeContext';
@@ -271,6 +272,9 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode; sync?: b
 
   const updatePreferences = useCallback((patch: UserPreferencesPatch): Promise<boolean> => {
     const writeGeneration = captureAccountDataGeneration();
+    for (const section of ['appearance', 'dashboard', 'timetable', 'homework', 'sidebar'] as const) {
+      if (patch[section] && !patch.onboarding) void capture('settings_updated', { section });
+    }
     const next = mergePreferences(preferencesRef.current, patch);
     applyPreferences(next);
     writeCache(next, true, writeGeneration);

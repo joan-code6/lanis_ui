@@ -1,8 +1,10 @@
 import React from 'react';
+import { reportException } from '../../analytics/errors';
 import { ArrowPathIcon } from '@heroicons/react/24/outline';
 
 export default class AppErrorBoundary extends React.Component<React.PropsWithChildren, { failed: boolean }> {
   state = { failed: false };
+  componentDidCatch(error: Error) { void reportException(error, 'react'); }
   static getDerivedStateFromError() { return { failed: true }; }
   render() {
     if (!this.state.failed) return this.props.children;

@@ -9,6 +9,7 @@ import '@fontsource/jetbrains-mono/latin-400.css'
 import { isAndroid, androidPresentation } from './platform/native'
 import { restoreNativeSession } from './platform/authStorage'
 import { getApiBaseUrl } from './utils/backendConfig'
+import AnalyticsErrorBoundary from './analytics/AnalyticsErrorBoundary'
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import '@khmyznikov/pwa-install'
@@ -35,6 +36,8 @@ const bootObserver = new MutationObserver((mutations) => {
 })
 bootObserver.observe(appRoot, { childList: true })
 
+const ErrorBoundary = isAndroid ? AppErrorBoundary : AnalyticsErrorBoundary;
+
 async function start() {
   if (androidPresentation) document.documentElement.classList.add('android-app');
   if (isAndroid) {
@@ -52,7 +55,7 @@ async function start() {
     }
   }
   ReactDOM.createRoot(document.getElementById('root')!).render(
-    <React.StrictMode><AppErrorBoundary><App /></AppErrorBoundary></React.StrictMode>,
+    <React.StrictMode><ErrorBoundary><App /></ErrorBoundary></React.StrictMode>,
   );
 }
 void start();

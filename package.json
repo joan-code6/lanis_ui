@@ -9,6 +9,7 @@
     "clsx": "^2.0.0",
     "date-fns": "^2.30.0",
     "leaflet": "^1.9.4",
+    "posthog-js": "^1.438.21",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-helmet-async": "^3.0.0",
@@ -21,9 +22,11 @@
     "@capacitor/share": "^8.0.3",
     "@fontsource/jetbrains-mono": "^5.3.0",
     "@fontsource/outfit": "^5.3.0",
-    "@fortawesome/fontawesome-free": "^6.7.2"
+    "@fortawesome/fontawesome-free": "^6.7.2",
+    "web-vitals": "^6.2.3"
   },
   "devDependencies": {
+    "@posthog/rollup-plugin": "^1.6.2",
     "@types/leaflet": "^1.9.20",
     "@types/react": "^18.2.37",
     "@types/react-dom": "^18.2.15",
@@ -46,7 +49,7 @@
     "dev": "vite",
     "images:optimize": "node scripts/optimize-landing-images.mjs",
     "prebuild": "npm run images:optimize",
-    "test": "node scripts/test-resource-cache.cjs && node scripts/test-video-room.cjs && node scripts/test-safe-http-url.cjs && node scripts/test-download-filename.cjs && node scripts/test-account-data.cjs && node scripts/test-logout-cache.cjs && node scripts/test-timetable-colours.cjs && node scripts/test-timetable-exams.cjs && node scripts/test-timetable-refresh.cjs && node scripts/test-module-prefetch.cjs && node --test scripts/school-cache.test.mjs scripts/test-submission-transfers.cjs scripts/optimize-landing-images.test.mjs scripts/cloudflare/*.test.cjs",
+    "test": "node scripts/test-format-duration.cjs && node scripts/test-resource-cache.cjs && node scripts/test-video-room.cjs && node scripts/test-safe-http-url.cjs && node scripts/test-download-filename.cjs && node scripts/test-account-data.cjs && node scripts/test-logout-cache.cjs && node scripts/test-timetable-colours.cjs && node scripts/test-timetable-exams.cjs && node scripts/test-timetable-refresh.cjs && node scripts/test-module-prefetch.cjs && node --test scripts/test-agent-backend.cjs scripts/school-cache.test.mjs scripts/test-submission-transfers.cjs scripts/optimize-landing-images.test.mjs scripts/cloudflare/*.test.cjs",
     "build": "tsc && vite build",
     "postbuild": "node scripts/prerender.mjs",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
@@ -62,7 +65,9 @@
     "android:bundle": "npm run android:sync && node scripts/android-build.mjs bundle",
     "test:android": "tsx --test scripts/android.test.ts && node scripts/test-native-auth-storage.cjs && node scripts/test-native-files.cjs && node --test scripts/test-native-runtime.cjs",
     "test:account-data": "node scripts/test-account-data.cjs",
-    "android:verify": "npm run android:sync && node scripts/android-build.mjs verify"
+    "android:verify": "npm run android:sync && node scripts/android-build.mjs verify",
+    "test:analytics": "node --experimental-vm-modules scripts/test-analytics.mjs",
+    "test:push": "node --test scripts/test-browser-push.cjs"
   },
   "browserslist": {
     "production": [

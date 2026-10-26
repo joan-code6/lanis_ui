@@ -1,3 +1,4 @@
+import { notifyDemoCacheWrite } from '../../utils/demoMode';
 import { projectTimetableDays } from '../../utils/timetableView';
 import { demoModules, demoUser } from './demoData';
 
@@ -42,7 +43,9 @@ const readMockStorage = (key: string): unknown => {
 const writeMockStorage = (key: string, value: unknown) => {
   if (typeof window === 'undefined') return;
   try {
-    window.localStorage.setItem(key, JSON.stringify(value));
+    const serialized = JSON.stringify(value);
+    window.localStorage.setItem(key, serialized);
+    notifyDemoCacheWrite(key, serialized);
   } catch {
     // Demo mode still works when storage is blocked or unavailable.
   }
@@ -654,6 +657,24 @@ function getMockDashboardNotifications() {
 
 export function getMockResponse(url: string, method: string, config: any): { data: any; status: number } {
   const u = (url || '').replace(config?.baseURL || '', '').split('?')[0];
+
+  // Agent settings: illustrative connections only; no real OAuth grants.
+  if (u === '/agents' && method === 'get') return { status: 200, data: {
+    mcp_url: 'https://lanis.example/mcp',
+    scopes: {"schoolwork:read": {"title": "Unterricht lesen", "description": "Kurse und Hausaufgaben", "group": "Unterricht"}, "schoolwork:write": {"title": "Hausaufgaben ändern", "description": "Erledigt-Status ändern", "group": "Unterricht"}, "timetable:read": {"title": "Stundenplan lesen", "description": "Stunden und Vertretungen", "group": "Stundenplan"}, "timetable:write": {"title": "Stundenplan ändern", "description": "Eigene Stunden bearbeiten", "group": "Stundenplan"}, "calendar:read": {"title": "Kalender lesen", "description": "Schultermine", "group": "Kalender"}, "messages:read": {"title": "Nachrichten lesen", "description": "Übersicht und bereits geladene Inhalte", "group": "Nachrichten"}, "messages:mark-read": {"title": "Öffnen & als gelesen markieren", "description": "Neue Inhalte laden und als gelesen markieren", "group": "Nachrichten"}, "messages:write": {"title": "Nachrichten senden", "description": "Senden und antworten", "group": "Nachrichten"}, "files:read": {"title": "Dateien lesen", "description": "Dateispeicher und Dateiverteilung", "group": "Dateien"}, "submissions:read": {"title": "Abgaben lesen", "description": "Aufgaben und Abgabedetails", "group": "Abgaben"}, "submissions:write": {"title": "Abgaben ändern", "description": "Dateien hochladen und entfernen", "group": "Abgaben"}, "elections:read": {"title": "Wahlen lesen", "description": "Formulare und Optionen", "group": "Wahlen"}, "elections:write": {"title": "Wahlen abgeben", "description": "Auswahl verbindlich absenden", "group": "Wahlen"}, "profile:read": {"title": "Profil lesen", "description": "Schulprofil und Module", "group": "Profil"}, "grades:read": {"title": "Noten lesen", "description": "Leistungen eines Kurses", "group": "Sensible Daten", "sensitive": true}, "attendance:read": {"title": "Fehlzeiten lesen", "description": "Anwesenheit und Fehlstunden", "group": "Sensible Daten", "sensitive": true}, "preferences:read": {"title": "Einstellungen lesen", "description": "Persönliche LANIS-Einstellungen", "group": "Einstellungen"}, "preferences:write": {"title": "Einstellungen ändern", "description": "Persönliche LANIS-Einstellungen anpassen", "group": "Einstellungen"}},
+    presets: {"restricted": ["schoolwork:read", "timetable:read", "calendar:read", "messages:read", "files:read", "submissions:read", "elections:read", "profile:read", "preferences:read"], "full": ["schoolwork:read", "schoolwork:write", "timetable:read", "timetable:write", "calendar:read", "messages:read", "messages:mark-read", "messages:write", "files:read", "submissions:read", "submissions:write", "elections:read", "elections:write", "profile:read", "grades:read", "attendance:read", "preferences:read", "preferences:write"]},
+    connections: readMockStorage('lanis_demo_agents') ?? [
+      { id: 'demo-chatgpt', name: 'Mein Lernassistent', client_name: 'ChatGPT', client_id: 'demo', redirect_origin: 'chatgpt.com', requested_scopes: ["schoolwork:read", "schoolwork:write", "timetable:read", "timetable:write", "calendar:read", "messages:read", "messages:mark-read", "messages:write", "files:read", "submissions:read", "submissions:write", "elections:read", "elections:write", "profile:read", "grades:read", "attendance:read", "preferences:read", "preferences:write"], scopes: ["schoolwork:read", "timetable:read", "calendar:read", "messages:read", "files:read", "submissions:read", "elections:read", "profile:read", "preferences:read"], created_at: Date.now()/1000 - 86400*5, last_used_at: Date.now()/1000 - 600, revoked: false },
+      { id: 'demo-claude', name: 'Claude', client_name: 'Claude', client_id: 'demo-claude', redirect_origin: 'claude.ai', requested_scopes: ["schoolwork:read", "schoolwork:write", "timetable:read", "timetable:write", "calendar:read", "messages:read", "messages:mark-read", "messages:write", "files:read", "submissions:read", "submissions:write", "elections:read", "elections:write", "profile:read", "grades:read", "attendance:read", "preferences:read", "preferences:write"], scopes: ['schoolwork:read'], created_at: Date.now()/1000 - 86400, last_used_at: null, revoked: false },
+    ],
+  } };
+  if (u.startsWith('/agents/') && ['patch', 'delete'].includes(method)) {
+    const overview = getMockResponse('/agents', 'get', {});
+    const id = u.split('/')[2];
+    const payload = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
+    writeMockStorage('lanis_demo_agents', overview.data.connections.map((c: any) => c.id !== id ? c : method === 'delete' ? { ...c, revoked: true } : { ...c, ...payload }));
+    return { status: 200, data: { success: true } };
+  }
 
   // Auth
   if (u === '/benutzer' && method === 'get') { return { status: 200, data: { success: true, data: demoUser } }; }

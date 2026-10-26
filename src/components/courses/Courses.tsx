@@ -1,3 +1,4 @@
+import { capture } from '../../analytics/client';
 import { useCachedState } from '../../hooks/useCachedState';
 import { readPersonalCache, writePersonalCache } from '../../utils/accountDataWrites';
 import { CoursesGridSkeleton, CourseEntriesSkeleton } from '../shared/LoadingSkeletons';
@@ -535,7 +536,8 @@ const Courses: React.FC = () => {
     }
 
     try {
-      await coursesAPI.toggleHomework(token, courseId, entryId, newDone);
+      const result = await coursesAPI.toggleHomework(token, courseId, entryId, newDone);
+      if (result.success) void capture('homework_updated', { done: newDone });
     } catch (error) {
       console.error('Error toggling homework:', error);
     }
@@ -597,7 +599,7 @@ const Courses: React.FC = () => {
               role="tab"
               aria-selected={isActive}
               aria-controls={`course-tabpanel-${tab.id}`}
-              onClick={() => setCourseDetailTab(tab.id)}
+              onClick={() => { if (courseDetailTab !== tab.id) void capture('course_tab_selected', { tab: tab.id }); setCourseDetailTab(tab.id); }}
               className={clsx(
                 'flex min-w-[7rem] flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
                 isActive
@@ -639,7 +641,7 @@ const Courses: React.FC = () => {
                 </select>
 
                 <button
-                  onClick={() => setShowOnlyHomework(!showOnlyHomework)}
+                  onClick={() => { void capture('course_filter_changed', { homework_only: !showOnlyHomework }); setShowOnlyHomework(!showOnlyHomework); }}
                   className={clsx(
                     "text-xs sm:text-sm px-2.5 py-1.5 rounded-lg transition-colors whitespace-nowrap",
                     showOnlyHomework
@@ -661,7 +663,7 @@ const Courses: React.FC = () => {
 
                 <div className="flex border border-surface-300 dark:border-surface-600 rounded-lg overflow-hidden">
                   <button
-                    onClick={() => setDetailViewMode('cards')}
+                    onClick={() => { if (detailViewMode !== 'cards') void capture('course_view_changed', { view: 'cards' }); setDetailViewMode('cards'); }}
                     className={clsx(
                       "p-2 transition-colors",
                       detailViewMode === 'cards'
@@ -673,7 +675,7 @@ const Courses: React.FC = () => {
                     <Squares2X2Icon className="h-4 w-4" />
                   </button>
                   <button
-                    onClick={() => setDetailViewMode('timeline')}
+                    onClick={() => { if (detailViewMode !== 'timeline') void capture('course_view_changed', { view: 'timeline' }); setDetailViewMode('timeline'); }}
                     className={clsx(
                       "p-2 transition-colors",
                       detailViewMode === 'timeline'
@@ -768,7 +770,7 @@ const Courses: React.FC = () => {
               <div
                 key={course.book_id}
                 className="card card-hover"
-                onClick={() => navigate(`${basePath}/courses/${course.book_id}`)}
+                onClick={() => { void capture('course_opened', { source: 'course_list' }); navigate(`${basePath}/courses/${course.book_id}`); }}
               >
                 <div className="flex items-center mb-4">
                   <div className="h-12 w-12 bg-primary-600 rounded-lg flex items-center justify-center">

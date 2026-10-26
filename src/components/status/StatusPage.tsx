@@ -1,31 +1,29 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { Link } from 'react-router-dom';
 import AppIcon from '../AppIcon';
 import SEO from '../seo/SEO';
 import {
   formatPercent,
   formatTimestamp,
+  formatIncidentRange,
   getEffectiveDailyStatus,
   incidentsForDay,
   statusColors,
   statusLabels,
   PublicIncident,
   PublicStatus,
-  ServiceStatus,
   usePublicStatus,
 } from '../../services/publicStatus';
 import { getCustomBackendUrl } from '../../utils/backendConfig';
 
-type HistoryDay = { day: string; sourceDay: string; status: ServiceStatus };
-
-function formatIncidentDay(day: string): string {
-  const timestamp = Date.parse(`${day}T00:00:00Z`);
-  return Number.isFinite(timestamp)
-    ? new Date(timestamp).toLocaleDateString('de-DE', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' })
-    : day;
-}
-
 export default function StatusPage() {
+  const tooltipPrefix = useId();
+  const positionTooltip = (element: HTMLElement) => {
+    const rect = element.getBoundingClientRect();
+    const width = Math.min(288, document.documentElement.clientWidth - 16);
+    const left = Math.max(8, Math.min(rect.left + rect.width / 2 - width / 2, document.documentElement.clientWidth - width - 8));
+    element.style.setProperty('--tooltip-left', `${left - rect.left}px`);
+  };
   const [windowKey, setWindowKey] = useState<'24h' | '7d' | '30d' | '90d'>('90d');
   const { data, loading, error, status, refresh } = usePublicStatus();
   const customBackend = getCustomBackendUrl();
@@ -50,18 +48,18 @@ export default function StatusPage() {
   } as const;
   const selectedWindowLabel = windowLabels[windowKey];
   const selectedDays = windowDays[windowKey];
-  const days: HistoryDay[] = (data?.daily.slice(-selectedDays)
-    ?? Array.from({ length: selectedDays }, (_, index) => ({ day: String(index), status: 'unknown' as const })))
-    .map(day => ({ ...day, sourceDay: day.day }));
-  const latestDay: HistoryDay = days[0] ?? { day: 'unknown', sourceDay: 'unknown', status: 'unknown' };
-  const historyDays: HistoryDay[] = windowKey === '24h'
-    ? Array.from({ length: 48 }, (_, index) => ({ ...latestDay, day: `${latestDay.day}-${index}` }))
-    : windowKey === '7d'
-      ? days.flatMap(day => Array.from({ length: 4 }, (_, index) => ({ ...day, day: `${day.day}-${index}` })))
-      : days;
-  const statusForHistoryDay = (day: HistoryDay): ServiceStatus => {
-    return getEffectiveDailyStatus(day.sourceDay, day.status, data?.incidents ?? []);
-  };
+  const shortRange = windowKey === '24h' || windowKey === '7d';
+  const historyDays = shortRange
+    ? (data?.history_windows?.[windowKey] ?? Array.from({ length: windowKey === '24h' ? 48 : 28 }, () => ({ start: '', end: '', status: 'unknown' as const, uptime_percent: null, coverage_percent: 0 })))
+      .map((bucket, index) => ({ key: String(index), status: bucket.status, incidents: (data?.incidents ?? []).filter(incident => {
+        const start = Date.parse(incident.started_at || incident.checked_at || '');
+        const end = !Object.prototype.hasOwnProperty.call(incident, 'resolved_at')
+          ? start + 1
+          : incident.resolved_at ? Date.parse(incident.resolved_at) : Date.parse(data?.generated_at || '');
+        return start < Date.parse(bucket.end) && Math.max(start + 1, end) > Date.parse(bucket.start);
+      }), label: bucket.start ? `${formatTimestamp(bucket.start)} — ${formatTimestamp(bucket.end)} · Verfügbarkeit ${formatPercent(bucket.uptime_percent)} · Abdeckung ${formatPercent(bucket.coverage_percent)}` : 'Keine Zeitverlaufsdaten' }))
+    : (data?.daily.slice(-selectedDays) ?? Array.from({ length: selectedDays }, (_, index) => ({ day: String(index), status: 'unknown' as const })))
+      .map(day => ({ key: day.day, status: getEffectiveDailyStatus(day.day, day.status, data?.incidents ?? []), incidents: incidentsForDay(data?.incidents ?? [], day.day), label: day.day }));
   const services = [
     { name: 'LANIS', state: data ? 'up' as const : 'unknown' as const },
     { name: 'Schulportal Hessen', state: status },
@@ -166,53 +164,59 @@ export default function StatusPage() {
 
             <div
               className={`mt-6 grid w-full items-center ${historyGridClasses[windowKey]}`}
-              aria-label={`Tagesstatus der letzten ${selectedWindowLabel}; Balken zeigen den jeweiligen Tagesstatus`}
+              aria-label={`Verfügbarkeit der letzten ${selectedWindowLabel}; ${shortRange ? "Balken zeigen einzelne Zeitintervalle" : "Kreise zeigen einzelne Tage"}`}
               data-status-history
             >
-              {historyDays.map((day, index) => {
-                const dayStatus = statusForHistoryDay(day);
-                const dayIncidents = dayStatus === 'degraded' || dayStatus === 'down'
-                  ? incidentsForDay(data?.incidents ?? [], day.sourceDay)
-                  : [];
-                const tooltipId = `incident-${day.day}`;
-                const tooltipPosition = index === 0
-                  ? 'left-0 translate-x-0 sm:left-1/2 sm:-translate-x-1/2'
-                  : index === historyDays.length - 1
-                    ? 'right-0 left-auto translate-x-0 sm:left-1/2 sm:right-auto sm:-translate-x-1/2'
-                    : 'left-1/2 -translate-x-1/2';
-                return (
+              {historyDays.map((day, index) => (
+                <span key={day.key} tabIndex={0}
+                  onMouseEnter={event => positionTooltip(event.currentTarget)}
+                  onFocus={event => positionTooltip(event.currentTarget)}
+                  aria-describedby={`${tooltipPrefix}-${windowKey}-${index}`} aria-label={`${day.label}: ${statusLabels[day.status]}`}
+                  className={`group relative min-w-0 outline-none ${historyBubbleClasses[windowKey]} ${statusColors[day.status]} focus-visible:ring-2 focus-visible:ring-primary-500`}>
                   <span
-                    key={day.day}
-                    tabIndex={0}
-                    aria-label={`${day.sourceDay}: ${statusLabels[dayStatus]}`}
-                    aria-describedby={dayIncidents.length ? tooltipId : undefined}
-                    className={`group relative min-w-0 outline-none ${historyBubbleClasses[windowKey]} ${statusColors[dayStatus]} transition-transform hover:scale-110 focus-visible:z-10 focus-visible:scale-110 focus-visible:ring-2 focus-visible:ring-primary-500`}
+                    id={`${tooltipPrefix}-${windowKey}-${index}`}
+                    role="tooltip"
+                    className="pointer-events-auto absolute bottom-full left-[var(--tooltip-left,0px)] z-20 hidden w-72 max-w-[calc(100vw-1rem)] cursor-text select-text rounded-xl border border-surface-200 bg-white p-3 text-left text-xs text-surface-700 shadow-xl group-hover:block group-focus:block dark:border-surface-700 dark:bg-surface-900 dark:text-surface-200"
                   >
-                    {dayIncidents.length > 0 && (
-                      <span id={tooltipId} role="tooltip" className={`pointer-events-auto absolute bottom-full z-20 mb-0 hidden w-72 cursor-text select-text rounded-xl border border-surface-200 bg-white p-3 text-left text-xs text-surface-700 shadow-xl group-hover:block group-focus:block dark:border-surface-700 dark:bg-surface-900 dark:text-surface-200 ${tooltipPosition}`}>
-                        <span className="mb-3 block text-[10px] font-semibold uppercase tracking-[0.12em] text-surface-400">Störung · {formatIncidentDay(day.sourceDay)}</span>
-                        <span className="space-y-3">
-                          {dayIncidents.map((incident, index) => (
-                            <span key={`${incident.started_at}-${index}`} className="block border-t border-surface-100 pt-3 first:border-0 first:pt-0 dark:border-surface-800">
-                              <span className="flex items-center gap-2 font-semibold text-surface-900 dark:text-surface-100">
-                                <span className={`h-2 w-2 shrink-0 rounded-full ${statusColors[incident.status]}`} />
-                                {statusLabels[incident.status]}
-                              </span>
-                              <span className="mt-1 block text-[11px] text-surface-500">{formatTimestamp(incident.started_at || incident.checked_at || null)} – {Object.prototype.hasOwnProperty.call(incident, 'resolved_at') ? incident.resolved_at ? formatTimestamp(incident.resolved_at) : 'Noch aktiv' : 'Historische Messung'}</span>
-                              <span className="mt-2 flex flex-wrap gap-1.5">
-                                {incident.affected_features?.map(feature => <span key={feature} className="rounded-md bg-surface-100 px-1.5 py-0.5 text-[10px] font-medium text-surface-600 dark:bg-surface-800 dark:text-surface-300">{feature === 'login' ? 'Anmeldung' : 'Module'}</span>)}
-                                <span className="rounded-md bg-surface-100 px-1.5 py-0.5 text-[10px] text-surface-500 dark:bg-surface-800 dark:text-surface-400">{incident.checks ?? 1} bestätigte Checks</span>
-                              </span>
-                              {incident.error && <code className="mt-2 block break-words rounded-md bg-surface-50 px-2 py-1 text-[10px] text-surface-500 dark:bg-surface-950 dark:text-surface-400">{incident.error}</code>}
-                            </span>
-                          ))}
-                        </span>
+                    <span className="mb-3 block text-[10px] font-semibold uppercase tracking-[0.12em] text-surface-400">
+                      {shortRange
+                        ? day.label.split(' · ')[0]
+                        : new Date(`${day.key}T00:00:00Z`).toLocaleDateString('de-DE', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })}
+                    </span>
+                    {shortRange && <span className="mb-3 block text-[11px] text-surface-500">{day.label.split(' · ').slice(1).join(' · ') || 'Keine Zeitverlaufsdaten'}</span>}
+                    {day.incidents.length === 0 && (
+                      <span className="flex items-center gap-2 font-semibold text-surface-900 dark:text-surface-100">
+                        <span className={`h-2 w-2 shrink-0 rounded-full ${statusColors[day.status]}`} />
+                        {statusLabels[day.status]}
                       </span>
                     )}
+                    <span className="space-y-3">
+                      {day.incidents.map((incident, incidentIndex) => (
+                        <span key={incidentIndex} className="block border-t border-surface-100 pt-3 first:border-0 first:pt-0 dark:border-surface-800">
+                          <span className="flex items-center gap-2 font-semibold text-surface-900 dark:text-surface-100">
+                            <span className={`h-2 w-2 shrink-0 rounded-full ${statusColors[incident.status]}`} />
+                            {statusLabels[incident.status]}
+                          </span>
+                          <span className="mt-1 block text-[11px] text-surface-500">{formatIncidentRange(incident)}</span>
+                          <span className="mt-2 flex flex-wrap gap-1.5">
+                            {incident.affected_features?.map(feature => (
+                              <span key={feature} className="rounded-md bg-surface-100 px-1.5 py-0.5 text-[10px] font-medium text-surface-600 dark:bg-surface-800 dark:text-surface-300">{feature === 'login' ? 'Anmeldung' : 'Module'}</span>
+                            ))}
+                            <span className="rounded-md bg-surface-100 px-1.5 py-0.5 text-[10px] text-surface-500 dark:bg-surface-800 dark:text-surface-400">{incident.checks ?? 1} bestätigte Checks</span>
+                          </span>
+                        </span>
+                      ))}
+                    </span>
                   </span>
-                );
-              })}
+                </span>
+              ))}
             </div>
+
+            <p className="mt-3 text-xs text-surface-500">
+              {windowKey === '24h' ? 'Je Balken: 30 Minuten' : windowKey === '7d' ? 'Je Balken: 6 Stunden' : 'Je Kreis: 1 Tag'}
+              {' · '}Abdeckung {formatPercent(windowSummary?.coverage_percent ?? null)}
+              {shortRange && data && !data.history_windows?.[windowKey] && ' · Keine Zeitverlaufsdaten verfügbar'}
+            </p>
 
             <div className="mt-5 flex flex-wrap gap-4 text-xs text-surface-500">
               {Object.entries(statusLabels).map(([key, label]) => (
@@ -233,11 +237,9 @@ export default function StatusPage() {
             ) : (
               <ul className="mt-3 divide-y">
                 {data.incidents.slice(0, 10).map((incident, index) => {
-                  const hasResolution = Object.prototype.hasOwnProperty.call(incident, 'resolved_at');
-                  const isOngoing = hasResolution && incident.resolved_at === null;
                   return (
                   <li key={`${incident.started_at}-${index}`} className="flex flex-wrap items-center justify-between gap-2 py-4 text-sm">
-                    <div><time className="text-surface-500">{formatTimestamp(incident.started_at || incident.checked_at || null)}</time><p className="mt-1 text-xs text-surface-500">{incident.resolved_at ? `Resolved ${formatTimestamp(incident.resolved_at)}` : isOngoing ? 'Ongoing' : 'Historical observation'} · {incident.checks ?? 1} confirmed checks{incident.affected_features?.length ? ` · ${incident.affected_features.map(name => name === 'login' ? 'Anmeldung' : 'Module').join(', ')}` : ''}</p></div>
+                    <div><time className="text-surface-500">{formatIncidentRange(incident)}</time><p className="mt-1 text-xs text-surface-500">Bestätigte Checks: {incident.checks ?? 1} · Betroffene Dienste: {incident.affected_features?.length ? incident.affected_features.map(name => name === 'login' ? 'Anmeldung' : 'Module').join(', ') : 'Unbekannt'}</p></div>
                     <span className="flex items-center gap-2">
                       <span className={`h-2 w-2 rounded-full ${statusColors[incident.status]}`} />
                       {incident.resolved_at ? 'Behoben' : statusLabels[incident.status]}

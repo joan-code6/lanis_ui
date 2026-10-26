@@ -1,3 +1,4 @@
+import { capture } from '../../analytics/client';
 import { ConversationSkeleton } from '../shared/ModuleLoadingSkeletons';
 import { useCachedState } from '../../hooks/useCachedState';
 import { readPersonalCache, writePersonalCache } from '../../utils/accountDataWrites';
@@ -47,9 +48,9 @@ const Messages: React.FC = () => {
   const [searchParams] = useSearchParams();
   const [messages, setMessages, hasMessages] = useCachedState<MessageHeader[]>('messages', () => {
     try {
-      const cached = isDemoRoute() ? null : readPersonalCache('messages_cache');
+      const cached = isDemoRoute() ? null : readPersonalCache('messages_cache_v2');
       const parsed: unknown = cached ? JSON.parse(cached) : null;
-      return Array.isArray(parsed) ? parsed.map((message: MessageHeader) => ({ ...message, Betreff: htmlToText(message.Betreff) })) : [];
+      return Array.isArray(parsed) ? parsed : [];
     } catch { return []; }
   });
   const [isUpdating, setIsUpdating] = useState(false);
@@ -184,8 +185,8 @@ const Messages: React.FC = () => {
         setMessages(resolved);
         if (canWriteAccountData(writeGeneration)) {
           const cachedMessages = JSON.stringify(resolved);
-          notifyDemoCacheWrite('messages_cache', cachedMessages);
-          writePersonalCache('messages_cache', cachedMessages, writeGeneration);
+          notifyDemoCacheWrite('messages_cache_v2', cachedMessages);
+          writePersonalCache('messages_cache_v2', cachedMessages, writeGeneration);
         }
       } else {
         setError('Fehler beim Laden der Nachrichten.');
@@ -221,6 +222,7 @@ const Messages: React.FC = () => {
           WeitereEmpfaenger: displayName(msg.WeitereEmpfaenger),
         }));
         setConversations(current => ({ ...current, [conversationId]: transformedMessages }));
+        void capture('message_read');
         setError('');
       } else {
         if (response && typeof response === 'object' && 'error' in response) {
@@ -300,6 +302,7 @@ const Messages: React.FC = () => {
       };
       const response = await messagesAPI.sendMessage(token, messageRequest);
       if (response.success) {
+        void capture('message_sent');
         setShowCompose(false);
         setComposeData({ recipients: [], subject: '', content: '' });
         await loadMessages();
@@ -323,6 +326,7 @@ const Messages: React.FC = () => {
       };
       const response = await messagesAPI.replyMessage(token, replyRequest);
       if (response.success) {
+        void capture('message_replied');
         setReplyBody('');
         await loadConversation(selectedConversation);
       }

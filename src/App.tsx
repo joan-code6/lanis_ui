@@ -1,7 +1,9 @@
+import Analytics from './analytics/Analytics';
 import React from 'react';
 import AndroidRuntime from './components/android/AndroidRuntime';
 import { isAndroid } from './platform/native';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import BrowserPushRuntime from './components/BrowserPushRuntime';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
@@ -33,6 +35,8 @@ import StatusPage from './components/status/StatusPage';
 import Videokonferenz from './components/videokonferenz/Videokonferenz';
 import SchoolPage from './components/schools/SchoolPage';
 import SchoolDirectoryPage from './components/schools/SchoolDirectoryPage';
+import AgentAuthorization from './components/agents/AgentAuthorization';
+import { agentLoginPath, agentReturnPath } from './utils/agentBackend';
 
 const LandingRoot: React.FC = () => {
   const { isAuthenticated } = useAuth();
@@ -44,16 +48,19 @@ const LandingRoot: React.FC = () => {
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated } = useAuth();
+  const location = useLocation();
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to={agentLoginPath(location.pathname + location.search)} replace />;
   }
   return <>{children}</>;
 };
 
 const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated } = useAuth();
+  const location = useLocation();
+  const returnTo = agentReturnPath(new URLSearchParams(location.search).get('returnTo'));
   if (isAuthenticated) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to={returnTo || "/dashboard"} replace />;
   }
   return <>{children}</>;
 };
@@ -77,10 +84,13 @@ const AppRoutes: React.FC = () => {
   return (
     <Router>
       <AndroidRuntime />
+      <Analytics />
+      <BrowserPushRuntime />
       <Routes>
         <Route path="/" element={<LandingRoot />} />
         <Route path="/landing" element={<Navigate to="/" replace />} />
         <Route path="/status" element={<StatusPage />} />
+        <Route path="/agents/authorize" element={<AgentAuthorization />} />
         <Route path="/impressum" element={<Impressum />} />
         <Route path="/privacy-policy" element={<PrivacyPolicy />} />
         <Route path="/set-custom-backend" element={<CustomBackend />} />
