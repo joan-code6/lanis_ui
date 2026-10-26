@@ -1,3 +1,4 @@
+import { capture } from '../../analytics/client';
 import React, { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { format, isToday } from 'date-fns';
 import { de } from 'date-fns/locale';
@@ -90,7 +91,10 @@ const Timetable: React.FC = () => {
   }, [loading, planMode, visibleDays]);
 
   const openCourse = (lesson: TimetableLesson) => {
-    if (lesson.course_id) navigate(`${basePath}/courses/${lesson.course_id}`);
+    if (lesson.course_id) {
+      void capture('course_opened', { source: 'timetable' });
+      navigate(`${basePath}/courses/${lesson.course_id}`);
+    }
   };
 
   return (
@@ -115,14 +119,20 @@ const Timetable: React.FC = () => {
             label="Plan"
             options={[['personal', 'Persönlich'], ['all', 'Gesamtplan']]}
             value={planMode}
-            onChange={value => setPlanMode(value as 'personal' | 'all')}
+            onChange={value => {
+              if (value !== planMode) void capture('timetable_scope_changed', { scope: value });
+              setPlanMode(value as 'personal' | 'all');
+            }}
           />
           {timetableViewMode === 'week' && hasAlternatingWeeks && (
             <SegmentedControl
               label="Schulwoche"
               options={[['A', 'A-Woche'], ['B', 'B-Woche']]}
               value={selectedWeek || displayedWeekTypes[0] || activeWeek || 'A'}
-              onChange={value => setSelectedWeek(value as 'A' | 'B')}
+              onChange={value => {
+                if (value !== (selectedWeek || displayedWeekTypes[0] || activeWeek || 'A')) void capture('timetable_week_changed');
+                setSelectedWeek(value as 'A' | 'B');
+              }}
             />
           )}
         </div>

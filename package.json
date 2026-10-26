@@ -9,12 +9,15 @@
     "clsx": "^2.0.0",
     "date-fns": "^2.30.0",
     "leaflet": "^1.9.4",
+    "posthog-js": "^1.438.21",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-helmet-async": "^3.0.0",
-    "react-router-dom": "^7.18.3"
+    "react-router-dom": "^7.18.3",
+    "web-vitals": "^6.2.3"
   },
   "devDependencies": {
+    "@posthog/rollup-plugin": "^1.6.2",
     "@types/leaflet": "^1.9.20",
     "@types/react": "^18.2.37",
     "@types/react-dom": "^18.2.15",
@@ -41,6 +44,7 @@
     "preview": "vite preview",
     "deploy": "wrangler deploy",
     "deploy:preview": "wrangler versions upload",
+    "test:analytics": "node --experimental-vm-modules scripts/test-analytics.mjs",
     "test:push": "node --test scripts/test-browser-push.cjs"
   },
   "browserslist": {

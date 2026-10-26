@@ -31,7 +31,7 @@ const DEMO_STORAGE_KEYS = [
   'lanis_demo_agents',
   'pinned_modules',
   'profile_cache',
-  'messages_cache',
+  'messages_cache', 'messages_cache_v2',
   'courses_cache',
   'username_cache',
   'dsb_plan_cache_v2',
@@ -47,7 +47,7 @@ const DEMO_OWNED_STORAGE_KEYS = [
   'lanis_demo_agents',
   'pinned_modules',
   'profile_cache',
-  'messages_cache',
+  'messages_cache', 'messages_cache_v2',
   'courses_cache',
   'username_cache',
   'dsb_plan_cache_v2',
@@ -112,7 +112,7 @@ const seedLocalStorage = () => {
   localStorage.setItem('pinned_modules', JSON.stringify(demoPinnedModules));
   localStorage.setItem('profile_cache', JSON.stringify(demoUser));
   localStorage.setItem('modules_cache:demo%3Amia.keller', JSON.stringify(demoModules));
-  ['messages_cache', 'courses_cache', 'username_cache', 'dsb_plan_cache_v2'].forEach(key => localStorage.removeItem(key));
+  ['messages_cache', 'messages_cache_v2', 'courses_cache', 'username_cache', 'dsb_plan_cache_v2'].forEach(key => localStorage.removeItem(key));
   DEMO_STORAGE_KEYS.forEach(key => valuesOwnedByDemo.set(key, localStorage.getItem(key)));
 
   return async () => {

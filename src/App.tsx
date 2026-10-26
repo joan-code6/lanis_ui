@@ -1,3 +1,4 @@
+import Analytics from './analytics/Analytics';
 import React from 'react';
 import BrowserPushRuntime from './components/BrowserPushRuntime';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
@@ -81,6 +82,7 @@ const PreferencesGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
 const AppRoutes: React.FC = () => {
   return (
     <Router>
+      <Analytics />
       <BrowserPushRuntime />
       <Routes>
         <Route path="/" element={<LandingRoot />} />

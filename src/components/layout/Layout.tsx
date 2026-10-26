@@ -1,4 +1,6 @@
 import React from 'react';
+import { capture, analyticsEnabled } from '../../analytics/client';
+import { supportContext } from '../../analytics/supportContext';
 import { modulePreloadOrder, prefetchModule } from '../../utils/modulePrefetch';
 import { useAuth } from '../../contexts/AuthContext';
 import { usePreferences } from '../../contexts/PreferencesContext';
@@ -508,6 +510,7 @@ function FeedbackDialog({ token, onClose, openerRef }: {
   openerRef: { current: HTMLButtonElement | null };
 }) {
   const dialogRef = React.useRef<HTMLElement>(null);
+  const [attachContext, setAttachContext] = React.useState(false);
   const [category, setCategory] = React.useState<FeedbackCategory>('feature');
   const [summary, setSummary] = React.useState('');
   const [details, setDetails] = React.useState('');
@@ -583,11 +586,13 @@ function FeedbackDialog({ token, onClose, openerRef }: {
         title: summary.trim(),
         details: details.trim(),
         page: window.location.pathname,
+        ...(attachContext ? { support_context: supportContext() } : {}),
       });
       if (!response.success) {
         setMessage('Feedback konnte nicht gesendet werden. Bitte versuche es erneut.');
         return;
       }
+      void capture('feedback_submitted', { category, context_attached: attachContext && analyticsEnabled() });
       setIsSubmitted(true);
     } catch (submitError) {
       setMessage(axios.isAxiosError(submitError) && typeof submitError.response?.data?.detail === 'string'
@@ -648,6 +653,7 @@ function FeedbackDialog({ token, onClose, openerRef }: {
             Beschreibung
             <textarea value={details} onChange={(event) => setDetails(event.target.value)} required rows={5} maxLength={5000} placeholder="Beschreibe deine Idee oder was passiert ist …" className="input mt-1.5 w-full resize-y" />
           </label>
+          {analyticsEnabled() && <label className="flex items-start gap-3 text-sm text-surface-600 dark:text-surface-400"><input type="checkbox" checked={attachContext} onChange={event => setAttachContext(event.target.checked)} className="mt-1" /><span>Technischen Kontext anhängen: App-Version, bereinigte Seite und bis zu zehn aktuelle Anfragekennungen. Dadurch können wir den Fehler zuordnen. Inhalte und Zugangsdaten werden nicht angehängt.</span></label>}
           {message && <p role="status" className="text-sm text-surface-600 dark:text-surface-300">{message}</p>}
           <div className="flex justify-end gap-2 pt-1">
             <button type="button" onClick={onClose} disabled={isSubmitting} className="btn btn-secondary disabled:cursor-not-allowed disabled:opacity-60">Abbrechen</button>

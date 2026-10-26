@@ -1,3 +1,5 @@
+import { getApiBaseUrl } from '../utils/backendConfig';
+import { capture, configureAccountAnalytics, resetAnalyticsIdentity } from '../analytics/client';
 import { clearResourceCache } from '../utils/resourceCache';
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { AuthContextType, LoginRequest, User } from '../types';
@@ -161,6 +163,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         return;
       }
       clearResourceCache();
+      resetAnalyticsIdentity();
       setToken(null);
       setUser(null);
       setIsAuthenticated(false);
@@ -172,6 +175,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const login = async (credentials: LoginRequest): Promise<boolean> => {
     if (hasAccountDataDeletionMarker()) return false;
+    void capture('login_started');
     let writeGeneration = captureAccountDataGeneration();
     try {
       const response = await authAPI.login(credentials);
@@ -207,6 +211,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         }
         return false;
       }
+      configureAccountAnalytics(response.access_token, getApiBaseUrl(), `${response.school_id}:${response.username.toLowerCase()}`, authAPI.getValidSessionToken);
+      void capture('login_succeeded');
       writeGeneration = captureAccountDataGeneration();
 
       try {
@@ -233,6 +239,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       return true;
     } catch (error) {
       console.error('Login failed:', error);
+      void capture('login_failed');
       return false;
     }
   };
@@ -311,6 +318,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } finally {
       // A later login owns its own state; delayed remote logout must not clear it.
       if (captureAccountDataGeneration() === clearedGeneration && shouldClearStorage()) {
+        void capture('logout_completed').finally(resetAnalyticsIdentity);
         setToken(null);
         setUser(null);
         setIsAuthenticated(false);
