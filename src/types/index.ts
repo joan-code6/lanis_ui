@@ -470,9 +470,15 @@ export interface CourseEntry {
   homework_done: boolean;
 }
 
+export type CourseFolder = Pick<CourseEntry,
+  'book_id' | 'name' | 'course_link' | 'teacher_full_name' | 'teacher_short'
+>;
+
 export interface CoursesResponse {
   success: boolean;
   entries: CourseEntry[];
+  courses?: CourseFolder[];
+  course_count?: number;
   entry_count: number;
 }
 

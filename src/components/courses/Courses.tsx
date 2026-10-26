@@ -40,6 +40,7 @@ import {
 import { format, parseISO } from 'date-fns';
 import { de } from 'date-fns/locale';
 import clsx from 'clsx';
+import { getOverviewCourses } from '../../utils/courseOverview';
 import { isDemoRoute } from '../../utils/demoMode';
 
 type ViewMode = 'overview' | 'course-detail' | 'weekly' | 'submissions' | 'entry-detail';
@@ -328,8 +329,9 @@ const Courses: React.FC = () => {
       const response = await coursesAPI.getCourses(token, signal);
       if (signal?.aborted) return;
       if (response.success) {
-        setCourses(response.entries);
-        localStorage.setItem('courses_cache', JSON.stringify(response.entries));
+        const overviewCourses = getOverviewCourses(response);
+        setCourses(overviewCourses);
+        localStorage.setItem('courses_cache', JSON.stringify(overviewCourses));
       } else {
         setError('Fehler beim Laden der Kurse.');
       }
@@ -358,9 +360,10 @@ const Courses: React.FC = () => {
           const overview = await coursesAPI.getCourses(token, signal);
           if (signal?.aborted) return;
           if (overview.success) {
-            setCourses(overview.entries);
-            localStorage.setItem('courses_cache', JSON.stringify(overview.entries));
-            const matchingCourse = overview.entries.find(course => course.book_id === courseId);
+            const overviewCourses = getOverviewCourses(overview);
+            setCourses(overviewCourses);
+            localStorage.setItem('courses_cache', JSON.stringify(overviewCourses));
+            const matchingCourse = overviewCourses.find(course => course.book_id === courseId);
             if (matchingCourse?.name?.trim()) {
               resolvedCourse = { ...response, course_name: matchingCourse.name.trim() };
             }
