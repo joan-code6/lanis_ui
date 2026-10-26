@@ -166,6 +166,22 @@ const PrivacyPolicy: React.FC = () => {
               Push-Dienst des verwendeten Browsers oder Betriebssystems. Du kannst die Berechtigung in den
               Browser- oder Systemeinstellungen widerrufen.
             </p>
+            <p className="mt-2">
+              In der Android-App erfolgt die Zustellung über Firebase Cloud Messaging von Google.
+              Nach Aktivierung werden ein gerätebezogener Registrierungstoken und eine Kennung der
+              aktuellen Anmeldung beim Backend gespeichert. Zur Zustellung übermittelt das Backend
+              den Registrierungstoken und den Benachrichtigungsinhalt an Google. Wenn du Vorschauen
+              ausschaltest, enthält die Nachricht nur einen allgemeinen Hinweis. Dein Schulportal-Passwort
+              und deine Anmeldetokens werden nicht an Firebase Cloud Messaging übermittelt.
+            </p>
+            <p className="mt-2">
+              Die Android-App speichert ihre Anmeldung und eine Kopie deines persönlichen Stundenplans
+              verschlüsselt im privaten Gerätespeicher. Widgets zeigen daraus Fach, Raum, Uhrzeit und
+              Änderungen auf dem Homescreen an. Andere Personen mit Zugriff auf deinen Homescreen
+              können diese Angaben sehen. Beim Abmelden werden diese Kopie und die Anmeldung entfernt
+              und die Widgets geleert. Android kann Hintergrundaktualisierungen verzögern; der Stand
+              der gespeicherten Daten wird angezeigt.
+            </p>
           </div>
 
           <div>

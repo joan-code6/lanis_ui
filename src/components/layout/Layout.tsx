@@ -1,3 +1,7 @@
+import { useDialogFocus } from '../../hooks/useDialogFocus';
+import AndroidNavigation from '../android/AndroidNavigation';
+import AndroidConnectivity from '../android/AndroidConnectivity';
+import { androidPresentation } from '../../platform/native';
 import React from 'react';
 import { capture, analyticsEnabled } from '../../analytics/client';
 import { supportContext } from '../../analytics/supportContext';
@@ -79,6 +83,29 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
   const [hasVideokonferenzModule, setHasVideokonferenzModule] = React.useState(false);
   const mainRef = React.useRef<HTMLElement>(null);
   const pwaRef = React.useRef<any>(null);
+  const menuRef = React.useRef<HTMLDivElement>(null);
+  const logoutRef = React.useRef<HTMLDivElement>(null);
+  const [isLoggingOut, setIsLoggingOut] = React.useState(false);
+  const closeLogout = () => { if (!isLoggingOut) setShowLogoutConfirmation(false); };
+  useDialogFocus(isSidebarOpen, menuRef, () => setIsSidebarOpen(false));
+  useDialogFocus(showLogoutConfirmation, logoutRef, closeLogout);
+  React.useEffect(() => {
+    const desktop = window.matchMedia('(min-width: 768px)');
+    const closeOnDesktop = () => { if (desktop.matches) setIsSidebarOpen(false); };
+    desktop.addEventListener('change', closeOnDesktop);
+    return () => desktop.removeEventListener('change', closeOnDesktop);
+  }, []);
+
+  React.useEffect(() => {
+    const back = (event: Event) => {
+      if (event.defaultPrevented) return;
+      if (isSearchOpen) { event.preventDefault(); setIsSearchOpen(false); }
+      else if (showLogoutConfirmation) { event.preventDefault(); if (!isLoggingOut) setShowLogoutConfirmation(false); }
+      else if (isSidebarOpen) { event.preventDefault(); setIsSidebarOpen(false); }
+    };
+    window.addEventListener('lanis:back', back);
+    return () => window.removeEventListener('lanis:back', back);
+  }, [isFeedbackOpen, closeFeedbackDialog, isSearchOpen, showLogoutConfirmation, isLoggingOut, isSidebarOpen]);
 
   const appIconUrl = getThemeIconUrl(themeColor);
   const manifestUrl = getThemeManifestUrl(themeColor);
@@ -158,15 +185,16 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
 
   React.useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (isFeedbackOpen) return;
+      if (isFeedbackOpen || showLogoutConfirmation) return;
       if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'f')) {
         e.preventDefault();
+        setIsSidebarOpen(false);
         setIsSearchOpen(prev => !prev);
       }
     };
     document.addEventListener('keydown', handler);
     return () => document.removeEventListener('keydown', handler);
-  }, [isFeedbackOpen]);
+  }, [isFeedbackOpen, showLogoutConfirmation]);
 
   const navigationItems = {
     search: { name: 'Suche', href: `${basePath}/search`, icon: MagnifyingGlassIcon },
@@ -199,19 +227,25 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
     .filter(id => availableItems.has(id as SidebarItemId) || isDivider(id))
     .map(id => ({ id, ...(isDivider(id) ? navigationItems['divider'] : navigationItems[id as SidebarItemId]) }));
 
+  const androidItems = normalizeSidebarOrder(preferences.sidebar.order)
+    .filter(id => !isDivider(id) && availableItems.has(id as SidebarItemId))
+    .map(id => ({ id, ...navigationItems[id as SidebarItemId] }));
+
   const handleLogout = async () => {
-    setShowLogoutConfirmation(false);
-    await logout();
+    if (isLoggingOut) return;
+    setIsLoggingOut(true);
+    try { await logout(); } finally { setIsLoggingOut(false); setShowLogoutConfirmation(false); }
   };
 
   const isDemo = basePath === '/demo';
+  const isMessagesPage = location.pathname.replace(/\/+$/, '') === `${basePath}/messages`;
 
   return (
-    <PwaInstallProvider automaticPromotion={!isDemo}>
+    <PwaInstallProvider automaticPromotion={!isDemo && !androidPresentation}>
       <div className="flex h-[100dvh] flex-col overflow-hidden bg-surface-50 dark:bg-surface-950">
       {isDemo && <DemoBar />}
       {isSidebarOpen && (
-        <div className={'fixed inset-x-0 bottom-0 flex z-40 md:hidden ' + (isDemo ? 'top-10' : 'inset-0')}>
+        <div id="mobile-menu" ref={menuRef} role="dialog" aria-modal="true" aria-label="Menü" tabIndex={-1} className={'fixed inset-x-0 bottom-0 flex z-40 md:hidden ' + (isDemo ? 'top-10' : 'inset-0')}>
           <div className={'fixed inset-x-0 bottom-0 bg-surface-900/40 backdrop-blur-sm ' + (isDemo ? 'top-10' : 'inset-0')} onClick={() => setIsSidebarOpen(false)} />
           <div className="relative flex flex-1 flex-col max-w-xs w-full bg-white dark:bg-surface-900 shadow-soft-lg animate-drawer-in">
             <SidebarContent navigation={navigation} showCloseButton />
@@ -225,10 +259,13 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
         </div>
       </div>
 
-      <div className={'md:hidden absolute inset-x-0 h-14 z-30 flex items-center justify-between px-4 bg-white/80 dark:bg-surface-900/80 backdrop-blur-md border-b border-surface-100 dark:border-surface-800 ' + (isDemo ? 'top-10' : 'top-0')}>
+      <div className="md:hidden relative h-14 shrink-0 z-30 flex items-center justify-between px-4 bg-white/80 dark:bg-surface-900/80 backdrop-blur-md border-b border-surface-100 dark:border-surface-800">
         <button
           type="button"
-          className="flex items-center justify-center h-9 w-9 rounded-lg text-surface-500 dark:text-surface-400 hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors"
+          className="flex items-center justify-center h-11 w-11 rounded-lg text-surface-500 dark:text-surface-400 hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors"
+          aria-label="Menü öffnen"
+          aria-expanded={isSidebarOpen}
+          aria-controls="mobile-menu"
           onClick={() => setIsSidebarOpen(true)}
         >
           <Bars3Icon className="h-5 w-5" />
@@ -242,21 +279,24 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
           <span className="text-sm font-semibold text-surface-900 dark:text-surface-100">Lanis</span>
         </Link>
         <button
-          onClick={() => setIsSearchOpen(true)}
-          className="flex items-center justify-center h-9 w-9 rounded-lg text-surface-500 dark:text-surface-400 hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors"
+          onClick={() => { setIsSidebarOpen(false); setIsSearchOpen(true); }}
+          className="flex items-center justify-center h-11 w-11 rounded-lg text-surface-500 dark:text-surface-400 hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors"
+          aria-label="Suche"
           title="Suche (Strg+K)"
         >
           <MagnifyingGlassIcon className="h-5 w-5" />
         </button>
       </div>
-      <main ref={mainRef} className={'flex-1 min-h-0 min-w-0 overflow-y-auto focus:outline-none pt-14 md:pt-0 transition-[margin] duration-300 ease-out ' + (isSidebarCollapsed ? 'md:ml-[60px]' : 'md:ml-64')}>
+      <main ref={mainRef} className={'flex-1 min-h-0 min-w-0 focus:outline-none transition-[margin] duration-300 ease-out ' + (isMessagesPage ? 'flex flex-col overflow-hidden ' : 'overflow-y-auto ') + (isSidebarCollapsed ? 'md:ml-[60px]' : 'md:ml-64')}>
         <BasePathProvider basePath={basePath}>
-          <div className="animate-fade-in">
+          <div className={'animate-fade-in' + (isMessagesPage ? ' flex flex-1 min-h-0 flex-col' : '')}>
+            <AndroidConnectivity />
             {!isDemo && <OutageNotice />}
             {children}
           </div>
         </BasePathProvider>
       </main>
+      <AndroidNavigation basePath={basePath} items={androidItems} onSearch={() => setIsSearchOpen(true)} />
       <GlobalSearch
         isOpen={isSearchOpen}
         onClose={() => setIsSearchOpen(false)}
@@ -267,8 +307,18 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
         hasDsbModule={hasDsbModule}
         hasVideokonferenzModule={hasVideokonferenzModule}
       />
+      {showLogoutConfirmation && <div ref={logoutRef} role="dialog" aria-modal="true" aria-labelledby="logout-title" tabIndex={-1} className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="absolute inset-0 bg-surface-950/50" onClick={closeLogout} />
+        <div className="relative w-full max-w-sm rounded-2xl border border-surface-200 bg-white p-5 dark:border-surface-700 dark:bg-surface-900" aria-busy={isLoggingOut}>
+          <h2 id="logout-title" className="text-lg font-semibold text-surface-900 dark:text-surface-100">Abmelden?</h2>
+          <div className="mt-5 flex gap-3">
+            <button type="button" data-dialog-initial-focus="" disabled={isLoggingOut} onClick={closeLogout} className="btn btn-secondary min-h-11 flex-1">Abbrechen</button>
+            <button type="button" disabled={isLoggingOut} onClick={() => void handleLogout()} className="btn min-h-11 flex-1 bg-red-600 text-white hover:bg-red-700 disabled:opacity-60">{isLoggingOut ? 'Abmelden…' : 'Abmelden'}</button>
+          </div>
+        </div>
+      </div>}
       {isFeedbackOpen && <FeedbackDialog token={token || ''} onClose={closeFeedbackDialog} openerRef={feedbackOpenerRef} />}
-      {!isDemo && (
+      {!isDemo && !androidPresentation && (
         <pwa-install
           ref={pwaRef}
           manifest-url={manifestUrl}
@@ -364,8 +414,9 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
             <button
               type="button"
               onClick={() => setIsSidebarOpen(false)}
-              className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg text-surface-500 transition-colors hover:bg-surface-100 hover:text-surface-700 focus:outline-none focus:ring-2 focus:ring-primary-500/50 dark:text-surface-400 dark:hover:bg-surface-800 dark:hover:text-surface-200"
+              className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-lg text-surface-500 transition-colors hover:bg-surface-100 hover:text-surface-700 focus:outline-none focus:ring-2 focus:ring-primary-500/50 dark:text-surface-400 dark:hover:bg-surface-800 dark:hover:text-surface-200"
               aria-label="Menü schließen"
+              data-dialog-initial-focus=""
             >
               <XMarkIcon className="h-5 w-5" />
             </button>
@@ -380,7 +431,7 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
                   <button
                     key={item.id}
                     type="button"
-                    onClick={() => setIsSearchOpen(true)}
+                    onClick={() => { setIsSidebarOpen(false); setIsSearchOpen(true); }}
                     className={`nav-link ${isCollapsed ? 'mx-auto h-10 w-10 justify-center gap-0 px-0' : 'w-full'}`}
                     title={isCollapsed ? item.name : undefined}
                     aria-label={item.name}
@@ -413,6 +464,7 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
                   style={{ animationDelay: `${index * 60}ms` }}
                   className={`nav-link ${isCollapsed ? 'mx-auto h-10 w-10 justify-center gap-0 px-0' : ''} ${isActive ? 'nav-link-active' : ''}`}
                   title={isCollapsed ? item.name : undefined}
+                  aria-current={isActive ? 'page' : undefined}
                   onClick={() => setIsSidebarOpen(false)}
                 >
                   <item.icon
@@ -432,6 +484,7 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
                 data-feedback-trigger=""
                 onClick={(event) => {
                   feedbackOpenerRef.current = event.currentTarget;
+                  setIsSidebarOpen(false);
                   setIsSearchOpen(false);
                   setIsFeedbackOpen(true);
                 }}
@@ -458,35 +511,8 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
               </span>
             </Link>
             <div className="relative">
-              {showLogoutConfirmation && (
-                <div
-                  className={`${isCollapsed
-                    ? 'fixed bottom-4 left-[68px] z-50 w-64'
-                    : 'absolute bottom-full left-0 right-0 z-20 mb-2'} rounded-xl border border-surface-200 bg-white p-3 shadow-soft-lg dark:border-surface-700 dark:bg-surface-900`}
-                  role="dialog"
-                  aria-label="Abmelden bestätigen"
-                >
-                  <p className="text-xs font-medium text-surface-800 dark:text-surface-200">Wirklich abmelden?</p>
-                  <div className="mt-3 flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setShowLogoutConfirmation(false)}
-                      className="btn btn-secondary h-8 flex-1 px-2 py-1 text-xs"
-                    >
-                      Abbrechen
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => void handleLogout()}
-                      className="btn h-8 flex-1 bg-red-600 px-2 py-1 text-xs text-white hover:bg-red-700"
-                    >
-                      Abmelden
-                    </button>
-                  </div>
-                </div>
-              )}
               <button
-                onClick={() => setShowLogoutConfirmation(current => !current)}
+                onClick={() => { setIsSidebarOpen(false); setShowLogoutConfirmation(true); }}
                 className={`nav-link text-surface-500 dark:text-surface-400 hover:text-surface-700 dark:hover:text-surface-300 ${isCollapsed ? 'mx-auto h-10 w-10 justify-center gap-0 px-0' : 'w-full'}`}
                 title="Abmelden"
                 aria-expanded={showLogoutConfirmation}
@@ -553,8 +579,14 @@ function FeedbackDialog({ token, onClose, openerRef }: {
         first.focus();
       }
     };
+    const onNativeBack = (event: Event) => {
+      event.preventDefault();
+      if (!isSubmittingRef.current) onClose();
+    };
+    window.addEventListener('lanis:back', onNativeBack, true);
     document.addEventListener('keydown', onKeyDown);
     return () => {
+      window.removeEventListener('lanis:back', onNativeBack, true);
       document.removeEventListener('keydown', onKeyDown);
       const opener = openerRef.current;
       const visibleOpener = opener?.isConnected && opener.getClientRects().length > 0

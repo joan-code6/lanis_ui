@@ -1,5 +1,7 @@
 import Analytics from './analytics/Analytics';
 import React from 'react';
+import AndroidRuntime from './components/android/AndroidRuntime';
+import { isAndroid } from './platform/native';
 import BrowserPushRuntime from './components/BrowserPushRuntime';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
@@ -41,7 +43,7 @@ const LandingRoot: React.FC = () => {
   if (isAuthenticated) {
     return <Navigate to="/dashboard" replace />;
   }
-  return <Landingpage />;
+  return isAndroid ? <Navigate to="/login" replace /> : <Landingpage />;
 };
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -81,6 +83,7 @@ const PreferencesGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
 const AppRoutes: React.FC = () => {
   return (
     <Router>
+      <AndroidRuntime />
       <Analytics />
       <BrowserPushRuntime />
       <Routes>
