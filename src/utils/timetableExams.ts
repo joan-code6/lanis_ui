@@ -96,6 +96,38 @@ const atPeriods = (lesson: TimetableLesson, periods: number[], slots: TimeSlots)
   };
 };
 
+// Compare every non-time value, including nested substitution and homework data.
+const lessonIdentity = (lesson: TimetableLesson): string => {
+  const { id, period, duration, start_time, end_time, substitution, ...values } = lesson;
+  const stable = (value: unknown): unknown => Array.isArray(value) ? value.map(stable)
+    : value && typeof value === 'object' ? Object.fromEntries(Object.entries(value).sort(([a], [b]) => a.localeCompare(b)).map(([key, item]) => [key, stable(item)])) : value;
+  if (substitution) {
+    const { periods, ...details } = substitution;
+    values.substitution = details;
+  }
+  return JSON.stringify(stable(values));
+};
+
+const mergeLessons = (entries: TimetableEntry[]): TimetableEntry[] => {
+  const merged: TimetableEntry[] = [];
+  for (const entry of entries) {
+    const periods = lessonPeriods(entry.lesson);
+    const previous = !entry.exam && periods.length && merged.find(candidate => {
+      const before = lessonPeriods(candidate.lesson);
+      return !candidate.exam && before.length && before[before.length - 1] + 1 === periods[0]
+        && lessonIdentity(candidate.lesson) === lessonIdentity(entry.lesson);
+    });
+    if (!previous) { merged.push(entry); continue; }
+    const all = [...lessonPeriods(previous.lesson), ...periods];
+    previous.lesson = {
+      ...previous.lesson, period: `${all[0]}–${all[all.length - 1]}`, duration: all.length,
+      end_time: entry.lesson.end_time,
+      ...(previous.lesson.substitution ? { substitution: { ...previous.lesson.substitution, periods: all } } : {}),
+    };
+  }
+  return merged;
+};
+
 export const timetableEntries = (lessons: TimetableLesson[], exams: StudyGroupExam[], slots: TimeSlots = []): TimetableEntry[] => {
   const occupied = new Set(exams.flatMap(exam => examPeriods(exam.hours)));
   const entries: TimetableEntry[] = lessons.flatMap(lesson => {
@@ -137,5 +169,5 @@ export const timetableEntries = (lessons: TimetableLesson[], exams: StudyGroupEx
       });
     }
   }
-  return entries.sort((a, b) => (lessonPeriods(a.lesson)[0] ?? Infinity) - (lessonPeriods(b.lesson)[0] ?? Infinity));
+  return mergeLessons(entries.sort((a, b) => (lessonPeriods(a.lesson)[0] ?? Infinity) - (lessonPeriods(b.lesson)[0] ?? Infinity)));
 };

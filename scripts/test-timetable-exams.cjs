@@ -81,3 +81,23 @@ assert.equal(compactLayout.unscheduled.length, 1);
 assert.ok(compactLayout.scheduled.some(item => item.entry.lesson.subject === 'starts-later'));
 assert.ok(compactLayout.scheduled.every(item => item.laneCount === 2));
 console.log('Timetable exam checks passed: merging, replacement, ordering, partial overlap, unknown periods, empty days, and concurrent exams.');
+
+for (const cancelled of [false, true]) {
+  const first = { ...lesson, id: 'first', period: 3, duration: 1, end_time: '10:25', cancelled,
+    substitution: { source: 'DSB', periods: [3], kind: cancelled ? 'Entfall' : 'Verlegung' },
+    homework: [{ text: 'Read chapter', done: false }] };
+  const second = { ...first, id: 'second', period: 4, start_time: '10:25', end_time: '11:10',
+    substitution: { ...first.substitution, periods: [4] } };
+  const combined = timetableEntries([second, first], []);
+  assert.equal(combined.length, 1);
+  assert.equal(combined[0].lesson.period, '3–4');
+  assert.equal(combined[0].lesson.start_time, '09:40');
+  assert.equal(combined[0].lesson.end_time, '11:10');
+  assert.deepEqual(plain(combined[0].lesson.substitution.periods), [3, 4]);
+  for (const change of [{ room: 'Other' }, { teacher: 'Other' }, { cancelled: !cancelled },
+    { homework: [{ text: 'Different', done: false }] }, { period: 5 },
+    { substitution: { ...second.substitution, kind: 'Other' } }]) {
+    assert.equal(timetableEntries([first, { ...second, ...change }], []).length, 2);
+  }
+  assert.equal(first.period, 3);
+}
