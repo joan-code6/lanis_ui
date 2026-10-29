@@ -79,7 +79,7 @@ const DashboardNotifications: React.FC = () => {
   const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
-    if (!token || !dashboardPreferences.notifications_enabled) {
+    if (!token || !dashboardPreferences.notifications_enabled || enabledSources.size === 0) {
       setNotifications([]);
       setUnreadCount(0);
       setErrors([]);
@@ -162,7 +162,7 @@ const DashboardNotifications: React.FC = () => {
     });
   };
 
-  if (!dashboardPreferences.notifications_enabled) return null;
+  if (!dashboardPreferences.notifications_enabled || enabledSources.size === 0) return null;
 
   if (visibleNotifications.length === 0 && errors.length === 0) return null;
 

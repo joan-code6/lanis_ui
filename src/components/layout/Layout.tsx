@@ -60,6 +60,7 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
   const { user, token, logout } = useAuth();
   const { preferences } = usePreferences();
   const { themeColor } = useTheme();
+  const isDemo = basePath === '/demo';
   const location = useLocation();
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = React.useState(() => (
@@ -203,8 +204,6 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
     setShowLogoutConfirmation(false);
     await logout();
   };
-
-  const isDemo = basePath === '/demo';
 
   return (
     <PwaInstallProvider automaticPromotion={!isDemo}>

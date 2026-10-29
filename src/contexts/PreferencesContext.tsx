@@ -90,7 +90,7 @@ const normalizePreferences = (value?: Partial<UserPreferences>): UserPreferences
     ? sidebar.show_feedback_button
     : true;
   const hiddenSidebarItems = Array.isArray(sidebar?.hidden_items)
-    ? sidebar.hidden_items.filter(item => typeof item === 'string')
+    ? sidebar.hidden_items.filter(item => typeof item === 'string' && item !== 'feedback')
     : [];
   const hiddenModules = dashboard?.hidden_modules || [];
   const pinnedModules = (dashboard?.pinned_modules || []).filter(

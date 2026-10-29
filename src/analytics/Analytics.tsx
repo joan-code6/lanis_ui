@@ -6,6 +6,7 @@ import { getApiBaseUrl } from '../utils/backendConfig';
 import { startErrorTracking } from './errors';
 import { Link, useLocation } from 'react-router-dom';
 import { analyticsConfigured, configureAccountAnalytics, capture, capturePage, CONSENT_EVENT, CONSENT_KEY, getConsent, setConsent, stopAnalytics } from './client';
+import SettingsSwitch from '../components/settings/SettingsSwitch';
 
 export function AnalyticsControls() {
   const [consent, update] = useState(getConsent);
@@ -15,15 +16,22 @@ export function AnalyticsControls() {
     window.addEventListener('storage', sync);
     return () => { window.removeEventListener(CONSENT_EVENT, sync); window.removeEventListener('storage', sync); };
   }, []);
-  if (!analyticsConfigured()) return null;
+  const configured = analyticsConfigured();
+  const enabled = consent === 'granted';
   return <section className="card space-y-3" aria-label="Nutzungsanalyse">
-    <h2 className="item-title">Optionale Nutzungsanalyse</h2>
-    <p className="text-sm text-surface-600 dark:text-surface-400">Mit deiner Einwilligung hilft uns PostHog (EU), die Nutzung von Funktionen zu verstehen. Wir senden keine Namen, Schulportal-Zugangsdaten, Nachrichten, Noten oder Suchtexte. Es gibt keine Sitzungsaufzeichnungen. Eine zufällige Kontokennung verknüpft deine Nutzung und technische Fehler über mehrere Sitzungen hinweg. Nur unser Backend kann sie deinem Konto zuordnen. Fehlerdetails werden dort verschlüsselt für bis zu sieben Tage gespeichert; PostHog erhält nur eine Referenz.</p>
-    <p className="text-sm" role="status">{consent === 'granted' ? 'Nutzungsanalyse ist aktiviert.' : 'Nutzungsanalyse ist deaktiviert.'}</p>
-    <div className="flex flex-wrap gap-3">
-      <button type="button" className="btn btn-secondary" onClick={() => setConsent('denied')}>Deaktivieren</button>
-      <button type="button" className="btn btn-secondary" onClick={() => setConsent('granted')}>Aktivieren</button>
+    <div className="flex items-center justify-between gap-4">
+      <div>
+        <h2 className="item-title">Optionale Nutzungsanalyse</h2>
+        <p className="mt-1 text-sm text-surface-500">PostHog (EU) hilft uns zu verstehen, wie Lanis genutzt wird. Namen, Zugangsdaten, Nachrichten und Suchbegriffe werden nicht übermittelt.</p>
+      </div>
+      <SettingsSwitch
+        checked={enabled}
+        label="Optionale Nutzungsanalyse"
+        onChange={() => setConsent(enabled ? 'denied' : 'granted')}
+        disabled={!configured}
+      />
     </div>
+    <p className="text-xs text-surface-500" role="status">{!configured ? 'Die Nutzungsanalyse ist auf diesem Server nicht eingerichtet.' : enabled ? 'Die Nutzungsanalyse ist aktiviert.' : 'Die Nutzungsanalyse ist deaktiviert.'}</p>
   </section>;
 }
 

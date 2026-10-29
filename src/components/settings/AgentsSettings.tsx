@@ -3,7 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { API_BASE_URL } from '../../services/api';
 import { normalizeBackendUrl } from '../../utils/backendConfig';
 import { agentSettingsSwitchPath } from '../../utils/agentBackend';
-import { ArrowPathIcon, CheckIcon, ClipboardDocumentIcon, SparklesIcon, PlusIcon, XMarkIcon, ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline';
+import { ArrowPathIcon, CheckIcon, ClipboardDocumentIcon, SparklesIcon, ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '../../contexts/AuthContext';
 import { AccessMode, AccessPresets, AgentConnection, AgentsOverview, agentsAPI } from '../../services/api';
 import HostedChannelSetup from '../agents/HostedChannelSetup';
@@ -36,7 +36,7 @@ const Connection: React.FC<{ connection: AgentConnection; overview: AgentsOvervi
       onChanged(c.id, revoke ? { revoked: true } : { name: name.trim(), scopes });
       setEditing(false); setConfirm(false);
       await reload();
-    } catch { setError('Nicht gespeichert. Bitte erneut versuchen.'); }
+    } catch { setError(revoke ? 'Verbindung konnte nicht getrennt werden. Bitte versuche es erneut.' : 'Speichern fehlgeschlagen. Bitte versuche es erneut.'); }
     finally { setBusy(false); }
   };
   return <article className="py-5 first:pt-0 last:pb-0">
@@ -49,11 +49,14 @@ const Connection: React.FC<{ connection: AgentConnection; overview: AgentsOvervi
       <label className="block"><span className="label">Name</span><input className="input" value={name} onChange={e => setName(e.target.value)} maxLength={100} disabled={busy} /></label>
       <AccessPicker mode={mode} onMode={selectMode} scopes={scopes} onScopes={setScopes} presets={presets} available={ceiling.map(id => ({ id, ...overview.scopes[id] }))} disabled={busy} />
       <p className="break-all text-xs text-surface-500">{c.redirect_origin}</p>
-      <div className="flex flex-wrap items-center gap-2"><button className="btn btn-primary" disabled={busy || !name.trim() || !scopes.length} onClick={() => save()}>{busy ? 'Speichern …' : 'Speichern'}</button><button className="btn btn-ghost text-red-600 dark:text-red-400" disabled={busy} onClick={() => setConfirm(true)}>Verbindung trennen</button></div>
-      {confirm && <div className="space-y-3 rounded-xl border border-red-200 p-4 dark:border-red-900"><p className="text-sm">Zugriff für {c.name} beenden?</p><div className="flex gap-2"><button className="btn btn-secondary" disabled={busy} onClick={() => setConfirm(false)}>Abbrechen</button><button className="btn bg-red-600 text-white hover:bg-red-700" disabled={busy} onClick={() => save(true)}>Trennen</button></div></div>}
+      <div className="flex flex-wrap items-center gap-2">
+        <button className="btn btn-primary" disabled={busy || !name.trim() || !scopes.length} onClick={() => save()}>{busy ? 'Wird gespeichert …' : 'Speichern'}</button>
+        <button className="btn btn-ghost text-red-600 dark:text-red-400" disabled={busy} onClick={() => setConfirm(true)}>Verbindung trennen</button>
+      </div>
       {c.channel && <AgentSchedules id={c.id} />}
-      {error && <p role="alert" className="text-sm text-red-600 dark:text-red-400">{error}</p>}
     </div>}
+    {confirm && <div className="mt-4 space-y-3 rounded-xl border border-red-200 p-4 dark:border-red-900"><p className="text-sm">Verbindung zu {c.name} trennen?</p><div className="flex flex-wrap gap-2"><button className="btn btn-secondary" disabled={busy} onClick={() => setConfirm(false)}>Abbrechen</button><button className="btn bg-red-600 text-white hover:bg-red-700" disabled={busy} onClick={() => save(true)}>{busy ? 'Verbindung wird getrennt …' : 'Verbindung trennen'}</button></div></div>}
+    {error && <p role="alert" className="mt-3 text-sm text-red-600 dark:text-red-400">{error}</p>}
   </article>;
 };
 
@@ -71,7 +74,6 @@ export default function AgentsSettings() {
   const [data, setData] = useState<AgentsOverview | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [setup, setSetup] = useState(false);
   const [provider, setProvider] = useState('Claude');
   const [copied, setCopied] = useState(false);
   const requestVersion = useRef(0);
@@ -99,20 +101,29 @@ export default function AgentsSettings() {
   };
   const active = data?.connections.filter(c => !c.revoked) || [];
   if (invalidIssuer || backendMismatch) return <section className="card max-w-md"><h2 className="section-title">{invalidIssuer ? 'Ungültiger Link' : 'Anderes Backend'}</h2>{!invalidIssuer && <><p className="mt-3 break-all text-sm text-surface-500">{issuer}</p><Link className="btn btn-primary mt-4" to={agentSettingsSwitchPath(issuer)}>Backend prüfen</Link></>}</section>;
-  return <div className="space-y-6">
-    <section className="card">
-      <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="item-title">Agent verbinden</h2><button className="btn btn-secondary" aria-expanded={setup} onClick={() => setSetup(!setup)}>{setup ? <XMarkIcon className="mr-1.5 h-4 w-4" /> : <PlusIcon className="mr-1.5 h-4 w-4" />}{setup ? 'Schließen' : 'Hinzufügen'}</button></div>
-      {setup && <div className="mt-5 space-y-5" aria-label="Agent verbinden">
+  const setupPanel = <section className="card" aria-labelledby="connect-agent-heading">
+    <h2 id="connect-agent-heading" className="item-title">Agent verbinden</h2>
+    <div className="mt-5 space-y-5" aria-label="Agent verbinden">
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3" role="group" aria-label="Agent auswählen">{['ChatGPT', 'Claude', 'Signal', 'WhatsApp', 'Andere'].map(p => <button key={p} onClick={() => { setProvider(p); setCopied(false); }} aria-pressed={provider === p} className={`flex min-w-0 flex-col items-center gap-3 rounded-xl border p-3 text-sm font-semibold transition-colors ${provider === p ? 'border-primary-500 bg-primary-50 ring-2 ring-primary-500/15 dark:bg-primary-950/40' : 'border-surface-200 bg-white hover:border-primary-300 dark:border-surface-800 dark:bg-surface-900'}`}><ProviderIcon name={p} />{p}</button>)}</div>
-        {(provider === 'Signal' || provider === 'WhatsApp') && data ? <HostedChannelSetup key={provider} channel={provider === 'Signal' ? 'signal' : 'whatsapp'} overview={data} onPaired={() => { setSetup(false); void load(); }} /> : provider === 'ChatGPT' ? <p role="status" className="text-sm text-surface-500">Coming Soon</p> : <>
+        {(provider === 'Signal' || provider === 'WhatsApp') && data ? <HostedChannelSetup key={provider} channel={provider === 'Signal' ? 'signal' : 'whatsapp'} overview={data} onPaired={() => { void load(); }} /> : provider === 'ChatGPT' ? <p role="status" className="text-sm text-surface-500">Demnächst verfügbar</p> : <>
           {provider === 'Claude' ? <a href="https://claude.ai/customize/connectors?modal=add-custom-connector" target="_blank" rel="noopener noreferrer" className="btn btn-secondary">Connector in Claude hinzufügen<ArrowTopRightOnSquareIcon className="ml-2 h-4 w-4" /></a> : <p className="text-sm text-surface-500">Füge diese Adresse als Remote-MCP-Server hinzu.</p>}
           <div><label className="label" htmlFor="mcp-url">MCP-Adresse</label><div className="flex gap-2"><input id="mcp-url" className="input min-w-0 font-mono text-xs" readOnly value={data?.mcp_url || ''} placeholder="MCP-Adresse" /><button className="btn btn-secondary shrink-0" disabled={!data} onClick={copy} aria-label="MCP-Adresse kopieren">{copied ? <CheckIcon className="h-4 w-4" /> : <ClipboardDocumentIcon className="h-4 w-4" />}</button></div></div>
           <p role="status" className="text-xs text-surface-500">{copied ? 'Kopiert.' : window.location.pathname.startsWith('/demo') ? 'Demo-Adresse. Echte Agenten verbindest du nach der Anmeldung.' : 'Adresse eintragen, dann bei LANIS anmelden und Zugriff wählen.'}</p>
         </>}
-      </div>}
-    </section>
-    <button className="btn btn-ghost" onClick={load} disabled={loading}>Verbindungen aktualisieren</button>
+    </div>
+  </section>;
+  return <div className="space-y-6">
     {error && <div role="alert" className="flex items-center justify-between gap-3 text-sm text-red-600 dark:text-red-400">{error}<button onClick={load} className="btn btn-ghost" aria-label="Erneut versuchen"><ArrowPathIcon className="h-4 w-4" /></button></div>}
-    {loading ? <p role="status" className="text-sm text-surface-500">Laden …</p> : data && <section className="card" aria-labelledby="connections-heading"><h2 id="connections-heading" className="item-title mb-5">Verbindungen{` (${active.length})`}</h2>{active.length ? <div className="divide-y divide-surface-100 dark:divide-surface-800">{active.map(c => <Connection key={c.id} connection={c} overview={data} reload={load} onChanged={applyChange} />)}</div> : <p className="text-sm text-surface-500">Noch keine Agenten verbunden.</p>}</section>}
+    {setupPanel}
+    <section className="card" aria-labelledby="connections-heading">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 id="connections-heading" className="item-title">Aktive Verbindungen{data ? ` (${active.length})` : ''}</h2>
+        <button className="btn btn-ghost" onClick={load} disabled={loading}>Aktualisieren</button>
+      </div>
+      {loading ? <p role="status" className="mt-4 text-sm text-surface-500">Wird geladen …</p>
+        : active.length && data
+          ? <div className="mt-4 divide-y divide-surface-100 dark:divide-surface-800">{active.map(c => <Connection key={c.id} connection={c} overview={data} reload={load} onChanged={applyChange} />)}</div>
+          : <p className="mt-4 text-sm text-surface-500">Keine Agenten verbunden.</p>}
+    </section>
   </div>;
 }

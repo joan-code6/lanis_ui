@@ -22,10 +22,8 @@ import {
 } from '../../utils/accountDataWrites';
 import { useBasePath } from '../../contexts/BasePathContext';
 import { usePreferences } from '../../contexts/PreferencesContext';
-import axios from 'axios';
-import { appsAPI, authAPI, notificationsAPI } from '../../services/api';
+import { authAPI, notificationsAPI } from '../../services/api';
 import { NotificationPreferences, PushSubscriptionPayload } from '../../types';
-import { getModuleAvailability, readModulesCache, writeModulesCache } from '../../utils/moduleCache';
 import {
   ArrowDownTrayIcon,
   ArrowLeftIcon,
@@ -33,25 +31,18 @@ import {
   Bars3Icon,
   BellAlertIcon,
   BellIcon,
-  BookOpenIcon,
   CalendarDaysIcon,
-  ChatBubbleLeftRightIcon,
   CheckIcon,
   ChevronRightIcon,
   ChevronDownIcon,
   ChevronUpIcon,
   ClockIcon,
-  ClipboardDocumentListIcon,
   DevicePhoneMobileIcon,
   EyeIcon,
   EyeSlashIcon,
-  InboxIcon,
-  MoonIcon,
   PaintBrushIcon,
   ServerStackIcon,
   UserCircleIcon,
-  Squares2X2Icon,
-  SunIcon,
   SparklesIcon,
   TrashIcon,
 } from '@heroicons/react/24/outline';
@@ -59,10 +50,9 @@ import SEO from '../seo/SEO';
 import { usePwaInstall } from '../../contexts/PwaInstallContext';
 import TimetableSettings from './TimetableSettings';
 import VertretungsplanSettings from './VertretungsplanSettings';
-import HomeworkSettings from './HomeworkSettings';
-import WhatsAppSettings from './WhatsAppSettings';
 import AgentsSettings from './AgentsSettings';
 import DashboardSettings from './DashboardSettings';
+import SettingsSwitch from './SettingsSwitch';
 import {
   DEFAULT_SIDEBAR_ORDER,
   normalizeSidebarOrder,
@@ -73,15 +63,15 @@ import {
 } from '../../utils/sidebarNavigation';
 
 const themeColors: { key: ThemeColor; label: string; hex: string; checkClass?: string }[] = [
-  { key: 'emerald', label: 'Emerald', hex: '#10b981' },
+  { key: 'emerald', label: 'Smaragd', hex: '#10b981' },
   { key: 'sapphire', label: 'Saphir', hex: '#3b82f6' },
   { key: 'amethyst', label: 'Amethyst', hex: '#a855f7' },
   { key: 'ruby', label: 'Rubin', hex: '#f43f5e' },
   { key: 'amber', label: 'Bernstein', hex: '#f59e0b' },
   { key: 'cyan', label: 'Cyan', hex: '#06b6d4' },
   { key: 'coral', label: 'Koralle', hex: '#f88379' },
-  { key: 'blush', label: 'Blush', hex: '#fee3ea', checkClass: 'text-surface-800' },
-  { key: 'moss', label: 'Oliven grün', hex: '#4b573f' },
+  { key: 'blush', label: 'Rosé', hex: '#fee3ea', checkClass: 'text-surface-800' },
+  { key: 'moss', label: 'Oliv', hex: '#4b573f' },
 ];
 
 const defaultNotificationPreferences: NotificationPreferences = {
@@ -127,7 +117,7 @@ const pushSubscriptionToPayload = (subscription: PushSubscription): PushSubscrip
   };
 };
 
-type SettingsSection = 'home' | 'agents' | 'account' | 'appearance' | 'dashboard' | 'timetable' | 'homework' | 'vertretungsplan' | 'notifications' | 'whatsapp' | 'app' | 'sidebar';
+type SettingsSection = 'home' | 'appearance' | 'timetable' | 'notifications' | 'navigation' | 'connections' | 'help' | 'privacy';
 
 const settingsSections: Array<{
   id: Exclude<SettingsSection, 'home'>;
@@ -138,85 +128,56 @@ const settingsSections: Array<{
   {
     id: 'appearance',
     title: 'Erscheinungsbild',
-    description: 'Farben, Dark Mode und die Oberfläche von Lanis.',
+    description: 'Wähle ein Design und eine Primärfarbe.',
     icon: PaintBrushIcon,
   },
   {
-    id: 'dashboard',
-    title: 'Dashboard',
-    description: 'Hinweisbanner, Quellen und gelesene Einträge verwalten.',
-    icon: Squares2X2Icon,
-  },
-  {
     id: 'timetable',
-    title: 'Stundenplan',
-    description: 'Anzeige wählen, Stunden ändern und Kurse verknüpfen.',
+    title: 'Stundenplan & Vertretungsplan',
+    description: 'Lege deine Klasse, die Stundenplanansicht und die Hausaufgaben-Markierung fest.',
     icon: CalendarDaysIcon,
-  },
-  {
-    id: 'homework',
-    title: 'Hausaufgaben',
-    description: 'Festlegen, ob erledigte Aufgaben in der Übersicht erscheinen.',
-    icon: BookOpenIcon,
-  },
-  {
-    id: 'vertretungsplan',
-    title: 'Vertretungsplan',
-    description: 'Automatische Klassenerkennung und Standardfilter anpassen.',
-    icon: ClipboardDocumentListIcon,
-  },
-  {
-    id: 'sidebar',
-    title: 'Seitenleiste',
-    description: 'Reihenfolge der Einträge in der Seitenleiste anpassen.',
-    icon: Bars3Icon,
   },
   {
     id: 'notifications',
     title: 'Benachrichtigungen',
-    description: 'Push-Mitteilungen für Nachrichten und den Vertretungsplan verwalten.',
+    description: 'Verwalte Hinweisbanner im Dashboard und Web-Push-Benachrichtigungen.',
     icon: BellAlertIcon,
   },
   {
-    id: 'agents',
-    title: 'Agents',
-    description: 'ChatGPT, Claude und weitere Agenten sicher mit LANIS verbinden.',
+    id: 'navigation',
+    title: 'Navigation',
+    description: 'Ordne die Seitenleiste und blende Einträge nach Bedarf ein oder aus.',
+    icon: Bars3Icon,
+  },
+  {
+    id: 'connections',
+    title: 'Verbindungen',
+    description: 'Verwalte aktive Agentenverbindungen.',
     icon: SparklesIcon,
   },
   {
-    id: 'whatsapp',
-    title: 'WhatsApp-Assistent',
-    description: 'Stundenplan, Vertretungen und Aufgaben direkt im Chat abrufen.',
-    icon: ChatBubbleLeftRightIcon,
-  },
-  {
-    id: 'app',
-    title: 'App & Installation',
-    description: 'Lanis installieren und Geräteoptionen ansehen.',
+    id: 'help',
+    title: 'App & Hilfe',
+    description: 'Installiere Lanis oder starte die Einführung erneut.',
     icon: DevicePhoneMobileIcon,
   },
-
   {
-    id: 'account',
-    title: 'Datenschutz und Konto',
-    description: 'Deine LANIS-Daten exportieren oder dein LANIS-Konto löschen.',
+    id: 'privacy',
+    title: 'Datenschutz & Konto',
+    description: 'Verwalte die Nutzungsanalyse, exportiere deine Daten oder lösche dein Konto.',
     icon: UserCircleIcon,
   },
 ];
 
 const sectionMeta: Record<SettingsSection, { title: string; subtitle: string }> = {
-  agents: { title: 'Agents', subtitle: 'ChatGPT, Claude, Signal und WhatsApp verbinden.' },
-  home: { title: 'Einstellungen', subtitle: 'Passe dein Schulportal an.' },
-  account: { title: 'Datenschutz und Konto', subtitle: 'Exportiere deine LANIS-Daten oder lösche dein LANIS-Konto.' },
-  appearance: { title: 'Erscheinungsbild', subtitle: 'Farben und Oberfläche an deine Gewohnheiten anpassen.' },
-  dashboard: { title: 'Dashboard', subtitle: 'Lege fest, welche Hinweise auf deinem Dashboard erscheinen.' },
-  timetable: { title: 'Stundenplan', subtitle: 'Anzeige und eigene Stundenplanänderungen verwalten.' },
-  homework: { title: 'Hausaufgaben', subtitle: 'Lege fest, ob erledigte Aufgaben in „Mein Unterricht“ erscheinen.' },
-  vertretungsplan: { title: 'Vertretungsplan', subtitle: 'Die passende Klasse automatisch auswählen oder selbst festlegen.' },
-  notifications: { title: 'Benachrichtigungen', subtitle: 'Nachrichten und neue Vertretungsplan-Einträge per Web-Push mitbekommen.' },
-  whatsapp: { title: 'WhatsApp-Assistent', subtitle: 'Dein LANIS-Konto sicher mit dem WhatsApp-Chat verbinden.' },
-  app: { title: 'App & Installation', subtitle: 'Lanis auf deinem Gerät griffbereit halten.' },
-  sidebar: { title: 'Seitenleiste', subtitle: 'Passe die Navigation an deine Gewohnheiten an.' },
+  home: { title: 'Einstellungen', subtitle: 'Passe Lanis an deinen Schulalltag an.' },
+  appearance: { title: 'Erscheinungsbild', subtitle: 'Wähle ein Design und eine Primärfarbe.' },
+  timetable: { title: 'Stundenplan & Vertretungsplan', subtitle: 'Lege deine Klasse und deine Stundenplan-Einstellungen fest.' },
+  notifications: { title: 'Benachrichtigungen', subtitle: 'Verwalte Hinweisbanner im Dashboard und Web-Push-Benachrichtigungen.' },
+  navigation: { title: 'Navigation', subtitle: 'Ordne die Seitenleiste und blende Einträge nach Bedarf ein oder aus.' },
+  connections: { title: 'Verbindungen', subtitle: 'Verwalte die mit deinem Lanis-Konto verbundenen Agenten.' },
+  help: { title: 'App & Hilfe', subtitle: 'Installiere Lanis oder starte die Einführung erneut.' },
+  privacy: { title: 'Datenschutz & Konto', subtitle: 'Verwalte die Nutzungsanalyse, exportiere deine Daten oder lösche dein Konto.' },
 };
 
 const AccountSettings: React.FC = () => {
@@ -264,13 +225,13 @@ const AccountSettings: React.FC = () => {
     try {
       const result = await authAPI.deleteAccount(freshToken);
       if (!result.success) {
-        throw new Error('Account deletion was not confirmed by the server.');
+        throw new Error('Die Kontolöschung wurde vom Server nicht bestätigt.');
       }
     } catch {
       // A timeout does not establish whether DELETE reached the server.
       // Startup recovery will fence it before restoring a surviving session.
       window.location.replace('/login');
-      setError('Der Löschvorgang wird beim nächsten Start geprüft.');
+      setError('Der Löschvorgang wird beim nächsten Start überprüft.');
       setDeleting(false);
       return;
     }
@@ -317,15 +278,16 @@ const AccountSettings: React.FC = () => {
 
   return <div className="space-y-6">
     <div className="card">
-      <h2 className="item-title">Meine Daten exportieren</h2>
-      <p className="mt-1 text-sm leading-relaxed text-surface-500">Du erhältst die von LANIS gespeicherten Profildaten, Einstellungen, Benachrichtigungsdaten, Aktivitäten und Cache-Inhalte als JSON. Passwörter, Tokens, Cookies und kryptografische Schlüssel werden aus Sicherheitsgründen nicht exportiert.</p>
-      <button type="button" onClick={() => void exportData()} disabled={exporting} className="mt-5 inline-flex items-center rounded-xl bg-primary-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-primary-700 disabled:opacity-50"><ArrowDownTrayIcon className="mr-2 h-4 w-4" />{exporting ? 'Export wird erstellt …' : 'Daten exportieren'}</button>
+      <h2 className="item-title">Alle Daten exportieren</h2>
+      <p className="mt-1 text-sm leading-relaxed text-surface-500">Lade dein bei Lanis gespeichertes Profil, deine Einstellungen, Benachrichtigungen, Aktivitäten und zwischengespeicherten Daten als JSON-Datei herunter. Passwörter, Zugriffstoken, Cookies und kryptografische Schlüssel sind nicht enthalten.</p>
+      <button type="button" onClick={() => void exportData()} disabled={exporting} className="btn btn-primary mt-5"><ArrowDownTrayIcon className="mr-2 h-4 w-4" />{exporting ? 'Export wird vorbereitet …' : 'Alle Daten exportieren'}</button>
     </div>
-    <div className="card border-red-200 dark:border-red-900/60">
-      <h2 className="text-base font-semibold text-red-700 dark:text-red-300">LANIS-Konto löschen</h2>
-      <p className="mt-1 text-sm leading-relaxed text-surface-500">Dadurch werden die bei LANIS gespeicherten Profildaten, Einstellungen, Aktivitäten, Push-Abos, WhatsApp-Verknüpfungen, Sitzungen und lokalen Cache-Daten gelöscht. Deine ursprünglichen Daten im Schulportal Hessen werden dadurch nicht gelöscht.</p>
-      <label className="mt-5 block max-w-sm text-sm font-medium text-surface-700 dark:text-surface-300">Zur Bestätigung <span className="font-mono">LÖSCHEN</span> eingeben<input value={confirmation} onChange={event => setConfirmation(event.target.value)} className="mt-2 block w-full rounded-xl border border-surface-300 bg-white px-3 py-2.5 font-mono text-sm outline-none focus:border-red-500 dark:border-surface-700 dark:bg-surface-900" autoComplete="off" /></label>
-      <button type="button" onClick={() => void deleteAccount()} disabled={deleting || confirmation !== 'LÖSCHEN'} className="mt-4 inline-flex items-center rounded-xl bg-red-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-red-700 disabled:opacity-50"><TrashIcon className="mr-2 h-4 w-4" />{deleting ? 'Konto wird gelöscht …' : 'Konto endgültig löschen'}</button>
+    <div className="card border-2 border-red-300 dark:border-red-900/70">
+      <h2 className="text-xs font-semibold uppercase tracking-wide text-red-700 dark:text-red-300">Gefahrenbereich</h2>
+      <h3 className="item-title mt-2">Konto löschen</h3>
+      <p className="mt-1 text-sm leading-relaxed text-surface-500">Dadurch werden dein Lanis-Profil, deine Einstellungen, Aktivitäten, Push-Abos, Verbindungen, Sitzungen und lokale Zwischenspeicher dauerhaft gelöscht. Originaldaten im Schulportal bleiben unberührt.</p>
+      <label className="mt-5 block max-w-sm text-sm font-medium text-surface-700 dark:text-surface-300">Gib zur Bestätigung <span className="font-mono">LÖSCHEN</span> ein<input value={confirmation} onChange={event => setConfirmation(event.target.value.toLocaleUpperCase('de-DE'))} className="mt-2 block w-full rounded-xl border border-surface-300 bg-white px-3 py-2.5 font-mono text-sm outline-none focus:border-red-500 dark:border-surface-700 dark:bg-surface-900" autoComplete="off" /></label>
+      <button type="button" onClick={() => void deleteAccount()} disabled={deleting || confirmation !== 'LÖSCHEN'} className="btn mt-4 bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"><TrashIcon className="mr-2 h-4 w-4" />{deleting ? 'Konto wird gelöscht …' : 'Konto löschen'}</button>
     </div>
     {message && <p className="rounded-xl bg-emerald-50 p-3 text-sm text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200">{message}</p>}
     {error && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-800 dark:bg-red-950/40 dark:text-red-200">{error}</p>}
@@ -334,26 +296,20 @@ const AccountSettings: React.FC = () => {
 
 type SidebarSaveState = 'idle' | 'saved' | 'error';
 
-const SidebarSettings: React.FC<{ isDemo: boolean }> = ({ isDemo }) => {
+const SidebarSettings: React.FC = () => {
+  const isDemo = useBasePath() === '/demo';
   const { preferences, updatePreferences, isSaving } = usePreferences();
   const [order, setOrder] = useState(() => normalizeSidebarOrder(preferences.sidebar.order));
   const [hiddenItems, setHiddenItems] = useState<string[]>(() => preferences.sidebar.hidden_items);
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [saveState, setSaveState] = useState<SidebarSaveState>('idle');
-  const [hasUnresolvedSidebarSaveFailure, setHasUnresolvedSidebarSaveFailure] = useState(false);
   const [feedbackSaveState, setFeedbackSaveState] = useState<SidebarSaveState>('idle');
-  const [isRetryingFeedbackSave, setIsRetryingFeedbackSave] = useState(false);
-  const preserveNavigationDraftsRef = React.useRef(false);
-  const isRetryingFeedbackSaveRef = React.useRef(false);
+  const [hasUnresolvedSidebarSaveFailure, setHasUnresolvedSidebarSaveFailure] = useState(false);
 
   useEffect(() => {
-    if (preserveNavigationDraftsRef.current) {
-      if (!isRetryingFeedbackSaveRef.current) preserveNavigationDraftsRef.current = false;
-      return;
-    }
     setOrder(normalizeSidebarOrder(preferences.sidebar.order));
     setHiddenItems(preferences.sidebar.hidden_items);
-  }, [preferences.sidebar.order, preferences.sidebar.hidden_items, isRetryingFeedbackSave]);
+  }, [preferences.sidebar.order, preferences.sidebar.hidden_items]);
 
   const visibleOrder = order.filter(id => !hiddenItems.includes(id));
   const hiddenOrder = order.filter(id => hiddenItems.includes(id));
@@ -390,7 +346,7 @@ const SidebarSettings: React.FC<{ isDemo: boolean }> = ({ isDemo }) => {
 
   const hasChanges = JSON.stringify(order) !== JSON.stringify(normalizeSidebarOrder(preferences.sidebar.order));
   const hasVisibilityChanges = JSON.stringify(hiddenItems) !== JSON.stringify(preferences.sidebar.hidden_items);
-  const isSidebarSaveInProgress = isSaving || isRetryingFeedbackSave;
+  const isSidebarSaveInProgress = isSaving;
   const applyOrder = async () => {
     setSaveState('idle');
     const saved = await updatePreferences({ sidebar: { order, hidden_items: hiddenItems } });
@@ -398,28 +354,10 @@ const SidebarSettings: React.FC<{ isDemo: boolean }> = ({ isDemo }) => {
     setHasUnresolvedSidebarSaveFailure(!saved);
   };
 
-  const saveFeedbackButton = async (showFeedbackButton: boolean, preserveNavigationDrafts = false) => {
-    preserveNavigationDraftsRef.current = preserveNavigationDrafts;
-    if (preserveNavigationDrafts) {
-      isRetryingFeedbackSaveRef.current = true;
-      setIsRetryingFeedbackSave(true);
-    }
+  const saveFeedbackButton = async (showFeedbackButton: boolean) => {
     setFeedbackSaveState('idle');
-    try {
-      const saved = await updatePreferences({
-        sidebar: { show_feedback_button: showFeedbackButton },
-      });
-      setFeedbackSaveState(saved ? 'saved' : 'error');
-    } finally {
-      if (preserveNavigationDrafts) {
-        isRetryingFeedbackSaveRef.current = false;
-        setIsRetryingFeedbackSave(false);
-      }
-    }
-  };
-
-  const toggleFeedbackButton = async () => {
-    await saveFeedbackButton(!preferences.sidebar.show_feedback_button);
+    const saved = await updatePreferences({ sidebar: { show_feedback_button: showFeedbackButton } });
+    setFeedbackSaveState(saved ? 'saved' : 'error');
   };
 
   const cancelChanges = () => {
@@ -457,54 +395,14 @@ const SidebarSettings: React.FC<{ isDemo: boolean }> = ({ isDemo }) => {
   };
 
   return (
-    <div className="space-y-4">
-    {!isDemo && <section className="card">
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <h3 className="item-title">Feedback-Schaltfläche</h3>
-          <p className="mt-1 text-sm text-surface-500 dark:text-surface-400">Zeigt den Feedback-Eintrag unten in der Seitenleiste.</p>
-        </div>
-        <button
-          type="button"
-          role="switch"
-          aria-checked={preferences.sidebar.show_feedback_button}
-          aria-label="Feedback-Schaltfläche anzeigen"
-          onClick={() => void toggleFeedbackButton()}
-          disabled={isSidebarSaveInProgress || hasChanges || hasVisibilityChanges}
-          title={hasChanges || hasVisibilityChanges
-            ? 'Speichere oder verwirf zuerst deine Navigationsänderungen.'
-            : hasUnresolvedSidebarSaveFailure
-              ? 'Feedback wird unabhängig gespeichert; Navigationsänderungen bleiben noch offen.'
-              : undefined}
-          className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500/40 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:focus:ring-offset-surface-900 ${preferences.sidebar.show_feedback_button ? 'bg-primary-600' : 'bg-surface-300 dark:bg-surface-700'}`}
-        >
-          <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${preferences.sidebar.show_feedback_button ? 'translate-x-5' : 'translate-x-0.5'}`} />
-        </button>
-      </div>
-      <div className="mt-3 min-h-5 text-sm" aria-live="polite">
-        {feedbackSaveState === 'saved' && <p className="text-emerald-700 dark:text-emerald-400">Gespeichert und mit deinem Konto synchronisiert.</p>}
-        {feedbackSaveState === 'error' && (
-          <div className="flex flex-wrap items-center justify-between gap-2 text-amber-700 dark:text-amber-300">
-            <p>Lokal gespeichert, aber noch nicht mit deinem Konto synchronisiert.</p>
-            <button
-              type="button"
-              onClick={() => void saveFeedbackButton(preferences.sidebar.show_feedback_button, hasChanges || hasVisibilityChanges)}
-              disabled={isSidebarSaveInProgress}
-              className="font-medium underline underline-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              Erneut versuchen
-            </button>
-          </div>
-        )}
-      </div>
-    </section>}
+    <div className="space-y-6">
     <section className="card !p-0 overflow-hidden">
       <div className="border-b border-surface-100 px-5 py-5 dark:border-surface-800 sm:px-6">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h3 className="item-title">Deine Navigation</h3>
+            <h3 className="item-title">Reihenfolge der Seitenleiste</h3>
             <p className="mt-1 max-w-xl text-sm leading-6 text-surface-500 dark:text-surface-400">
-              Ziehe Einträge am Griff an ihre neue Position oder nutze die Pfeile. Blende Einträge aus, die du nicht brauchst.
+              Ziehe die Einträge an die gewünschte Stelle oder nutze die Pfeile. Nicht benötigte Einträge kannst du ausblenden.
             </p>
           </div>
           {(hasChanges || hasVisibilityChanges) && (
@@ -541,7 +439,7 @@ const SidebarSettings: React.FC<{ isDemo: boolean }> = ({ isDemo }) => {
                 setDraggedId(id);
               }}
               onDragEnd={() => setDraggedId(null)}
-              className="hidden cursor-grab touch-none rounded-lg p-2 text-surface-400 hover:bg-surface-100 hover:text-surface-600 active:cursor-grabbing dark:hover:bg-surface-800 dark:hover:text-surface-200 sm:block"
+              className="cursor-grab touch-none rounded-lg p-2 text-surface-400 hover:bg-surface-100 hover:text-surface-600 active:cursor-grabbing dark:hover:bg-surface-800 dark:hover:text-surface-200"
               title={`${getSidebarLabel(id)} ziehen`}
             >
               <Bars3Icon className="h-5 w-5" aria-hidden="true" />
@@ -571,7 +469,7 @@ const SidebarSettings: React.FC<{ isDemo: boolean }> = ({ isDemo }) => {
                 className="flex h-10 items-center gap-1.5 rounded-lg px-2 text-xs font-medium text-surface-500 transition-colors hover:bg-surface-100 hover:text-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500/40 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-surface-800 dark:hover:text-primary-400"
               >
                 {hiddenItems.includes(id) ? <EyeIcon className="h-4 w-4" aria-hidden="true" /> : <EyeSlashIcon className="h-4 w-4" aria-hidden="true" />}
-                <span className="hidden sm:inline">{hiddenItems.includes(id) ? 'Zeigen' : 'Ausblenden'}</span>
+                <span className="hidden sm:inline">{hiddenItems.includes(id) ? 'Einblenden' : 'Ausblenden'}</span>
               </button>
             )}
             <button
@@ -621,7 +519,7 @@ const SidebarSettings: React.FC<{ isDemo: boolean }> = ({ isDemo }) => {
               disabled={(!hasChanges && !hasVisibilityChanges && !hasUnresolvedSidebarSaveFailure) || isSidebarSaveInProgress}
               className="btn btn-primary flex-1 disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none"
             >
-              {isSidebarSaveInProgress ? 'Wird gespeichert…' : 'Änderungen speichern'}
+              {isSidebarSaveInProgress ? 'Wird gespeichert …' : 'Änderungen speichern'}
             </button>
           </div>
         </div>
@@ -634,12 +532,37 @@ const SidebarSettings: React.FC<{ isDemo: boolean }> = ({ isDemo }) => {
           )}
           {hasUnresolvedSidebarSaveFailure && (
             <p className="text-amber-700 dark:text-amber-300">
-              Lokal gespeichert, aber noch nicht mit deinem Konto synchronisiert. Versuche es erneut.
+              Lokal gespeichert, aber noch nicht mit deinem Konto synchronisiert. Bitte erneut versuchen.
             </p>
           )}
         </div>
       </div>
     </section>
+    {!isDemo && <section className="card">
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <h3 className="item-title">Feedback-Schaltfläche anzeigen</h3>
+          <p className="mt-1 text-sm text-surface-500 dark:text-surface-400">Zeigt den Feedback-Eintrag unterhalb der Navigation an.</p>
+        </div>
+        <SettingsSwitch
+          checked={preferences.sidebar.show_feedback_button}
+          label="Feedback-Schaltfläche anzeigen"
+          onChange={() => void saveFeedbackButton(!preferences.sidebar.show_feedback_button)}
+          disabled={isSaving}
+        />
+      </div>
+      <div className="mt-3 min-h-5 text-sm" aria-live="polite">
+        {feedbackSaveState === 'saved' && <p className="text-emerald-700 dark:text-emerald-400">Gespeichert und mit deinem Konto synchronisiert.</p>}
+        {feedbackSaveState === 'error' && (
+          <div className="flex flex-wrap items-center justify-between gap-2 text-amber-700 dark:text-amber-300">
+            <p>Lokal gespeichert, aber noch nicht mit deinem Konto synchronisiert.</p>
+            <button type="button" onClick={() => void saveFeedbackButton(preferences.sidebar.show_feedback_button)} disabled={isSaving} className="font-medium underline underline-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
+              Erneut versuchen
+            </button>
+          </div>
+        )}
+      </div>
+    </section>}
     </div>
   );
 };
@@ -648,93 +571,65 @@ const SettingsIndex: React.FC<{
   basePath: string;
   sections: typeof settingsSections;
 }> = ({ basePath, sections }) => (
-  <div className="divide-y divide-surface-100 overflow-hidden rounded-xl border border-surface-200 bg-white dark:divide-surface-800 dark:border-surface-800 dark:bg-surface-900">
-    {sections.filter(item => item.id !== 'account').map(item => (
+  <div className="space-y-6">
+    <div className="grid gap-3 xl:grid-cols-2">
+    {sections.map(item => (
       <Link
         key={item.id}
         to={`${basePath}/settings/${item.id}`}
-        className="group flex items-center gap-4 px-4 py-4 transition-colors hover:bg-surface-50 dark:hover:bg-surface-800/70 sm:px-5"
+        className="card card-hover group flex items-center gap-4"
       >
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-surface-100 text-surface-600 dark:bg-surface-800 dark:text-surface-300">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-surface-100 text-surface-600 dark:bg-surface-800 dark:text-surface-300">
           <item.icon className="h-5 w-5" />
         </div>
         <div className="min-w-0 flex-1">
-          <h2 className="font-medium text-surface-900 dark:text-white">{item.title}</h2>
+          <h2 className="item-title">{item.title}</h2>
           <p className="mt-0.5 text-sm text-surface-500">{item.description}</p>
         </div>
         <ChevronRightIcon className="h-5 w-5 shrink-0 text-surface-300 group-hover:text-surface-500 dark:text-surface-600" />
       </Link>
     ))}
-    {!basePath && (
-      <Link
-        to="/onboarding"
-        className="group flex items-center gap-4 px-4 py-4 transition-colors hover:bg-surface-50 dark:hover:bg-surface-800/70 sm:px-5"
-      >
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-surface-100 text-surface-600 dark:bg-surface-800 dark:text-surface-300">
-          <SparklesIcon className="h-5 w-5" />
-        </div>
-        <div className="min-w-0 flex-1">
-          <h2 className="font-medium text-surface-900 dark:text-white">Einrichtung erneut starten</h2>
-          <p className="mt-0.5 text-sm text-surface-500">Aussehen, Favoriten, Stundenplan und Hausaufgaben gemeinsam anpassen.</p>
-        </div>
-        <ChevronRightIcon className="h-5 w-5 shrink-0 text-surface-300 group-hover:text-surface-500 dark:text-surface-600" />
-      </Link>
-    )}
-    <Link
-      to="/set-custom-backend"
-      className="group flex items-center gap-4 px-4 py-4 transition-colors hover:bg-surface-50 dark:hover:bg-surface-800/70 sm:px-5"
-    >
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-surface-100 text-surface-600 dark:bg-surface-800 dark:text-surface-300">
-        <ServerStackIcon className="h-5 w-5" />
+    </div>
+    <details className="card">
+      <summary className="cursor-pointer text-sm font-medium text-surface-900 dark:text-surface-100">Erweitert</summary>
+      <div className="mt-4 border-t border-surface-100 pt-4 dark:border-surface-800">
+        <Link to="/set-custom-backend" className="flex items-center gap-3 text-sm font-medium text-primary-700 hover:underline dark:text-primary-300">
+          <ServerStackIcon className="h-5 w-5" />
+          Eigenes Backend
+          <ChevronRightIcon className="ml-auto h-5 w-5" />
+        </Link>
       </div>
-      <div className="min-w-0 flex-1">
-        <h2 className="font-medium text-surface-900 dark:text-white">Backend-Adresse</h2>
-        <p className="mt-0.5 text-sm text-surface-500">Das Backend für dieses Gerät konfigurieren.</p>
-      </div>
-      <ChevronRightIcon className="h-5 w-5 shrink-0 text-surface-300 group-hover:text-surface-500 dark:text-surface-600" />
-    </Link>
-    {sections.filter(item => item.id === 'account').map(item => (
-      <Link
-        key={item.id}
-        to={`${basePath}/settings/${item.id}`}
-        className="group flex items-center gap-4 px-4 py-4 transition-colors hover:bg-surface-50 dark:hover:bg-surface-800/70 sm:px-5"
-      >
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-surface-100 text-surface-600 dark:bg-surface-800 dark:text-surface-300">
-          <item.icon className="h-5 w-5" />
-        </div>
-        <div className="min-w-0 flex-1">
-          <h2 className="font-medium text-surface-900 dark:text-white">{item.title}</h2>
-          <p className="mt-0.5 text-sm text-surface-500">{item.description}</p>
-        </div>
-        <ChevronRightIcon className="h-5 w-5 shrink-0 text-surface-300 group-hover:text-surface-500 dark:text-surface-600" />
-      </Link>
-    ))}
+    </details>
   </div>
 );
 
 const Settings: React.FC = () => {
-  const { isDark, themeMode, setThemeMode, themeColor, setThemeColor } = useTheme();
-  const { updatePreferences, syncError } = usePreferences();
-  const { token, user } = useAuth();
+  const { themeMode, setThemeMode, themeColor, setThemeColor } = useTheme();
+  const { preferences, updatePreferences, syncError } = usePreferences();
+  const { token } = useAuth();
   const location = useLocation();
   const basePath = useBasePath();
   const isDemo = basePath === '/demo';
   const { availability: installAvailability, canInstall, isInstalling, requestInstall } = usePwaInstall();
   const settingsRoot = `${basePath}/settings`;
-  const [hasNativeSubstitutionPlan, setHasNativeSubstitutionPlan] = useState(() => {
-    const availability = getModuleAvailability(readModulesCache(user));
-    return availability.hasNativeSubstitutionPlan || availability.hasDsbModule;
-  });
   const visibleSettingsSections = settingsSections.filter(item => (
-    (item.id !== 'vertretungsplan' || hasNativeSubstitutionPlan)
-    && (item.id !== 'account' || basePath !== '/demo')
-    && (item.id !== 'app' || !isDemo)
+    item.id !== 'privacy' || !isDemo
   ));
-  const requestedSection = location.pathname.slice(settingsRoot.length).split('/').filter(Boolean)[0] as SettingsSection | undefined;
-  const section: SettingsSection = requestedSection && visibleSettingsSections.some(item => item.id === requestedSection)
-    ? requestedSection
+  const requestedSection = location.pathname.slice(settingsRoot.length).split('/').filter(Boolean)[0];
+  const sectionAliases: Record<string, SettingsSection> = {
+    dashboard: 'notifications',
+    homework: 'timetable',
+    vertretungsplan: 'timetable',
+    sidebar: 'navigation',
+    agents: 'connections',
+    whatsapp: 'connections',
+    app: 'help',
+    account: 'privacy',
+  };
+  const selectedSection = requestedSection ? sectionAliases[requestedSection] || requestedSection : undefined;
+  const section: SettingsSection = selectedSection && visibleSettingsSections.some(item => item.id === selectedSection)
+    ? selectedSection as SettingsSection
     : 'home';
-  const [ghostClicks, setGhostClicks] = useState(0);
   const [notificationPrefs, setNotificationPrefs] = useState<NotificationPreferences>(defaultNotificationPreferences);
   const [notificationConfigured, setNotificationConfigured] = useState(false);
   const [notificationBrowserReady, setNotificationBrowserReady] = useState(false);
@@ -744,13 +639,8 @@ const Settings: React.FC = () => {
   const [notificationsSaving, setNotificationsSaving] = useState(false);
   const [notificationTestSending, setNotificationTestSending] = useState(false);
   const [notificationError, setNotificationError] = useState('');
+  const [notificationClassSyncFailed, setNotificationClassSyncFailed] = useState(false);
   const [notificationMessage, setNotificationMessage] = useState('');
-  const [ownClass, setOwnClass] = useState('');
-  const [availableClasses, setAvailableClasses] = useState<string[]>([]);
-  const [vertretungsplanClassesInput, setVertretungsplanClassesInput] = useState('');
-  const [hasSavedOwnClassScope, setHasSavedOwnClassScope] = useState(false);
-  const [vertretungsplanOptionsStatus, setVertretungsplanOptionsStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
-  const [vertretungsplanOptionsError, setVertretungsplanOptionsError] = useState('');
 
   const pushSupported = typeof window !== 'undefined'
     && 'Notification' in window
@@ -758,43 +648,15 @@ const Settings: React.FC = () => {
     && 'PushManager' in window;
   const notificationTypesSelected = notificationPrefs.messages_enabled
     || notificationPrefs.vertretungsplan_enabled;
-  const notificationSelectionValid = !notificationPrefs.vertretungsplan_enabled
-    || notificationPrefs.vertretungsplan_class_mode === 'all'
-    || (
-      notificationPrefs.vertretungsplan_class_mode === 'own'
-      && (
-        Boolean(ownClass)
-        || (hasSavedOwnClassScope && vertretungsplanOptionsStatus !== 'success')
-      )
-    )
-    || (
-      notificationPrefs.vertretungsplan_class_mode === 'selected'
-      && notificationPrefs.vertretungsplan_classes.some(value => value.trim().length > 0)
-    );
 
-  useEffect(() => {
-    const cachedModules = readModulesCache(user);
-    const availability = getModuleAvailability(cachedModules);
-    setHasNativeSubstitutionPlan(availability.hasNativeSubstitutionPlan || availability.hasDsbModule);
-    if (!token) return undefined;
-
-    const writeGeneration = captureAccountDataGeneration();
-    const controller = new AbortController();
-    appsAPI.getModules(token, controller.signal)
-      .then(response => {
-        if (controller.signal.aborted || !response.success) return;
-        writeModulesCache(user, response.modules, writeGeneration);
-        const availability = getModuleAvailability(response.modules);
-        setHasNativeSubstitutionPlan(availability.hasNativeSubstitutionPlan || availability.hasDsbModule);
-      })
-      .catch(error => {
-        if (!axios.isCancel(error)) {
-          console.error('Failed to check Vertretungsplan settings availability:', error);
-        }
-      });
-
-    return () => controller.abort();
-  }, [token, user?.school_id, user?.username]);
+  const withSelectedClass = (next: NotificationPreferences): NotificationPreferences => {
+    const selectedClass = preferences.vertretungsplan.class_override.trim();
+    return {
+      ...next,
+      vertretungsplan_class_mode: selectedClass ? 'selected' : 'own',
+      vertretungsplan_classes: selectedClass ? [selectedClass] : [],
+    };
+  };
 
   useEffect(() => {
     setNotificationConfigured(false);
@@ -805,14 +667,8 @@ const Settings: React.FC = () => {
     setNotificationsSaving(false);
     setNotificationTestSending(false);
     setNotificationError('');
+    setNotificationClassSyncFailed(false);
     setNotificationMessage('');
-    setOwnClass('');
-    setAvailableClasses([]);
-    setVertretungsplanClassesInput('');
-    setHasSavedOwnClassScope(false);
-    setVertretungsplanOptionsStatus('idle');
-    setVertretungsplanOptionsError('');
-
     if (section !== 'notifications') {
       setNotificationsLoading(false);
       return;
@@ -824,27 +680,7 @@ const Settings: React.FC = () => {
     }
 
     setNotificationsLoading(true);
-    setVertretungsplanOptionsStatus('loading');
-
     const controller = new AbortController();
-    const loadVertretungsplanOptions = async () => {
-      try {
-        const options = await notificationsAPI.getVertretungsplanOptions(token, controller.signal);
-        if (controller.signal.aborted) return;
-        if (!options.success) {
-          throw new Error('Vertretungsplan options response was unsuccessful.');
-        }
-        setOwnClass(options.own_class || '');
-        setAvailableClasses(options.available_classes || []);
-        setVertretungsplanOptionsStatus('success');
-      } catch (error) {
-        if (!controller.signal.aborted) {
-          console.error('Failed to load Vertretungsplan notification options:', error);
-          setVertretungsplanOptionsStatus('error');
-          setVertretungsplanOptionsError('Klassen konnten gerade nicht aus dem Vertretungsplan geladen werden. Du kannst sie trotzdem manuell eingeben.');
-        }
-      }
-    };
     const loadNotificationSettings = async () => {
       try {
         const [config, preferences] = await Promise.all([
@@ -860,14 +696,23 @@ const Settings: React.FC = () => {
           ...defaultNotificationPreferences,
           ...preferences.preferences,
         };
+        const classScopedPreferences = withSelectedClass(loadedPreferences);
         setNotificationConfigured(config.configured);
-        setNotificationPrefs(loadedPreferences);
-        setVertretungsplanClassesInput(loadedPreferences.vertretungsplan_classes.join(', '));
-        setHasSavedOwnClassScope(
-          loadedPreferences.vertretungsplan_enabled
-          && loadedPreferences.vertretungsplan_class_mode === 'own',
-        );
+        setNotificationPrefs(classScopedPreferences);
         setNotificationSettingsLoaded(true);
+        if (loadedPreferences.vertretungsplan_enabled && (
+          loadedPreferences.vertretungsplan_class_mode !== classScopedPreferences.vertretungsplan_class_mode
+          || JSON.stringify(loadedPreferences.vertretungsplan_classes) !== JSON.stringify(classScopedPreferences.vertretungsplan_classes)
+        )) {
+          try {
+            const response = await notificationsAPI.updatePreferences(token, classScopedPreferences);
+            if (!response.success) throw new Error('Substitution notification class could not be synced.');
+          } catch (syncError) {
+            if (controller.signal.aborted) return;
+            console.error('Failed to sync substitution notification class:', syncError);
+            setNotificationClassSyncFailed(true);
+          }
+        }
         if (pushSupported) {
           setNotificationPermission(Notification.permission);
           if (config.configured && loadedPreferences.enabled && Notification.permission === 'granted') {
@@ -904,10 +749,9 @@ const Settings: React.FC = () => {
       }
     };
 
-    void loadVertretungsplanOptions();
     void loadNotificationSettings();
     return () => controller.abort();
-  }, [token, pushSupported, section]);
+  }, [token, pushSupported, section, preferences.vertretungsplan.class_override]);
 
   const getPushRegistration = async () => {
     if (!pushSupported) throw new Error('Dieser Browser unterstützt keine Push-Benachrichtigungen.');
@@ -1004,25 +848,22 @@ const Settings: React.FC = () => {
       setNotificationError('Wähle mindestens eine Benachrichtigungsart aus.');
       return;
     }
+    const scopedPreferences = withSelectedClass(nextPrefs);
     setNotificationsSaving(true);
     setNotificationError('');
     setNotificationMessage('');
     try {
       const response = await notificationsAPI.updatePreferences(token, {
-        ...nextPrefs,
-        timezone: nextPrefs.timezone || getBrowserTimezone(),
+        ...scopedPreferences,
+        timezone: scopedPreferences.timezone || getBrowserTimezone(),
       });
       if (!response.success || !response.preferences) {
         throw new Error('Benachrichtigungseinstellungen konnten nicht gespeichert werden.');
       }
       void capture('settings_updated', { section: 'notifications' });
-      const savedPreferences = { ...defaultNotificationPreferences, ...response.preferences };
+      const savedPreferences = withSelectedClass({ ...defaultNotificationPreferences, ...response.preferences });
       setNotificationPrefs(savedPreferences);
-      setVertretungsplanClassesInput(savedPreferences.vertretungsplan_classes.join(', '));
-      setHasSavedOwnClassScope(
-        savedPreferences.vertretungsplan_enabled
-        && savedPreferences.vertretungsplan_class_mode === 'own',
-      );
+      setNotificationClassSyncFailed(false);
       if (!response.preferences.enabled) setNotificationBrowserReady(false);
       setNotificationMessage('Benachrichtigungseinstellungen gespeichert.');
     } catch (error) {
@@ -1038,10 +879,10 @@ const Settings: React.FC = () => {
     setNotificationMessage('');
     const notificationsActive = notificationPrefs.enabled && notificationBrowserReady;
     if (!notificationsActive) {
-      if (!notificationTypesSelected || !notificationSelectionValid) {
-        setNotificationError('Wähle mindestens eine gültige Benachrichtigungsart aus.');
-        return;
-      }
+      const activationPreferences = notificationTypesSelected
+        ? notificationPrefs
+        : { ...notificationPrefs, messages_enabled: true };
+      setNotificationPrefs(activationPreferences);
       setNotificationsSaving(true);
       let registeredEndpoint: string | null = null;
       try {
@@ -1049,7 +890,7 @@ const Settings: React.FC = () => {
           registeredEndpoint = endpoint;
         });
         const response = await notificationsAPI.updatePreferences(token!, {
-          ...notificationPrefs,
+          ...withSelectedClass(activationPreferences),
           enabled: true,
           timezone: getBrowserTimezone(),
         });
@@ -1057,13 +898,9 @@ const Settings: React.FC = () => {
           throw new Error('Benachrichtigungseinstellungen konnten nicht aktiviert werden.');
         }
         void capture('settings_updated', { section: 'notifications' });
-        const savedPreferences = { ...defaultNotificationPreferences, ...response.preferences };
+        const savedPreferences = withSelectedClass({ ...defaultNotificationPreferences, ...response.preferences });
         setNotificationPrefs(savedPreferences);
-        setVertretungsplanClassesInput(savedPreferences.vertretungsplan_classes.join(', '));
-        setHasSavedOwnClassScope(
-          savedPreferences.vertretungsplan_enabled
-          && savedPreferences.vertretungsplan_class_mode === 'own',
-        );
+        setNotificationClassSyncFailed(false);
         setNotificationMessage('Benachrichtigungen sind jetzt aktiv.');
       } catch (error) {
         let rollbackError: Error | null = null;
@@ -1170,70 +1007,64 @@ const Settings: React.FC = () => {
         <p className="mb-5 rounded-xl bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">{syncError}</p>
       )}
 
-      {section === 'timetable' && <TimetableSettings />}
-      {section === 'dashboard' && <DashboardSettings />}
-      {section === 'homework' && <HomeworkSettings />}
-      {section === 'vertretungsplan' && <VertretungsplanSettings />}
-      {section === 'whatsapp' && <WhatsAppSettings />}
-      {section === 'sidebar' && <SidebarSettings isDemo={isDemo} />}
-      {section === 'agents' && <AgentsSettings />}
-      {section === 'account' && <div className="space-y-6"><AccountSettings /><AnalyticsControls /></div>}
+      {section === 'timetable' && (
+        <div className="space-y-6">
+          <VertretungsplanSettings />
+          <TimetableSettings />
+        </div>
+      )}
+      {section === 'navigation' && <SidebarSettings />}
+      {section === 'connections' && <AgentsSettings />}
+      {section === 'privacy' && <div className="space-y-6"><AnalyticsControls /><AccountSettings /></div>}
 
       <div className="space-y-6">
         {section === 'appearance' && (
           <>
         {/* Display mode */}
         <div className="card">
-          <h3 className="item-title">Darstellung</h3>
-          <p className="mt-0.5 text-sm text-surface-500">Wird mit deinem Lanis-Konto synchronisiert.</p>
-          <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <h3 className="item-title">Design</h3>
+          <div className="segmented-control mt-4 grid-cols-2 sm:grid-cols-4" role="radiogroup" aria-label="Design">
             {([
-              { id: 'system' as const, label: 'Automatisch', icon: DevicePhoneMobileIcon },
-              { id: 'light' as const, label: 'Hell', icon: SunIcon },
-              { id: 'dark' as const, label: 'Dunkel', icon: MoonIcon },
-              { id: 'oled' as const, label: 'OLED', icon: MoonIcon },
+              { id: 'system' as const, label: 'Automatisch', preview: 'bg-gradient-to-r from-surface-100 to-surface-800' },
+              { id: 'light' as const, label: 'Hell', preview: 'bg-surface-100' },
+              { id: 'dark' as const, label: 'Dunkel', preview: 'bg-surface-800' },
+              { id: 'oled' as const, label: 'OLED', preview: 'bg-black' },
             ]).map(option => (
               <button
                 key={option.id}
                 type="button"
+                role="radio"
+                aria-checked={themeMode === option.id}
                 onClick={() => changeThemeMode(option.id)}
-                className={`flex items-center gap-2 rounded-xl border p-3 text-sm font-medium transition-all ${themeMode === option.id
-                  ? 'border-primary-500 bg-primary-50 text-primary-800 ring-2 ring-primary-500/15 dark:bg-primary-950/40 dark:text-primary-200'
-                  : 'border-surface-200 bg-white text-surface-600 hover:border-primary-300 dark:border-surface-700 dark:bg-surface-800 dark:text-surface-300'}`}
+                className="segmented-control-option min-h-20 flex-col items-start gap-2"
               >
-                <option.icon className="h-4 w-4" />
+                <span className={`h-7 w-full rounded-md border border-surface-200 dark:border-surface-700 ${option.preview}`} aria-hidden="true" />
                 {option.label}
               </button>
             ))}
           </div>
         </div>
 
-        {/* Primary Color */}
         <div className="card">
           <h3 className="item-title mb-1">Primärfarbe</h3>
-          <p className="text-sm text-surface-500 mb-5">Wähle eine Farbe für das Design</p>
-          <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-7">
+          <p className="mb-5 text-sm text-surface-500">Wähle die Akzentfarbe für die Oberfläche.</p>
+          <div className="flex flex-wrap gap-2" role="group" aria-label="Primärfarbe">
             {themeColors.map((c) => (
               <button
                 key={c.key}
+                type="button"
                 onClick={() => changeThemeColor(c.key)}
-                className="flex flex-col items-center gap-2 p-3 rounded-xl border transition-all duration-200 ease-out-expo active:scale-95"
-                style={{
-                  borderColor: themeColor === c.key
-                    ? c.hex
-                    : `rgb(var(--color-surface-${isDark ? '700' : '200'}))`,
-                  backgroundColor: themeColor === c.key ? `${c.hex}0f` : 'transparent',
-                }}
+                aria-pressed={themeColor === c.key}
+                aria-label={c.label}
+                title={c.label}
+                className={`inline-flex min-h-10 items-center gap-2 rounded-full border px-3 py-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-surface-900 ${themeColor === c.key ? 'border-primary-500 bg-primary-50 dark:bg-primary-950/40' : 'border-surface-200 dark:border-surface-700'}`}
               >
-                <span
-                  className="w-8 h-8 rounded-full flex items-center justify-center"
-                  style={{ backgroundColor: c.hex }}
-                >
+                <span className="flex h-5 w-5 items-center justify-center rounded-full" style={{ backgroundColor: c.hex }}>
                   {themeColor === c.key && (
-                    <CheckIcon className={`w-4 h-4 ${c.checkClass || 'text-white'}`} />
+                    <CheckIcon className={`h-3 w-3 ${c.checkClass || 'text-white'}`} />
                   )}
                 </span>
-                <span className="text-xs font-medium text-surface-600 dark:text-surface-300">{c.label}</span>
+                <span className="text-sm font-medium text-surface-700 dark:text-surface-200">{c.label}</span>
               </button>
             ))}
           </div>
@@ -1245,6 +1076,7 @@ const Settings: React.FC = () => {
         {/* Push-Benachrichtigungen */}
         {section === 'notifications' && (
         <>
+        <DashboardSettings />
         <div className="card">
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-start gap-3">
@@ -1257,34 +1089,18 @@ const Settings: React.FC = () => {
               </div>
               <div>
                 <h3 className="item-title">Push-Benachrichtigungen</h3>
-                <p className="text-sm text-surface-500 mt-0.5">
-                  {notificationPrefs.enabled && notificationBrowserReady
-                    ? `Aktiv von ${notificationPrefs.start_time} bis ${notificationPrefs.end_time} · Prüfung alle ${notificationPrefs.poll_interval_minutes} Min.`
-                    : notificationPrefs.enabled
-                      ? 'Für diesen Browser noch nicht aktiviert. Klicke den Schalter, um ihn zu registrieren.'
-                    : 'Lanis kann dich über Nachrichten und neue Vertretungsplan-Einträge informieren.'}
-                </p>
+                <p className="text-sm text-surface-500 mt-0.5">Web-Push – auch, wenn Lanis geschlossen ist.</p>
+                {notificationPrefs.enabled && !notificationBrowserReady && (
+                  <p className="mt-1 text-xs text-surface-500">Für dieses Gerät noch nicht eingerichtet.</p>
+                )}
               </div>
             </div>
-            <button
-              type="button"
-              onClick={handleNotificationsToggle}
-              disabled={notificationsLoading || notificationsSaving || !notificationSettingsLoaded || !notificationConfigured || !pushSupported || (!(notificationPrefs.enabled && notificationBrowserReady) && (!notificationTypesSelected || !notificationSelectionValid))}
-              className={`relative h-7 w-14 shrink-0 rounded-full transition-colors duration-300 ease-out-expo disabled:cursor-not-allowed disabled:opacity-50 ${
-                notificationPrefs.enabled && notificationBrowserReady ? 'bg-primary-600' : 'bg-surface-300 dark:bg-surface-700'
-              }`}
-              role="switch"
-              aria-checked={notificationPrefs.enabled && notificationBrowserReady}
-              aria-label="Push-Benachrichtigungen aktivieren"
-            >
-              <span
-                className={`absolute top-0.5 left-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-white shadow-soft transition-all duration-300 ease-out-expo ${
-                  notificationPrefs.enabled && notificationBrowserReady ? 'translate-x-7' : 'translate-x-0'
-                }`}
-              >
-                <span className={`h-2 w-2 rounded-full ${notificationPrefs.enabled && notificationBrowserReady ? 'bg-primary-600' : 'bg-surface-400'}`} />
-              </span>
-            </button>
+            <SettingsSwitch
+              checked={notificationPrefs.enabled && notificationBrowserReady}
+              onChange={handleNotificationsToggle}
+              disabled={notificationsLoading || notificationsSaving || !notificationSettingsLoaded || !notificationConfigured || !pushSupported}
+              label="Push-Benachrichtigungen"
+            />
           </div>
 
           <div className="mt-5 space-y-4 border-t border-surface-100 pt-5 dark:border-surface-800">
@@ -1295,23 +1111,50 @@ const Settings: React.FC = () => {
             )}
             {notificationConfigured && !pushSupported && (
               <p className="rounded-xl bg-surface-50 p-3 text-xs text-surface-600 dark:bg-surface-800 dark:text-surface-300">
-                Dieser Browser unterstützt keine Web-Push-Benachrichtigungen. Installiere Lanis als App oder nutze einen aktuellen Browser.
+                Dieser Browser unterstützt keine Web-Push-Benachrichtigungen. Installiere Lanis oder verwende einen aktuellen Browser.
               </p>
             )}
             {pushSupported && notificationPermission === 'denied' && (
               <p className="rounded-xl bg-amber-50 p-3 text-xs text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
-                Dein Browser blockiert Benachrichtigungen. Erlaube sie in den Website-Einstellungen und aktiviere den Schalter erneut.
+                Dein Browser blockiert Benachrichtigungen. Erlaube sie in den Website-Einstellungen und versuche es erneut.
               </p>
             )}
             {notificationPrefs.enabled && !notificationBrowserReady && pushSupported && notificationPermission !== 'denied' && (
               <p className="rounded-xl bg-amber-50 p-3 text-xs text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
-                Dein Konto hat Benachrichtigungen aktiviert, aber dieser Browser ist noch nicht registriert. Aktiviere den Schalter, um ihn zu verbinden.
+                Push ist für dein Konto aktiviert, aber dieser Browser ist noch nicht eingerichtet. Aktiviere den Schalter, um ihn zu verbinden.
               </p>
             )}
 
-            <div className="grid gap-4 sm:grid-cols-3">
+            {notificationPrefs.enabled && <fieldset className="space-y-3">
+              <legend className="item-title mb-3">Was soll gesendet werden?</legend>
+              <label className="flex cursor-pointer items-center gap-3">
+                <input type="checkbox" className="h-4 w-4 rounded border-surface-300 text-primary-600 focus:ring-primary-500"
+                  checked={notificationPrefs.messages_enabled}
+                  onChange={event => setNotificationPrefs(previous => ({ ...previous, messages_enabled: event.target.checked }))}
+                  disabled={notificationsLoading || notificationsSaving} />
+                <span className="text-sm font-medium">Neue Nachrichten</span>
+              </label>
               <div>
-                <label className="label" htmlFor="notification-start">Aktiv ab</label>
+                <label className="flex cursor-pointer items-center gap-3">
+                  <input type="checkbox" className="h-4 w-4 rounded border-surface-300 text-primary-600 focus:ring-primary-500"
+                    checked={notificationPrefs.vertretungsplan_enabled}
+                    onChange={event => setNotificationPrefs(previous => ({ ...previous, vertretungsplan_enabled: event.target.checked }))}
+                    disabled={notificationsLoading || notificationsSaving} />
+                  <span className="text-sm font-medium">Änderungen im Vertretungsplan</span>
+                </label>
+                {notificationPrefs.vertretungsplan_enabled && (
+                  <p className="ml-7 mt-1 text-xs text-surface-500">
+                    Es wird die Klasse „{preferences.vertretungsplan.class_override.trim() || 'automatisch erkannte Klasse'}“ aus „Stundenplan &amp; Vertretungsplan“ verwendet.
+                  </p>
+                )}
+              </div>
+            </fieldset>}
+
+            {notificationPrefs.enabled && <fieldset>
+              <legend className="item-title mb-3">Aktive Zeiten</legend>
+              <div className="grid gap-4 sm:grid-cols-3">
+              <div>
+                <label className="label" htmlFor="notification-start">Von</label>
                 <div className="relative">
                   <ClockIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-surface-400" />
                   <input
@@ -1325,7 +1168,7 @@ const Settings: React.FC = () => {
                 </div>
               </div>
               <div>
-                <label className="label" htmlFor="notification-end">Aktiv bis</label>
+                <label className="label" htmlFor="notification-end">Bis</label>
                 <div className="relative">
                   <ClockIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-surface-400" />
                   <input
@@ -1352,27 +1195,37 @@ const Settings: React.FC = () => {
                   ))}
                 </select>
               </div>
-            </div>
+              </div>
+            </fieldset>}
 
-            <div className="flex justify-end gap-2">
+            {notificationPrefs.enabled && <div className="flex justify-end gap-2">
                 <button
                   type="button"
                   onClick={sendTestNotification}
               disabled={notificationsLoading || notificationsSaving || notificationTestSending || !notificationSettingsLoaded || !notificationPrefs.enabled || !notificationBrowserReady || !notificationConfigured || !pushSupported}
-                  className="btn btn-secondary h-9 text-xs disabled:opacity-50"
+                  className="btn btn-secondary disabled:opacity-50"
                 >
-                  {notificationTestSending ? 'Sende...' : 'Test senden'}
+                  {notificationTestSending ? 'Wird gesendet …' : 'Test senden'}
                 </button>
                 <button
                   type="button"
                   onClick={() => saveNotificationSettings({ ...notificationPrefs, timezone: notificationPrefs.timezone || getBrowserTimezone() })}
-                  disabled={notificationsLoading || notificationsSaving || !notificationSettingsLoaded || !token || !notificationSelectionValid || (notificationPrefs.enabled && !notificationTypesSelected)}
-                  className="btn btn-primary h-9 text-xs disabled:opacity-50"
+                  disabled={notificationsLoading || notificationsSaving || !notificationSettingsLoaded || !token || !notificationTypesSelected}
+                  className="btn btn-primary disabled:opacity-50"
                 >
-                  {notificationsSaving ? 'Speichere...' : 'Speichern'}
+                  {notificationsSaving ? 'Wird gespeichert …' : 'Speichern'}
                 </button>
-            </div>
+            </div>}
 
+            {notificationClassSyncFailed && (
+              <div role="alert" className="space-y-2 rounded-xl bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+                <p>Der Klassenfilter konnte nicht synchronisiert werden. Push-Benachrichtigungen verwenden möglicherweise noch die bisherige Klasse.</p>
+                <button type="button" className="btn btn-secondary" onClick={() => void saveNotificationSettings(notificationPrefs)}
+                  disabled={notificationsLoading || notificationsSaving || !notificationSettingsLoaded || !token}>
+                  {notificationsSaving ? 'Wird gespeichert …' : 'Erneut versuchen'}
+                </button>
+              </div>
+            )}
             {notificationError && (
               <p className="rounded-xl bg-red-50 p-3 text-xs text-red-700 dark:bg-red-950/40 dark:text-red-300">{notificationError}</p>
             )}
@@ -1382,215 +1235,11 @@ const Settings: React.FC = () => {
           </div>
         </div>
 
-        {/* Nachrichten-Benachrichtigungen */}
-        <div className="card">
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex items-start gap-3">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary-50 text-primary-700 dark:bg-primary-950 dark:text-primary-300">
-                <InboxIcon className="h-5 w-5" />
-              </div>
-              <div>
-                <h3 className="item-title">Nachrichten</h3>
-                <p className="text-sm text-surface-500 mt-0.5">Benachrichtigt bei neuen oder aktualisierten ungelesenen Unterhaltungen.</p>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={() => setNotificationPrefs(previous => ({ ...previous, messages_enabled: !previous.messages_enabled }))}
-              disabled={notificationsLoading || notificationsSaving}
-              className={`relative h-7 w-14 shrink-0 rounded-full transition-colors duration-300 ease-out-expo disabled:cursor-not-allowed disabled:opacity-50 ${
-                notificationPrefs.messages_enabled ? 'bg-primary-600' : 'bg-surface-300 dark:bg-surface-700'
-              }`}
-              role="switch"
-              aria-checked={notificationPrefs.messages_enabled}
-              aria-label="Nachrichten-Benachrichtigungen aktivieren"
-            >
-              <span
-                className={`absolute top-0.5 left-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-white shadow-soft transition-all duration-300 ease-out-expo ${
-                  notificationPrefs.messages_enabled ? 'translate-x-7' : 'translate-x-0'
-                }`}
-              >
-                <span className={`h-2 w-2 rounded-full ${notificationPrefs.messages_enabled ? 'bg-primary-600' : 'bg-surface-400'}`} />
-              </span>
-            </button>
-          </div>
-
-          {notificationPrefs.messages_enabled && (
-            <label className="mt-5 flex cursor-pointer items-start gap-3 border-t border-surface-100 pt-5 dark:border-surface-800">
-              <input
-                type="checkbox"
-                className="mt-0.5 h-4 w-4 rounded border-surface-300 text-primary-600 focus:ring-primary-500"
-                checked={notificationPrefs.show_preview}
-                onChange={event => setNotificationPrefs(previous => ({ ...previous, show_preview: event.target.checked }))}
-                disabled={notificationsLoading || notificationsSaving}
-              />
-              <span>
-                <span className="block text-sm font-medium text-surface-800 dark:text-surface-200">Vorschau in der Benachrichtigung</span>
-                <span className="mt-0.5 block text-xs text-surface-500">Zeigt Absender und Betreff auf dem Sperrbildschirm an.</span>
-              </span>
-            </label>
-          )}
-        </div>
-
-        {/* Vertretungsplan-Benachrichtigungen */}
-        <div className="card">
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex items-start gap-3">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary-50 text-primary-700 dark:bg-primary-950 dark:text-primary-300">
-                <ClipboardDocumentListIcon className="h-5 w-5" />
-              </div>
-              <div>
-                <h3 className="item-title">Vertretungsplan</h3>
-                <p className="text-sm text-surface-500 mt-0.5">Benachrichtigt über neue Einträge im Vertretungsplan.</p>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={() => setNotificationPrefs(previous => ({ ...previous, vertretungsplan_enabled: !previous.vertretungsplan_enabled }))}
-              disabled={notificationsLoading || notificationsSaving}
-              className={`relative h-7 w-14 shrink-0 rounded-full transition-colors duration-300 ease-out-expo disabled:cursor-not-allowed disabled:opacity-50 ${
-                notificationPrefs.vertretungsplan_enabled ? 'bg-primary-600' : 'bg-surface-300 dark:bg-surface-700'
-              }`}
-              role="switch"
-              aria-checked={notificationPrefs.vertretungsplan_enabled}
-              aria-label="Vertretungsplan-Benachrichtigungen aktivieren"
-            >
-              <span
-                className={`absolute top-0.5 left-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-white shadow-soft transition-all duration-300 ease-out-expo ${
-                  notificationPrefs.vertretungsplan_enabled ? 'translate-x-7' : 'translate-x-0'
-                }`}
-              >
-                <span className={`h-2 w-2 rounded-full ${notificationPrefs.vertretungsplan_enabled ? 'bg-primary-600' : 'bg-surface-400'}`} />
-              </span>
-            </button>
-          </div>
-
-          {notificationPrefs.vertretungsplan_enabled && (
-            <div className="mt-5 border-t border-surface-100 pt-5 dark:border-surface-800">
-              <div className="space-y-3 rounded-xl bg-surface-50 p-4 dark:bg-surface-800/70">
-                <div>
-                  <p className="text-sm font-medium text-surface-800 dark:text-surface-200">Welche Klassen?</p>
-                  <p className="mt-0.5 text-xs text-surface-500">Standardmäßig erhältst du nur Einträge für deine eigene Klasse.</p>
-                </div>
-                <div className="grid gap-2 sm:grid-cols-3">
-                  {([
-                    ['own', ownClass ? `Meine Klasse (${ownClass})` : 'Meine Klasse'],
-                    ['selected', 'Ausgewählte Klassen'],
-                    ['all', 'Alle Klassen'],
-                  ] as const).map(([mode, label]) => (
-                    <label key={mode} className={`flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border px-3 py-3 text-sm ${
-                      notificationPrefs.vertretungsplan_class_mode === mode
-                        ? 'border-primary-500 bg-primary-50 text-primary-800 dark:bg-primary-950/40 dark:text-primary-200'
-                        : 'border-surface-200 bg-white text-surface-700 dark:border-surface-700 dark:bg-surface-900 dark:text-surface-300'
-                    } ${mode === 'own' && !ownClass ? 'opacity-60' : ''}`}>
-                      <input
-                        type="radio"
-                        name="vertretungsplan-class-mode"
-                        value={mode}
-                        checked={notificationPrefs.vertretungsplan_class_mode === mode}
-                        onChange={() => setNotificationPrefs(previous => ({ ...previous, vertretungsplan_class_mode: mode }))}
-                        disabled={notificationsLoading || notificationsSaving || (mode === 'own' && !ownClass)}
-                      />
-                      {label}
-                    </label>
-                  ))}
-                </div>
-
-                {notificationPrefs.vertretungsplan_class_mode === 'selected' && (
-                  <div>
-                    <label className="label" htmlFor="notification-classes">Klassen (mit Komma trennen)</label>
-                    <input
-                      id="notification-classes"
-                      type="text"
-                      className="input text-sm"
-                      value={vertretungsplanClassesInput}
-                      onChange={event => {
-                        const input = event.target.value;
-                        setVertretungsplanClassesInput(input);
-                        setNotificationPrefs(previous => ({
-                          ...previous,
-                          vertretungsplan_classes: input.split(',').map(value => value.trim()),
-                        }));
-                      }}
-                      onBlur={() => {
-                        const classes = notificationPrefs.vertretungsplan_classes.filter(value => value.length > 0);
-                        setNotificationPrefs(previous => ({ ...previous, vertretungsplan_classes: classes }));
-                        setVertretungsplanClassesInput(classes.join(', '));
-                      }}
-                      placeholder="z. B. 10a, 10b, Q2"
-                      disabled={notificationsLoading || notificationsSaving}
-                    />
-                    {availableClasses.length > 0 && (
-                      <div className="mt-2 flex max-h-36 flex-wrap gap-1.5 overflow-y-auto p-1">
-                        {availableClasses.map(className => {
-                          const selected = notificationPrefs.vertretungsplan_classes.includes(className);
-                          return (
-                            <button
-                              key={className}
-                              type="button"
-                              aria-pressed={selected}
-                              onClick={() => {
-                                const classes = selected
-                                  ? notificationPrefs.vertretungsplan_classes.filter(value => value !== className)
-                                  : [...notificationPrefs.vertretungsplan_classes.filter(value => value.length > 0), className];
-                                setNotificationPrefs(previous => ({ ...previous, vertretungsplan_classes: classes }));
-                                setVertretungsplanClassesInput(classes.join(', '));
-                              }}
-                              className={`min-h-9 rounded-full px-3 py-1.5 text-xs transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500/50 ${
-                                selected
-                                  ? 'bg-primary-600 text-white'
-                                  : 'bg-white text-surface-600 ring-1 ring-surface-200 dark:bg-surface-900 dark:text-surface-300 dark:ring-surface-700'
-                              }`}
-                            >
-                              {className}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {!ownClass && notificationPrefs.vertretungsplan_class_mode === 'own' && (
-                  <p className="rounded-lg bg-amber-50 p-3 text-xs text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
-                    Deine Klasse konnte nicht aus dem Profil gelesen werden. Wähle Klassen selbst aus oder abonniere alle Klassen.
-                  </p>
-                )}
-                {vertretungsplanOptionsError && (
-                  <p className="rounded-lg bg-amber-50 p-3 text-xs text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">{vertretungsplanOptionsError}</p>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
         </>
         )}
 
-        {/* Preview Card */}
-        {section === 'appearance' && (
-        <div className="card">
-          <h3 className="item-title mb-4">Vorschau</h3>
-          <div className="space-y-3">
-            <div className="flex items-center gap-3 p-4 bg-primary-50 rounded-xl">
-              <div className="w-10 h-10 rounded-xl bg-primary-600 flex items-center justify-center">
-                <span className="text-white text-sm font-bold">S</span>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-primary-900">Primäre Oberfläche</p>
-                <p className="text-xs text-primary-700">Verwendet deine ausgewählte Farbe</p>
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <button className="btn btn-primary text-xs px-3 py-2">Primär Button</button>
-              <button className="btn btn-secondary text-xs px-3 py-2">Sekundär</button>
-              <button className="btn btn-ghost text-xs px-3 py-2" onClick={() => setGhostClicks(c => c + 1)}>Ghost</button>
-            </div>
-          </div>
-        </div>
-        )}
-
         {/* App installieren */}
-        {section === 'app' && (canInstall || installAvailability === 'installed') && (
+        {section === 'help' && (canInstall || installAvailability === 'installed') && (
           <div className="card">
           <div className="flex items-start gap-4">
             <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary-50 text-primary-700 dark:bg-primary-950 dark:text-primary-300">
@@ -1598,20 +1247,17 @@ const Settings: React.FC = () => {
             </div>
             <div className="min-w-0 flex-1">
               <h3 className="item-title">
-                {installAvailability === 'installed'
-                  ? 'App installiert'
-                  : 'Lanis als App installieren'}
+                {installAvailability === 'installed' ? 'Lanis ist installiert' : 'Lanis als Web-App installieren'}
               </h3>
 
               {installAvailability === 'installed' ? (
                 <p className="text-sm text-surface-500 mt-1">
-                  Lanis ist als App installiert und kann direkt vom Homescreen geöffnet werden.
+                  Öffne Lanis direkt über deinen Startbildschirm.
                 </p>
               ) : (
                 <>
                   <p className="text-sm text-surface-500 mt-1">
-                    Für schnelleren Zugriff und ein App-ähnliches Erlebnis
-                    auf deinem Gerät installieren.
+                    Füge Lanis zu deinem Gerät hinzu, um schnell darauf zuzugreifen und es wie eine App zu nutzen.
                   </p>
                   <button
                     type="button"
@@ -1625,7 +1271,7 @@ const Settings: React.FC = () => {
                         || installAvailability === 'ios-browser'
                         || installAvailability === 'macos-safari'
                         ? 'Anleitung öffnen'
-                        : 'Installieren'}
+                          : 'Installieren'}
                   </button>
                 </>
               )}
@@ -1634,7 +1280,7 @@ const Settings: React.FC = () => {
           </div>
         )}
 
-        {section === 'app' && !canInstall && installAvailability !== 'installed' && (
+        {section === 'help' && !canInstall && installAvailability !== 'installed' && (
           <div className="card">
             <div className="flex items-start gap-4">
               <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-surface-100 text-surface-500 dark:bg-surface-800 dark:text-surface-300">
@@ -1643,61 +1289,35 @@ const Settings: React.FC = () => {
               <div>
                 <h3 className="item-title">
                   {installAvailability === 'ios-other-browser'
-                    ? 'Für die Installation Safari verwenden'
+                    ? 'Öffne Lanis in Safari, um es zu installieren'
                     : installAvailability === 'macos-safari'
-                      ? 'Installation über Safari'
+                      ? 'Über Safari installieren'
                       : 'Installation nicht verfügbar'}
                 </h3>
                 <p className="mt-1 text-sm text-surface-500">
                   {installAvailability === 'ios-other-browser'
-                    ? 'Öffne Lanis in Safari und füge es dort über das Teilen-Menü zum Home-Bildschirm hinzu.'
+                    ? 'Öffne das Teilen-Menü in Safari und wähle „Zum Home-Bildschirm“.'
                     : installAvailability === 'macos-safari'
-                      ? 'Unter macOS Sonoma oder neuer kannst du in Safari „Ablage“ → „Zum Dock hinzufügen“ wählen. Ältere macOS-Versionen unterstützen diese Installation nicht.'
-                    : 'Dieser Browser bietet aktuell keine App-Installation an. Du kannst Lanis trotzdem wie gewohnt nutzen.'}
+                      ? 'Wähle in Safari unter macOS Sonoma oder neuer „Ablage → Zum Dock hinzufügen“.'
+                      : 'Dieser Browser bietet die Installation derzeit nicht an. Du kannst Lanis weiterhin hier nutzen.'}
                 </p>
               </div>
             </div>
           </div>
         )}
 
-        {section === 'app' && ghostClicks >= 5 && (
-          <div className="card border-dashed border-primary-300/50 dark:border-primary-700/50 bg-primary-50/30 dark:bg-primary-950/20">
-            <h3 className="item-title mb-3">PWA Debug</h3>
-            <div className="text-xs font-mono text-surface-500 space-y-1">
-              {(() => {
-                const el = document.querySelector('pwa-install') as PwaInstallElement | null;
-                const rows: [string, unknown][] = el
-                  ? [
-                      ['_deferredPrompt', installAvailability === 'native' ? 'captured' : 'null'],
-                      ['isInstallAvailable', el.isInstallAvailable],
-                      ['isUnderStandaloneMode', el.isUnderStandaloneMode],
-                      ['isAppleMobilePlatform', el.isAppleMobilePlatform],
-                      ['isAppleDesktopPlatform', el.isAppleDesktopPlatform],
-                      ['isApple26Plus', el.isApple26Plus],
-                      ['isAndroid', el.isAndroid],
-                      ['isAndroidFallback', el.isAndroidFallback],
-                      ['isDialogHidden', el.isDialogHidden],
-                      ['userChoiceResult', el.userChoiceResult],
-                      ['platforms', el.platforms?.join(', ') || '-'],
-                    ]
-                  : [['element', 'not found'] as [string, unknown]];
-                return rows.map(([k, v]) => (
-                  <div key={k}><span className="font-medium">{k}:</span> {String(v)}</div>
-                ));
-              })()}
-            </div>
-          </div>
+        {section === 'help' && !isDemo && (
+          <section className="card">
+            <h2 className="item-title">Einführung erneut starten</h2>
+            <p className="mt-1 text-sm text-surface-500">Gehe die ersten Einrichtungsschritte noch einmal durch.</p>
+            <Link to="/onboarding" className="btn btn-secondary mt-4">Einführung erneut starten</Link>
+          </section>
         )}
 
         {/* Info */}
-        {section === 'appearance' && (
-          <div className="text-center text-xs text-surface-400">
-            Erscheinungsbild wird lokal gespeichert.
-          </div>
-        )}
         {section === 'notifications' && (
           <div className="text-center text-xs text-surface-400">
-            Benachrichtigungen werden mit deinem Konto synchronisiert.
+            Die Benachrichtigungseinstellungen werden mit deinem Konto synchronisiert.
           </div>
         )}
       </div>

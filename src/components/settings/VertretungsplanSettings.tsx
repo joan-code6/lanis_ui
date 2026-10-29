@@ -3,7 +3,7 @@ import axios from 'axios';
 import { CheckIcon, ClipboardDocumentListIcon, InformationCircleIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '../../contexts/AuthContext';
 import { usePreferences } from '../../contexts/PreferencesContext';
-import { vertretungsplanAPI } from '../../services/api';
+import { notificationsAPI, vertretungsplanAPI } from '../../services/api';
 
 const VertretungsplanSettings: React.FC = () => {
   const { token } = useAuth();
@@ -55,13 +55,29 @@ const VertretungsplanSettings: React.FC = () => {
     setSaving(true);
     setError('');
     setMessage('');
-    const saved = await updatePreferences({
-      vertretungsplan: { class_override: classOverride.trim() },
-    });
+    const selectedClass = classOverride.trim();
+    const saved = await updatePreferences({ vertretungsplan: { class_override: selectedClass } });
     if (saved) {
-      setMessage('Klassenfilter gespeichert.');
+      try {
+        if (token) {
+          const current = await notificationsAPI.getPreferences(token);
+          if (!current.success) throw new Error('Benachrichtigungseinstellungen konnten nicht geladen werden.');
+          if (current.preferences.vertretungsplan_enabled) {
+            const response = await notificationsAPI.updatePreferences(token, {
+              ...current.preferences,
+              vertretungsplan_class_mode: selectedClass ? 'selected' : 'own',
+              vertretungsplan_classes: selectedClass ? [selectedClass] : [],
+            });
+            if (!response.success) throw new Error('Der Klassenfilter für Benachrichtigungen konnte nicht aktualisiert werden.');
+          }
+        }
+        setMessage('Klasse für Vertretungen und Benachrichtigungen gespeichert.');
+      } catch (syncError) {
+        console.error('Failed to sync substitution notification class:', syncError);
+        setError('Klasse gespeichert, aber der Benachrichtigungsfilter konnte nicht synchronisiert werden.');
+      }
     } else {
-      setError('Klassenfilter ist lokal gespeichert und wird beim nächsten Versuch synchronisiert.');
+      setError('Klasse lokal gespeichert. Die Synchronisierung erfolgt beim nächsten Versuch.');
     }
     setSaving(false);
   };
@@ -73,33 +89,33 @@ const VertretungsplanSettings: React.FC = () => {
           <ClipboardDocumentListIcon className="h-5 w-5" />
         </div>
         <div>
-          <h2 className="item-title">Klasse im Vertretungsplan</h2>
+          <h2 className="item-title">Meine Klasse</h2>
           <p className="mt-0.5 text-sm text-surface-500">
-            Der Vertretungsplan zeigt standardmäßig nur deine Klasse. Abweichende Schreibweisen wie „10 a“ und „10A“ werden erkannt.
+            Diese Klasse filtert sowohl den Vertretungsplan als auch die zugehörigen Push-Benachrichtigungen.
           </p>
         </div>
       </div>
 
       <div className="mt-5 space-y-4 border-t border-surface-100 pt-5 dark:border-surface-800">
         {loading ? (
-          <p className="text-sm text-surface-500">Klassen werden aus dem Schulportal geladen …</p>
+        <p className="text-sm text-surface-500">Verfügbare Klassen werden geladen …</p>
         ) : (
           <div className="flex items-start gap-2 rounded-xl bg-surface-50 p-3 dark:bg-surface-800/70">
             <InformationCircleIcon className="mt-0.5 h-5 w-5 shrink-0 text-primary-500" />
             <p className="text-sm text-surface-600 dark:text-surface-300">
               {ownClass ? (
-                <>Automatisch erkannt:{' '}<strong className="font-semibold text-surface-900 dark:text-surface-100">{ownClass}</strong></>
+                <>Automatisch erkannt: <strong className="font-semibold text-surface-900 dark:text-surface-100">{ownClass}</strong></>
               ) : availableClasses.length > 0 ? (
-                <>Keine Profilklasse erkannt. Wähle unten eine Klasse aus dem aktuellen Plan.</>
+                  <>In deinem Profil wurde keine Klasse gefunden. Wähle unten eine aus dem aktuellen Plan aus.</>
               ) : (
-                <>Keine Klasse im Profil oder im aktuellen Plan erkannt.</>
+                  <>Weder in deinem Profil noch im aktuellen Plan wurde eine Klasse gefunden.</>
               )}
             </p>
           </div>
         )}
 
         <div>
-          <label className="label" htmlFor="vertretungsplan-class-override">Klasse festlegen (optional)</label>
+          <label className="label" htmlFor="vertretungsplan-class-override">Klasse auswählen</label>
           <input
             id="vertretungsplan-class-override"
             type="text"
@@ -111,7 +127,7 @@ const VertretungsplanSettings: React.FC = () => {
             disabled={saving}
           />
           <p className="mt-1.5 text-xs text-surface-500">
-            Leer lassen, um die Klasse aus deinem Schulportal-Profil zu verwenden. Setze hier eine Klasse, wenn die automatische Erkennung nicht stimmt.
+            Lass das Feld leer, um die Klasse aus deinem Schulprofil zu verwenden. Eine eigene Klasse gilt für Vertretungen und Benachrichtigungen.
           </p>
         </div>
 
@@ -143,8 +159,8 @@ const VertretungsplanSettings: React.FC = () => {
         {message && <p className="rounded-xl bg-emerald-50 p-3 text-xs text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">{message}</p>}
 
         <div className="flex justify-end">
-          <button type="button" className="btn btn-primary h-9 text-xs" onClick={() => void save()} disabled={saving}>
-            {saving ? 'Speichere …' : 'Speichern'}
+          <button type="button" className="btn btn-primary" onClick={() => void save()} disabled={saving}>
+            {saving ? 'Wird gespeichert …' : 'Klasse speichern'}
           </button>
         </div>
       </div>

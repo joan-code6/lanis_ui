@@ -48,7 +48,7 @@ const HomeworkSettings: React.FC = () => {
   );
 };
 
-const HomeworkPreview: React.FC<{ display: CompletedHomeworkDisplay }> = ({ display }) => {
+export const HomeworkPreview: React.FC<{ display: CompletedHomeworkDisplay }> = ({ display }) => {
   if (display === 'hidden') {
     return (
       <div className="flex h-[4.5rem] items-center justify-center rounded-lg border border-dashed border-surface-300 bg-surface-50 text-center text-xs text-surface-500 dark:border-surface-600 dark:bg-surface-800/70">

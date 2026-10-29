@@ -16,6 +16,7 @@ export default function HostedChannelSetup({ channel, overview, onPaired }: { ch
   const [pairing, setPairing] = useState<Pairing | null>(null);
   const [copied, setCopied] = useState(false);
   const [expired, setExpired] = useState(false);
+  const [paired, setPaired] = useState(false);
   const label = channel === 'signal' ? 'Signal' : 'WhatsApp';
   const number = pairing?.number || '';
   const validNumber = /^\+?[1-9]\d{6,14}$/.test(number);
@@ -38,7 +39,12 @@ export default function HostedChannelSetup({ channel, overview, onPaired }: { ch
       checking = true;
       try {
         const latest = await agentsAPI.list(token);
-        if (active && latest.connections.some(connection => connection.channel === channel && !connection.revoked && !existing.has(connection.id))) onPaired();
+        if (active && latest.connections.some(connection => connection.channel === channel && !connection.revoked && !existing.has(connection.id))) {
+          active = false;
+          setPairing(null);
+          setPaired(true);
+          onPaired();
+        }
       } catch { /* Keep the pairing controls available during connection failures. */ }
       finally { checking = false; }
     };
@@ -46,7 +52,7 @@ export default function HostedChannelSetup({ channel, overview, onPaired }: { ch
     window.addEventListener('focus', check);
     return () => { active = false; window.clearInterval(timer); window.removeEventListener('focus', check); };
   }, [pairing, expired, token, chatUrl, channel]);
-  const reset = () => { setPairing(null); setCopied(false); setError(''); };
+  const reset = () => { setPaired(false); setPairing(null); setCopied(false); setError(''); };
   const copy = async () => {
     if (!pairing) return;
     try { await navigator.clipboard.writeText(pairing.message); setCopied(true); }
@@ -58,7 +64,7 @@ export default function HostedChannelSetup({ channel, overview, onPaired }: { ch
     {!overview.channels?.[channel] ? <p role="status" className="text-sm text-surface-500">{label} ist noch nicht eingerichtet.</p> : <>
       {(!pairing || expired) ? <button className="btn btn-primary" disabled={busy || !scopes.length || !token} onClick={async () => {
         if (!token) return;
-        setBusy(true); setError(''); setCopied(false);
+        setBusy(true); setError(''); setCopied(false); setPaired(false);
         try { setPairing(await agentsAPI.pairChannel(token, channel, label, scopes, mode)); }
         catch { setError('Verbindung konnte nicht gestartet werden. Bitte erneut versuchen.'); }
         finally { setBusy(false); }
@@ -69,6 +75,7 @@ export default function HostedChannelSetup({ channel, overview, onPaired }: { ch
       </div>}
       {expired && <p role="status" className="text-xs text-surface-500">Code abgelaufen.</p>}
     </>}
+    {paired && <p role="status" className="text-sm text-emerald-700 dark:text-emerald-400">{label} wurde erfolgreich verbunden.</p>}
     {error && <p role="alert" className="text-sm text-red-600 dark:text-red-400">{error}</p>}
   </div>;
 }

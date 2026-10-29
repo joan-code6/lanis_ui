@@ -61,7 +61,7 @@ export const getSidebarLabel = (id: string): string => {
 };
 
 export const normalizeSidebarOrder = (order: string[]): string[] => {
-  const normalized = [...new Set(order)].filter(id => id !== 'settings');
+  const normalized = [...new Set(order)].filter(id => id !== 'settings' && id !== 'feedback');
 
   for (const missingItem of DEFAULT_SIDEBAR_ORDER) {
     if (normalized.includes(missingItem)) continue;
