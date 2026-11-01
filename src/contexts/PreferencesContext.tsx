@@ -14,7 +14,7 @@ export const DEFAULT_USER_PREFERENCES: UserPreferences = {
   appearance: { theme_mode: 'system', theme_color: 'ruby' },
   sidebar: { order: DEFAULT_SIDEBAR_ORDER, hidden_items: [], show_feedback_button: true },
   dashboard: {
-    pinned_modules: [],
+    module_order: [],
     hidden_modules: [],
     view_mode: 'grid',
     show_search: true,
@@ -93,9 +93,11 @@ const normalizePreferences = (value?: Partial<UserPreferences>): UserPreferences
     ? sidebar.hidden_items.filter(item => typeof item === 'string' && item !== 'feedback')
     : [];
   const hiddenModules = dashboard?.hidden_modules || [];
-  const pinnedModules = (dashboard?.pinned_modules || []).filter(
-    moduleName => !hiddenModules.includes(moduleName),
-  );
+  const moduleOrder = Array.isArray(dashboard?.module_order)
+    ? [...new Set(dashboard.module_order.filter(moduleName => typeof moduleName === 'string'))]
+    : [];
+  const dashboardPreferences = { ...dashboard };
+  Reflect.deleteProperty(dashboardPreferences, 'pinned_modules');
   const migratedHomework = homework?.completed_display
     ? { completed_display: homework.completed_display }
     : typeof homework?.hide_completed_in_overview === 'boolean'
@@ -106,8 +108,8 @@ const normalizePreferences = (value?: Partial<UserPreferences>): UserPreferences
     appearance: value?.appearance,
     sidebar: { ...sidebar, hidden_items: hiddenSidebarItems, show_feedback_button: showFeedbackButton },
     dashboard: {
-      ...dashboard,
-      pinned_modules: pinnedModules,
+      ...dashboardPreferences,
+      module_order: moduleOrder,
       hidden_modules: hiddenModules,
     },
     timetable: value?.timetable,
@@ -135,16 +137,8 @@ const legacyPreferences = (): UserPreferences => {
     ? color
     : 'ruby';
   const timetableMode = localStorage.getItem('lanis_timetable_view_mode');
-  let pinnedModules: string[] = [];
-  try {
-    const parsed = JSON.parse(localStorage.getItem('pinned_modules') || '[]');
-    if (Array.isArray(parsed)) pinnedModules = parsed.filter(item => typeof item === 'string');
-  } catch {
-    pinnedModules = [];
-  }
   return mergePreferences(DEFAULT_USER_PREFERENCES, {
     appearance: { theme_mode: themeMode, theme_color: themeColor },
-    dashboard: { pinned_modules: pinnedModules },
     timetable: { view_mode: timetableMode === 'week' ? 'week' : 'rolling' },
   });
 };
@@ -294,6 +288,13 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode; sync?: b
           if (!persistedOrder
             || JSON.stringify(normalizeSidebarOrder(persistedOrder)) !== JSON.stringify(next.sidebar.order)) {
             throw new Error('The backend did not persist the sidebar order.');
+          }
+        }
+        if (patch.dashboard?.module_order) {
+          const persistedOrder = response.preferences.dashboard?.module_order;
+          if (!persistedOrder
+            || JSON.stringify(persistedOrder) !== JSON.stringify(next.dashboard.module_order)) {
+            throw new Error('The backend did not persist the dashboard module order.');
           }
         }
         if (patch.sidebar?.hidden_items) {

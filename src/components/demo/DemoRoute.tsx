@@ -4,7 +4,7 @@ import { AuthContext } from '../../contexts/AuthContext';
 import { PreferencesProvider } from '../../contexts/PreferencesContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import Layout from '../layout/Layout';
-import { demoModules, demoPinnedModules, demoUser } from './demoData';
+import { demoModules, demoUser } from './demoData';
 import { getDemoTabId, keepDemoSessionAlive, readDemoStorageSnapshot, registerDemoCacheWriteListener, writeDemoStorageSnapshot } from '../../utils/demoMode';
 import type { ThemeColor, ThemeMode } from '../../types';
 import {
@@ -29,7 +29,6 @@ const mockAuth = {
 const DEMO_STORAGE_KEYS = [
   '__demo_mode',
   'lanis_demo_agents',
-  'pinned_modules',
   'profile_cache',
   'messages_cache', 'messages_cache_v2',
   'courses_cache',
@@ -45,7 +44,6 @@ const DEMO_STORAGE_KEYS = [
 const DEMO_OWNED_STORAGE_KEYS = [
   '__demo_mode',
   'lanis_demo_agents',
-  'pinned_modules',
   'profile_cache',
   'messages_cache', 'messages_cache_v2',
   'courses_cache',
@@ -109,7 +107,6 @@ const seedLocalStorage = () => {
 
   localStorage.removeItem('lanis_demo_agents');
   localStorage.setItem('__demo_mode', '1');
-  localStorage.setItem('pinned_modules', JSON.stringify(demoPinnedModules));
   localStorage.setItem('profile_cache', JSON.stringify(demoUser));
   localStorage.setItem('modules_cache:demo%3Amia.keller', JSON.stringify(demoModules));
   ['messages_cache', 'messages_cache_v2', 'courses_cache', 'username_cache', 'dsb_plan_cache_v2'].forEach(key => localStorage.removeItem(key));

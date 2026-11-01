@@ -115,7 +115,7 @@ export interface UserPreferences {
     show_feedback_button: boolean;
   };
   dashboard: {
-    pinned_modules: string[];
+    module_order: string[];
     hidden_modules: string[];
     view_mode: DashboardViewMode;
     show_search: boolean;
