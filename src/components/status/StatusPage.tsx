@@ -8,13 +8,14 @@ import {
   statusLabels,
   usePublicStatus,
 } from '../../services/publicStatus';
+import { getApiBaseUrl } from '../../utils/backendConfig';
 import { getCustomBackendUrl } from '../../utils/backendConfig';
 
 export default function StatusPage() {
   const { data, loading, error, status, refresh } = usePublicStatus();
   const customBackend = getCustomBackendUrl();
-  const days = data?.daily.slice(-90)
-    ?? Array.from({ length: 90 }, (_, index) => ({ day: String(index), status: 'unknown' as const }));
+  const days = data?.daily.slice(-30)
+    ?? Array.from({ length: 30 }, (_, index) => ({ day: String(index), status: 'unknown' as const }));
   const services = [
     { name: 'LANIS', state: data ? 'up' as const : 'unknown' as const },
     { name: 'Schulportal Hessen', state: status },
@@ -22,7 +23,7 @@ export default function StatusPage() {
 
   return (
     <div className="min-h-[100dvh] bg-surface-50 text-surface-900 dark:bg-surface-950 dark:text-surface-100">
-      <SEO title="Status" description="Aktueller Status von LANIS und Schulportal Hessen." path="/status" />
+      <SEO title="Status" description="Aktueller Status von LANIS und Schulportal Hessen." path="/status" image={`${getApiBaseUrl()}/status/image.png`} />
       <div className="mx-auto max-w-4xl px-5 py-7 sm:px-8">
         <nav className="flex items-center justify-between" aria-label="Status-Navigation">
           <Link to="/" className="flex items-center gap-2.5 font-semibold">
@@ -69,7 +70,7 @@ export default function StatusPage() {
           <section className="mt-12" aria-labelledby="history-title">
             <div className="flex items-end justify-between gap-4">
               <div>
-                <h2 id="history-title" className="text-xl font-semibold">Letzte 90 Tage</h2>
+                <h2 id="history-title" className="text-xl font-semibold">Letzte 30 Tage</h2>
                 <p className="mt-1 text-sm text-surface-500">
                   Abdeckung {formatPercent(data?.summary.coverage_percent ?? null)}
                 </p>
@@ -81,7 +82,7 @@ export default function StatusPage() {
 
             <div
               className="mt-6 grid grid-cols-[repeat(15,minmax(0,1fr))] gap-2 sm:grid-cols-[repeat(18,minmax(0,1fr))] sm:gap-2.5"
-              aria-label="Täglicher Status der letzten 90 Tage"
+              aria-label="Täglicher Status der letzten 30 Tage"
               data-status-history
             >
               {days.map(day => (
@@ -112,8 +113,8 @@ export default function StatusPage() {
             ) : (
               <ul className="mt-3 divide-y">
                 {data.incidents.slice(0, 5).map((incident, index) => (
-                  <li key={`${incident.checked_at}-${index}`} className="flex items-center justify-between gap-4 py-4 text-sm">
-                    <time className="text-surface-500">{formatTimestamp(incident.checked_at)}</time>
+                  <li key={incident.id} className="flex items-center justify-between gap-4 py-4 text-sm">
+                    <Link to={`/status/incident/${incident.id}`} className="text-primary-600 underline">{formatTimestamp(incident.checked_at)}</Link>
                     <span className="flex items-center gap-2">
                       <span className={`h-2 w-2 rounded-full ${statusColors[incident.status]}`} />
                       {statusLabels[incident.status]}

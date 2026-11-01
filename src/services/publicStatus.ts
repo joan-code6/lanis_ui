@@ -3,6 +3,7 @@ import { getApiBaseUrl } from '../utils/backendConfig';
 
 export type ServiceStatus = 'up' | 'degraded' | 'down' | 'unknown';
 export interface Observation {
+  id: string;
   status: ServiceStatus;
   checked_at: string | null;
   features: { name: string; status: ServiceStatus }[];
