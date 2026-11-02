@@ -678,7 +678,6 @@ const Dashboard: React.FC = () => {
                         ))}
                       </div>
                     )}
-                    <span className="mt-2 text-[11px] font-medium text-surface-400">Modul</span>
 
                     {isEditMode && (
                       <div className="mt-auto flex w-full items-center gap-1 border-t border-surface-100 pt-3 dark:border-surface-800">
