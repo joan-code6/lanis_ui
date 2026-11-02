@@ -472,7 +472,7 @@ const Dashboard: React.FC = () => {
       <DashboardNotifications />
 
       {basePath !== '/demo' && <InstallPromotion />}
-      {basePath !== '/demo' && !isLoading && !error && <AndroidBeta mode="invitation" />}
+      {basePath !== '/demo' && !isLoading && !error && <AndroidBeta />}
 
       {error && (
         <div className="mb-6 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-900 text-red-600 dark:text-red-400 px-4 py-3 rounded-xl text-sm animate-scale-in">
