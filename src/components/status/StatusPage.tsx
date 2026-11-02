@@ -14,6 +14,7 @@ import {
   PublicStatus,
   usePublicStatus,
 } from '../../services/publicStatus';
+import { getApiBaseUrl } from '../../utils/backendConfig';
 import { getCustomBackendUrl } from '../../utils/backendConfig';
 
 export default function StatusPage() {
@@ -75,6 +76,7 @@ export default function StatusPage() {
         title="Schulportal Hessen Status & Uptime"
         description="Schulportal Hessen Statusseite mit Uptime, Verfügbarkeit und aktuellen Störungen. Ein Status-Feature von Lanis für das SPH mit 24-Stunden-, 7-, 30- und 90-Tage-Verlauf."
         path="/status"
+        image={`${getApiBaseUrl()}/status/image.png`}
         structuredData={{
           '@context': 'https://schema.org',
           '@type': 'WebPage',
@@ -239,7 +241,7 @@ export default function StatusPage() {
                 {data.incidents.slice(0, 10).map((incident, index) => {
                   return (
                   <li key={`${incident.started_at}-${index}`} className="flex flex-wrap items-center justify-between gap-2 py-4 text-sm">
-                    <div><time className="text-surface-500">{formatIncidentRange(incident)}</time><p className="mt-1 text-xs text-surface-500">Bestätigte Checks: {incident.checks ?? 1} · Betroffene Dienste: {incident.affected_features?.length ? incident.affected_features.map(name => name === 'login' ? 'Anmeldung' : 'Module').join(', ') : 'Unbekannt'}</p></div>
+                    <div><Link to={`/status/incident/${incident.id}`} className="text-primary-600 underline">{formatIncidentRange(incident)}</Link><p className="mt-1 text-xs text-surface-500">Bestätigte Checks: {incident.checks ?? 1} · Betroffene Dienste: {incident.affected_features?.length ? incident.affected_features.map(name => name === 'login' ? 'Anmeldung' : 'Module').join(', ') : 'Unbekannt'}</p></div>
                     <span className="flex items-center gap-2">
                       <span className={`h-2 w-2 rounded-full ${statusColors[incident.status]}`} />
                       {incident.resolved_at ? 'Behoben' : statusLabels[incident.status]}

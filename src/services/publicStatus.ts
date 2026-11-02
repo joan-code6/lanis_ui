@@ -10,6 +10,8 @@ export interface Observation {
   features: { name: string; status: ServiceStatus; latency_ms?: number | null }[];
 }
 export interface PublicIncident {
+  id: string;
+  observations?: Observation[];
   started_at: string;
   checked_at?: string;
   resolved_at: string | null;
