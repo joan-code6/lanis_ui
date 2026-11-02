@@ -51,6 +51,7 @@ import { usePwaInstall } from '../../contexts/PwaInstallContext';
 import TimetableSettings from './TimetableSettings';
 import VertretungsplanSettings from './VertretungsplanSettings';
 import AgentsSettings from './AgentsSettings';
+import AndroidBeta from '../beta/AndroidBeta';
 import DashboardSettings from './DashboardSettings';
 import SettingsSwitch from './SettingsSwitch';
 import {
@@ -1001,6 +1002,7 @@ const Settings: React.FC = () => {
         <p className="page-subtitle">{sectionMeta[section].subtitle}</p>
       </div>
 
+      {section === 'home' && basePath !== '/demo' && <div className="mb-6"><AndroidBeta settings /></div>}
       {section === 'home' && <SettingsIndex basePath={basePath} sections={visibleSettingsSections} />}
 
       {syncError && section !== 'notifications' && section !== 'home' && (

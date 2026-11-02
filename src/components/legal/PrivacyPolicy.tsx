@@ -29,6 +29,10 @@ const PrivacyPolicy: React.FC = () => {
 
         <section className="space-y-12 text-[14px] leading-relaxed text-[#555]">
           <div>
+            <h2 className="text-base font-semibold text-[#111] mb-3">Freiwillige Android-Beta</h2>
+            <p>Bei der Beta-Anmeldung speichern wir die angegebene Google-Play-E-Mail-Adresse, den Anmelde- und Freigabestatus, Zeitpunkte sowie Erinnerungsentscheidungen bei deinem LANIS-Konto. Der Betreiber überträgt die Adresse manuell an Google Play, um dich zum geschlossenen Test einzuladen. Google verarbeitet den Testbeitritt und den Download nach seinen eigenen Bedingungen. Wir fragen kein Google-Passwort ab und versenden keine Benachrichtigungs-E-Mails. In den Einstellungen kannst du die Adresse ändern oder die Anmeldung zurückziehen. Bei Rückzug wird die Adresse in LANIS entfernt; bei Kontolöschung wird der gesamte Beta-Datensatz gelöscht. Die Entfernung aus der Google-Play-Liste erfolgt durch den Betreiber manuell.</p>
+          </div>
+          <div>
             <h2 className="text-base font-semibold text-[#111] mb-3">Das Wichtigste vor der Anmeldung</h2>
             <ul className="list-disc space-y-2 pl-5">
               <li>Lanis UI und das Standard-Backend sind ein privates, inoffizielles Angebot desselben Betreibers. Sie gehören nicht zum Schulportal Hessen oder zum Land Hessen.</li>

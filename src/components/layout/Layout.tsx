@@ -1,4 +1,5 @@
 import React from 'react';
+import AndroidBeta from '../beta/AndroidBeta';
 import { capture, analyticsEnabled } from '../../analytics/client';
 import { supportContext } from '../../analytics/supportContext';
 import { modulePreloadOrder, prefetchModule } from '../../utils/modulePrefetch';
@@ -256,6 +257,7 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
           </div>
         </BasePathProvider>
       </main>
+      {!isDemo && <AndroidBeta mode="approval" />}
       <GlobalSearch
         isOpen={isSearchOpen}
         onClose={() => setIsSearchOpen(false)}
