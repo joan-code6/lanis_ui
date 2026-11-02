@@ -6,7 +6,7 @@ const sha = 'a'.repeat(40);
 const run = {repository: {full_name: repo}, head_repository: {full_name: repo},
   path: '.github/workflows/build.yml', conclusion: 'success', head_sha: sha,
   head_branch: 'main', event: 'push'};
-const pr = {state: 'open', number: 123, base: {repo: {full_name: repo}}, head: {sha}};
+const pr = {state: 'open', number: 123, base: {repo: {full_name: repo}}, head: {sha, repo: {full_name: repo}, ref: 'feature'}};
 
 test('only the latest main push deploys production', () => {
   assert.deepEqual(selectTarget(run, repo, sha, []), {kind: 'production', sha, pr: ''});
@@ -29,5 +29,29 @@ test('rejects counterfeit workflows, foreign repositories, failed builds and mal
   for (const change of [{path: '.github/workflows/attacker.yml'},
     {repository: {full_name: 'attacker/fork'}}, {conclusion: 'failure'}, {head_sha: 'invalid'}]) {
     assert.equal(selectTarget({...run, ...change}, repo, sha, [pr]), null);
+  }
+});
+
+test('approved fork builds resolve open PRs without commit associations', async () => {
+  const validate = require('./validate-run.cjs');
+  const forkRun = {...run, event: 'pull_request', head_branch: 'feature',
+    head_repository: {full_name: 'contributor/lanis_ui'}, pull_requests: []};
+  const forkPr = {...pr, head: {...pr.head, repo: forkRun.head_repository}};
+  const github = {
+    rest: {actions: {getWorkflowRun: async () => ({data: forkRun})},
+      repos: {getBranch: async () => ({data: {commit: {sha}}})},
+      pulls: {list: Symbol('list')}},
+    paginate: async (method, params) => {
+      assert.equal(method, github.rest.pulls.list);
+      assert.equal(params.state, 'open');
+      return [forkPr];
+    },
+  };
+  assert.deepEqual(await validate({github, context: {
+    repo: {owner: 'joan-code6', repo: 'lanis_ui'}, payload: {workflow_run: {id: 42}},
+  }}), {kind: 'preview', sha, pr: 123});
+  for (const head of [{...forkPr.head, sha: 'b'.repeat(40)},
+    {...forkPr.head, ref: 'other'}, {...forkPr.head, repo: {full_name: repo}}]) {
+    assert.equal(selectTarget(forkRun, repo, sha, [{...forkPr, head}]), null);
   }
 });
