@@ -9,7 +9,9 @@ function selectTarget(run, repository, mainSha, pulls) {
   }
   if (run.event !== 'pull_request') return null;
   const pr = pulls.find(pr => pr.state === 'open' && pr.base.repo.full_name === repository
-    && pr.head.sha === run.head_sha && Number.isSafeInteger(pr.number) && pr.number > 0);
+    && pr.head.sha === run.head_sha
+    && pr.head.repo?.full_name === run.head_repository?.full_name
+    && pr.head.ref === run.head_branch && Number.isSafeInteger(pr.number) && pr.number > 0);
   return pr ? {kind: 'preview', sha: run.head_sha, pr: pr.number} : null;
 }
 
@@ -18,9 +20,11 @@ async function validate({github, context}) {
     ...context.repo, run_id: context.payload.workflow_run.id,
   });
   const {data: main} = await github.rest.repos.getBranch({...context.repo, branch: 'main'});
+  // Fork commits may have no associated PRs in the base repository's commit API.
+  // Resolve against open PRs and validate the exact head below instead.
   const pulls = run.event === 'pull_request'
-    ? await github.paginate(github.rest.repos.listPullRequestsAssociatedWithCommit, {
-      ...context.repo, commit_sha: run.head_sha,
+    ? await github.paginate(github.rest.pulls.list, {
+      ...context.repo, state: 'open', per_page: 100,
     }) : [];
   return selectTarget(run, `${context.repo.owner}/${context.repo.repo}`, main.commit.sha, pulls);
 }
