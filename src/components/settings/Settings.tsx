@@ -1,3 +1,7 @@
+import { authStorage, flushAuthStorage } from '../../platform/authStorage';
+import { saveBlob } from '../../platform/files';
+import AndroidSettings from '../android/AndroidSettings';
+import { androidPresentation } from '../../platform/native';
 import { capture } from '../../analytics/client';
 import { AnalyticsControls } from '../../analytics/Analytics';
 import React, { useState, useEffect } from 'react';
@@ -117,7 +121,7 @@ const pushSubscriptionToPayload = (subscription: PushSubscription): PushSubscrip
   };
 };
 
-type SettingsSection = 'home' | 'appearance' | 'timetable' | 'notifications' | 'navigation' | 'connections' | 'help' | 'privacy';
+type SettingsSection = 'android' | 'home' | 'appearance' | 'timetable' | 'notifications' | 'navigation' | 'connections' | 'help' | 'privacy';
 
 const settingsSections: Array<{
   id: Exclude<SettingsSection, 'home'>;
@@ -125,6 +129,7 @@ const settingsSections: Array<{
   description: string;
   icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
 }> = [
+  { id: 'android', title: 'Android und Widgets', description: 'Widgets, Offline-Daten und Kurzbefehle.', icon: DevicePhoneMobileIcon },
   {
     id: 'appearance',
     title: 'Erscheinungsbild',
@@ -170,6 +175,7 @@ const settingsSections: Array<{
 ];
 
 const sectionMeta: Record<SettingsSection, { title: string; subtitle: string }> = {
+  android: { title: 'Android und Widgets', subtitle: '' },
   home: { title: 'Einstellungen', subtitle: 'Passe Lanis an deinen Schulalltag an.' },
   appearance: { title: 'Erscheinungsbild', subtitle: 'Wähle ein Design und eine Primärfarbe.' },
   timetable: { title: 'Stundenplan & Vertretungsplan', subtitle: 'Lege deine Klasse und deine Stundenplan-Einstellungen fest.' },
@@ -195,15 +201,8 @@ const AccountSettings: React.FC = () => {
     setError('');
     try {
       const blob = await authAPI.exportAccount(token);
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = 'lanis-account-export.json';
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      URL.revokeObjectURL(url);
-      setMessage('Der Export wurde heruntergeladen.');
+      await saveBlob(blob, 'lanis-account-export.json');
+      setMessage(androidPresentation ? 'Der Export kann jetzt gespeichert oder geteilt werden.' : 'Der Export wurde heruntergeladen.');
     } catch {
       setError('Der Datenexport konnte nicht erstellt werden. Bitte versuche es später erneut.');
     } finally {
@@ -221,8 +220,9 @@ const AccountSettings: React.FC = () => {
       setDeleting(false);
       return;
     }
-    const deletionGeneration = beginAccountDataDeletion(freshToken, localStorage.getItem('auth_refresh_token') || '');
+    const deletionGeneration = beginAccountDataDeletion(freshToken, authStorage.getItem('auth_refresh_token') || '');
     try {
+      await flushAuthStorage();
       const result = await authAPI.deleteAccount(freshToken);
       if (!result.success) {
         throw new Error('Die Kontolöschung wurde vom Server nicht bestätigt.');
@@ -613,7 +613,7 @@ const Settings: React.FC = () => {
   const { availability: installAvailability, canInstall, isInstalling, requestInstall } = usePwaInstall();
   const settingsRoot = `${basePath}/settings`;
   const visibleSettingsSections = settingsSections.filter(item => (
-    item.id !== 'privacy' || !isDemo
+    (item.id !== 'privacy' || !isDemo) && (item.id !== 'android' || androidPresentation)
   ));
   const requestedSection = location.pathname.slice(settingsRoot.length).split('/').filter(Boolean)[0];
   const sectionAliases: Record<string, SettingsSection> = {
@@ -669,7 +669,7 @@ const Settings: React.FC = () => {
     setNotificationError('');
     setNotificationClassSyncFailed(false);
     setNotificationMessage('');
-    if (section !== 'notifications') {
+    if (androidPresentation || section !== 'notifications') {
       setNotificationsLoading(false);
       return;
     }
@@ -998,7 +998,7 @@ const Settings: React.FC = () => {
           </Link>
         )}
         <h1 className="page-title">{sectionMeta[section].title}</h1>
-        <p className="page-subtitle">{sectionMeta[section].subtitle}</p>
+        {sectionMeta[section].subtitle && <p className="page-subtitle">{sectionMeta[section].subtitle}</p>}
       </div>
 
       {section === 'home' && <SettingsIndex basePath={basePath} sections={visibleSettingsSections} />}
@@ -1013,6 +1013,8 @@ const Settings: React.FC = () => {
           <TimetableSettings />
         </div>
       )}
+      {section === 'android' && <AndroidSettings />}
+      {section === 'notifications' && androidPresentation && <><DashboardSettings /><AndroidSettings notificationsOnly /></>}
       {section === 'navigation' && <SidebarSettings />}
       {section === 'connections' && <AgentsSettings />}
       {section === 'privacy' && <div className="space-y-6"><AnalyticsControls /><AccountSettings /></div>}
@@ -1074,7 +1076,7 @@ const Settings: React.FC = () => {
         )}
 
         {/* Push-Benachrichtigungen */}
-        {section === 'notifications' && (
+        {section === 'notifications' && !androidPresentation && (
         <>
         <DashboardSettings />
         <div className="card">
