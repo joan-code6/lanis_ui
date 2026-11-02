@@ -14,6 +14,15 @@
     "react-dom": "^18.2.0",
     "react-helmet-async": "^3.0.0",
     "react-router-dom": "^7.18.3",
+    "@capacitor/android": "^8.5.3",
+    "@capacitor/app": "^8.1.2",
+    "@capacitor/browser": "^8.0.5",
+    "@capacitor/core": "^8.5.3",
+    "@capacitor/filesystem": "^8.1.5",
+    "@capacitor/share": "^8.0.3",
+    "@fontsource/jetbrains-mono": "^5.3.0",
+    "@fontsource/outfit": "^5.3.0",
+    "@fortawesome/fontawesome-free": "^6.7.2",
     "web-vitals": "^6.2.3"
   },
   "devDependencies": {
@@ -30,7 +39,10 @@
     "to-ico": "^1.0.1",
     "typescript": "^5.2.2",
     "vite": "^7.3.6",
-    "wrangler": "4.151.1"
+    "wrangler": "4.151.1",
+    "@capacitor/cli": "^8.5.3",
+    "@types/node": "^22.20.5",
+    "tsx": "^4.23.15"
   },
   "scripts": {
     "predev": "npm run images:optimize",
@@ -44,6 +56,16 @@
     "preview": "vite preview",
     "deploy": "wrangler deploy",
     "deploy:preview": "wrangler versions upload",
+    "typecheck": "tsc --noEmit",
+    "android:assets": "tsc --noEmit && vite build --mode android",
+    "android:sync": "npm run android:assets && cap sync android",
+    "android:open": "cap open android",
+    "android:run": "npm run android:sync && cap run android",
+    "android:apk": "npm run android:sync && node scripts/android-build.mjs apk",
+    "android:bundle": "npm run android:sync && node scripts/android-build.mjs bundle",
+    "test:android": "tsx --test scripts/android.test.ts && node scripts/test-native-auth-storage.cjs && node scripts/test-native-files.cjs && node --test scripts/test-native-runtime.cjs",
+    "test:account-data": "node scripts/test-account-data.cjs",
+    "android:verify": "npm run android:sync && node scripts/android-build.mjs verify",
     "test:analytics": "node --experimental-vm-modules scripts/test-analytics.mjs",
     "test:push": "node --test scripts/test-browser-push.cjs"
   },

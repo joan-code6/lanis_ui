@@ -23,17 +23,20 @@ function loadRouting() {
     vm.runInNewContext(output, { ...context, exports, require: requireFn }, { filename: file });
     return exports;
   };
-  const backend = evaluate('backendConfig.ts', () => { throw Error('Unexpected dependency'); });
+  const backend = evaluate('backendConfig.ts', name => {
+    assert.equal(name, '../platform/authStorage');
+    return { authStorage: storage, async clearNativeSession() {} };
+  });
   const agents = evaluate('agentBackend.ts', name => { assert.equal(name, './backendConfig'); return backend; });
   return { backend, agents, storage };
 }
 
-test('selected custom backend wins over the bundled default and clears old credentials on switch', () => {
+test('selected custom backend wins over the bundled default and clears old credentials on switch', async () => {
   const { backend, storage } = loadRouting();
   assert.equal(backend.getApiBaseUrl(), 'https://default-api.example');
   storage.setItem('auth_access_token', 'old-backend-token');
   storage.setItem('auth_refresh_token', 'old-backend-refresh');
-  backend.clearBackendScopedStorage();
+  await backend.clearBackendScopedStorage();
   backend.setCustomBackendUrl('https://SCHOOL.example/api/');
   assert.equal(backend.getApiBaseUrl(), 'https://school.example/api');
   assert.equal(storage.getItem('auth_access_token'), null);

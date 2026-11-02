@@ -1,3 +1,4 @@
+import { authStorage, flushAuthStorage } from '../platform/authStorage';
 import { getApiBaseUrl } from '../utils/backendConfig';
 import { capture, configureAccountAnalytics, resetAnalyticsIdentity } from '../analytics/client';
 import { clearResourceCache } from '../utils/resourceCache';
@@ -56,24 +57,26 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           if (hasAccountDataDeletionMarker()) {
             const deletionGeneration = captureAccountDataGeneration();
             if (!isAccountDataDeletionConfirmed(deletionGeneration)) {
-              const savedRecovery = localStorage.getItem(ACCOUNT_DATA_DELETION_RECOVERY_KEY);
+              const savedRecovery = authStorage.getItem(ACCOUNT_DATA_DELETION_RECOVERY_KEY);
               const recovery = savedRecovery ? JSON.parse(savedRecovery) as {
                 accessToken: string; refreshToken: string;
               } : {
-                accessToken: localStorage.getItem(ACCESS_TOKEN_KEY),
-                refreshToken: localStorage.getItem(REFRESH_TOKEN_KEY) || '',
+                accessToken: authStorage.getItem(ACCESS_TOKEN_KEY),
+                refreshToken: authStorage.getItem(REFRESH_TOKEN_KEY) || '',
               };
               if (!recovery.accessToken) return;
               const result = await authAPI.recoverAccountDeletion(recovery.accessToken, recovery.refreshToken);
               if (result.state === 'cancelled') {
                 // The server rotated the original session while holding its
                 // lifecycle lock. The old DELETE can no longer complete.
-                localStorage.setItem(ACCESS_TOKEN_KEY, result.access_token);
-                localStorage.setItem(TOKEN_EXPIRES_KEY, String(Date.now() + result.expires_in * 1000));
+                authStorage.setItem(ACCESS_TOKEN_KEY, result.access_token);
+                authStorage.setItem(TOKEN_EXPIRES_KEY, String(Date.now() + result.expires_in * 1000));
+                await flushAuthStorage();
                 finishAccountDataDeletion(deletionGeneration);
                 const profile = await authAPI.verifySessionForRecovery(result.access_token);
                 if (profile.success !== true || !profile.data) return;
-                localStorage.setItem(USER_KEY, JSON.stringify(profile.data));
+                authStorage.setItem(USER_KEY, JSON.stringify(profile.data));
+                await flushAuthStorage();
                 if (!mounted) return;
                 setToken(result.access_token);
                 setUser(profile.data);
@@ -92,8 +95,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             return;
           }
 
-          const savedToken = localStorage.getItem(ACCESS_TOKEN_KEY);
-          const savedUser = localStorage.getItem(USER_KEY);
+          if (authStorage.getItem(ACCOUNT_DATA_DELETION_RECOVERY_KEY)) {
+            authStorage.removeItem(ACCOUNT_DATA_DELETION_RECOVERY_KEY);
+            await flushAuthStorage();
+          }
+          const savedToken = authStorage.getItem(ACCESS_TOKEN_KEY);
+          const savedUser = authStorage.getItem(USER_KEY);
           if (savedToken && savedUser) {
             rememberAccountToken(savedToken);
             setToken(savedToken);
@@ -156,9 +163,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         return;
       }
       if (
-        localStorage.getItem(ACCESS_TOKEN_KEY)
-        && localStorage.getItem(REFRESH_TOKEN_KEY)
-        && localStorage.getItem(USER_KEY)
+        authStorage.getItem(ACCESS_TOKEN_KEY)
+        && authStorage.getItem(REFRESH_TOKEN_KEY)
+        && authStorage.getItem(USER_KEY)
       ) {
         return;
       }
@@ -192,14 +199,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const loginPublished = await withAccountDataLifecycleLock(async () => {
         if (!canWriteAccountData(writeGeneration)) return false;
         if (!completeAccountDataDeletion(writeGeneration)) return false;
+        authStorage.setItem(ACCESS_TOKEN_KEY, response.access_token);
+        authStorage.setItem(REFRESH_TOKEN_KEY, response.refresh_token);
+        authStorage.setItem(TOKEN_EXPIRES_KEY, expiresAt.toString());
+        authStorage.setItem(USER_KEY, JSON.stringify(basicUser));
+        await flushAuthStorage();
         setToken(response.access_token);
         setUser(basicUser);
         setIsAuthenticated(true);
-        localStorage.setItem(ACCESS_TOKEN_KEY, response.access_token);
         rememberAccountToken(response.access_token);
-        localStorage.setItem(REFRESH_TOKEN_KEY, response.refresh_token);
-        localStorage.setItem(TOKEN_EXPIRES_KEY, expiresAt.toString());
-        localStorage.setItem(USER_KEY, JSON.stringify(basicUser));
         return true;
       });
 
@@ -227,7 +235,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             is_first_school_user: basicUser.is_first_school_user,
           };
           setUser(accountUser);
-          localStorage.setItem(USER_KEY, JSON.stringify(accountUser));
+          authStorage.setItem(USER_KEY, JSON.stringify(accountUser));
         }
       } catch (error) {
         console.warn('Failed to fetch user profile:', error);
@@ -236,7 +244,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         }
       }
 
-      return true;
+      await flushAuthStorage();
+      return canWriteAccountData(writeGeneration);
     } catch (error) {
       console.error('Login failed:', error);
       void capture('login_failed');
@@ -246,22 +255,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const refreshToken = useCallback(async (): Promise<boolean> => {
     const writeGeneration = captureAccountDataGeneration();
-    const currentAccessToken = localStorage.getItem(ACCESS_TOKEN_KEY);
+    const currentAccessToken = authStorage.getItem(ACCESS_TOKEN_KEY);
     if (currentAccessToken) rememberAccountToken(currentAccessToken);
-    const refreshTokenValue = localStorage.getItem(REFRESH_TOKEN_KEY);
+    const refreshTokenValue = authStorage.getItem(REFRESH_TOKEN_KEY);
     if (!refreshTokenValue) return false;
 
     try {
       const response = await authAPI.refreshToken(refreshTokenValue);
 
       if (!canWriteAccountData(writeGeneration)
-        || localStorage.getItem(REFRESH_TOKEN_KEY) !== refreshTokenValue) return false;
+        || authStorage.getItem(REFRESH_TOKEN_KEY) !== refreshTokenValue) return false;
 
       const expiresAt = Date.now() + response.expires_in * 1000;
 
       setToken(response.access_token);
-      localStorage.setItem(ACCESS_TOKEN_KEY, response.access_token);
-      localStorage.setItem(TOKEN_EXPIRES_KEY, expiresAt.toString());
+      authStorage.setItem(ACCESS_TOKEN_KEY, response.access_token);
+      authStorage.setItem(TOKEN_EXPIRES_KEY, expiresAt.toString());
+      await flushAuthStorage();
 
       return true;
     } catch (error) {
@@ -279,13 +289,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setIsAuthenticated(false);
     let logoutToken = token;
     try {
-      if (clearStorage) logoutToken = localStorage.getItem(ACCESS_TOKEN_KEY) || token;
+      if (clearStorage) logoutToken = authStorage.getItem(ACCESS_TOKEN_KEY) || token;
     } catch {
       // The context still holds the token needed for best-effort remote logout.
     }
-    if (clearStorage) clearSignedOutAccountData();
+    if (clearStorage) {
+      clearSignedOutAccountData();
+    }
     const clearedGeneration = captureAccountDataGeneration();
     try {
+      if (clearStorage) await flushAuthStorage();
       if (logoutToken) {
         try {
           const registration = 'serviceWorker' in navigator
