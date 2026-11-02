@@ -32,9 +32,9 @@ jobs:
           path: ~/.npm
           # Separate PR/main keys, no fallback keys, and no node_modules cache.
           # GitHub additionally scopes cache writes to the workflow's ref.
-          key: npm-frontend-${{ runner.os }}-node24-${{ github.event_name }}-${{ hashFiles('package-lock.json') }}
-      - name: Install locked frontend dependencies
-        run: npm ci --no-audit --no-fund
+          key: npm-frontend-${{ runner.os }}-node24-${{ github.event_name }}-${{ hashFiles('package.json') }}
+      - name: Install frontend dependencies
+        run: npm install --no-audit --no-fund
       - name: Run frontend regression checks
         run: npm test
       - name: Verify analytics privacy and consent

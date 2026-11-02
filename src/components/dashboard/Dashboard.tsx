@@ -311,7 +311,11 @@ const Dashboard: React.FC = () => {
       const target = document.elementFromPoint(event.clientX, event.clientY)
         ?.closest<HTMLElement>('[data-dashboard-module]');
       const targetName = target?.dataset.dashboardModule;
-      if (!target || !targetName || targetName === session.moduleName) return;
+      if (!target || !targetName || targetName === session.moduleName) {
+        session.target = null;
+        setDropTarget(null);
+        return;
+      }
 
       const bounds = target.getBoundingClientRect();
       const isVertical = viewMode === 'list' || window.innerWidth < 640;
@@ -329,7 +333,11 @@ const Dashboard: React.FC = () => {
       const source = modules.find(module => module.name === session.moduleName);
       const targetModule = modules.find(module => module.name === targetName);
       if (!source || !targetModule
-        || hiddenModules.includes(source.name) !== hiddenModules.includes(targetModule.name)) return;
+        || hiddenModules.includes(source.name) !== hiddenModules.includes(targetModule.name)) {
+        session.target = null;
+        setDropTarget(null);
+        return;
+      }
 
       session.target = { moduleName: targetName, placement };
       setDropTarget(session.target);
@@ -610,7 +618,7 @@ const Dashboard: React.FC = () => {
                   dragSession.current?.moduleName === module.name && 'pointer-events-none'
                 )}
                 style={draggedModule === module.name && dragSession.current
-                  ? { transform: `translate3d(${dragOffset.x}px, ${dragOffset.y}px, 0) scale(1.02)` }
+                  ? { transform: `translate3d(${dragOffset.x}px, ${dragOffset.y}px, 0) scale(1.02)`, transition: 'none', zIndex: 20, willChange: 'transform', opacity: 0.85 }
                   : undefined}
                 onDragOver={(event) => setDragTarget(event, module.name)}
                 onDrop={(event) => handleDrop(event, module.name)}

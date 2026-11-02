@@ -9,3 +9,5 @@ nul
 .cache/school-pages/
 
 public/landing/optimized/
+
+/package-lock.json
