@@ -38,7 +38,7 @@ import { PwaInstallProvider } from '../../contexts/PwaInstallContext';
 import { getModuleAvailability, readModulesCache, writeModulesCache } from '../../utils/moduleCache';
 import { captureAccountDataGeneration } from '../../utils/accountDataWrites';
 import type { CachedModule } from '../../utils/moduleCache';
-import { getThemeIconUrl, getThemeManifestUrl, THEME_COLOR_HEX } from '../../utils/themeAssets';
+import { getThemeIconUrl, getThemeManifestUrl } from '../../utils/themeAssets';
 import AppIcon from '../AppIcon';
 import { normalizeSidebarOrder, SidebarItemId, isDivider } from '../../utils/sidebarNavigation';
 
@@ -94,7 +94,7 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
     el.manualApple = true;
     el.manualChrome = true;
     el.useLocalStorage = true;
-    el.styles = { '--tint-color': THEME_COLOR_HEX[themeColor] };
+    el.styles = { '--tint-color': themeColor };
   }, []);
 
   React.useEffect(() => {
@@ -102,7 +102,7 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
     if (!el) return;
     el.icon = appIconUrl;
     el.manifestUrl = manifestUrl;
-    el.styles = { '--tint-color': THEME_COLOR_HEX[themeColor] };
+    el.styles = { '--tint-color': themeColor };
   }, [appIconUrl, manifestUrl, themeColor]);
 
   React.useLayoutEffect(() => {

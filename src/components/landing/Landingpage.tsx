@@ -106,13 +106,13 @@ const TimetableMock: React.FC = () => (
             <p className="flex items-center gap-1.5"><UserIcon className="h-3.5 w-3.5" />Wb</p>
             <p className="flex items-center gap-1.5"><MapPinIcon className="h-3.5 w-3.5" />A12</p>
           </div>
-          <div className="mt-3 p-2.5 rounded-lg border-l-4 border-amber-400 bg-amber-50 dark:border-amber-500 dark:bg-amber-950/35">
-            <div className="flex items-center justify-between gap-1 font-semibold uppercase tracking-wide text-[10px] text-amber-800 dark:text-amber-200">
+          <div className="mt-3 p-2.5 rounded-lg border-l-4 border-secondary-400 bg-secondary-50 dark:border-secondary-500 dark:bg-secondary-950/35">
+            <div className="flex items-center justify-between gap-1 font-semibold uppercase tracking-wide text-[10px] text-secondary-800 dark:text-secondary-200">
               <span className="flex items-center gap-1"><BookOpenIcon className="h-3.5 w-3.5" />Hausaufgabe · nächste Stunde</span>
-              <span className="flex items-center gap-0.5 text-amber-700 dark:text-amber-300">Offen</span>
+              <span className="flex items-center gap-0.5 text-secondary-700 dark:text-secondary-300">Offen</span>
             </div>
             <div className="mt-1.5 space-y-1">
-              <p className="whitespace-pre-wrap break-words text-xs leading-relaxed text-amber-950 dark:text-amber-100">S. 34, Nr. 3–5</p>
+              <p className="whitespace-pre-wrap break-words text-xs leading-relaxed text-secondary-900 dark:text-secondary-100">S. 34, Nr. 3–5</p>
             </div>
           </div>
         </article>

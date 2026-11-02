@@ -7,18 +7,16 @@ import {
   ArrowRightIcon,
   BookOpenIcon,
   CalendarDaysIcon,
-  CheckCircleIcon,
   CheckIcon,
   Cog6ToothIcon,
   CloudArrowUpIcon,
-  EyeSlashIcon,
   PaintBrushIcon,
   SparklesIcon,
 } from '@heroicons/react/24/outline';
 import { useAuth } from '../../contexts/AuthContext';
 import { usePreferences, CURRENT_ONBOARDING_VERSION } from '../../contexts/PreferencesContext';
 import { useTheme } from '../../contexts/ThemeContext';
-import { CompletedHomeworkDisplay, OnboardingStep, ThemeColor, ThemeMode, TimetableViewMode, UserPreferences, UserPreferencesPatch } from '../../types';
+import { OnboardingStep, ThemeColor, ThemeMode, TimetableViewMode, UserPreferences, UserPreferencesPatch } from '../../types';
 import SEO from '../seo/SEO';
 import AppIcon from '../AppIcon';
 
@@ -37,14 +35,14 @@ const themeModes: Array<{ id: ThemeMode; label: string; note: string }> = [
 ];
 
 const themeColors: Array<{ id: ThemeColor; label: string; hex: string; checkClass?: string }> = [
-  { id: 'cyan', label: 'Cyan', hex: '#06b6d4' },
-  { id: 'sapphire', label: 'Saphir', hex: '#3b82f6' },
-  { id: 'emerald', label: 'Smaragd', hex: '#10b981' },
-  { id: 'amethyst', label: 'Amethyst', hex: '#a855f7' },
-  { id: 'ruby', label: 'Rubin', hex: '#f43f5e' },
-  { id: 'amber', label: 'Bernstein', hex: '#f59e0b' },
-  { id: 'coral', label: 'Koralle', hex: '#f88379' },
-  { id: 'blush', label: 'Blush', hex: '#fee3ea', checkClass: 'text-surface-800' },
+  { id: '#06b6d4', label: 'Cyan', hex: '#06b6d4' },
+  { id: '#3b82f6', label: 'Saphir', hex: '#3b82f6' },
+  { id: '#10b981', label: 'Smaragd', hex: '#10b981' },
+  { id: '#a855f7', label: 'Amethyst', hex: '#a855f7' },
+  { id: '#f43f5e', label: 'Rubin', hex: '#f43f5e' },
+  { id: '#f59e0b', label: 'Bernstein', hex: '#f59e0b' },
+  { id: '#f88379', label: 'Koralle', hex: '#f88379' },
+  { id: '#fee3ea', label: 'Blush', hex: '#fee3ea', checkClass: 'text-surface-800' },
 ];
 
 const Onboarding: React.FC = () => {
@@ -70,7 +68,7 @@ const Onboarding: React.FC = () => {
   const [themeMode, setDraftThemeMode] = useState(preferences.appearance.theme_mode);
   const [themeColor, setDraftThemeColor] = useState<ThemeColor | null>(null);
   const [timetableMode, setTimetableMode] = useState<TimetableViewMode | null>(null);
-  const [completedHomeworkDisplay, setCompletedHomeworkDisplay] = useState<CompletedHomeworkDisplay | null>(null);
+  const [hideCompletedHomework, setHideCompletedHomework] = useState(false);
   const hydratedRef = useRef(false);
   const originalPreferencesRef = useRef<UserPreferences | null>(null);
   const appearanceToRestoreRef = useRef(preferences.appearance);
@@ -88,7 +86,7 @@ const Onboarding: React.FC = () => {
     setDraftThemeMode(preferences.appearance.theme_mode);
     setDraftThemeColor(null);
     setTimetableMode(null);
-    setCompletedHomeworkDisplay(null);
+    setHideCompletedHomework(preferences.homework.hide_completed_in_overview);
   }, [isLoading, preferences, user?.is_first_school_user]);
 
   useEffect(() => {
@@ -125,10 +123,14 @@ const Onboarding: React.FC = () => {
       : activeStep.id === 'timetable'
         ? timetableMode ? { timetable: { view_mode: timetableMode } } : {}
         : activeStep.id === 'homework'
-          ? completedHomeworkDisplay ? { homework: { completed_display: completedHomeworkDisplay } } : {}
+          ? { homework: { hide_completed_in_overview: hideCompletedHomework } }
           : {};
     if (activeStep.id === 'appearance') {
-      appearanceToRestoreRef.current = { theme_mode: themeMode, theme_color: themeColor || appearanceToRestoreRef.current.theme_color };
+      appearanceToRestoreRef.current = {
+        ...appearanceToRestoreRef.current,
+        theme_mode: themeMode,
+        theme_color: themeColor || appearanceToRestoreRef.current.theme_color,
+      };
     }
     void updatePreferences({
       ...patch,
@@ -167,11 +169,15 @@ const Onboarding: React.FC = () => {
   const complete = () => {
     void capture('onboarding_step_completed', { step: activeStep.id });
     void capture('onboarding_completed');
-    appearanceToRestoreRef.current = { theme_mode: themeMode, theme_color: themeColor || originalPreferencesRef.current?.appearance.theme_color || preferences.appearance.theme_color };
+    appearanceToRestoreRef.current = {
+      ...(originalPreferencesRef.current?.appearance || preferences.appearance),
+      theme_mode: themeMode,
+      theme_color: themeColor || originalPreferencesRef.current?.appearance.theme_color || preferences.appearance.theme_color,
+    };
     void updatePreferences({
       appearance: { theme_mode: themeMode, ...(themeColor ? { theme_color: themeColor } : {}) },
       ...(timetableMode ? { timetable: { view_mode: timetableMode } } : {}),
-      ...(completedHomeworkDisplay ? { homework: { completed_display: completedHomeworkDisplay } } : {}),
+      homework: { hide_completed_in_overview: hideCompletedHomework },
       onboarding: { version: CURRENT_ONBOARDING_VERSION, status: 'completed', last_step: 'complete' },
     });
     navigate('/dashboard', { replace: true });
@@ -284,32 +290,18 @@ const Onboarding: React.FC = () => {
                 <StepHeading
                   icon={BookOpenIcon}
                   eyebrow="Klare Prioritäten"
-                  title="Wie sollen erledigte Hausaufgaben aussehen?"
-                  description="In den Kursdetails bleiben alle Hausaufgaben sichtbar. Hier entscheidest du nur über die Übersicht in „Mein Unterricht“."
+                  title="Erledigte Hausaufgaben ausblenden?"
+                  description="Wenn du die Aufgaben erledigt hast, kannst du sie in der Übersicht „Mein Unterricht“ automatisch ausblenden."
                 />
-                <div className="mt-7 grid gap-4 sm:mt-0 sm:grid-cols-1 min-[1180px]:grid-cols-3">
-                  <HomeworkChoice
-                    selected={completedHomeworkDisplay === 'orange'}
-                    title="Orange · deutlich"
-                    description="Erledigte Aufgaben bleiben auffällig markiert."
-                    display="orange"
-                    onClick={() => setCompletedHomeworkDisplay('orange')}
+                <label className="mt-7 flex cursor-pointer items-center gap-3 rounded-xl border border-surface-200 bg-white p-4 text-sm font-medium text-surface-800 dark:border-surface-700 dark:bg-surface-900 dark:text-surface-200 sm:mt-0">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 rounded border-surface-300 text-primary-600 focus:ring-primary-500"
+                    checked={hideCompletedHomework}
+                    onChange={event => setHideCompletedHomework(event.target.checked)}
                   />
-                  <HomeworkChoice
-                    selected={completedHomeworkDisplay === 'green'}
-                    title="Grün · dezent"
-                    description="Ein grüner Status zeigt sie zurückhaltend an."
-                    display="green"
-                    onClick={() => setCompletedHomeworkDisplay('green')}
-                  />
-                  <HomeworkChoice
-                    selected={completedHomeworkDisplay === 'hidden'}
-                    title="Ausblenden"
-                    description="Erledigte Aufgaben verschwinden aus der Übersicht."
-                    display="hidden"
-                    onClick={() => setCompletedHomeworkDisplay('hidden')}
-                  />
-                </div>
+                  Erledigte Hausaufgaben in „Mein Unterricht“ ausblenden
+                </label>
               </div>
             )}
 
@@ -349,31 +341,6 @@ const StepHeading: React.FC<{ icon: React.ComponentType<React.SVGProps<SVGSVGEle
 const TimetableChoice: React.FC<{ selected: boolean; title: string; description: string; days: string[]; onClick: () => void }> = ({ selected, title, description, days, onClick }) => (
   <button type="button" onClick={onClick} className={`rounded-2xl border p-4 text-left transition-all min-[900px]:p-5 ${selected ? 'border-primary-500 bg-primary-50 ring-2 ring-primary-500/15 dark:bg-primary-950/40' : 'border-surface-200 bg-white hover:border-primary-300 dark:border-surface-800 dark:bg-surface-900'}`} aria-pressed={selected}>
     <div className="mb-4 flex gap-1">{days.map((day, index) => <span key={day} className={`flex h-8 min-w-8 flex-1 items-center justify-center rounded-lg text-[9px] font-semibold ${index === 0 ? 'bg-primary-600 text-white' : 'bg-surface-100 text-surface-500 dark:bg-surface-800'}`}>{day}</span>)}</div>
-    <p className="font-semibold">{title}</p>
-    <p className="mt-1 text-sm leading-5 text-surface-500">{description}</p>
-  </button>
-);
-
-const HomeworkChoice: React.FC<{
-  selected: boolean;
-  title: string;
-  description: string;
-  display: CompletedHomeworkDisplay;
-  onClick: () => void;
-}> = ({ selected, title, description, display, onClick }) => (
-  <button
-    type="button"
-    onClick={onClick}
-    className={`rounded-2xl border p-4 text-left transition-all min-[900px]:p-5 ${selected ? 'border-primary-500 bg-primary-50 ring-2 ring-primary-500/15 dark:bg-primary-950/40' : 'border-surface-200 bg-white hover:border-primary-300 dark:border-surface-800 dark:bg-surface-900'}`}
-    aria-pressed={selected}
-  >
-    <div className={`mb-4 rounded-xl border-l-4 p-3 ${display === 'hidden' ? 'border-dashed border-surface-300 bg-surface-50 dark:border-surface-600 dark:bg-surface-800/70' : display === 'green' ? 'border-emerald-400 bg-emerald-50 dark:border-emerald-500 dark:bg-emerald-950/35' : 'border-orange-400 bg-orange-50 dark:border-orange-500 dark:bg-orange-950/35'}`}>
-      <span className={`flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide ${display === 'green' ? 'text-emerald-700 dark:text-emerald-300' : display === 'orange' ? 'text-orange-700 dark:text-orange-300' : 'text-surface-500 dark:text-surface-400'}`}>
-        {display === 'hidden' ? <EyeSlashIcon className="h-3.5 w-3.5" /> : display === 'green' ? <CheckCircleIcon className="h-3.5 w-3.5" /> : <span className="h-2 w-2 rounded-full bg-orange-500" />}
-        {display === 'hidden' ? 'Nicht in der Übersicht' : 'Erledigt'}
-      </span>
-      {display !== 'hidden' && <span className="mt-1.5 block text-xs text-surface-500 line-through decoration-surface-400">Arbeitsblatt fertigstellen</span>}
-    </div>
     <p className="font-semibold">{title}</p>
     <p className="mt-1 text-sm leading-5 text-surface-500">{description}</p>
   </button>

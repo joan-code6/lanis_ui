@@ -1,6 +1,6 @@
 import { capture } from '../../analytics/client';
 import { AnalyticsControls } from '../../analytics/Analytics';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTheme, ThemeColor } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
@@ -19,9 +19,16 @@ import {
   recordAccountDataDeletion,
   purgeDeletedAccountBrowserData,
   withAccountDataLifecycleLock,
+  canWriteAccountData,
 } from '../../utils/accountDataWrites';
 import { useBasePath } from '../../contexts/BasePathContext';
 import { usePreferences } from '../../contexts/PreferencesContext';
+import {
+  CUSTOM_SECONDARY_THEME_COLOR_KEY,
+  CUSTOM_THEME_COLOR_KEY,
+  normalizeThemeColor,
+  SECONDARY_THEME_COLOR_KEY,
+} from '../../utils/themeAssets';
 import { authAPI, notificationsAPI } from '../../services/api';
 import { NotificationPreferences, PushSubscriptionPayload } from '../../types';
 import {
@@ -62,7 +69,7 @@ import {
   getSidebarLabel,
 } from '../../utils/sidebarNavigation';
 
-const themeColors: { key: ThemeColor; label: string; hex: string; checkClass?: string }[] = [
+const themeColors: { key: string; label: string; hex: ThemeColor; checkClass?: string }[] = [
   { key: 'emerald', label: 'Smaragd', hex: '#10b981' },
   { key: 'sapphire', label: 'Saphir', hex: '#3b82f6' },
   { key: 'amethyst', label: 'Amethyst', hex: '#a855f7' },
@@ -72,6 +79,11 @@ const themeColors: { key: ThemeColor; label: string; hex: string; checkClass?: s
   { key: 'coral', label: 'Koralle', hex: '#f88379' },
   { key: 'blush', label: 'Rosé', hex: '#fee3ea', checkClass: 'text-surface-800' },
   { key: 'moss', label: 'Oliv', hex: '#4b573f' },
+];
+
+const secondaryThemeColors: { key: string; label: string; hex: ThemeColor }[] = [
+  { key: 'orange', label: 'Orange', hex: '#c2410c' },
+  { key: 'green', label: 'Grün', hex: '#047857' },
 ];
 
 const defaultNotificationPreferences: NotificationPreferences = {
@@ -128,7 +140,7 @@ const settingsSections: Array<{
   {
     id: 'appearance',
     title: 'Erscheinungsbild',
-    description: 'Wähle ein Design und eine Primärfarbe.',
+    description: 'Wähle ein Design sowie Primär- und Sekundärfarbe.',
     icon: PaintBrushIcon,
   },
   {
@@ -171,7 +183,7 @@ const settingsSections: Array<{
 
 const sectionMeta: Record<SettingsSection, { title: string; subtitle: string }> = {
   home: { title: 'Einstellungen', subtitle: 'Passe Lanis an deinen Schulalltag an.' },
-  appearance: { title: 'Erscheinungsbild', subtitle: 'Wähle ein Design und eine Primärfarbe.' },
+  appearance: { title: 'Erscheinungsbild', subtitle: 'Wähle ein Design sowie Primär- und Sekundärfarbe.' },
   timetable: { title: 'Stundenplan & Vertretungsplan', subtitle: 'Lege deine Klasse und deine Stundenplan-Einstellungen fest.' },
   notifications: { title: 'Benachrichtigungen', subtitle: 'Verwalte Hinweisbanner im Dashboard und Web-Push-Benachrichtigungen.' },
   navigation: { title: 'Navigation', subtitle: 'Ordne die Seitenleiste und blende Einträge nach Bedarf ein oder aus.' },
@@ -606,6 +618,20 @@ const SettingsIndex: React.FC<{
 const Settings: React.FC = () => {
   const { themeMode, setThemeMode, themeColor, setThemeColor } = useTheme();
   const { preferences, updatePreferences, syncError } = usePreferences();
+  const secondaryThemeColor = preferences.appearance.secondary_theme_color;
+  const [customColorOpen, setCustomColorOpen] = useState(false);
+  const [customColorDraft, setCustomColorDraft] = useState(themeColor);
+  const [savedCustomColor, setSavedCustomColor] = useState<ThemeColor | null>(() => (
+    normalizeThemeColor(localStorage.getItem(CUSTOM_THEME_COLOR_KEY))
+    ?? (themeColors.some(color => color.hex === themeColor) ? null : themeColor)
+  ));
+  const customColorDialogRef = useRef<HTMLDialogElement>(null);
+  const [secondaryCustomColorOpen, setSecondaryCustomColorOpen] = useState(false);
+  const [secondaryCustomColorDraft, setSecondaryCustomColorDraft] = useState(secondaryThemeColor);
+  const [savedCustomSecondaryColor, setSavedCustomSecondaryColor] = useState<ThemeColor | null>(() => (
+    normalizeThemeColor(localStorage.getItem(CUSTOM_SECONDARY_THEME_COLOR_KEY))
+  ));
+  const secondaryCustomColorDialogRef = useRef<HTMLDialogElement>(null);
   const { token } = useAuth();
   const location = useLocation();
   const basePath = useBasePath();
@@ -630,6 +656,8 @@ const Settings: React.FC = () => {
   const section: SettingsSection = selectedSection && visibleSettingsSections.some(item => item.id === selectedSection)
     ? selectedSection as SettingsSection
     : 'home';
+  const isPresetColor = themeColors.some(color => color.hex === themeColor);
+  const isPresetSecondaryColor = secondaryThemeColors.some(color => color.hex === secondaryThemeColor);
   const [notificationPrefs, setNotificationPrefs] = useState<NotificationPreferences>(defaultNotificationPreferences);
   const [notificationConfigured, setNotificationConfigured] = useState(false);
   const [notificationBrowserReady, setNotificationBrowserReady] = useState(false);
@@ -641,6 +669,40 @@ const Settings: React.FC = () => {
   const [notificationError, setNotificationError] = useState('');
   const [notificationClassSyncFailed, setNotificationClassSyncFailed] = useState(false);
   const [notificationMessage, setNotificationMessage] = useState('');
+
+  useEffect(() => {
+    if (!savedCustomColor || localStorage.getItem(CUSTOM_THEME_COLOR_KEY) === savedCustomColor) return;
+    const generation = captureAccountDataGeneration();
+    if (canWriteAccountData(generation)) localStorage.setItem(CUSTOM_THEME_COLOR_KEY, savedCustomColor);
+  }, [savedCustomColor]);
+
+  useEffect(() => {
+    if (!savedCustomSecondaryColor || localStorage.getItem(CUSTOM_SECONDARY_THEME_COLOR_KEY) === savedCustomSecondaryColor) return;
+    const generation = captureAccountDataGeneration();
+    if (canWriteAccountData(generation)) {
+      localStorage.setItem(CUSTOM_SECONDARY_THEME_COLOR_KEY, savedCustomSecondaryColor);
+    }
+  }, [savedCustomSecondaryColor]);
+
+  useEffect(() => {
+    const dialog = customColorDialogRef.current;
+    if (!dialog) return;
+    if (customColorOpen && !dialog.open) dialog.showModal();
+    else if (!customColorOpen && dialog.open) dialog.close();
+  }, [customColorOpen]);
+
+  useEffect(() => {
+    if (!savedCustomSecondaryColor && !isPresetSecondaryColor) {
+      setSavedCustomSecondaryColor(secondaryThemeColor);
+    }
+  }, [isPresetSecondaryColor, savedCustomSecondaryColor, secondaryThemeColor]);
+
+  useEffect(() => {
+    const dialog = secondaryCustomColorDialogRef.current;
+    if (!dialog) return;
+    if (secondaryCustomColorOpen && !dialog.open) dialog.showModal();
+    else if (!secondaryCustomColorOpen && dialog.open) dialog.close();
+  }, [secondaryCustomColorOpen]);
 
   const pushSupported = typeof window !== 'undefined'
     && 'Notification' in window
@@ -982,6 +1044,12 @@ const Settings: React.FC = () => {
     void updatePreferences({ appearance: { theme_color: color } });
   };
 
+  const changeSecondaryThemeColor = (color: ThemeColor) => {
+    const generation = captureAccountDataGeneration();
+    if (canWriteAccountData(generation)) localStorage.setItem(SECONDARY_THEME_COLOR_KEY, color);
+    void updatePreferences({ appearance: { secondary_theme_color: color } });
+  };
+
   return (
     <div className="module-page">
       <SEO
@@ -1053,21 +1121,176 @@ const Settings: React.FC = () => {
               <button
                 key={c.key}
                 type="button"
-                onClick={() => changeThemeColor(c.key)}
-                aria-pressed={themeColor === c.key}
+                onClick={() => changeThemeColor(c.hex)}
+                aria-pressed={themeColor === c.hex}
                 aria-label={c.label}
                 title={c.label}
-                className={`inline-flex min-h-10 items-center gap-2 rounded-full border px-3 py-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-surface-900 ${themeColor === c.key ? 'border-primary-500 bg-primary-50 dark:bg-primary-950/40' : 'border-surface-200 dark:border-surface-700'}`}
+                className={`inline-flex min-h-10 items-center gap-2 rounded-full border px-3 py-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-surface-900 ${themeColor === c.hex ? 'border-primary-500 bg-primary-50 dark:bg-primary-950/40' : 'border-surface-200 dark:border-surface-700'}`}
               >
                 <span className="flex h-5 w-5 items-center justify-center rounded-full" style={{ backgroundColor: c.hex }}>
-                  {themeColor === c.key && (
+                  {themeColor === c.hex && (
                     <CheckIcon className={`h-3 w-3 ${c.checkClass || 'text-white'}`} />
                   )}
                 </span>
                 <span className="text-sm font-medium text-surface-700 dark:text-surface-200">{c.label}</span>
               </button>
             ))}
+            <button
+              type="button"
+              onClick={() => {
+                const customColorSelected = !isPresetColor && themeColor === savedCustomColor;
+                if (customColorSelected || !savedCustomColor) {
+                  setCustomColorDraft(savedCustomColor ?? themeColor);
+                  setCustomColorOpen(true);
+                } else changeThemeColor(savedCustomColor);
+              }}
+              aria-pressed={!isPresetColor && themeColor === savedCustomColor}
+              aria-label={savedCustomColor ? `Benutzerdefiniert ${savedCustomColor}` : 'Benutzerdefiniert'}
+              className={`inline-flex min-h-10 items-center gap-2 rounded-full border px-3 py-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-surface-900 ${!isPresetColor && themeColor === savedCustomColor ? 'border-primary-500 bg-primary-50 dark:bg-primary-950/40' : 'border-surface-200 dark:border-surface-700'}`}
+            >
+              <span className="flex h-5 w-5 items-center justify-center rounded-full" style={{ backgroundColor: savedCustomColor ?? themeColor }}>
+                {savedCustomColor && themeColor === savedCustomColor && <CheckIcon className="h-3 w-3 text-white" />}
+              </span>
+              <span className="text-sm font-medium text-surface-700 dark:text-surface-200">
+                {savedCustomColor ? `Benutzerdefiniert ${savedCustomColor.toUpperCase()}` : 'Benutzerdefiniert'}
+              </span>
+            </button>
           </div>
+          <dialog
+            ref={customColorDialogRef}
+            aria-labelledby="custom-primary-color-title"
+            onClose={() => setCustomColorOpen(false)}
+            onClick={(event) => {
+              if (event.target === event.currentTarget) setCustomColorOpen(false);
+            }}
+            className="card w-[calc(100%-2rem)] max-w-md p-0 backdrop:bg-surface-950/50 dark:backdrop:bg-black/70"
+          >
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                const generation = captureAccountDataGeneration();
+                if (canWriteAccountData(generation)) {
+                  localStorage.setItem(CUSTOM_THEME_COLOR_KEY, customColorDraft);
+                  setSavedCustomColor(customColorDraft);
+                }
+                changeThemeColor(customColorDraft);
+                setCustomColorOpen(false);
+              }}
+              className="p-6"
+            >
+              <h2 id="custom-primary-color-title" className="item-title">Benutzerdefinierte Primärfarbe</h2>
+              <p className="mt-1 text-sm text-surface-500 dark:text-surface-400">Wähle eine Farbe für die Akzente der Oberfläche.</p>
+              <label className="label mt-5 block" htmlFor="custom-primary-color">Farbe</label>
+              <input
+                id="custom-primary-color"
+                type="color"
+                value={customColorDraft}
+                onChange={(event) => {
+                  const color = normalizeThemeColor(event.target.value);
+                  if (color) setCustomColorDraft(color);
+                }}
+                className="input mt-2 h-16 w-full cursor-pointer p-2"
+              />
+              <div className="mt-3 flex items-center gap-3 rounded-xl border border-surface-200 p-3 dark:border-surface-700">
+                <span className="h-8 w-8 rounded-lg" style={{ backgroundColor: customColorDraft }} aria-hidden="true" />
+                <span className="font-mono text-sm text-surface-700 dark:text-surface-200">{customColorDraft.toUpperCase()}</span>
+              </div>
+              <div className="mt-6 flex justify-end gap-3">
+                <button type="button" className="btn btn-secondary" onClick={() => setCustomColorOpen(false)}>Abbrechen</button>
+                <button type="submit" className="btn btn-primary">Speichern</button>
+              </div>
+            </form>
+          </dialog>
+        </div>
+
+        <div className="card">
+          <h3 className="item-title mb-1">Sekundärfarbe</h3>
+          <p className="mb-5 text-sm text-surface-500">Wähle die Sekundärfarbe für die Oberfläche.</p>
+          <div className="flex flex-wrap gap-2" role="group" aria-label="Sekundärfarbe">
+            {secondaryThemeColors.map((c) => (
+              <button
+                key={c.key}
+                type="button"
+                onClick={() => changeSecondaryThemeColor(c.hex)}
+                aria-pressed={secondaryThemeColor === c.hex}
+                aria-label={c.label}
+                title={c.label}
+                className={`inline-flex min-h-10 items-center gap-2 rounded-full border px-3 py-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-surface-900 ${secondaryThemeColor === c.hex ? 'border-primary-500 bg-primary-50 dark:bg-primary-950/40' : 'border-surface-200 dark:border-surface-700'}`}
+              >
+                <span className="flex h-5 w-5 items-center justify-center rounded-full" style={{ backgroundColor: c.hex }}>
+                  {secondaryThemeColor === c.hex && (
+                    <CheckIcon className="h-3 w-3 text-white" />
+                  )}
+                </span>
+                <span className="text-sm font-medium text-surface-700 dark:text-surface-200">{c.label}</span>
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={() => {
+                const customColorSelected = !isPresetSecondaryColor && secondaryThemeColor === savedCustomSecondaryColor;
+                if (customColorSelected || !savedCustomSecondaryColor) {
+                  setSecondaryCustomColorDraft(savedCustomSecondaryColor ?? secondaryThemeColor);
+                  setSecondaryCustomColorOpen(true);
+                } else changeSecondaryThemeColor(savedCustomSecondaryColor);
+              }}
+              aria-pressed={!isPresetSecondaryColor && secondaryThemeColor === savedCustomSecondaryColor}
+              aria-label={savedCustomSecondaryColor ? `Benutzerdefiniert ${savedCustomSecondaryColor}` : 'Benutzerdefiniert'}
+              className={`inline-flex min-h-10 items-center gap-2 rounded-full border px-3 py-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-surface-900 ${!isPresetSecondaryColor && secondaryThemeColor === savedCustomSecondaryColor ? 'border-primary-500 bg-primary-50 dark:bg-primary-950/40' : 'border-surface-200 dark:border-surface-700'}`}
+            >
+              <span className="flex h-5 w-5 items-center justify-center rounded-full" style={{ backgroundColor: savedCustomSecondaryColor ?? secondaryThemeColor }}>
+                {savedCustomSecondaryColor && secondaryThemeColor === savedCustomSecondaryColor && <CheckIcon className="h-3 w-3 text-white" />}
+              </span>
+              <span className="text-sm font-medium text-surface-700 dark:text-surface-200">
+                {savedCustomSecondaryColor ? `Benutzerdefiniert ${savedCustomSecondaryColor.toUpperCase()}` : 'Benutzerdefiniert'}
+              </span>
+            </button>
+          </div>
+          <dialog
+            ref={secondaryCustomColorDialogRef}
+            aria-labelledby="custom-secondary-color-title"
+            onClose={() => setSecondaryCustomColorOpen(false)}
+            onClick={(event) => {
+              if (event.target === event.currentTarget) setSecondaryCustomColorOpen(false);
+            }}
+            className="card w-[calc(100%-2rem)] max-w-md p-0 backdrop:bg-surface-950/50 dark:backdrop:bg-black/70"
+          >
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                const generation = captureAccountDataGeneration();
+                if (canWriteAccountData(generation)) {
+                  localStorage.setItem(CUSTOM_SECONDARY_THEME_COLOR_KEY, secondaryCustomColorDraft);
+                  setSavedCustomSecondaryColor(secondaryCustomColorDraft);
+                }
+                changeSecondaryThemeColor(secondaryCustomColorDraft);
+                setSecondaryCustomColorOpen(false);
+              }}
+              className="p-6"
+            >
+              <h2 id="custom-secondary-color-title" className="item-title">Benutzerdefinierte Sekundärfarbe</h2>
+              <p className="mt-1 text-sm text-surface-500 dark:text-surface-400">Wähle eine Farbe für die Oberfläche.</p>
+              <label className="label mt-5 block" htmlFor="custom-secondary-color">Farbe</label>
+              <input
+                id="custom-secondary-color"
+                type="color"
+                value={secondaryCustomColorDraft}
+                onChange={(event) => {
+                  const color = normalizeThemeColor(event.target.value);
+                  if (color) setSecondaryCustomColorDraft(color);
+                }}
+                className="input mt-2 h-16 w-full cursor-pointer p-2"
+              />
+              <div className="mt-3 flex items-center gap-3 rounded-xl border border-surface-200 p-3 dark:border-surface-700">
+                <span className="h-8 w-8 rounded-lg" style={{ backgroundColor: secondaryCustomColorDraft }} aria-hidden="true" />
+                <span className="font-mono text-sm text-surface-700 dark:text-surface-200">{secondaryCustomColorDraft.toUpperCase()}</span>
+              </div>
+              <div className="mt-6 flex justify-end gap-3">
+                <button type="button" className="btn btn-secondary" onClick={() => setSecondaryCustomColorOpen(false)}>Abbrechen</button>
+                <button type="submit" className="btn btn-primary">Speichern</button>
+              </div>
+            </form>
+          </dialog>
         </div>
 
           </>

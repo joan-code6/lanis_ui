@@ -28,7 +28,7 @@ export function render(path: string, data: { school?: SchoolProfile; schools?: S
     : path === '/' ? <Landingpage /> : path === '/status' ? <StatusPage />
       : path === '/schulen' && schools?.length ? <SchoolDirectoryPage initialSchools={schools} /> : null;
   if (!page) throw new Error(`No prerender data/component for ${path}`);
-  const theme = school ? themeForColor(school.palette.primary) : 'ruby';
+  const theme = school ? themeForColor(school.palette.primary) : '#f43f5e';
   const context: { helmet?: HelmetServerState | null } = {};
   const body = renderToString(
     <HelmetProvider context={context}>

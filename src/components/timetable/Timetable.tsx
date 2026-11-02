@@ -314,7 +314,7 @@ const SegmentedControl: React.FC<{
 );
 
 const WeekBadge: React.FC<{ week: 'A' | 'B'; compact?: boolean }> = ({ week, compact = false }) => (
-  <span className={`${week === 'A' ? 'badge badge-primary' : 'badge border border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300'} ${compact ? '!px-1 !py-0 text-[8px] sm:!px-2.5 sm:!py-0.5 sm:text-xs' : ''}`}>
+  <span className={`${week === 'A' ? 'badge badge-primary' : 'badge border border-secondary-200 bg-secondary-50 text-secondary-700 dark:border-secondary-800 dark:bg-secondary-950 dark:text-secondary-300'} ${compact ? '!px-1 !py-0 text-[8px] sm:!px-2.5 sm:!py-0.5 sm:text-xs' : ''}`}>
     {compact ? week : `${week}-Woche`}
   </span>
 );
@@ -325,17 +325,17 @@ const HomeworkPreview: React.FC<{ homework?: TimetableLesson['homework']; compac
   const allDone = homework.every(item => item.done);
 
   return (
-    <div className={`${compact ? 'mt-1 p-1 sm:mt-2 sm:p-2' : 'mt-3 p-2.5'} rounded-lg border-l-4 text-left ${allDone ? 'border-emerald-400 bg-emerald-50 dark:border-emerald-500 dark:bg-emerald-950/35' : 'border-amber-400 bg-amber-50 dark:border-amber-500 dark:bg-amber-950/35'}`}>
-      <div className={`flex items-center justify-between gap-1 font-semibold uppercase tracking-wide ${allDone ? 'text-emerald-800 dark:text-emerald-200' : 'text-amber-800 dark:text-amber-200'} ${compact ? 'text-[8px] sm:text-[10px]' : 'text-[10px]'}`}>
+    <div className={`${compact ? 'mt-1 p-1 sm:mt-2 sm:p-2' : 'mt-3 p-2.5'} rounded-lg border-l-4 text-left ${allDone ? 'border-emerald-400 bg-emerald-50 dark:border-emerald-500 dark:bg-emerald-950/35' : 'border-secondary-400 bg-secondary-50 dark:border-secondary-500 dark:bg-secondary-950/35'}`}>
+      <div className={`flex items-center justify-between gap-1 font-semibold uppercase tracking-wide ${allDone ? 'text-emerald-800 dark:text-emerald-200' : 'text-secondary-800 dark:text-secondary-200'} ${compact ? 'text-[8px] sm:text-[10px]' : 'text-[10px]'}`}>
         <span className="flex items-center gap-1"><BookOpenIcon className={compact ? 'h-2.5 w-2.5 sm:h-3 sm:w-3' : 'h-3.5 w-3.5'} />{compact ? 'Hausaufgabe' : 'Hausaufgabe · nächste Stunde'}</span>
-        <span className={`flex items-center gap-0.5 ${allDone ? 'text-emerald-700 dark:text-emerald-300' : 'text-amber-700 dark:text-amber-300'}`}>
+        <span className={`flex items-center gap-0.5 ${allDone ? 'text-emerald-700 dark:text-emerald-300' : 'text-secondary-700 dark:text-secondary-300'}`}>
           {allDone && <CheckCircleIcon className={compact ? 'h-2.5 w-2.5 sm:h-3 sm:w-3' : 'h-3.5 w-3.5'} />}
           {allDone ? 'Erledigt' : 'Offen'}
         </span>
       </div>
       <div className={compact ? 'mt-0.5 space-y-0.5 sm:mt-1' : 'mt-1.5 space-y-1'}>
         {homework.map((item, index) => (
-          <p key={item.entry_id || index} className={`whitespace-pre-wrap break-words ${compact ? 'text-[8px] leading-tight sm:text-[10px]' : 'text-xs leading-relaxed'} ${item.done ? 'text-emerald-700 line-through decoration-emerald-500/60 dark:text-emerald-300' : 'text-amber-950 dark:text-amber-100'}`}>
+          <p key={item.entry_id || index} className={`whitespace-pre-wrap break-words ${compact ? 'text-[8px] leading-tight sm:text-[10px]' : 'text-xs leading-relaxed'} ${item.done ? 'text-emerald-700 line-through decoration-emerald-500/60 dark:text-emerald-300' : 'text-secondary-900 dark:text-secondary-100'}`}>
             {item.text}
           </p>
         ))}

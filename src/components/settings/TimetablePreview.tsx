@@ -30,7 +30,7 @@ export const TimetableLayoutPreview: React.FC<{ mode: TimetableLayoutMode }> = (
       <span className="grid grid-cols-5 gap-1">
         {['Mo', 'Di', 'Mi', 'Do', 'Fr'].map((day, index) => <span key={day} className="space-y-1">
           <span className="block text-center text-[10px] text-surface-500">{day}</span>
-          {[0, 1, 2].map(lesson => <span key={lesson} className={`block h-4 rounded-sm ${['bg-sky-200 dark:bg-sky-900', 'bg-amber-200 dark:bg-amber-900', 'bg-violet-200 dark:bg-violet-900'][(index + lesson) % 3]}`} />)}
+          {[0, 1, 2].map(lesson => <span key={lesson} className={`block h-4 rounded-sm ${['bg-sky-200 dark:bg-sky-900', 'bg-secondary-200 dark:bg-secondary-900', 'bg-violet-200 dark:bg-violet-900'][(index + lesson) % 3]}`} />)}
         </span>)}
       </span>
     )}

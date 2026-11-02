@@ -1,6 +1,11 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { ThemeColor, ThemeMode } from '../types';
-import { applyThemeAssets, isThemeColor, THEME_COLOR_HEX } from '../utils/themeAssets';
+import {
+  applyThemeAssets,
+  applyThemeColorPalette,
+  normalizeThemeColor,
+  SECONDARY_THEME_COLOR_KEY,
+} from '../utils/themeAssets';
 import { canWriteAccountData, captureAccountDataGeneration } from '../utils/accountDataWrites';
 
 export type { ThemeColor, ThemeMode } from '../types';
@@ -24,72 +29,15 @@ export const useTheme = () => {
   return context;
 };
 
-const THEME_COLOR_KEY = 'lanis_theme_color';
+export const THEME_COLOR_KEY = 'lanis_theme_color';
 const DARK_MODE_KEY = 'lanis_dark_mode';
 const OLED_MODE_KEY = 'lanis_oled_mode';
 const THEME_MODE_KEY = 'lanis_theme_mode';
 
-type ColorScale = Record<string, string>;
-
-const THEMES: Record<ThemeColor, ColorScale> = {
-  emerald: {
-    50: '236 253 245', 100: '209 250 229', 200: '167 243 208',
-    300: '110 231 183', 400: '52 211 153', 500: '16 185 129',
-    600: '5 150 105',   700: '4 120 87',   800: '6 95 70',
-    900: '6 78 59',     950: '2 44 34',
-  },
-  sapphire: {
-    50: '239 246 255', 100: '219 234 254', 200: '191 219 254',
-    300: '147 197 253', 400: '96 165 250', 500: '59 130 246',
-    600: '37 99 235',   700: '29 78 216',  800: '30 64 175',
-    900: '30 58 138',   950: '23 37 84',
-  },
-  amethyst: {
-    50: '250 245 255', 100: '243 232 255', 200: '233 213 255',
-    300: '216 180 254', 400: '192 132 252', 500: '168 85 247',
-    600: '147 51 234',  700: '126 34 206', 800: '107 33 168',
-    900: '88 28 135',   950: '59 7 100',
-  },
-  ruby: {
-    50: '255 241 242', 100: '255 228 230', 200: '254 205 211',
-    300: '253 164 175', 400: '251 113 133', 500: '244 63 94',
-    600: '225 29 72',   700: '190 18 60',  800: '159 18 57',
-    900: '136 19 55',   950: '76 5 25',
-  },
-  amber: {
-    50: '255 251 235', 100: '254 243 199', 200: '253 230 138',
-    300: '252 211 77',  400: '251 191 36', 500: '245 158 11',
-    600: '217 119 6',   700: '180 83 9',  800: '146 64 14',
-    900: '120 53 15',   950: '69 26 3',
-  },
-  cyan: {
-    50: '236 254 255', 100: '207 250 254', 200: '165 243 252',
-    300: '103 232 249', 400: '34 211 238', 500: '6 182 212',
-    600: '8 145 178',   700: '14 116 144', 800: '21 94 117',
-    900: '22 78 99',    950: '8 51 68',
-  },
-  coral: {
-    50: '254 227 234', 100: '253 210 206', 200: '251 185 177',
-    300: '249 159 148', 400: '249 143 130', 500: '248 131 121',
-    600: '192 79 61',    700: '170 67 55',   800: '146 58 54',
-    900: '118 48 46',    950: '72 28 26',
-  },
-  blush: {
-    50: '255 249 250', 100: '254 227 234', 200: '249 208 222',
-    300: '240 179 203', 400: '221 145 179', 500: '201 111 152',
-    600: '169 84 125',   700: '135 67 101',  800: '109 53 83',
-    900: '86 43 67',     950: '51 26 42',
-  },
-  moss: {
-    50: '244 245 243', 100: '226 228 224', 200: '197 201 194',
-    300: '161 168 155', 400: '120 129 111', 500: '75 87 63',
-    600: '66 77 55',    700: '56 65 47',    800: '45 52 38',
-    900: '34 39 28',    950: '21 24 18',
-  },
-};
-
 function applyPrimaryTheme(color: ThemeColor) {
-  document.documentElement.setAttribute('data-theme', color);
+  applyThemeColorPalette(color, 'primary');
+  const secondaryColor = normalizeThemeColor(localStorage.getItem(SECONDARY_THEME_COLOR_KEY));
+  if (secondaryColor) applyThemeColorPalette(secondaryColor, 'secondary');
   applyThemeAssets(color);
 }
 
@@ -109,9 +57,9 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode; initialColor?:
   const [systemDark, setSystemDark] = useState(() => typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches);
 
   const [themeColor, setThemeColorState] = useState<ThemeColor>(() => {
-    if (typeof window === 'undefined') return initialColor ?? 'ruby';
-    const storedTheme = localStorage.getItem(THEME_COLOR_KEY);
-    return isThemeColor(storedTheme) ? storedTheme : 'ruby';
+    if (typeof window === 'undefined') return normalizeThemeColor(initialColor) ?? '#f43f5e';
+    const storedTheme = normalizeThemeColor(localStorage.getItem(THEME_COLOR_KEY));
+    return storedTheme ?? normalizeThemeColor(initialColor) ?? '#f43f5e';
   });
 
   const isOled = themeMode === 'oled';
@@ -136,11 +84,13 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode; initialColor?:
   }, [isOled, setThemeMode]);
 
   const setThemeColor = useCallback((color: ThemeColor) => {
-    setThemeColorState(color);
+    const normalizedColor = normalizeThemeColor(color);
+    if (!normalizedColor) throw new Error('Invalid primary theme color');
+    setThemeColorState(normalizedColor);
     const generation = captureAccountDataGeneration();
     if (!canWriteAccountData(generation)) return;
-    localStorage.setItem(THEME_COLOR_KEY, color);
-    applyPrimaryTheme(color);
+    localStorage.setItem(THEME_COLOR_KEY, normalizedColor);
+    applyPrimaryTheme(normalizedColor);
   }, []);
 
   useEffect(() => {
@@ -161,6 +111,11 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode; initialColor?:
   }, []);
 
   useEffect(() => {
+    const storedColor = localStorage.getItem(THEME_COLOR_KEY);
+    if (storedColor && storedColor !== themeColor) {
+      const generation = captureAccountDataGeneration();
+      if (canWriteAccountData(generation)) localStorage.setItem(THEME_COLOR_KEY, themeColor);
+    }
     applyPrimaryTheme(themeColor);
   }, [themeColor]);
 
@@ -171,7 +126,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode; initialColor?:
       meta.setAttribute('name', 'theme-color');
       document.head.appendChild(meta);
     }
-    meta.setAttribute('content', isOled ? '#000000' : isDark ? '#0a0a0a' : THEME_COLOR_HEX[themeColor]);
+    meta.setAttribute('content', isOled ? '#000000' : isDark ? '#0a0a0a' : themeColor);
   }, [themeColor, isDark, isOled]);
 
   return (
