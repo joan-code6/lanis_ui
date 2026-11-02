@@ -1,6 +1,6 @@
 import { capture } from '../../analytics/client';
 import { AnalyticsControls } from '../../analytics/Analytics';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTheme, ThemeColor } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
@@ -186,6 +186,7 @@ const AccountSettings: React.FC = () => {
   const [exporting, setExporting] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [confirmation, setConfirmation] = useState('');
+  const deletionDialog = useRef<HTMLDialogElement>(null);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
@@ -268,6 +269,9 @@ const AccountSettings: React.FC = () => {
   };
 
   const deleteAccount = async () => {
+    if (deleting || !token || confirmation !== 'LÖSCHEN') return;
+    setDeleting(true);
+    setError('');
     try {
       await withAccountDataLifecycleLock(performAccountDeletion);
     } catch {
@@ -283,11 +287,19 @@ const AccountSettings: React.FC = () => {
       <button type="button" onClick={() => void exportData()} disabled={exporting} className="btn btn-primary mt-5"><ArrowDownTrayIcon className="mr-2 h-4 w-4" />{exporting ? 'Export wird vorbereitet …' : 'Alle Daten exportieren'}</button>
     </div>
     <div className="card border-2 border-red-300 dark:border-red-900/70">
-      <h2 className="text-xs font-semibold uppercase tracking-wide text-red-700 dark:text-red-300">Gefahrenbereich</h2>
-      <h3 className="item-title mt-2">Konto löschen</h3>
+      <h2 className="item-title">Konto löschen</h2>
       <p className="mt-1 text-sm leading-relaxed text-surface-500">Dadurch werden dein Lanis-Profil, deine Einstellungen, Aktivitäten, Push-Abos, Verbindungen, Sitzungen und lokale Zwischenspeicher dauerhaft gelöscht. Originaldaten im Schulportal bleiben unberührt.</p>
-      <label className="mt-5 block max-w-sm text-sm font-medium text-surface-700 dark:text-surface-300">Gib zur Bestätigung <span className="font-mono">LÖSCHEN</span> ein<input value={confirmation} onChange={event => setConfirmation(event.target.value.toLocaleUpperCase('de-DE'))} className="mt-2 block w-full rounded-xl border border-surface-300 bg-white px-3 py-2.5 font-mono text-sm outline-none focus:border-red-500 dark:border-surface-700 dark:bg-surface-900" autoComplete="off" /></label>
-      <button type="button" onClick={() => void deleteAccount()} disabled={deleting || confirmation !== 'LÖSCHEN'} className="btn mt-4 bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"><TrashIcon className="mr-2 h-4 w-4" />{deleting ? 'Konto wird gelöscht …' : 'Konto löschen'}</button>
+      <button type="button" onClick={() => { setConfirmation(''); setError(''); deletionDialog.current?.showModal(); }} className="btn mt-5 bg-red-600 text-white hover:bg-red-700"><TrashIcon className="mr-2 h-4 w-4" />Konto löschen</button>
+      <dialog ref={deletionDialog} aria-labelledby="delete-account-title" aria-describedby="delete-account-description" onCancel={event => { if (deleting) event.preventDefault(); }} className="m-auto w-[calc(100%-2rem)] max-w-md rounded-2xl border border-surface-200 bg-white p-6 text-surface-900 shadow-soft-lg backdrop:bg-surface-950/60 backdrop:backdrop-blur-sm dark:border-surface-700 dark:bg-surface-900 dark:text-surface-100">
+        <h2 id="delete-account-title" className="item-title">Konto endgültig löschen?</h2>
+        <p id="delete-account-description" className="mt-2 text-sm text-surface-500">Deine bei Lanis gespeicherten Daten werden dauerhaft gelöscht. Diese Aktion kann nicht rückgängig gemacht werden. Originaldaten im Schulportal bleiben unberührt.</p>
+      <label className="mt-5 block max-w-sm text-sm font-medium text-surface-700 dark:text-surface-300">Gib zur Bestätigung <span className="font-mono">LÖSCHEN</span> ein<input autoFocus disabled={deleting} value={confirmation} onChange={event => setConfirmation(event.target.value.toLocaleUpperCase('de-DE'))} className="mt-2 block w-full rounded-xl border border-surface-300 bg-white px-3 py-2.5 font-mono text-sm outline-none focus:border-red-500 dark:border-surface-700 dark:bg-surface-900" autoComplete="off" /></label>
+        {error && <p role="alert" className="mt-3 text-sm text-red-600 dark:text-red-400">{error}</p>}
+        <div className="mt-5 flex flex-wrap justify-end gap-3">
+          <button type="button" disabled={deleting} onClick={() => deletionDialog.current?.close()} className="btn btn-secondary">Abbrechen</button>
+      <button type="button" onClick={() => void deleteAccount()} disabled={deleting || confirmation !== 'LÖSCHEN'} className="btn bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"><TrashIcon className="mr-2 h-4 w-4" />{deleting ? 'Konto wird gelöscht …' : 'Konto löschen'}</button>
+        </div>
+      </dialog>
     </div>
     {message && <p className="rounded-xl bg-emerald-50 p-3 text-sm text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200">{message}</p>}
     {error && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-800 dark:bg-red-950/40 dark:text-red-200">{error}</p>}

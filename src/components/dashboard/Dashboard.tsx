@@ -647,7 +647,7 @@ const Dashboard: React.FC = () => {
                 )}
 
                 {viewMode === 'grid' ? (
-                  <div className="flex min-h-[168px] flex-col items-center text-center">
+                  <div className="flex flex-col items-center text-center">
                     {isEditMode && (
                       <button
                         type="button"
@@ -680,7 +680,7 @@ const Dashboard: React.FC = () => {
                     )}
 
                     {isEditMode && (
-                      <div className="mt-auto flex w-full items-center gap-1 border-t border-surface-100 pt-3 dark:border-surface-800">
+                      <div className="mt-4 flex w-full items-center gap-1 border-t border-surface-100 pt-3 dark:border-surface-800">
                         <button
                           type="button"
                           onClick={(event) => {

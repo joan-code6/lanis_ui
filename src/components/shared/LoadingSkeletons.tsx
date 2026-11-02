@@ -10,11 +10,10 @@ export const DashboardModulesSkeleton: React.FC<{ viewMode: 'grid' | 'list' }> =
     {Array.from({ length: 8 }, (_, i) => (
       <div key={i} className={`card ${viewMode === 'grid' ? 'p-5' : 'flex items-center gap-3 p-3 sm:gap-4 sm:p-4'}`}>
         {viewMode === 'grid' ? (
-          <div className="flex min-h-[168px] flex-col items-center">
+          <div className="flex flex-col items-center">
             <Block className="h-16 w-16 rounded-2xl" />
             <Block className="mt-4 h-5 w-32" />
             <Block className="mt-2 h-[22px] w-20" />
-            <span className="mt-2 text-[11px] font-medium text-surface-400">Modul</span>
           </div>
         ) : (
           <><Block className="h-12 w-12 shrink-0" /><div className="flex-1 space-y-1"><Block className="h-5 w-40" /><Block className="h-[22px] w-24" /></div></>

@@ -31,7 +31,7 @@ export function AnalyticsControls() {
         disabled={!configured}
       />
     </div>
-    <p className="text-xs text-surface-500" role="status">{!configured ? 'Die Nutzungsanalyse ist auf diesem Server nicht eingerichtet.' : enabled ? 'Die Nutzungsanalyse ist aktiviert.' : 'Die Nutzungsanalyse ist deaktiviert.'}</p>
+    {!configured && <p className="text-xs text-surface-500" role="status">Die Nutzungsanalyse ist auf diesem Server nicht eingerichtet.</p>}
   </section>;
 }
 
