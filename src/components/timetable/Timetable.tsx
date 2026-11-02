@@ -49,6 +49,19 @@ const Timetable: React.FC = () => {
       return response;
     },
   );
+  const { data: currentWeekData } = useCachedResource(
+    JSON.stringify(['timetable-current-week', format(new Date(), 'yyyy-MM-dd')]),
+    async (signal) => {
+      const response = await timetableAPI.getResolvedTimetable(token!, {
+        view_mode: 'week', plan_mode: 'personal', show_substitutions: false,
+      }, signal);
+      if (!response.success) throw new Error(response.message || 'Die aktuelle Schulwoche konnte nicht geladen werden.');
+      return response;
+    },
+  );
+  const currentWeek = currentWeekData?.week_start
+    ? weekTypeForDate(new Date(), new Date(`${currentWeekData.week_start}T12:00:00`), currentWeekData.active_week)
+    : undefined;
   const visibleDays = data?.days || [];
   const hasAlternatingWeeks = Boolean(data?.has_alternating_weeks);
   const activeWeek = data?.active_week;
@@ -107,9 +120,9 @@ const Timetable: React.FC = () => {
             {firstVisibleDate && lastVisibleDate && (
               <span>{format(firstVisibleDate, "d. MMMM", { locale: de })} – {format(lastVisibleDate, "d. MMMM yyyy", { locale: de })}</span>
             )}
-            {timetableViewMode === 'week' && displayedWeekTypes.map(week => (
-              <span key={week} className="badge badge-primary">{week}-Woche</span>
-            ))}
+            {hasAlternatingWeeks && currentWeek && (
+              <span className="badge badge-primary">{currentWeek}-Woche</span>
+            )}
           </div>
 
         </header>
@@ -205,7 +218,7 @@ const Timetable: React.FC = () => {
                     </div>)}
                     {timetableEntries(day.lessons, displayedExams.filter(exam => exam.date === day.date), timeSlots).map(({ lesson, exam, replaced }, index) => exam ? (
                       <article key={`exam-${exam.id}-${index}`} className="rounded-xl border border-violet-200 bg-violet-50 p-3 dark:border-violet-800 dark:bg-violet-950/40">
-                        <div className="mb-2 flex items-start justify-between gap-2">
+                        <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
                           <p className="flex items-center gap-1.5 text-xs font-semibold text-violet-700 dark:text-violet-300"><AcademicCapIcon className="h-4 w-4" aria-hidden="true" />{exam.type || 'Klausur'}</p>
                           {lesson.period != null && <span className="badge badge-surface">{lesson.period} Std.</span>}
                         </div>
@@ -239,15 +252,15 @@ const Timetable: React.FC = () => {
                           }
                         }}
                       >
-                        <div className="mb-2 flex items-start justify-between gap-2">
-                          <div>
+                        <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
+                          <div className="min-w-0 flex-1 break-words">
                             <p className={`font-semibold text-surface-900 dark:text-white ${lesson.cancelled ? 'line-through' : ''}`}>{lesson.subject}</p>
                             {lesson.class_name && <p className="text-xs text-surface-500">{lesson.class_name}</p>}
                           </div>
-                          <div className="flex shrink-0 items-center gap-1.5">
+                          <div className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-1.5">
                             {lesson.week_type && <WeekBadge week={lesson.week_type} />}
                             {lesson.period != null && <span className="badge badge-surface">{lesson.period}{typeof lesson.period === 'number' ? '.' : ''} Std.</span>}
-                            {lesson.course_id && <ChevronRightIcon className="h-4 w-4 text-primary-500" aria-hidden="true" />}
+                            {lesson.course_id && <ChevronRightIcon className="h-4 w-4 shrink-0 text-primary-500" aria-hidden="true" />}
                           </div>
                         </div>
                         <div className="space-y-1 text-xs text-surface-500 dark:text-surface-400">
