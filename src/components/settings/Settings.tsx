@@ -269,6 +269,9 @@ const AccountSettings: React.FC = () => {
   };
 
   const deleteAccount = async () => {
+    if (deleting || !token || confirmation !== 'LÖSCHEN') return;
+    setDeleting(true);
+    setError('');
     try {
       await withAccountDataLifecycleLock(performAccountDeletion);
     } catch {
@@ -288,7 +291,7 @@ const AccountSettings: React.FC = () => {
       <p className="mt-1 text-sm leading-relaxed text-surface-500">Dadurch werden dein Lanis-Profil, deine Einstellungen, Aktivitäten, Push-Abos, Verbindungen, Sitzungen und lokale Zwischenspeicher dauerhaft gelöscht. Originaldaten im Schulportal bleiben unberührt.</p>
       <button type="button" onClick={() => { setConfirmation(''); setError(''); deletionDialog.current?.showModal(); }} className="btn mt-5 bg-red-600 text-white hover:bg-red-700"><TrashIcon className="mr-2 h-4 w-4" />Konto löschen</button>
       <dialog ref={deletionDialog} aria-labelledby="delete-account-title" aria-describedby="delete-account-description" onCancel={event => { if (deleting) event.preventDefault(); }} className="m-auto w-[calc(100%-2rem)] max-w-md rounded-2xl border border-surface-200 bg-white p-6 text-surface-900 shadow-soft-lg backdrop:bg-surface-950/60 backdrop:backdrop-blur-sm dark:border-surface-700 dark:bg-surface-900 dark:text-surface-100">
-        <h2 id="delete-account-title" className="section-title">Konto endgültig löschen?</h2>
+        <h2 id="delete-account-title" className="item-title">Konto endgültig löschen?</h2>
         <p id="delete-account-description" className="mt-2 text-sm text-surface-500">Deine bei Lanis gespeicherten Daten werden dauerhaft gelöscht. Diese Aktion kann nicht rückgängig gemacht werden. Originaldaten im Schulportal bleiben unberührt.</p>
       <label className="mt-5 block max-w-sm text-sm font-medium text-surface-700 dark:text-surface-300">Gib zur Bestätigung <span className="font-mono">LÖSCHEN</span> ein<input autoFocus disabled={deleting} value={confirmation} onChange={event => setConfirmation(event.target.value.toLocaleUpperCase('de-DE'))} className="mt-2 block w-full rounded-xl border border-surface-300 bg-white px-3 py-2.5 font-mono text-sm outline-none focus:border-red-500 dark:border-surface-700 dark:bg-surface-900" autoComplete="off" /></label>
         {error && <p role="alert" className="mt-3 text-sm text-red-600 dark:text-red-400">{error}</p>}
