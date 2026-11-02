@@ -23,8 +23,16 @@ if(JSON.stringify(links)!==JSON.stringify(['https://groups.google.com/g/lanis-be
 if(await page.$('input[type=email]'))throw Error('Email collection remains');
 if(!await page.evaluate(()=>window.calls.some(c=>c.action==='presented')))throw Error('Presentation cooldown missing');
 if(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth))throw Error('Mobile overflow');
-await page.evaluate(()=>{window.fail=true});await page.keyboard.press('Escape');await page.waitForSelector('dialog[open] [role=alert]');
-await page.evaluate(()=>{window.fail=false});await page.keyboard.press('Escape');await page.waitForFunction(()=>!document.querySelector('dialog[open]'));
+await page.evaluate(()=>{window.fail=true;window.betaState.invitation_due=true});await page.keyboard.press('Escape');await page.waitForSelector('dialog[open] [role=alert]');
+const callsBeforeClose=await page.evaluate(()=>window.calls.length);
+await page.keyboard.press('Escape');await page.waitForFunction(()=>!document.querySelector('dialog[open]'));
+if(await page.evaluate(()=>window.calls.length)!==callsBeforeClose)throw Error('Local Escape tried to save again');
+await page.evaluate(()=>{window.fail=false;window.dispatchEvent(new Event('focus'))});await new Promise(r=>setTimeout(r,1800));
+if(await page.$('dialog[open]'))throw Error('Failed save reopened locally closed dialog');
+if(!await page.evaluate(()=>window.betaState.invitation_due&&!window.betaState.dismissed))throw Error('Local close falsely saved preferences');
+await page.goto(url);await page.waitForSelector('dialog[open]');await page.evaluate(()=>{window.fail=true;[...document.querySelectorAll('dialog button')].find(b=>b.textContent==='Nicht mehr anzeigen').click()});await page.waitForSelector('dialog[open] [role=alert]');
+await page.evaluate(()=>[...document.querySelectorAll('dialog button')].find(b=>b.textContent==='Ohne Speichern schließen').click());await page.waitForFunction(()=>!document.querySelector('dialog[open]'));
+if(await page.evaluate(()=>window.betaState.dismissed))throw Error('Failed permanent dismissal claimed success');
 await page.goto(url+'?settings&disabled');await page.waitForSelector('section a');
 if(await page.$$eval('section a',nodes=>nodes.length)!==2)throw Error('Settings lost permanent links');
 await page.setViewport({width:1440,height:900});await page.evaluate(()=>document.documentElement.classList.add('dark'));await page.screenshot({path:'/tmp/lanis-beta-groups-settings-desktop.png'});

@@ -17,6 +17,7 @@ export default function AndroidBeta({ settings = false }: { settings?: boolean }
   const dialog = useRef<HTMLDialogElement>(null);
   const generation = useRef(0);
   const mutation = useRef(false);
+  const locallyClosed = useRef(false);
   const native = (window as Window & { Capacitor?: { isNativePlatform?: () => boolean; getPlatform?: () => string } }).Capacitor;
   const eligible = isAndroidBrowser(navigator.userAgent, native);
 
@@ -41,7 +42,7 @@ export default function AndroidBeta({ settings = false }: { settings?: boolean }
 
   useEffect(() => {
     if (settings || !eligible || !state?.available) { setOpen(false); return; }
-    if (open || !betaPrompt(state)) return;
+    if (open || locallyClosed.current || !betaPrompt(state)) return;
     const timer = window.setInterval(() => {
       const pwa = document.querySelector('pwa-install') as (HTMLElement & { isDialogHidden?: boolean }) | null;
       if (pwa?.isDialogHidden === false || document.visibilityState !== 'visible' || document.documentElement.classList.contains('onboarding-active') || document.querySelector('[role="dialog"], [role="alertdialog"], dialog[open], [aria-modal="true"]')) return;
@@ -59,6 +60,11 @@ export default function AndroidBeta({ settings = false }: { settings?: boolean }
     if (token) void androidBetaAPI.change(token, 'presented').catch(() => setError('Die Erinnerung konnte nicht gespeichert werden. Bitte versuche „Später“ erneut.'));
     return () => { node.close(); previous?.focus(); };
   }, [open, token]);
+
+  function closeLocally() {
+    locallyClosed.current = true;
+    setOpen(false);
+  }
 
   async function dismiss(action: 'later' | 'dismiss') {
     if (!token || mutation.current) return;
@@ -89,9 +95,9 @@ export default function AndroidBeta({ settings = false }: { settings?: boolean }
       </li>
     </ol>
     <p className="text-xs text-surface-500 dark:text-surface-400">Die Gruppenmitgliedschaft ermöglicht den Zugang; sie ersetzt den Testbeitritt nicht. LANIS prüft weder Mitgliedschaft noch Testbeitritt oder Installation. Bei beaufsichtigten Kinderkonten kann Google den Gruppenbeitritt einschränken.</p>
-    {error && <p role="alert" className="text-sm text-red-600 dark:text-red-400">{error} {!state && <button className="ml-1 underline" onClick={() => void load()}>Erneut versuchen</button>}</p>}
+    {error && <div role="alert" className="space-y-2 text-sm text-red-600 dark:text-red-400"><p>{error} {!state && <button className="ml-1 underline" onClick={() => void load()}>Erneut versuchen</button>}</p>{!settings && <button type="button" className="btn btn-secondary" onClick={closeLocally}>Ohne Speichern schließen</button>}</div>}
     {!settings && <div className="flex flex-wrap gap-2 border-t border-surface-200 pt-4 dark:border-surface-700"><button className="btn btn-secondary" disabled={busy} onClick={() => void dismiss('later')}>Später</button><button className="btn btn-ghost" disabled={busy} onClick={() => void dismiss('dismiss')}>Nicht mehr anzeigen</button></div>}
   </div>;
   if (settings) return <section aria-labelledby="beta-settings-title" className="card p-4 sm:p-6">{content}</section>;
-  return open ? <dialog ref={dialog} aria-labelledby="beta-dialog-title" onCancel={event => { event.preventDefault(); void dismiss('later'); }} className="m-auto max-h-[90dvh] w-[calc(100%-2rem)] max-w-md overflow-y-auto rounded-2xl border border-surface-200 bg-white p-5 text-surface-900 shadow-xl backdrop:bg-black/50 dark:border-surface-700 dark:bg-surface-900 dark:text-surface-100 sm:p-6">{content}</dialog> : null;
+  return open ? <dialog ref={dialog} aria-labelledby="beta-dialog-title" onCancel={event => { event.preventDefault(); if (error) closeLocally(); else void dismiss('later'); }} className="m-auto max-h-[90dvh] w-[calc(100%-2rem)] max-w-md overflow-y-auto rounded-2xl border border-surface-200 bg-white p-5 text-surface-900 shadow-xl backdrop:bg-black/50 dark:border-surface-700 dark:bg-surface-900 dark:text-surface-100 sm:p-6">{content}</dialog> : null;
 }
