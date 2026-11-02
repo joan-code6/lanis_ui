@@ -1,6 +1,6 @@
 import { DashboardModulesSkeleton } from '../shared/LoadingSkeletons';
 import { useCachedState } from '../../hooks/useCachedState';
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useBasePath } from '../../contexts/BasePathContext';
@@ -15,7 +15,6 @@ import {
   Squares2X2Icon,
   ListBulletIcon,
   PencilIcon,
-  StarIcon,
   EyeIcon,
   EyeSlashIcon,
   Bars3Icon,
@@ -40,6 +39,15 @@ type DropTarget = {
   placement: 'before' | 'after';
 };
 
+type DragSession = {
+  moduleName: string;
+  pointerId: number;
+  startX: number;
+  startY: number;
+  target: DropTarget | null;
+  started: boolean;
+};
+
 const Dashboard: React.FC = () => {
   const { token, user } = useAuth();
   const { preferences, updatePreferences } = usePreferences();
@@ -57,21 +65,12 @@ const Dashboard: React.FC = () => {
   const showSearch = preferences.dashboard.show_search;
   const showSubtitle = preferences.dashboard.show_subtitle;
   const [isEditMode, setIsEditMode] = useState(false);
-  const pinnedModules = preferences.dashboard.pinned_modules;
+  const moduleOrder = preferences.dashboard.module_order;
   const hiddenModules = preferences.dashboard.hidden_modules;
   const [draggedModule, setDraggedModule] = useState<string | null>(null);
   const [dropTarget, setDropTarget] = useState<DropTarget | null>(null);
-
-  if (!token) {
-    return (
-      <div className="p-6">
-        <div className="text-center py-12">
-          <h3 className="text-lg font-medium text-surface-900 dark:text-surface-100">Nicht authentifiziert</h3>
-          <p className="text-surface-500">Bitte melden Sie sich an, um das Dashboard zu sehen.</p>
-        </div>
-      </div>
-    );
-  }
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const dragSession = useRef<DragSession | null>(null);
 
   useEffect(() => {
     if (!token) return;
@@ -169,6 +168,7 @@ const Dashboard: React.FC = () => {
       return;
     }
     if (module.proxy_app) {
+      if (!token) return;
       const proxyUrl = `${API_BASE_URL}/app/${encodeURIComponent(module.name)}?token=${encodeURIComponent(token)}`;
       window.open(proxyUrl, '_blank', 'noopener,noreferrer');
       return;
@@ -191,34 +191,28 @@ const Dashboard: React.FC = () => {
       : externalModule.direct_url || externalModule.url
     : '';
 
-  const togglePin = (moduleName: string) => {
-    const isPinned = pinnedModules.includes(moduleName);
-    if (hiddenModules.includes(moduleName) && !isPinned) return;
-
-    const newPinned = isPinned
-      ? pinnedModules.filter(name => name !== moduleName)
-      : [...pinnedModules, moduleName];
-    void updatePreferences({ dashboard: { pinned_modules: newPinned } });
-  };
-
-  const movePinned = (moduleName: string, direction: -1 | 1) => {
-    const fromIndex = pinnedModules.indexOf(moduleName);
-    const toIndex = fromIndex + direction;
-    if (fromIndex < 0 || toIndex < 0 || toIndex >= pinnedModules.length) return;
-
-    const newPinned = [...pinnedModules];
-    [newPinned[fromIndex], newPinned[toIndex]] = [newPinned[toIndex], newPinned[fromIndex]];
-    void updatePreferences({ dashboard: { pinned_modules: newPinned } });
-  };
+  const orderedModuleNames = [
+    ...moduleOrder,
+    ...modules
+      .map(module => module.name)
+      .filter(name => !moduleOrder.includes(name))
+      .sort((a, b) => a.localeCompare(b, 'de', { sensitivity: 'base' })),
+  ];
 
   const toggleHidden = (moduleName: string) => {
-    const newHidden = hiddenModules.includes(moduleName)
+    const isHidden = hiddenModules.includes(moduleName);
+    const newHidden = isHidden
       ? hiddenModules.filter(name => name !== moduleName)
       : [...hiddenModules, moduleName];
-    const newPinned = newHidden.includes(moduleName)
-      ? pinnedModules.filter(name => name !== moduleName)
-      : pinnedModules;
-    void updatePreferences({ dashboard: { hidden_modules: newHidden, pinned_modules: newPinned } });
+    if (!isHidden) {
+      void updatePreferences({ dashboard: { hidden_modules: newHidden } });
+      return;
+    }
+
+    const nextOrder = orderedModuleNames.filter(name => name !== moduleName);
+    const firstHiddenIndex = nextOrder.findIndex(name => newHidden.includes(name));
+    nextOrder.splice(firstHiddenIndex < 0 ? nextOrder.length : firstHiddenIndex, 0, moduleName);
+    void updatePreferences({ dashboard: { hidden_modules: newHidden, module_order: nextOrder } });
   };
 
   const toggleSearch = () => {
@@ -226,37 +220,152 @@ const Dashboard: React.FC = () => {
     void updatePreferences({ dashboard: { show_search: !showSearch } });
   };
 
-  const handleDragStart = (event: React.DragEvent, moduleName: string) => {
-    event.dataTransfer.effectAllowed = 'move';
-    event.dataTransfer.setData('text/plain', moduleName);
-    setDraggedModule(moduleName);
-  };
+  const reorderModules = useCallback((sourceName: string, targetName: string, placement: DropTarget['placement']) => {
+    if (sourceName === targetName) return;
+    const source = modules.find(module => module.name === sourceName);
+    const target = modules.find(module => module.name === targetName);
+    if (!source || !target || hiddenModules.includes(sourceName) !== hiddenModules.includes(targetName)) return;
 
-  const handleDragOver = (event: React.DragEvent<HTMLDivElement>, targetName: string) => {
-    if (!draggedModule || draggedModule === targetName || !pinnedModules.includes(targetName)) return;
+    const nextOrder = [
+      ...moduleOrder,
+      ...modules
+        .map(module => module.name)
+        .filter(name => !moduleOrder.includes(name))
+        .sort((a, b) => a.localeCompare(b, 'de', { sensitivity: 'base' })),
+    ];
+    const sourceIndex = nextOrder.indexOf(sourceName);
+    if (sourceIndex < 0 || !nextOrder.includes(targetName)) return;
+    nextOrder.splice(sourceIndex, 1);
+    const targetIndex = nextOrder.indexOf(targetName);
+    nextOrder.splice(targetIndex + (placement === 'after' ? 1 : 0), 0, sourceName);
+    void updatePreferences({ dashboard: { module_order: nextOrder } });
+  }, [hiddenModules, moduleOrder, modules, updatePreferences]);
+
+  const setDragTarget = (event: React.DragEvent, targetName: string) => {
+    const sourceName = draggedModule || event.dataTransfer.getData('text/plain');
+    if (!sourceName || sourceName === targetName) return;
+    const source = modules.find(module => module.name === sourceName);
+    const target = modules.find(module => module.name === targetName);
+    if (!source || !target || hiddenModules.includes(sourceName) !== hiddenModules.includes(targetName)) return;
+
     event.preventDefault();
     event.dataTransfer.dropEffect = 'move';
     const bounds = event.currentTarget.getBoundingClientRect();
-    const placement = viewMode === 'list'
+    const isVertical = viewMode === 'list' || window.innerWidth < 640;
+    const placement = isVertical
       ? event.clientY < bounds.top + bounds.height / 2 ? 'before' : 'after'
       : event.clientX < bounds.left + bounds.width / 2 ? 'before' : 'after';
     setDropTarget({ moduleName: targetName, placement });
   };
 
-  const handleDrop = (event: React.DragEvent, targetName: string) => {
+  const handleDragStart = (event: React.DragEvent<HTMLButtonElement>, moduleName: string) => {
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', moduleName);
+    const card = event.currentTarget.closest<HTMLElement>('[data-dashboard-module]');
+    if (card) {
+      const bounds = card.getBoundingClientRect();
+      event.dataTransfer.setDragImage(card, event.clientX - bounds.left, event.clientY - bounds.top);
+    }
+    setDraggedModule(moduleName);
+  };
+
+  const handleDrop = (event: React.DragEvent<HTMLDivElement>, targetName: string) => {
     event.preventDefault();
     const sourceName = draggedModule || event.dataTransfer.getData('text/plain');
-    const placement = dropTarget?.moduleName === targetName ? dropTarget.placement : 'before';
-    if (!sourceName || sourceName === targetName) return;
-
-    const newPinned = pinnedModules.filter(name => name !== sourceName);
-    const targetIndex = newPinned.indexOf(targetName);
-    if (targetIndex < 0) return;
-    newPinned.splice(targetIndex + (placement === 'after' ? 1 : 0), 0, sourceName);
-    void updatePreferences({ dashboard: { pinned_modules: newPinned } });
+    const target = dropTarget;
+    if (sourceName && target?.moduleName === targetName) {
+      reorderModules(sourceName, target.moduleName, target.placement);
+    }
     setDraggedModule(null);
     setDropTarget(null);
   };
+
+  const handlePointerDown = (event: React.PointerEvent<HTMLButtonElement>, moduleName: string) => {
+    if (event.pointerType !== 'touch') return;
+    if (event.button !== 0) return;
+    event.preventDefault();
+    dragSession.current = {
+      moduleName,
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      target: null,
+      started: false,
+    };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+
+  useEffect(() => {
+    const handlePointerMove = (event: PointerEvent) => {
+      const session = dragSession.current;
+      if (!session || event.pointerId !== session.pointerId) return;
+      const x = event.clientX - session.startX;
+      const y = event.clientY - session.startY;
+      if (!session.started && Math.hypot(x, y) < 4) return;
+
+      session.started = true;
+      event.preventDefault();
+      setDraggedModule(session.moduleName);
+      setDragOffset({ x, y });
+
+      const target = document.elementFromPoint(event.clientX, event.clientY)
+        ?.closest<HTMLElement>('[data-dashboard-module]');
+      const targetName = target?.dataset.dashboardModule;
+      if (!target || !targetName || targetName === session.moduleName) {
+        session.target = null;
+        setDropTarget(null);
+        return;
+      }
+
+      const bounds = target.getBoundingClientRect();
+      const isVertical = viewMode === 'list' || window.innerWidth < 640;
+      let placement: DropTarget['placement'];
+      if (isVertical) {
+        placement = event.clientY < bounds.top + bounds.height / 2 ? 'before' : 'after';
+      } else if (event.clientY < bounds.top + bounds.height * 0.25) {
+        placement = 'before';
+      } else if (event.clientY > bounds.bottom - bounds.height * 0.25) {
+        placement = 'after';
+      } else {
+        placement = event.clientX < bounds.left + bounds.width / 2 ? 'before' : 'after';
+      }
+
+      const source = modules.find(module => module.name === session.moduleName);
+      const targetModule = modules.find(module => module.name === targetName);
+      if (!source || !targetModule
+        || hiddenModules.includes(source.name) !== hiddenModules.includes(targetModule.name)) {
+        session.target = null;
+        setDropTarget(null);
+        return;
+      }
+
+      session.target = { moduleName: targetName, placement };
+      setDropTarget(session.target);
+    };
+
+    const finishDrag = (event: PointerEvent, commit: boolean) => {
+      const session = dragSession.current;
+      if (!session || event.pointerId !== session.pointerId) return;
+      if (commit && session.started && session.target) {
+        reorderModules(session.moduleName, session.target.moduleName, session.target.placement);
+      }
+      dragSession.current = null;
+      setDraggedModule(null);
+      setDropTarget(null);
+      setDragOffset({ x: 0, y: 0 });
+    };
+    const handlePointerUp = (event: PointerEvent) => finishDrag(event, true);
+    const handlePointerCancel = (event: PointerEvent) => finishDrag(event, false);
+
+    window.addEventListener('pointermove', handlePointerMove, { passive: false });
+    window.addEventListener('pointerup', handlePointerUp);
+    window.addEventListener('pointercancel', handlePointerCancel);
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerUp);
+      window.removeEventListener('pointercancel', handlePointerCancel);
+    };
+  }, [hiddenModules, modules, reorderModules, viewMode]);
 
   const filteredModules = modules.filter((module) => {
     if (!isEditMode && hiddenModules.includes(module.name)) return false;
@@ -270,15 +379,63 @@ const Dashboard: React.FC = () => {
     const aHidden = hiddenModules.includes(a.name);
     const bHidden = hiddenModules.includes(b.name);
     if (isEditMode && aHidden !== bHidden) return aHidden ? 1 : -1;
-    const aPinned = pinnedModules.includes(a.name);
-    const bPinned = pinnedModules.includes(b.name);
-    if (aPinned && !bPinned) return -1;
-    if (!aPinned && bPinned) return 1;
-    if (aPinned && bPinned) {
-      return pinnedModules.indexOf(a.name) - pinnedModules.indexOf(b.name);
-    }
-    return 0;
+    return orderedModuleNames.indexOf(a.name) - orderedModuleNames.indexOf(b.name);
   });
+  const moveModule = (moduleName: string, direction: -1 | 1, index: number) => {
+    const neighbor = sortedModules[index + direction];
+    if (!neighbor || hiddenModules.includes(moduleName) !== hiddenModules.includes(neighbor.name)) return;
+    reorderModules(moduleName, neighbor.name, direction < 0 ? 'before' : 'after');
+  };
+
+  const renderMoveControls = (module: Module, index: number, vertical: boolean) => {
+    const canMove = (direction: -1 | 1) => {
+      const neighbor = sortedModules[index + direction];
+      return Boolean(neighbor && hiddenModules.includes(module.name) === hiddenModules.includes(neighbor.name));
+    };
+    const moveButton = (
+      direction: -1 | 1,
+      Icon: typeof ChevronUpIcon,
+      responsiveClass = '',
+    ) => (
+      <button
+        key={`${direction}-${responsiveClass}`}
+        type="button"
+        onClick={(event) => {
+          event.stopPropagation();
+          moveModule(module.name, direction, index);
+        }}
+        disabled={!canMove(direction)}
+        className={clsx('rounded-md p-1 text-surface-500 hover:bg-white hover:text-primary-600 disabled:opacity-25 dark:hover:bg-surface-700', responsiveClass)}
+        aria-label={`${module.name} an die ${direction < 0 ? 'vorherige' : 'nächste'} Stelle verschieben`}
+      >
+        <Icon className="h-4 w-4" />
+      </button>
+    );
+
+    return (
+      <div className="ml-auto flex items-center rounded-lg bg-surface-100 p-0.5 dark:bg-surface-800">
+        {vertical
+          ? <>{moveButton(-1, ChevronUpIcon)}{moveButton(1, ChevronDownIcon)}</>
+          : <>
+              {moveButton(-1, ChevronUpIcon, 'sm:hidden')}
+              {moveButton(1, ChevronDownIcon, 'sm:hidden')}
+              {moveButton(-1, ChevronLeftIcon, 'hidden sm:inline-flex')}
+              {moveButton(1, ChevronRightIcon, 'hidden sm:inline-flex')}
+            </>}
+      </div>
+    );
+  };
+
+  if (!token) {
+    return (
+      <div className="p-6">
+        <div className="text-center py-12">
+          <h3 className="text-lg font-medium text-surface-900 dark:text-surface-100">Nicht authentifiziert</h3>
+          <p className="text-surface-500">Bitte melden Sie sich an, um das Dashboard zu sehen.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="module-page">
@@ -414,13 +571,13 @@ const Dashboard: React.FC = () => {
 
       {isEditMode && (
         <div className="mb-6 flex items-start gap-3 rounded-xl border border-primary-200 bg-primary-50 px-4 py-3 dark:border-primary-800 dark:bg-primary-950/30">
-          <StarIcon className="mt-0.5 h-4 w-4 shrink-0 fill-current text-primary-500" />
+          <Bars3Icon className="mt-0.5 h-4 w-4 shrink-0 text-primary-500" />
           <div>
             <p className="text-sm font-medium text-primary-800 dark:text-primary-200">
-              {pinnedModules.length} {pinnedModules.length === 1 ? 'Favorit' : 'Favoriten'} zuerst
+              Dashboard anpassen
             </p>
             <p className="mt-0.5 text-xs leading-5 text-primary-700/80 dark:text-primary-300/80">
-              Favoriten lassen sich am Griff ziehen. Die Pfeile funktionieren auch auf Touch-Geräten und mit der Tastatur.
+              Ziehen Sie Module am Griff oder verschieben Sie sie mit den Pfeilen. Die Reihenfolge wird gespeichert.
             </p>
           </div>
         </div>
@@ -443,27 +600,32 @@ const Dashboard: React.FC = () => {
               : 'grid-cols-1'
           )}
         >
-          {sortedModules.map((module) => {
-            const isPinned = pinnedModules.includes(module.name);
+          {sortedModules.map((module, moduleIndex) => {
             const isHidden = hiddenModules.includes(module.name);
-            const pinnedIndex = pinnedModules.indexOf(module.name);
             const activeDropTarget = dropTarget?.moduleName === module.name && draggedModule !== module.name;
+            const isVerticalLayout = viewMode === 'list' || window.innerWidth < 640;
 
             return (
               <div
                 key={module.name}
+                data-dashboard-module={module.name}
                 className={clsx(
                   'card group relative transition-[opacity,transform,box-shadow] duration-150',
                   !isEditMode && 'card-hover',
                   viewMode === 'grid' ? 'p-5' : 'flex items-center gap-3 p-3 sm:gap-4 sm:p-4',
                   isEditMode && isHidden && 'opacity-50',
-                  draggedModule === module.name && 'scale-[0.98] opacity-40'
+                  draggedModule === module.name && 'scale-[0.98] opacity-40',
+                  dragSession.current?.moduleName === module.name && 'pointer-events-none'
                 )}
-                onDragOver={(event) => handleDragOver(event, module.name)}
-                onDragLeave={(event) => {
-                  if (!event.currentTarget.contains(event.relatedTarget as Node)) setDropTarget(null);
-                }}
+                style={draggedModule === module.name && dragSession.current
+                  ? { transform: `translate3d(${dragOffset.x}px, ${dragOffset.y}px, 0) scale(1.02)`, transition: 'none', zIndex: 20, willChange: 'transform', opacity: 0.85 }
+                  : undefined}
+                onDragOver={(event) => setDragTarget(event, module.name)}
                 onDrop={(event) => handleDrop(event, module.name)}
+                onDragEnd={() => {
+                  setDraggedModule(null);
+                  setDropTarget(null);
+                }}
                 onMouseEnter={() => warmModule(module)}
                 onFocus={() => warmModule(module)}
                 onClick={() => handleModuleClick(module)}
@@ -473,37 +635,32 @@ const Dashboard: React.FC = () => {
                     aria-hidden="true"
                     className={clsx(
                       'pointer-events-none absolute z-10 rounded-full bg-primary-500 shadow-[0_0_0_3px_rgba(14,165,233,0.15)]',
-                      viewMode === 'list'
-                        ? 'left-3 right-3 h-0.5'
-                        : 'bottom-3 top-3 w-0.5',
-                      viewMode === 'list' && dropTarget?.placement === 'before' && '-top-2',
-                      viewMode === 'list' && dropTarget?.placement === 'after' && '-bottom-2',
-                      viewMode === 'grid' && dropTarget?.placement === 'before' && '-left-2',
-                      viewMode === 'grid' && dropTarget?.placement === 'after' && '-right-2'
+                      isVerticalLayout
+                        ? 'left-2 right-2 h-1'
+                        : 'bottom-2 top-2 w-1',
+                      isVerticalLayout && dropTarget?.placement === 'before' && '-top-2',
+                      isVerticalLayout && dropTarget?.placement === 'after' && '-bottom-2',
+                      !isVerticalLayout && dropTarget?.placement === 'before' && '-left-2',
+                      !isVerticalLayout && dropTarget?.placement === 'after' && '-right-2'
                     )}
                   />
                 )}
 
                 {viewMode === 'grid' ? (
                   <div className="flex min-h-[168px] flex-col items-center text-center">
-                    {isPinned && (
-                      <span className="absolute left-3 top-3 flex items-center gap-1 rounded-full bg-primary-50 px-2 py-1 text-[10px] font-semibold text-primary-700 dark:bg-primary-950/50 dark:text-primary-300">
-                        <StarIcon className="h-3 w-3 fill-current" />
-                        Favorit
-                      </span>
-                    )}
-                    {isEditMode && isPinned && (
+                    {isEditMode && (
                       <button
                         type="button"
                         draggable
                         onDragStart={(event) => handleDragStart(event, module.name)}
+                        onPointerDown={(event) => handlePointerDown(event, module.name)}
                         onDragEnd={() => {
                           setDraggedModule(null);
                           setDropTarget(null);
                         }}
                         onClick={(event) => event.stopPropagation()}
-                        className="absolute right-3 top-3 rounded-lg p-1.5 text-surface-400 transition-colors hover:bg-surface-100 hover:text-primary-600 active:cursor-grabbing dark:hover:bg-surface-800 dark:hover:text-primary-400"
-                        aria-label={`${module.name} ziehen, um die Reihenfolge zu ändern`}
+                        className="absolute right-3 top-3 touch-none rounded-lg p-1.5 text-surface-400 transition-colors hover:bg-surface-100 hover:text-primary-600 active:cursor-grabbing dark:hover:bg-surface-800 dark:hover:text-primary-400"
+                        aria-label={`${module.name} greifen und ziehen, um die Reihenfolge zu ändern`}
                         title="Zum Sortieren ziehen"
                       >
                         <Bars3Icon className="h-5 w-5 cursor-grab" />
@@ -529,24 +686,6 @@ const Dashboard: React.FC = () => {
                           type="button"
                           onClick={(event) => {
                             event.stopPropagation();
-                            togglePin(module.name);
-                          }}
-                          disabled={isHidden && !isPinned}
-                          className={clsx(
-                            'flex h-8 items-center gap-1.5 rounded-lg px-2 text-xs font-medium transition-colors',
-                            isPinned
-                              ? 'bg-primary-50 text-primary-700 dark:bg-primary-950/40 dark:text-primary-300'
-                              : 'text-surface-500 hover:bg-surface-100 hover:text-primary-600 disabled:opacity-30 dark:text-surface-400 dark:hover:bg-surface-800'
-                          )}
-                          aria-label={isPinned ? `${module.name} aus Favoriten entfernen` : `${module.name} zu Favoriten hinzufügen`}
-                        >
-                          <StarIcon className={clsx('h-4 w-4', isPinned && 'fill-current')} />
-                          Favorit
-                        </button>
-                        <button
-                          type="button"
-                          onClick={(event) => {
-                            event.stopPropagation();
                             toggleHidden(module.name);
                           }}
                           className="flex h-8 items-center gap-1.5 rounded-lg px-2 text-xs font-medium text-surface-500 transition-colors hover:bg-surface-100 hover:text-red-600 dark:text-surface-400 dark:hover:bg-surface-800 dark:hover:text-red-400"
@@ -555,51 +694,25 @@ const Dashboard: React.FC = () => {
                           {isHidden ? <EyeIcon className="h-4 w-4" /> : <EyeSlashIcon className="h-4 w-4" />}
                           {isHidden ? 'Zeigen' : 'Ausblenden'}
                         </button>
-                        {isPinned && (
-                          <div className="ml-auto flex items-center rounded-lg bg-surface-100 p-0.5 dark:bg-surface-800">
-                            <button
-                              type="button"
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                movePinned(module.name, -1);
-                              }}
-                              disabled={pinnedIndex === 0}
-                              className="rounded-md p-1 text-surface-500 hover:bg-white hover:text-primary-600 disabled:opacity-25 dark:hover:bg-surface-700"
-                              aria-label={`${module.name} nach vorne verschieben`}
-                            >
-                              <ChevronLeftIcon className="h-4 w-4" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                movePinned(module.name, 1);
-                              }}
-                              disabled={pinnedIndex === pinnedModules.length - 1}
-                              className="rounded-md p-1 text-surface-500 hover:bg-white hover:text-primary-600 disabled:opacity-25 dark:hover:bg-surface-700"
-                              aria-label={`${module.name} nach hinten verschieben`}
-                            >
-                              <ChevronRightIcon className="h-4 w-4" />
-                            </button>
-                          </div>
-                        )}
+                        {renderMoveControls(module, moduleIndex, false)}
                       </div>
                     )}
                   </div>
                 ) : (
                   <>
-                    {isEditMode && isPinned && (
+                    {isEditMode && (
                       <button
                         type="button"
                         draggable
                         onDragStart={(event) => handleDragStart(event, module.name)}
+                        onPointerDown={(event) => handlePointerDown(event, module.name)}
                         onDragEnd={() => {
                           setDraggedModule(null);
                           setDropTarget(null);
                         }}
                         onClick={(event) => event.stopPropagation()}
-                        className="shrink-0 rounded-lg p-1.5 text-surface-400 transition-colors hover:bg-surface-100 hover:text-primary-600 active:cursor-grabbing dark:hover:bg-surface-800"
-                        aria-label={`${module.name} ziehen, um die Reihenfolge zu ändern`}
+                        className="shrink-0 touch-none rounded-lg p-1.5 text-surface-400 transition-colors hover:bg-surface-100 hover:text-primary-600 active:cursor-grabbing dark:hover:bg-surface-800"
+                        aria-label={`${module.name} greifen und ziehen, um die Reihenfolge zu ändern`}
                         title="Zum Sortieren ziehen"
                       >
                         <Bars3Icon className="h-5 w-5 cursor-grab" />
@@ -611,9 +724,6 @@ const Dashboard: React.FC = () => {
                         <h3 className="truncate text-sm font-medium text-surface-900 transition-colors group-hover:text-primary-600 dark:text-surface-100">
                           {module.name}
                         </h3>
-                        {isPinned && (
-                          <StarIcon className="h-3.5 w-3.5 shrink-0 fill-current text-primary-500" aria-label="Favorit" />
-                        )}
                       </div>
                       {module.folders.length > 0 && (
                         <div className="mt-1 flex flex-wrap gap-1">
@@ -629,23 +739,6 @@ const Dashboard: React.FC = () => {
                           type="button"
                           onClick={(event) => {
                             event.stopPropagation();
-                            togglePin(module.name);
-                          }}
-                          disabled={isHidden && !isPinned}
-                          className={clsx(
-                            'rounded-lg p-2 transition-colors',
-                            isPinned
-                              ? 'bg-primary-50 text-primary-600 dark:bg-primary-950/40 dark:text-primary-300'
-                              : 'text-surface-400 hover:bg-surface-100 hover:text-primary-600 disabled:opacity-30 dark:hover:bg-surface-800'
-                          )}
-                          aria-label={isPinned ? `${module.name} aus Favoriten entfernen` : `${module.name} zu Favoriten hinzufügen`}
-                        >
-                          <StarIcon className={clsx('h-4 w-4', isPinned && 'fill-current')} />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={(event) => {
-                            event.stopPropagation();
                             toggleHidden(module.name);
                           }}
                           className="rounded-lg p-2 text-surface-400 transition-colors hover:bg-surface-100 hover:text-red-600 dark:hover:bg-surface-800 dark:hover:text-red-400"
@@ -653,34 +746,7 @@ const Dashboard: React.FC = () => {
                         >
                           {isHidden ? <EyeIcon className="h-4 w-4" /> : <EyeSlashIcon className="h-4 w-4" />}
                         </button>
-                        {isPinned && (
-                          <div className="ml-1 flex items-center rounded-lg bg-surface-100 p-0.5 dark:bg-surface-800">
-                            <button
-                              type="button"
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                movePinned(module.name, -1);
-                              }}
-                              disabled={pinnedIndex === 0}
-                              className="rounded-md p-1 text-surface-500 hover:bg-white hover:text-primary-600 disabled:opacity-25 dark:hover:bg-surface-700"
-                              aria-label={`${module.name} nach oben verschieben`}
-                            >
-                              <ChevronUpIcon className="h-4 w-4" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                movePinned(module.name, 1);
-                              }}
-                              disabled={pinnedIndex === pinnedModules.length - 1}
-                              className="rounded-md p-1 text-surface-500 hover:bg-white hover:text-primary-600 disabled:opacity-25 dark:hover:bg-surface-700"
-                              aria-label={`${module.name} nach unten verschieben`}
-                            >
-                              <ChevronDownIcon className="h-4 w-4" />
-                            </button>
-                          </div>
-                        )}
+                        {renderMoveControls(module, moduleIndex, true)}
                       </div>
                     )}
                   </>

@@ -96,7 +96,7 @@ const config = { headers: { 'X-Session-Token': 'test' }, params: { refresh: fals
   } : { readAPI: async () => {} } };
   vm.runInNewContext(transpile(fs.readFileSync('src/utils/modulePrefetch.ts', 'utf8')), orderContext);
   const modules = ['Kalender', 'Nachrichten', 'Stundenplan', 'Dateispeicher', 'External'].map(name => ({ name, url: '/' + name.toLowerCase() + '.php' }));
-  const preferences = { dashboard: { pinned_modules: ['Stundenplan', 'Kalender'], hidden_modules: ['Dateispeicher'] }, sidebar: { order: ['messages', 'calendar', 'timetable'], hidden_items: [] } };
+  const preferences = { dashboard: { module_order: ['Stundenplan', 'Kalender'], hidden_modules: ['Dateispeicher'] }, sidebar: { order: ['messages', 'calendar', 'timetable'], hidden_items: [] } };
   assert.deepEqual(Array.from(orderContext.exports.modulePreloadOrder(modules, preferences)), ['timetable', 'calendar', 'messages']);
   const preloadOrder = (dashboardHidden, sidebarHidden) => Array.from(orderContext.exports.modulePreloadOrder(modules, {
     ...preferences,
@@ -106,9 +106,9 @@ const config = { headers: { 'X-Session-Token': 'test' }, params: { refresh: fals
   assert.deepEqual(preloadOrder(['Kalender', 'Dateispeicher'], []), ['timetable', 'messages', 'calendar'],
     'dashboard-hidden modules still preload in sidebar order');
   assert.deepEqual(preloadOrder(['Kalender', 'Dateispeicher'], ['calendar']), ['timetable', 'messages'],
-    'modules hidden in both places are excluded, including stale pins');
+    'modules hidden in both places are excluded');
   assert.deepEqual(preloadOrder(['Dateispeicher'], ['calendar']), ['timetable', 'calendar', 'messages'],
-    'dashboard-visible pinned modules keep priority when hidden in sidebar');
+    'dashboard order keeps priority when a module is hidden in the sidebar');
   assert.deepEqual(preloadOrder([], ['dateispeicher']), ['timetable', 'calendar', 'messages', 'dateispeicher'],
     'dashboard-visible modules remain in fallback when hidden in sidebar');
   console.log('Module prefetch checks passed');

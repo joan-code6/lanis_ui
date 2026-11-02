@@ -36,5 +36,3 @@ export const demoModules: Module[] = [
   { name: 'Notenübersicht', url: 'https://schulportal.hessen.de/noten.php', direct_url: 'https://schulportal.hessen.de/noten.php', proxy_app: false, color: '#be185d', logo: 'fa fa-bar-chart', folders: ['Leistung'], target: '_blank' },
   { name: 'Klausurplan', url: 'https://schulportal.hessen.de/klausuren.php', direct_url: 'https://schulportal.hessen.de/klausuren.php', proxy_app: false, color: '#2563eb', logo: 'fa fa-list-alt', folders: ['Leistung'], target: '_blank' },
 ];
-
-export const demoPinnedModules = ['Klassenbuch', 'Notenübersicht'];
