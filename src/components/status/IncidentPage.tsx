@@ -111,6 +111,40 @@ export default function IncidentPage() {
                   {!timeline.length && <li className="py-5 text-sm text-surface-500">Keine einzelnen Prüfergebnisse verfügbar.</li>}
                 </ol>
               </section>
+              <section className="mt-8" aria-labelledby="account-checks-title">
+                <h2 id="account-checks-title" className="text-lg font-semibold">Prüfung mit mehreren Konten</h2>
+                <p className="mt-1 text-sm text-surface-500">Anonyme Ergebnisse je Prüfrunde. Kontonummern gelten nur innerhalb einer Messung und lassen sich nicht über den Verlauf hinweg zuordnen.</p>
+                {observations.some(check => check.account_checks?.length) ? (
+                  <div className="mt-4 max-h-[32rem] overflow-y-auto rounded-2xl border bg-white px-5 dark:bg-surface-900 sm:px-6">
+                    {[...observations].reverse().filter(check => check.account_checks?.length).map((check, index) => (
+                      <details key={`${check.checked_at}-${index}`} className="border-b py-4 last:border-0" open={index === 0}>
+                        <summary className="cursor-pointer text-sm font-medium focus-visible:outline-primary-500">
+                          {formatTimestamp(check.checked_at)} · {statusLabels[check.status]}
+                        </summary>
+                        {check.account_checks?.map((round, roundIndex) => (
+                          <div key={roundIndex} className="mt-4">
+                            <div className="flex flex-wrap items-baseline justify-between gap-2 text-xs text-surface-500">
+                              <h3 className="font-medium">{round.phase === 'initial' ? 'Erste Prüfung' : 'Bestätigungsprüfung'}</h3>
+                              <span>{round.accounts.filter(account => account.status === 'up').length} erfolgreich · {round.accounts.filter(account => account.status === 'down' || account.status === 'degraded').length} beeinträchtigt · {round.accounts.filter(account => account.status === 'unknown').length} unbekannt</span>
+                            </div>
+                            <ul className="mt-2 divide-y">
+                              {round.accounts.map(account => (
+                                <li key={account.label} className="py-3">
+                                  <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+                                    <span className="font-medium">{account.label}</span>
+                                    <span className="flex items-center gap-2"><span className={`h-2 w-2 rounded-full ${statusColors[account.status]}`} aria-hidden="true" />{statusLabels[account.status]}</span>
+                                  </div>
+                                  <p className="mt-1 text-xs text-surface-500">{account.features.map(feature => `${featureName(feature.name)}: ${statusLabels[feature.status]}`).join(' · ')}</p>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        ))}
+                      </details>
+                    ))}
+                  </div>
+                ) : <p className="mt-4 rounded-2xl border p-5 text-sm text-surface-500">Für diese Störung wurden keine einzelnen Kontoergebnisse gespeichert.</p>}
+              </section>
               <p className="mt-5 text-xs leading-relaxed text-surface-500">Der Verlauf zeigt beobachtete Statusänderungen. Messlücken bestätigen keine durchgehende Ausfallzeit. Ergebnisse können je nach Schule oder Konto abweichen.</p>
               <p className="mt-3 break-all text-xs text-surface-400">ID: {data.id}</p>
             </>
