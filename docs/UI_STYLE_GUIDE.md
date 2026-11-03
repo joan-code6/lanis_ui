@@ -36,7 +36,7 @@ Use `settings-preview-option` alongside `segmented-control-option` for choices w
 
 Use `segmented-control` with `segmented-control-option` for mutually exclusive settings choices; the selected option is indicated by `aria-checked="true"`.
 
-Use theme-aware `primary-*` and `surface-*` tokens. Pair custom light surfaces and text with dark variants. Keep semantic status colors for errors, warnings and success. Verify light, dark and OLED modes; do not hardcode white text in place of surface-100 for ordinary headings.
+Use theme-aware `primary-*`, `secondary-*` and `surface-*` tokens. The secondary palette is derived from the saved homework hex color and is reserved for homework. Settings show a homework preview. Firefox uses RGB sliders and a hex field instead of its native color dialog. Pair custom light surfaces and text with dark variants. Keep semantic status colors for errors, warnings and success. Verify light, dark and OLED modes; do not hardcode white text in place of surface-100 for ordinary headings.
 
 ## Intentional exceptions
 

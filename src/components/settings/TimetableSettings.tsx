@@ -12,11 +12,10 @@ import {
   TrashIcon,
 } from '@heroicons/react/24/outline';
 import { TimetableRangePreview, TimetableLayoutPreview } from './TimetablePreview';
-import { HomeworkPreview } from './HomeworkSettings';
 import { useAuth } from '../../contexts/AuthContext';
 import { usePreferences } from '../../contexts/PreferencesContext';
 import { settingsAPI, timetableAPI } from '../../services/api';
-import { ClassLink, CompletedHomeworkDisplay, CustomLesson, TimetableLayoutMode, TimetableLesson, TimetableResponse } from '../../types';
+import { ClassLink, CustomLesson, TimetableLayoutMode, TimetableLesson, TimetableResponse } from '../../types';
 import { applyTimetableOverrides, TimetableViewMode, weekdayForDate } from '../../utils/timetableView';
 import {
   defaultTimetableClassColour,
@@ -295,10 +294,6 @@ const TimetableSettings: React.FC = () => {
     void updatePreferences({ timetable: { view_mode: mode } });
   };
 
-  const setHomeworkHighlight = (display: CompletedHomeworkDisplay) => {
-    void updatePreferences({ homework: { completed_display: display } });
-  };
-
   const draftClassColour = (key: string, defaultColour: string) => (
     draftClassColours[key] || defaultColour
   );
@@ -501,20 +496,15 @@ const TimetableSettings: React.FC = () => {
         </div>
         <fieldset className="mt-5 border-t border-surface-100 pt-5 dark:border-surface-800">
           <legend className="label">Erledigte Hausaufgaben in „Mein Unterricht“</legend>
-          <div className="segmented-control mt-2 grid-cols-1 sm:grid-cols-3" role="radiogroup" aria-label="Markierung erledigter Hausaufgaben">
-            {([
-              ['orange', 'Deutlich orange'],
-              ['green', 'Dezent grün'],
-              ['hidden', 'Ausgeblendet'],
-            ] as const).map(([display, title]) => (
-              <button key={display} type="button" role="radio" aria-checked={preferences.homework.completed_display === display}
-                onClick={() => setHomeworkHighlight(display)}
-                className="segmented-control-option settings-preview-option text-left">
-                <HomeworkPreview display={display} />
-                <span>{title}</span>
-              </button>
-            ))}
-          </div>
+          <label className="mt-3 flex cursor-pointer items-center gap-3">
+            <input
+              type="checkbox"
+              className="h-4 w-4 rounded border-surface-300 text-primary-600 focus:ring-primary-500"
+              checked={preferences.homework.hide_completed_in_overview}
+              onChange={event => void updatePreferences({ homework: { hide_completed_in_overview: event.target.checked } })}
+            />
+            <span className="text-sm text-surface-700 dark:text-surface-300">Erledigte Hausaufgaben ausblenden</span>
+          </label>
         </fieldset>
       </section>
 
