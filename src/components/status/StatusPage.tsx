@@ -1,4 +1,5 @@
 import { useId, useState } from 'react';
+import { ArrowRightIcon } from '@heroicons/react/24/outline';
 import { Link } from 'react-router-dom';
 import AppIcon from '../AppIcon';
 import SEO from '../seo/SEO';
@@ -206,7 +207,7 @@ export default function StatusPage() {
                             ))}
                             <span className="rounded-md bg-surface-100 px-1.5 py-0.5 text-[10px] text-surface-500 dark:bg-surface-800 dark:text-surface-400">{incident.checks ?? 1} bestätigte Checks</span>
                           </span>
-                          <span className="mt-2 block font-medium text-primary-600 dark:text-primary-400">Details ansehen →</span>
+                          <span className="mt-2 flex items-center gap-1.5 font-medium text-primary-600 dark:text-primary-400">Details ansehen<ArrowRightIcon className="h-3.5 w-3.5" aria-hidden="true" /></span>
                         </Link>
                       ))}
                     </span>
