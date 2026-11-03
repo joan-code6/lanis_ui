@@ -4,7 +4,7 @@ const vm = require('node:vm');
 const ts = require('typescript');
 const exportsObject = {};
 vm.runInNewContext(ts.transpileModule(fs.readFileSync('src/utils/androidBeta.ts', 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText, { exports: exportsObject });
-const { isAndroidBrowser, betaPrompt } = exportsObject;
+const { isAndroidBrowser, betaPrompt, googleGroupJoinUrl } = exportsObject;
 assert.equal(isAndroidBrowser('Mozilla Android Chrome'), true);
 assert.equal(isAndroidBrowser('Mozilla iPhone Safari'), false);
 assert.equal(isAndroidBrowser('Mozilla Android', { isNativePlatform: () => true }), false);
@@ -15,3 +15,9 @@ assert.equal(betaPrompt(state), 'invitation');
 assert.equal(betaPrompt({ ...state, invitation_due: false }), null);
 assert.equal(betaPrompt({ ...state, available: false }), null);
 console.log('Android detection and recruitment eligibility passed');
+
+const joinLink = new URL(googleGroupJoinUrl('https://groups.google.com/g/lanis-beta/about'));
+assert.equal(joinLink.origin, 'https://accounts.google.com');
+assert.equal(joinLink.pathname, '/AccountChooser');
+assert.equal(joinLink.searchParams.get('continue'), 'https://groups.google.com/g/lanis-beta/about');
+assert.equal(new URL(googleGroupJoinUrl('https://groups.google.com/g/other/about?hl=de')).searchParams.get('continue'), 'https://groups.google.com/g/other/about?hl=de');

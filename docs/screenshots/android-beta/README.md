@@ -1,15 +1,12 @@
 # Android beta screenshot gallery
 
-Current dashboard-only UI after the requested copy cleanup. Actual AndroidBeta
-and PrivacyPolicy components use the production stylesheet with deterministic
-authentication/API fixtures. These are component captures, not signed-in production
-sessions or proof that the closed release is live. No real account or Google
-membership/enrollment data was changed.
-
-Mobile: 390 × 844, light. Desktop: 1440 × 1000, dark (privacy retains its light
-styling and is cropped to the relevant disclosure). The error dialog is scrolled
-to its error/local-close action when needed. Keyboard focus outlines are visible.
-The beta block was removed from Settings, so its old screenshots were removed.
+Current UI with the compact App & Hilfe card and Google account-selection action.
+Actual components use production CSS with deterministic auth/API fixtures. These
+are component captures, not signed-in production sessions, membership confirmation
+or proof that the closed release is live. Mobile: 390 × 844 light; desktop:
+1440 × 1000 dark. Privacy retains its existing light styling. Card and privacy
+images crop to their relevant section; popup images retain the viewport.
+No real account or Google enrollment data was changed.
 
 ## Dashboard invitation
 
@@ -17,15 +14,33 @@ The beta block was removed from Settings, so its old screenshots were removed.
 | --- | --- |
 | ![Dashboard invitation, mobile](invitation-mobile.png) | ![Dashboard invitation, desktop](invitation-desktop.png) |
 
-## Save failure and local close fallback
+## Save failure and local close
 
 | Mobile | Desktop |
 | --- | --- |
-| ![Save failure and local close fallback, mobile](invitation-save-error-mobile.png) | ![Save failure and local close fallback, desktop](invitation-save-error-desktop.png) |
+| ![Save failure and local close, mobile](invitation-save-error-mobile.png) | ![Save failure and local close, desktop](invitation-save-error-desktop.png) |
 
-## Privacy disclosure (unchanged by this cleanup)
+## App & Hilfe: compact entry card
 
 | Mobile | Desktop |
 | --- | --- |
-| ![Privacy disclosure (unchanged by this cleanup), mobile](privacy-mobile.png) | ![Privacy disclosure (unchanged by this cleanup), desktop](privacy-desktop.png) |
+| ![App & Hilfe: compact entry card, mobile](help-card-mobile.png) | ![App & Hilfe: compact entry card, desktop](help-card-desktop.png) |
+
+## Popup opened manually from App & Hilfe
+
+| Mobile | Desktop |
+| --- | --- |
+| ![Popup opened manually from App & Hilfe, mobile](help-popup-mobile.png) | ![Popup opened manually from App & Hilfe, desktop](help-popup-desktop.png) |
+
+## App & Hilfe: recruitment unavailable
+
+| Mobile | Desktop |
+| --- | --- |
+| ![App & Hilfe: recruitment unavailable, mobile](help-disabled-mobile.png) | ![App & Hilfe: recruitment unavailable, desktop](help-disabled-desktop.png) |
+
+## Privacy disclosure
+
+| Mobile | Desktop |
+| --- | --- |
+| ![Privacy disclosure, mobile](privacy-mobile.png) | ![Privacy disclosure, desktop](privacy-desktop.png) |
 

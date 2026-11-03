@@ -51,6 +51,7 @@ import { usePwaInstall } from '../../contexts/PwaInstallContext';
 import TimetableSettings from './TimetableSettings';
 import VertretungsplanSettings from './VertretungsplanSettings';
 import AgentsSettings from './AgentsSettings';
+import AndroidBeta from '../beta/AndroidBeta';
 import DashboardSettings from './DashboardSettings';
 import SettingsSwitch from './SettingsSwitch';
 import {
@@ -1237,6 +1238,8 @@ const Settings: React.FC = () => {
 
         </>
         )}
+
+        {section === 'help' && !isDemo && <AndroidBeta manual />}
 
         {/* App installieren */}
         {section === 'help' && (canInstall || installAvailability === 'installed') && (

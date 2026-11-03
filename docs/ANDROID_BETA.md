@@ -13,9 +13,18 @@ Backend configuration:
 After dashboard load, eligible Android browsers receive an invitation when due,
 excluding Capacitor and waiting for onboarding/other dialogs. Showing it starts a
 seven-day account-backed cooldown, as does Später. Nicht mehr anzeigen suppresses
-future invitations. The beta UI appears only in the dashboard invitation; it is
-not shown in Settings. Disabled recruitment or a failed preference load shows no
-invitation. The dialog keeps the two joining steps and brief introductory copy.
+future invitations. Settings → App & Hilfe has a compact card whose Beta ansehen
+button opens the same popup manually, including after permanent dismissal. It
+does not reset that preference or automatically open the dialog. The card gates
+its button on availability and supports loading/error/retry states. Disabled
+recruitment or a failed preference load shows no automatic invitation.
+
+The first action opens Google AccountChooser with the configured group/about
+page as its return URL. This avoids the group page's generic sign-in link, which
+returns to the Groups home page. LANIS receives no Google credentials or OAuth
+callback. Google still requires explicit confirmation to join the group. Legacy
+/group/.../subscribe redirects to the private conversations page; /g/.../subscribe
+returns 404, so neither is used.
 
 Users sign into Google with their Play Store account, join the group, then
 explicitly join the CLOSED test with the same account before downloading. Some
@@ -33,7 +42,8 @@ Validation: `npm test`, `npm run test:beta`, `npm run build`, and after building
 `CHROME_PATH=/path/to/chromium npm run test:beta:browser`. Browser coverage includes
 390px/1440px dark layouts, both URLs, no email field, activation gating, native
 exclusion, cooldown/dismissal, save-failure local close, preference-load recovery
-and onboarding/modal arbitration. Screenshots go to `/tmp`.
+and onboarding/modal arbitration. Manual-card checks cover dismissal preservation,
+focus return, availability gating and failed-load recovery. Screenshots go to `/tmp`.
 
 The normal build → Cloudflare PR-preview pipeline is authorized. Production and
 backend deployments remain outside scope. Local checks are recorded in the PR.
