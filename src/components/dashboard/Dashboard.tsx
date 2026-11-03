@@ -665,7 +665,7 @@ const Dashboard: React.FC = () => {
                 )}
 
                 {viewMode === 'grid' ? (
-                  <div className="flex min-h-[168px] flex-col items-center text-center">
+                  <div className="flex min-h-[112px] flex-col items-center text-center sm:min-h-[168px]">
                     {isEditMode && (
                       <button
                         type="button"
