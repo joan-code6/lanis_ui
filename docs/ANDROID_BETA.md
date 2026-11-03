@@ -12,8 +12,8 @@ Backend configuration:
 
 After dashboard load, eligible Android browsers receive an invitation when due,
 excluding Capacitor and waiting for onboarding/other dialogs. Showing it starts a
-seven-day account-backed cooldown, as does Später. Nicht mehr anzeigen suppresses
-future invitations. Settings → App & Hilfe has a compact card whose Beta ansehen
+seven-day account-backed presentation cooldown. The single Nicht mehr anzeigen
+button permanently suppresses automatic invitations; Escape does the same. Settings → App & Hilfe has a compact card whose Beta ansehen
 button opens the same popup manually, including after permanent dismissal. It
 does not reset that preference or automatically open the dialog. The card gates
 its button on availability and supports loading/error/retry states. Disabled
@@ -41,7 +41,7 @@ describe activation and genuine 12-tester/14-day participation requirements.
 Validation: `npm test`, `npm run test:beta`, `npm run build`, and after building,
 `CHROME_PATH=/path/to/chromium npm run test:beta:browser`. Browser coverage includes
 390px/1440px dark layouts, both URLs, no email field, activation gating, native
-exclusion, cooldown/dismissal, save-failure local close, preference-load recovery
+exclusion, cooldown/dismissal, single-button permanent dismissal, save-failure local close, preference-load recovery
 and onboarding/modal arbitration. Manual-card checks cover dismissal preservation,
 focus return, availability gating and failed-load recovery. Screenshots go to `/tmp`.
 

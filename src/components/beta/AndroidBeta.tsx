@@ -56,7 +56,7 @@ export default function AndroidBeta({ manual = false }: { manual?: boolean }) {
     const previous = document.activeElement as HTMLElement | null;
     node.showModal();
     // Only recruitment cooldown is recorded, never group membership or Play enrollment.
-    if (token && !manual) void androidBetaAPI.change(token, 'presented').catch(() => setError('Die Erinnerung konnte nicht gespeichert werden. Bitte versuche „Später“ erneut.'));
+    if (token && !manual) void androidBetaAPI.change(token, 'presented').catch(() => setError('Die Erinnerung konnte nicht gespeichert werden. Bitte versuche es erneut.'));
     return () => { node.close(); previous?.focus(); };
   }, [open, token, manual]);
 
@@ -65,7 +65,7 @@ export default function AndroidBeta({ manual = false }: { manual?: boolean }) {
     setOpen(false);
   }
 
-  async function dismiss(action: 'later' | 'dismiss') {
+  async function dismiss(action: 'dismiss') {
     if (!token || mutation.current) return;
     mutation.current = true; generation.current++; setBusy(true); setError('');
     try { setState(await androidBetaAPI.change(token, action)); setOpen(false); }
@@ -76,9 +76,9 @@ export default function AndroidBeta({ manual = false }: { manual?: boolean }) {
   const content = <div className="space-y-5">
     <div className="flex items-start gap-3">
       <span className="rounded-xl bg-primary-50 p-2.5 text-primary-600 dark:bg-primary-950 dark:text-primary-400"><DevicePhoneMobileIcon className="h-6 w-6" /></span>
-      <h2 id="beta-dialog-title" className="item-title self-center">LANIS Android-App</h2>
+      <h2 id="beta-dialog-title" className="item-title self-center">LANIS Android-App Beta</h2>
     </div>
-    <p className="text-sm text-surface-600 dark:text-surface-400">Hilf uns, die App im Alltag zu testen.</p>
+    <p className="text-sm text-surface-600 dark:text-surface-400">Hilf uns, die App zu testen.</p>
     <ol className="space-y-3">
       <li className="rounded-xl border border-surface-200 p-4 dark:border-surface-700">
         <h3 className="text-sm font-semibold">1. Google-Gruppe beitreten</h3>
@@ -91,14 +91,14 @@ export default function AndroidBeta({ manual = false }: { manual?: boolean }) {
         <a className={`btn ${state?.available ? 'btn-primary' : 'btn-secondary'} mt-3 inline-flex items-center gap-2`} href={state?.join_url || JOIN_URL} target="_blank" rel="noopener noreferrer">Beta beitreten<ArrowTopRightOnSquareIcon className="h-4 w-4" aria-hidden="true" /></a>
       </li>
     </ol>
-    {error && <div role="alert" className="space-y-2 text-sm text-red-600 dark:text-red-400"><p>{error}</p><button type="button" className="btn btn-secondary" onClick={closeLocally}>Ohne Speichern schließen</button></div>}
-    <div className="flex flex-wrap gap-2 border-t border-surface-200 pt-4 dark:border-surface-700"><button className="btn btn-secondary" disabled={busy} onClick={() => void dismiss('later')}>Später</button><button className="btn btn-ghost" disabled={busy} onClick={() => void dismiss('dismiss')}>Nicht mehr anzeigen</button></div>
+    {error && <div role="alert" className="space-y-2 text-sm text-red-600 dark:text-red-400"><p>{error}</p></div>}
+    <div>{error ? <button type="button" className="btn btn-secondary" onClick={closeLocally}>Ohne Speichern schließen</button> : <button type="button" className="btn btn-secondary" disabled={busy} onClick={() => void dismiss('dismiss')}>Nicht mehr anzeigen</button>}</div>
   </div>;
-  const popup = open ? <dialog ref={dialog} aria-labelledby="beta-dialog-title" onCancel={event => { event.preventDefault(); if (error) closeLocally(); else void dismiss('later'); }} className="m-auto max-h-[90dvh] w-[calc(100%-2rem)] max-w-md overflow-y-auto rounded-2xl border border-surface-200 bg-white p-5 text-surface-900 shadow-xl backdrop:bg-black/50 dark:border-surface-700 dark:bg-surface-900 dark:text-surface-100 sm:p-6">{content}</dialog> : null;
+  const popup = open ? <dialog ref={dialog} aria-labelledby="beta-dialog-title" onCancel={event => { event.preventDefault(); if (error) closeLocally(); else void dismiss('dismiss'); }} className="m-auto max-h-[90dvh] w-[calc(100%-2rem)] max-w-md overflow-y-auto rounded-2xl border border-surface-200 bg-white p-5 text-surface-900 shadow-xl backdrop:bg-black/50 dark:border-surface-700 dark:bg-surface-900 dark:text-surface-100 sm:p-6">{content}</dialog> : null;
   if (!manual) return popup;
   return <>
     <section className="card" aria-labelledby="beta-help-title">
-      <h3 id="beta-help-title" className="item-title">LANIS Android-App</h3>
+      <h3 id="beta-help-title" className="item-title">LANIS Android-App Beta</h3>
       <p className="mt-1 text-sm text-surface-500 dark:text-surface-400">Teste die Android-App.</p>
       <button type="button" className="btn btn-secondary mt-4" disabled={!state?.available} onClick={() => { setError(''); setOpen(true); }}>Beta ansehen</button>
       {!state && !error && <p role="status" className="mt-2 text-sm text-surface-500">Wird geladen…</p>}

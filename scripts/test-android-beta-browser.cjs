@@ -19,6 +19,7 @@ if(location.search.includes('native'))window.Capacitor={isNativePlatform:()=>tru
 const url='http://127.0.0.1:'+server.address().port;
 await page.setViewport({width:390,height:844});await page.goto(url);await page.waitForSelector('dialog[open]');
 await page.screenshot({path:'/tmp/lanis-beta-groups-mobile.png'});
+if(await page.$$eval('dialog button',nodes=>nodes.length)!==1)throw Error('Expected one dismiss button');
 const links=await page.$$eval('dialog a',nodes=>nodes.map(n=>n.href));
 if(JSON.stringify(links)!==JSON.stringify(['https://accounts.google.com/AccountChooser?hl=de&continue=https%3A%2F%2Fgroups.google.com%2Fg%2Flanis-beta%2Fabout','https://play.google.com/apps/testing/de.joancode.lanis']))throw Error('Wrong two-step links');
 if(await page.$('input[type=email]'))throw Error('Email collection remains');
@@ -41,7 +42,7 @@ await page.goto(url+'?native');await new Promise(r=>setTimeout(r,1800));if(await
 await page.goto(url+'?disabled');await new Promise(r=>setTimeout(r,1800));if(await page.$('dialog[open]'))throw Error('Disabled campaign invited');
 await page.goto(url);await page.evaluate(()=>document.documentElement.classList.add('onboarding-active'));await new Promise(r=>setTimeout(r,1800));if(await page.$('dialog[open]'))throw Error('Overlaps onboarding');
 await page.evaluate(()=>{document.documentElement.classList.remove('onboarding-active');const modal=document.createElement('div');modal.setAttribute('role','dialog');modal.id='other';document.body.append(modal)});await new Promise(r=>setTimeout(r,1800));if(await page.$('dialog[open]'))throw Error('Overlaps other modal');
-await page.evaluate(()=>document.getElementById('other').remove());await page.waitForSelector('dialog[open]');await page.evaluate(()=>[...document.querySelectorAll('dialog button')].find(b=>b.textContent==='Nicht mehr anzeigen').click());await page.waitForFunction(()=>!document.querySelector('dialog[open]'));if(!await page.evaluate(()=>window.betaState.dismissed))throw Error('Permanent dismissal missing');
+await page.evaluate(()=>document.getElementById('other').remove());await page.waitForSelector('dialog[open]');await page.evaluate(()=>[...document.querySelectorAll('dialog button')].find(b=>b.textContent==='Nicht mehr anzeigen').click());await page.waitForFunction(()=>!document.querySelector('dialog[open]'));if(!await page.evaluate(()=>window.betaState.dismissed))throw Error('Permanent dismissal missing');await page.evaluate(()=>window.dispatchEvent(new Event('focus')));await new Promise(r=>setTimeout(r,1800));if(await page.$('dialog[open]'))throw Error('Dismissed invitation reopened');
 await page.goto(url+'?manual&dismissed');await page.waitForSelector('section button:not([disabled])');await new Promise(r=>setTimeout(r,1800));if(await page.$('dialog[open]'))throw Error('Manual card auto-opened');
 await page.click('section button');await page.waitForSelector('dialog[open]');if(await page.evaluate(()=>window.calls.some(c=>c.action==='presented')))throw Error('Manual open changed automatic invitation acknowledgement');
 await page.keyboard.press('Escape');await page.waitForFunction(()=>!document.querySelector('dialog[open]'));if(!await page.evaluate(()=>document.activeElement?.textContent==='Beta ansehen'))throw Error('Focus did not return to help card');
