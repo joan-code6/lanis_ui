@@ -314,7 +314,7 @@ const SegmentedControl: React.FC<{
 );
 
 const WeekBadge: React.FC<{ week: 'A' | 'B'; compact?: boolean }> = ({ week, compact = false }) => (
-  <span className={`${week === 'A' ? 'badge badge-primary' : 'badge border border-secondary-200 bg-secondary-50 text-secondary-700 dark:border-secondary-800 dark:bg-secondary-950 dark:text-secondary-300'} ${compact ? '!px-1 !py-0 text-[8px] sm:!px-2.5 sm:!py-0.5 sm:text-xs' : ''}`}>
+  <span className={`${week === 'A' ? 'badge badge-primary' : 'badge border border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300'} ${compact ? '!px-1 !py-0 text-[8px] sm:!px-2.5 sm:!py-0.5 sm:text-xs' : ''}`}>
     {compact ? week : `${week}-Woche`}
   </span>
 );

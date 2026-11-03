@@ -1,3 +1,4 @@
+import { ThemeColorPicker } from './ThemeColorPicker';
 import { capture } from '../../analytics/client';
 import { AnalyticsControls } from '../../analytics/Analytics';
 import React, { useState, useEffect, useRef } from 'react';
@@ -140,7 +141,7 @@ const settingsSections: Array<{
   {
     id: 'appearance',
     title: 'Erscheinungsbild',
-    description: 'Wähle ein Design sowie Primär- und Sekundärfarbe.',
+    description: 'Wähle ein Design sowie Primär- und Hausaufgabenfarbe.',
     icon: PaintBrushIcon,
   },
   {
@@ -183,7 +184,7 @@ const settingsSections: Array<{
 
 const sectionMeta: Record<SettingsSection, { title: string; subtitle: string }> = {
   home: { title: 'Einstellungen', subtitle: 'Passe Lanis an deinen Schulalltag an.' },
-  appearance: { title: 'Erscheinungsbild', subtitle: 'Wähle ein Design sowie Primär- und Sekundärfarbe.' },
+  appearance: { title: 'Erscheinungsbild', subtitle: 'Wähle ein Design sowie Primär- und Hausaufgabenfarbe.' },
   timetable: { title: 'Stundenplan & Vertretungsplan', subtitle: 'Lege deine Klasse und deine Stundenplan-Einstellungen fest.' },
   notifications: { title: 'Benachrichtigungen', subtitle: 'Verwalte Hinweisbanner im Dashboard und Web-Push-Benachrichtigungen.' },
   navigation: { title: 'Navigation', subtitle: 'Ordne die Seitenleiste und blende Einträge nach Bedarf ein oder aus.' },
@@ -1181,16 +1182,7 @@ const Settings: React.FC = () => {
               <h2 id="custom-primary-color-title" className="item-title">Benutzerdefinierte Primärfarbe</h2>
               <p className="mt-1 text-sm text-surface-500 dark:text-surface-400">Wähle eine Farbe für die Akzente der Oberfläche.</p>
               <label className="label mt-5 block" htmlFor="custom-primary-color">Farbe</label>
-              <input
-                id="custom-primary-color"
-                type="color"
-                value={customColorDraft}
-                onChange={(event) => {
-                  const color = normalizeThemeColor(event.target.value);
-                  if (color) setCustomColorDraft(color);
-                }}
-                className="input mt-2 h-16 w-full cursor-pointer p-2"
-              />
+              <ThemeColorPicker id="custom-primary-color" value={customColorDraft} onChange={setCustomColorDraft} />
               <div className="mt-3 flex items-center gap-3 rounded-xl border border-surface-200 p-3 dark:border-surface-700">
                 <span className="h-8 w-8 rounded-lg" style={{ backgroundColor: customColorDraft }} aria-hidden="true" />
                 <span className="font-mono text-sm text-surface-700 dark:text-surface-200">{customColorDraft.toUpperCase()}</span>
@@ -1204,9 +1196,9 @@ const Settings: React.FC = () => {
         </div>
 
         <div className="card">
-          <h3 className="item-title mb-1">Sekundärfarbe</h3>
-          <p className="mb-5 text-sm text-surface-500">Wähle die Sekundärfarbe für die Oberfläche.</p>
-          <div className="flex flex-wrap gap-2" role="group" aria-label="Sekundärfarbe">
+          <h3 className="item-title mb-1">Hausaufgabenfarbe</h3>
+          <p className="mb-5 text-sm text-surface-500">Wähle die Farbe für offene Hausaufgaben.</p>
+          <div className="flex flex-wrap gap-2" role="group" aria-label="Hausaufgabenfarbe">
             {secondaryThemeColors.map((c) => (
               <button
                 key={c.key}
@@ -1246,6 +1238,10 @@ const Settings: React.FC = () => {
               </span>
             </button>
           </div>
+          <div className="settings-preview mt-5 rounded-lg border-l-4 border-secondary-400 bg-secondary-50 p-4 dark:border-secondary-500 dark:bg-secondary-950/35" aria-hidden="true">
+            <div className="flex justify-between text-sm font-semibold text-secondary-800 dark:text-secondary-200"><span>Hausaufgaben · Mathematik</span><span>Offen</span></div>
+            <p className="mt-2 text-sm text-secondary-900 dark:text-secondary-100">S. 34, Nr. 3–5 bearbeiten</p>
+          </div>
           <dialog
             ref={secondaryCustomColorDialogRef}
             aria-labelledby="custom-secondary-color-title"
@@ -1268,19 +1264,10 @@ const Settings: React.FC = () => {
               }}
               className="p-6"
             >
-              <h2 id="custom-secondary-color-title" className="item-title">Benutzerdefinierte Sekundärfarbe</h2>
-              <p className="mt-1 text-sm text-surface-500 dark:text-surface-400">Wähle eine Farbe für die Oberfläche.</p>
+              <h2 id="custom-secondary-color-title" className="item-title">Benutzerdefinierte Hausaufgabenfarbe</h2>
+              <p className="mt-1 text-sm text-surface-500 dark:text-surface-400">Wähle eine Farbe für offene Hausaufgaben.</p>
               <label className="label mt-5 block" htmlFor="custom-secondary-color">Farbe</label>
-              <input
-                id="custom-secondary-color"
-                type="color"
-                value={secondaryCustomColorDraft}
-                onChange={(event) => {
-                  const color = normalizeThemeColor(event.target.value);
-                  if (color) setSecondaryCustomColorDraft(color);
-                }}
-                className="input mt-2 h-16 w-full cursor-pointer p-2"
-              />
+              <ThemeColorPicker id="custom-secondary-color" value={secondaryCustomColorDraft} onChange={setSecondaryCustomColorDraft} />
               <div className="mt-3 flex items-center gap-3 rounded-xl border border-surface-200 p-3 dark:border-surface-700">
                 <span className="h-8 w-8 rounded-lg" style={{ backgroundColor: secondaryCustomColorDraft }} aria-hidden="true" />
                 <span className="font-mono text-sm text-surface-700 dark:text-surface-200">{secondaryCustomColorDraft.toUpperCase()}</span>
