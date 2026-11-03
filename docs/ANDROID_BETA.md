@@ -2,7 +2,7 @@
 
 Depends on [lanis_api #98](https://github.com/joan-code6/lanis_api/pull/98).
 Rollout: backend then UI; admin #15 is superseded, with no queue or export dependency.
-No deployment is performed by these PRs. Recruitment defaults to disabled until
+Only the PR-specific frontend preview deployment is authorized. Recruitment defaults to disabled until
 the CLOSED release is approved and actual opt-in/download access is verified.
 
 Backend configuration:
@@ -13,8 +13,9 @@ Backend configuration:
 After dashboard load, eligible Android browsers receive an invitation when due,
 excluding Capacitor and waiting for onboarding/other dialogs. Showing it starts a
 seven-day account-backed cooldown, as does Später. Nicht mehr anzeigen suppresses
-future invitations. Settings always keeps both links, including when recruitment
-is disabled or preference loading fails, with clear release-availability wording.
+future invitations. The beta UI appears only in the dashboard invitation; it is
+not shown in Settings. Disabled recruitment or a failed preference load shows no
+invitation. The dialog keeps the two joining steps and brief introductory copy.
 
 Users sign into Google with their Play Store account, join the group, then
 explicitly join the CLOSED test with the same account before downloading. Some
@@ -31,8 +32,8 @@ describe activation and genuine 12-tester/14-day participation requirements.
 Validation: `npm test`, `npm run test:beta`, `npm run build`, and after building,
 `CHROME_PATH=/path/to/chromium npm run test:beta:browser`. Browser coverage includes
 390px/1440px dark layouts, both URLs, no email field, activation gating, native
-exclusion, cooldown/dismissal, persistence failure/retry, Settings links while
-unavailable/offline and onboarding/modal arbitration. Screenshots go to `/tmp`.
+exclusion, cooldown/dismissal, save-failure local close, preference-load recovery
+and onboarding/modal arbitration. Screenshots go to `/tmp`.
 
-CI-skip markers prevent automatic Cloudflare PR preview deployment under the
-no-deploy instruction. Local checks are recorded in the PR.
+The normal build → Cloudflare PR-preview pipeline is authorized. Production and
+backend deployments remain outside scope. Local checks are recorded in the PR.
