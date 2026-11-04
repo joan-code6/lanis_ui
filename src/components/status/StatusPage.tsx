@@ -129,6 +129,13 @@ export default function StatusPage() {
             ))}
           </section>
 
+          {status === 'down' && data?.current.error === 'maintenance' && (
+            <aside role="status" className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950/50 dark:text-amber-100">
+              <p className="font-semibold">Wartungsarbeiten im Schulportal</p>
+              <p className="mt-1">Das Schulportal zeigt eine Wartungsseite. Ein Endzeitpunkt ist derzeit nicht verfügbar. Die Verfügbarkeit wird weiterhin automatisch geprüft.</p>
+            </aside>
+          )}
+
           <section className="mt-4 grid gap-3 sm:grid-cols-2" aria-label="Komponentenstatus">
             {featureReadings.map(feature => (
               <div key={feature.name} className="flex items-center justify-between rounded-xl border bg-white px-4 py-3 dark:bg-surface-900">
@@ -195,7 +202,7 @@ export default function StatusPage() {
                         <span key={incidentIndex} className="block border-t border-surface-100 pt-3 first:border-0 first:pt-0 dark:border-surface-800">
                           <span className="flex items-center gap-2 font-semibold text-surface-900 dark:text-surface-100">
                             <span className={`h-2 w-2 shrink-0 rounded-full ${statusColors[incident.status]}`} />
-                            {statusLabels[incident.status]}
+                            {incident.error === 'maintenance' ? 'Wartungsarbeiten' : statusLabels[incident.status]}
                           </span>
                           <span className="mt-1 block text-[11px] text-surface-500">{formatIncidentRange(incident)}</span>
                           <span className="mt-2 flex flex-wrap gap-1.5">
@@ -242,7 +249,7 @@ export default function StatusPage() {
                     <div><time className="text-surface-500">{formatIncidentRange(incident)}</time><p className="mt-1 text-xs text-surface-500">Bestätigte Checks: {incident.checks ?? 1} · Betroffene Dienste: {incident.affected_features?.length ? incident.affected_features.map(name => name === 'login' ? 'Anmeldung' : 'Module').join(', ') : 'Unbekannt'}</p></div>
                     <span className="flex items-center gap-2">
                       <span className={`h-2 w-2 rounded-full ${statusColors[incident.status]}`} />
-                      {incident.resolved_at ? 'Behoben' : statusLabels[incident.status]}
+                      {incident.error === 'maintenance' ? (incident.resolved_at ? 'Wartung beendet' : 'Wartungsarbeiten') : incident.resolved_at ? 'Behoben' : statusLabels[incident.status]}
                     </span>
                   </li>
                   );

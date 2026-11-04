@@ -4,6 +4,7 @@ import { getApiBaseUrl } from '../utils/backendConfig';
 
 export type ServiceStatus = 'up' | 'degraded' | 'down' | 'unknown';
 export interface Observation {
+  error?: string | null;
   status: ServiceStatus;
   checked_at: string | null;
   latency_ms?: number | null;
