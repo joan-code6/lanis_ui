@@ -112,8 +112,8 @@ export default function IncidentPage() {
                 </ol>
               </section>
               <section className="mt-8" aria-labelledby="account-checks-title">
-                <h2 id="account-checks-title" className="text-lg font-semibold">Prüfung mit mehreren Konten</h2>
-                <p className="mt-1 text-sm text-surface-500">Anonyme Ergebnisse je Prüfrunde. Kontonummern gelten nur innerhalb einer Messung und lassen sich nicht über den Verlauf hinweg zuordnen.</p>
+                <h2 id="account-checks-title" className="text-lg font-semibold">Kontoprüfungen</h2>
+                <p className="mt-1 text-sm text-surface-500">Kontonummern gelten je Messung.</p>
                 {observations.some(check => check.account_checks?.length) ? (
                   <div className="mt-4 max-h-[32rem] overflow-y-auto rounded-2xl border bg-white px-5 dark:bg-surface-900 sm:px-6">
                     {[...observations].reverse().filter(check => check.account_checks?.length).map((check, index) => (
@@ -124,8 +124,7 @@ export default function IncidentPage() {
                         {check.account_checks?.map((round, roundIndex) => (
                           <div key={roundIndex} className="mt-4">
                             <div className="flex flex-wrap items-baseline justify-between gap-2 text-xs text-surface-500">
-                              <h3 className="font-medium">{round.phase === 'initial' ? 'Erste Prüfung' : 'Bestätigungsprüfung'}</h3>
-                              <span>{round.accounts.filter(account => account.status === 'up').length} erfolgreich · {round.accounts.filter(account => account.status === 'down' || account.status === 'degraded').length} beeinträchtigt · {round.accounts.filter(account => account.status === 'unknown').length} unbekannt</span>
+                              <h3 className="font-medium">{round.phase === 'initial' ? 'Prüfung' : 'Bestätigung'}</h3>
                             </div>
                             <ul className="mt-2 divide-y">
                               {round.accounts.map(account => (
@@ -143,7 +142,7 @@ export default function IncidentPage() {
                       </details>
                     ))}
                   </div>
-                ) : <p className="mt-4 rounded-2xl border p-5 text-sm text-surface-500">Für diese Störung wurden keine einzelnen Kontoergebnisse gespeichert.</p>}
+                ) : <p className="mt-4 rounded-2xl border p-5 text-sm text-surface-500">Keine Kontoergebnisse verfügbar.</p>}
               </section>
               <p className="mt-5 text-xs leading-relaxed text-surface-500">Der Verlauf zeigt beobachtete Statusänderungen. Messlücken bestätigen keine durchgehende Ausfallzeit. Ergebnisse können je nach Schule oder Konto abweichen.</p>
               <p className="mt-3 break-all text-xs text-surface-400">ID: {data.id}</p>
