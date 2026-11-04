@@ -29,6 +29,7 @@ import Vertretungsplan from './components/vertretungsplan/Vertretungsplan';
 import CustomBackend from './components/settings/CustomBackend';
 import Onboarding from './components/onboarding/Onboarding';
 import Wahlen from './components/wahlen/Wahlen';
+import IncidentPage from './components/status/IncidentPage';
 import StatusPage from './components/status/StatusPage';
 import Videokonferenz from './components/videokonferenz/Videokonferenz';
 import SchoolPage from './components/schools/SchoolPage';
@@ -87,6 +88,8 @@ const AppRoutes: React.FC = () => {
       <Routes>
         <Route path="/" element={<LandingRoot />} />
         <Route path="/landing" element={<Navigate to="/" replace />} />
+        <Route path="/status/incident/:id" element={<IncidentPage />} />
+        <Route path="/status/incident" element={null} />
         <Route path="/status" element={<StatusPage />} />
         <Route path="/agents/authorize" element={<AgentAuthorization />} />
         <Route path="/impressum" element={<Impressum />} />

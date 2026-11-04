@@ -4,6 +4,9 @@ import { getApiBaseUrl } from '../utils/backendConfig';
 
 export type ServiceStatus = 'up' | 'degraded' | 'down' | 'unknown';
 export interface Observation {
+  account_checks?: { phase: 'initial' | 'confirmation'; accounts: {
+    label: string; status: ServiceStatus; features: { name: string; status: ServiceStatus }[];
+  }[] }[];
   error?: string | null;
   status: ServiceStatus;
   checked_at: string | null;
@@ -11,6 +14,8 @@ export interface Observation {
   features: { name: string; status: ServiceStatus; latency_ms?: number | null }[];
 }
 export interface PublicIncident {
+  id: string;
+  observations?: Observation[];
   started_at: string;
   checked_at?: string;
   resolved_at: string | null;

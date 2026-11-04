@@ -1,4 +1,5 @@
 import { useId, useState } from 'react';
+import { ArrowRightIcon } from '@heroicons/react/24/outline';
 import { Link } from 'react-router-dom';
 import AppIcon from '../AppIcon';
 import SEO from '../seo/SEO';
@@ -14,6 +15,7 @@ import {
   PublicStatus,
   usePublicStatus,
 } from '../../services/publicStatus';
+import { getApiBaseUrl } from '../../utils/backendConfig';
 import { getCustomBackendUrl } from '../../utils/backendConfig';
 
 export default function StatusPage() {
@@ -75,6 +77,7 @@ export default function StatusPage() {
         title="Schulportal Hessen Status & Uptime"
         description="Schulportal Hessen Statusseite mit Uptime, Verfügbarkeit und aktuellen Störungen. Ein Status-Feature von Lanis für das SPH mit 24-Stunden-, 7-, 30- und 90-Tage-Verlauf."
         path="/status"
+        image={`${getApiBaseUrl()}/status/image.png`}
         structuredData={{
           '@context': 'https://schema.org',
           '@type': 'WebPage',
@@ -183,7 +186,7 @@ export default function StatusPage() {
                   <span
                     id={`${tooltipPrefix}-${windowKey}-${index}`}
                     role="tooltip"
-                    className="pointer-events-auto absolute bottom-full left-[var(--tooltip-left,0px)] z-20 hidden w-72 max-w-[calc(100vw-1rem)] cursor-text select-text rounded-xl border border-surface-200 bg-white p-3 text-left text-xs text-surface-700 shadow-xl group-hover:block group-focus:block dark:border-surface-700 dark:bg-surface-900 dark:text-surface-200"
+                    className="pointer-events-auto absolute bottom-full left-[var(--tooltip-left,0px)] z-20 hidden w-72 max-w-[calc(100vw-1rem)] cursor-text select-text rounded-xl border border-surface-200 bg-white p-3 text-left text-xs text-surface-700 shadow-xl group-hover:block group-focus:block group-focus-within:block dark:border-surface-700 dark:bg-surface-900 dark:text-surface-200"
                   >
                     <span className="mb-3 block text-[10px] font-semibold uppercase tracking-[0.12em] text-surface-400">
                       {shortRange
@@ -199,7 +202,7 @@ export default function StatusPage() {
                     )}
                     <span className="space-y-3">
                       {day.incidents.map((incident, incidentIndex) => (
-                        <span key={incidentIndex} className="block border-t border-surface-100 pt-3 first:border-0 first:pt-0 dark:border-surface-800">
+                        <Link key={incidentIndex} to={`/status/incident/${incident.id}`} className="block cursor-pointer rounded-lg border-t border-surface-100 p-2 transition-colors first:border-0 hover:bg-surface-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary-500 dark:border-surface-800 dark:hover:bg-surface-800">
                           <span className="flex items-center gap-2 font-semibold text-surface-900 dark:text-surface-100">
                             <span className={`h-2 w-2 shrink-0 rounded-full ${statusColors[incident.status]}`} />
                             {incident.error === 'maintenance' ? 'Wartungsarbeiten' : statusLabels[incident.status]}
@@ -211,7 +214,8 @@ export default function StatusPage() {
                             ))}
                             <span className="rounded-md bg-surface-100 px-1.5 py-0.5 text-[10px] text-surface-500 dark:bg-surface-800 dark:text-surface-400">{incident.checks ?? 1} bestätigte Checks</span>
                           </span>
-                        </span>
+                          <span className="mt-2 flex items-center gap-1.5 font-medium text-primary-600 dark:text-primary-400">Details ansehen<ArrowRightIcon className="h-3.5 w-3.5" aria-hidden="true" /></span>
+                        </Link>
                       ))}
                     </span>
                   </span>
@@ -245,12 +249,14 @@ export default function StatusPage() {
               <ul className="mt-3 divide-y">
                 {data.incidents.slice(0, 10).map((incident, index) => {
                   return (
-                  <li key={`${incident.started_at}-${index}`} className="flex flex-wrap items-center justify-between gap-2 py-4 text-sm">
-                    <div><time className="text-surface-500">{formatIncidentRange(incident)}</time><p className="mt-1 text-xs text-surface-500">Bestätigte Checks: {incident.checks ?? 1} · Betroffene Dienste: {incident.affected_features?.length ? incident.affected_features.map(name => name === 'login' ? 'Anmeldung' : 'Module').join(', ') : 'Unbekannt'}</p></div>
+                  <li key={`${incident.started_at}-${index}`} className="text-sm">
+                    <Link to={`/status/incident/${incident.id}`} className="flex cursor-pointer flex-wrap items-center justify-between gap-2 rounded-lg px-3 py-4 transition-colors hover:bg-surface-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary-500 dark:hover:bg-surface-800">
+                    <div><span className="text-primary-600">{formatIncidentRange(incident)}</span><p className="mt-1 text-xs text-surface-500">Bestätigte Checks: {incident.checks ?? 1} · Betroffene Dienste: {incident.affected_features?.length ? incident.affected_features.map(name => name === 'login' ? 'Anmeldung' : 'Module').join(', ') : 'Unbekannt'}</p></div>
                     <span className="flex items-center gap-2">
                       <span className={`h-2 w-2 rounded-full ${statusColors[incident.status]}`} />
                       {incident.error === 'maintenance' ? (incident.resolved_at ? 'Wartung beendet' : 'Wartungsarbeiten') : incident.resolved_at ? 'Behoben' : statusLabels[incident.status]}
                     </span>
+                    </Link>
                   </li>
                   );
                 })}
