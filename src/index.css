@@ -469,9 +469,8 @@ html.oled body::after {
   height: 220px;
 }
 
-/* Keep the current/upcoming lesson visible on class colours and status surfaces. */
+/* Subtle theme-coloured emphasis for the current/upcoming lesson. */
 [data-lesson-focus] {
-  outline: 3px solid theme('colors.primary.500');
-  outline-offset: -3px;
-  box-shadow: inset 0 0 0 5px theme('colors.surface.50');
+  outline: 1px solid theme('colors.primary.500');
+  outline-offset: -1px;
 }
