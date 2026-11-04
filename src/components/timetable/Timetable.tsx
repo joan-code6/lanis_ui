@@ -1,5 +1,5 @@
 import { capture } from '../../analytics/client';
-import React, { useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { format, isToday } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { Link, useNavigate } from 'react-router-dom';
@@ -17,9 +17,10 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useBasePath } from '../../contexts/BasePathContext';
 import { usePreferences } from '../../contexts/PreferencesContext';
 import { timetableAPI } from '../../services/api';
-import { StudyGroupExam, TimetableDay, TimetableLesson, TimetableResponse } from '../../types';
+import { TimetableDay, TimetableLesson, TimetableResponse } from '../../types';
 import { timetableDatesForMode, weekTypeForDate } from '../../utils/timetableView';
 import SEO from '../seo/SEO';
+import { focusedTimetableEntry, LessonFocus } from '../../utils/timetableFocus';
 import TimetableSkeleton from './TimetableSkeleton';
 import { layoutTimetableEntries, TimetableEntry, timetableEntries } from '../../utils/timetableExams';
 import { useCachedResource } from '../../hooks/useCachedResource';
@@ -37,6 +38,15 @@ const Timetable: React.FC = () => {
   const timetableViewMode = preferences.timetable.view_mode;
   const [planMode, setPlanMode] = useState<'personal' | 'all'>('personal');
   const [selectedWeek, setSelectedWeek] = useState<'A' | 'B' | undefined>();
+  const timetableRef = useRef<HTMLDivElement>(null);
+  const centeredView = useRef<string>();
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const update = () => setNow(new Date());
+    const timer = window.setInterval(update, 1000);
+    window.addEventListener('focus', update);
+    return () => { window.clearInterval(timer); window.removeEventListener('focus', update); };
+  }, []);
   const dayScrollerRef = useRef<HTMLDivElement>(null);
   const { data, loading, refreshing, error, refresh } = useCachedResource(
     JSON.stringify(['timetable', timetableViewMode, planMode, selectedWeek,
@@ -73,6 +83,11 @@ const Timetable: React.FC = () => {
 
   const weekOverride = timetableViewMode === 'week' && hasAlternatingWeeks ? selectedWeek : undefined;
   const displayedExams = preferences.timetable.show_exams ? exams : [];
+  const entriesByDate = useMemo(() => new Map((data?.days || []).map(day => [
+    day.date, timetableEntries(day.lessons, preferences.timetable.show_exams ? (data?.exams || []).filter(exam => exam.date === day.date) : [], data?.time_slots || []),
+  ])), [data, preferences.timetable.show_exams]);
+  const lessonFocus = useMemo(() => focusedTimetableEntry(entriesByDate, now), [entriesByDate, now]);
+  const viewKey = JSON.stringify([timetableViewMode, planMode, selectedWeek, preferences.timetable.layout_mode]);
   const visibleExamCount = visibleDays.reduce((total, day) => total + displayedExams.filter(exam => exam.date === day.date).length, 0);
   const noticeCount = visibleDays.reduce((total, day) => total + (day.substitutionNotices || []).length, 0);
   const lessonCount = useMemo(() => visibleDays.reduce((total, day) => total + day.lessons.length, 0), [visibleDays]);
@@ -94,14 +109,21 @@ const Timetable: React.FC = () => {
   }, [activeWeek, referenceWeekStart, visibleDays, weekOverride]);
 
   useLayoutEffect(() => {
-    if (loading || !window.matchMedia('(max-width: 639px)').matches) return;
-    const scroller = dayScrollerRef.current;
-    const today = scroller?.querySelector<HTMLElement>('[data-today="true"]');
-    if (scroller && today) scroller.scrollTo({
-      left: scroller.scrollLeft + today.getBoundingClientRect().left - scroller.getBoundingClientRect().left,
-      behavior: 'auto',
-    });
-  }, [loading, planMode, visibleDays]);
+    if (loading) return;
+    if (centeredView.current === viewKey) return;
+    const target = timetableRef.current?.querySelector<HTMLElement>('[data-lesson-focus]');
+    if (target) {
+      target.scrollIntoView({ block: 'center', inline: 'center', behavior: 'instant' });
+      centeredView.current = viewKey;
+    } else {
+      const scroller = dayScrollerRef.current;
+      const today = scroller?.querySelector<HTMLElement>('[data-today="true"]');
+      if (scroller && today && window.matchMedia('(max-width: 639px)').matches) {
+        scroller.scrollTo({ left: today.offsetLeft - scroller.offsetLeft, behavior: 'instant' });
+      }
+      if (data) centeredView.current = viewKey;
+    }
+  }, [loading, data, lessonFocus, viewKey]);
 
   const openCourse = (lesson: TimetableLesson) => {
     if (lesson.course_id) {
@@ -111,7 +133,7 @@ const Timetable: React.FC = () => {
   };
 
   return (
-    <div className="min-h-full module-padding">
+    <div ref={timetableRef} className="min-h-full module-padding">
       <SEO title="Stundenplan" description="Dein persönlicher Stundenplan im Schulportal Hessen." path="/timetable" noindex />
       <div className="mx-auto max-w-7xl">
         <header className="page-header">
@@ -192,7 +214,7 @@ const Timetable: React.FC = () => {
                 <Link className="ml-auto font-medium text-primary-700 dark:text-primary-300" to={`${basePath}/${item.source === 'DSB' ? 'dsb' : 'vertretungsplan'}`}>Plan ansehen →</Link>
               </div>
             )))}
-            <TimelineView days={visibleDays} exams={displayedExams} timeSlots={timeSlots} onOpenCourse={openCourse} />
+            <TimelineView days={visibleDays} entriesByDate={entriesByDate} lessonFocus={lessonFocus} timeSlots={timeSlots} onOpenCourse={openCourse} />
           </div>
         ) : (
           <div ref={dayScrollerRef} className="scrollbar-hide -mx-3 flex snap-x snap-mandatory gap-3 overflow-x-auto px-3 pb-3 sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 sm:pb-0 md:gap-4 xl:grid-cols-5">
@@ -216,8 +238,9 @@ const Timetable: React.FC = () => {
                       <p className="mt-1 text-surface-500">Nicht eindeutig zugeordnet · {item.source}</p>
                       <Link className="mt-1 inline-block font-medium text-primary-600 dark:text-primary-400" to={`${basePath}/${item.source === 'DSB' ? 'dsb' : 'vertretungsplan'}`}>Plan ansehen →</Link>
                     </div>)}
-                    {timetableEntries(day.lessons, displayedExams.filter(exam => exam.date === day.date), timeSlots).map(({ lesson, exam, replaced }, index) => exam ? (
-                      <article key={`exam-${exam.id}-${index}`} className="rounded-xl border border-violet-200 bg-violet-50 p-3 dark:border-violet-800 dark:bg-violet-950/40">
+                    {(entriesByDate.get(day.date) || []).map(({ lesson, exam, replaced }, index) => exam ? (
+                      <article {...lessonFocusAttributes(lessonFocus?.date === day.date && lessonFocus.entry.lesson === lesson ? lessonFocus : undefined)} key={`exam-${exam.id}-${index}`} className="rounded-xl border border-violet-200 bg-violet-50 p-3 dark:border-violet-800 dark:bg-violet-950/40">
+                        {lessonFocus?.date === day.date && lessonFocus.entry.lesson === lesson && <span className="badge badge-primary mb-2">{lessonFocus.status === 'current' ? 'Jetzt' : 'Als Nächstes'}</span>}
                         <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
                           <p className="flex items-center gap-1.5 text-xs font-semibold text-violet-700 dark:text-violet-300"><AcademicCapIcon className="h-4 w-4" aria-hidden="true" />{exam.type || 'Klausur'}</p>
                           {lesson.period != null && <span className="badge badge-surface">{lesson.period} Std.</span>}
@@ -239,6 +262,7 @@ const Timetable: React.FC = () => {
                       </article>
                     ) : (
                       <article
+                        {...lessonFocusAttributes(lessonFocus?.date === day.date && lessonFocus.entry.lesson === lesson ? lessonFocus : undefined)}
                         key={lesson.id || `${day.date}-${index}`}
                         className={`rounded-xl border p-3 transition-all ${lesson.cancelled ? 'border-red-200 bg-red-50/70 opacity-75 dark:border-red-900 dark:bg-red-950/30' : lesson.substitution ? 'border-amber-200 bg-amber-50/60 dark:border-amber-800 dark:bg-amber-950/20' : 'bg-white dark:bg-surface-900'} ${lesson.course_id ? 'cursor-pointer hover:-translate-y-0.5 hover:border-primary-300 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 dark:hover:border-primary-700 dark:focus-visible:ring-offset-surface-900' : ''}`}
                         role={lesson.course_id ? 'link' : undefined}
@@ -252,6 +276,7 @@ const Timetable: React.FC = () => {
                           }
                         }}
                       >
+                        {lessonFocus?.date === day.date && lessonFocus.entry.lesson === lesson && <span className="badge badge-primary mb-2">{lessonFocus.status === 'current' ? 'Jetzt' : 'Als Nächstes'}</span>}
                         <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
                           <div className="min-w-0 flex-1 break-words">
                             <p className={`font-semibold text-surface-900 dark:text-white ${lesson.cancelled ? 'line-through' : ''}`}>{lesson.subject}</p>
@@ -286,6 +311,11 @@ const Timetable: React.FC = () => {
     </div>
   );
 };
+
+const lessonFocusAttributes = (focus?: LessonFocus) => ({
+  'data-lesson-focus': focus?.status,
+  'aria-current': focus?.status === 'current' ? 'time' as const : undefined,
+});
 
 const formatSourceDate = (value: string): string => {
   const date = new Date(value);
@@ -346,15 +376,16 @@ const HomeworkPreview: React.FC<{ homework?: TimetableLesson['homework']; compac
 
 const TimelineView: React.FC<{
   days: TimetableDay[];
-  exams: StudyGroupExam[];
+  entriesByDate: Map<string, TimetableEntry[]>;
+  lessonFocus?: LessonFocus;
   timeSlots: NonNullable<TimetableResponse['time_slots']>;
   onOpenCourse: (lesson: TimetableLesson) => void;
-}> = ({ days, exams, timeSlots, onOpenCourse }) => {
+}> = ({ days, entriesByDate, lessonFocus, timeSlots, onOpenCourse }) => {
   const { preferences } = usePreferences();
   const layoutsByDate = useMemo(() => new Map(days.map(day => [
     day.date,
-    layoutTimetableEntries(timetableEntries(day.lessons, exams.filter(exam => exam.date === day.date), timeSlots)),
-  ])), [days, exams, timeSlots]);
+    layoutTimetableEntries(entriesByDate.get(day.date) || []),
+  ])), [days, entriesByDate]);
   const usedPeriods = [...new Set([...layoutsByDate.values()].flatMap(layout => (
     layout.scheduled.flatMap(item => [item.startPeriod, item.endPeriod])
   )))].sort((left, right) => left - right);
@@ -431,7 +462,7 @@ const TimelineView: React.FC<{
                   width: `${100 / laneCount}%`,
                 }}
               >
-                <CompactTimetableEntry entry={entry} colour={colourForLesson(entry.lesson)} showHomework={preferences.timetable.show_homework} onOpenCourse={onOpenCourse} />
+                <CompactTimetableEntry focus={lessonFocus?.date === day.date && lessonFocus.entry === entry ? lessonFocus : undefined} entry={entry} colour={colourForLesson(entry.lesson)} showHomework={preferences.timetable.show_homework} onOpenCourse={onOpenCourse} />
               </div>
             ))}
           </div>;
@@ -443,7 +474,7 @@ const TimelineView: React.FC<{
         <div className="mt-2 grid gap-2 sm:grid-cols-2">
           {unscheduled.map(({ day, entry }, index) => <div key={entry.exam ? `unscheduled-${entry.exam.id}` : `unscheduled-${day.date}-${index}`} className="rounded-lg bg-surface-50 p-1.5 dark:bg-surface-800/40">
             <p className="mb-1 px-1 text-[10px] font-medium text-surface-500">{day.name || format(new Date(`${day.date}T12:00:00`), 'EEEE', { locale: de })} · Stunden nicht angegeben</p>
-            <CompactTimetableEntry entry={entry} colour={colourForLesson(entry.lesson)} showHomework={preferences.timetable.show_homework} onOpenCourse={onOpenCourse} />
+            <CompactTimetableEntry focus={lessonFocus?.date === day.date && lessonFocus.entry === entry ? lessonFocus : undefined} entry={entry} colour={colourForLesson(entry.lesson)} showHomework={preferences.timetable.show_homework} onOpenCourse={onOpenCourse} />
           </div>)}
         </div>
       </section>}
@@ -453,11 +484,13 @@ const TimelineView: React.FC<{
 
 const CompactTimetableEntry: React.FC<{
   entry: TimetableEntry;
+  focus?: LessonFocus;
   colour: string;
   showHomework: boolean;
   onOpenCourse: (lesson: TimetableLesson) => void;
-}> = ({ entry: { lesson, exam }, colour, showHomework, onOpenCourse }) => (
+}> = ({ entry: { lesson, exam }, focus, colour, showHomework, onOpenCourse }) => (
   <div
+    {...lessonFocusAttributes(focus)}
     className={`relative flex h-full min-w-0 flex-col justify-center overflow-hidden rounded-md border p-1 shadow-sm transition sm:rounded-xl sm:p-2.5 ${exam ? 'border-violet-700 !bg-violet-600 !text-white dark:!bg-violet-700' : ''} ${lesson.cancelled ? '!border-red-700 !bg-red-600 !text-white opacity-70' : ''} ${lesson.substitution ? 'ring-2 ring-inset ring-amber-300' : ''} ${lesson.course_id ? 'cursor-pointer hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-surface-900' : ''}`}
     style={!exam && !lesson.cancelled ? {
       backgroundColor: colour,
@@ -475,6 +508,7 @@ const CompactTimetableEntry: React.FC<{
       }
     }}
   >
+    {focus && <span className="mb-0.5 text-[7px] font-bold sm:text-[10px]">{focus.status === 'current' ? 'Jetzt' : 'Als Nächstes'}</span>}
     <div className="flex items-start justify-between gap-0.5 sm:gap-2">
       <span className={`min-w-0 break-words text-[10px] font-bold leading-tight sm:text-sm ${lesson.cancelled ? 'line-through' : ''}`} title={lesson.subject}>
         <span className="sm:hidden">{shortSubject(lesson.subject)}</span><span className="hidden sm:inline">{lesson.subject}</span>
