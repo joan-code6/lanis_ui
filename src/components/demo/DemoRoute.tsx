@@ -8,6 +8,12 @@ import { demoModules, demoUser } from './demoData';
 import { getDemoTabId, keepDemoSessionAlive, readDemoStorageSnapshot, registerDemoCacheWriteListener, writeDemoStorageSnapshot } from '../../utils/demoMode';
 import type { ThemeColor, ThemeMode } from '../../types';
 import {
+  CUSTOM_SECONDARY_THEME_COLOR_KEY,
+  CUSTOM_THEME_COLOR_KEY,
+  SECONDARY_THEME_COLOR_KEY,
+  normalizeThemeColor,
+} from '../../utils/themeAssets';
+import {
   ACCOUNT_DATA_GENERATION_KEY,
   hasAccountDataDeletionOccurredSince,
   captureAccountDataGeneration,
@@ -39,6 +45,9 @@ const DEMO_STORAGE_KEYS = [
   'lanis_oled_mode',
   'lanis_dark_mode',
   'lanis_theme_color',
+  CUSTOM_THEME_COLOR_KEY,
+  SECONDARY_THEME_COLOR_KEY,
+  CUSTOM_SECONDARY_THEME_COLOR_KEY,
 ] as const;
 
 const DEMO_OWNED_STORAGE_KEYS = [
@@ -63,11 +72,7 @@ const readAppearance = (values: Map<string, string | null>) => {
         : values.get('lanis_dark_mode') === 'false'
           ? 'light'
           : 'system';
-  const storedColor = values.get('lanis_theme_color');
-  const themeColor: ThemeColor = storedColor === 'emerald' || storedColor === 'sapphire' || storedColor === 'amethyst'
-    || storedColor === 'ruby' || storedColor === 'amber' || storedColor === 'cyan' || storedColor === 'coral' || storedColor === 'blush'
-    ? storedColor
-    : 'ruby';
+  const themeColor: ThemeColor = normalizeThemeColor(values.get('lanis_theme_color')) ?? '#f43f5e';
   return { themeMode, themeColor };
 };
 

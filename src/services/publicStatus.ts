@@ -7,6 +7,7 @@ export interface Observation {
   account_checks?: { phase: 'initial' | 'confirmation'; accounts: {
     label: string; status: ServiceStatus; features: { name: string; status: ServiceStatus }[];
   }[] }[];
+  error?: string | null;
   status: ServiceStatus;
   checked_at: string | null;
   latency_ms?: number | null;

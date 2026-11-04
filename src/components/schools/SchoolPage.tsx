@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { Navigate, useParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { useTheme } from '../../contexts/ThemeContext';
+import { THEME_COLOR_KEY, useTheme } from '../../contexts/ThemeContext';
 import { DEFAULT_API_BASE_URL } from '../../utils/backendConfig';
-import { THEME_COLOR_HEX, getThemeIconUrl } from '../../utils/themeAssets';
+import { normalizeThemeColor, getThemeIconUrl } from '../../utils/themeAssets';
 import type { ThemeColor } from '../../types';
 import Landingpage from '../landing/Landingpage';
 import LoginForm from '../auth/LoginForm';
@@ -12,23 +12,8 @@ import './school-page.css';
 import SEO from '../seo/SEO';
 import { loadSchool, readSchoolBootstrap, schoolPath, type SchoolProfile } from './schoolData';
 
-const hexToRgb = (hex: string) => {
-  const h = hex.replace('#', '');
-  const f = h.length === 3 ? h.split('').map((c) => c + c).join('') : h;
-  return [0, 2, 4].map((i) => parseInt(f.slice(i, i + 2), 16));
-};
-// Pick the existing Lanis theme closest to the school's primary colour.
 export function themeForColor(hex: string | null): ThemeColor {
-  if (!hex) return 'cyan';
-  const c = hexToRgb(hex);
-  let best: ThemeColor = 'cyan';
-  let bestD = Infinity;
-  (Object.keys(THEME_COLOR_HEX) as ThemeColor[]).filter((k) => k !== 'moss').forEach((k) => {
-    const t = hexToRgb(THEME_COLOR_HEX[k]);
-    const d = c.reduce((acc, v, i) => acc + (v - t[i]) ** 2, 0);
-    if (d < bestD) { bestD = d; best = k; }
-  });
-  return best;
+  return normalizeThemeColor(hex) ?? '#06b6d4';
 }
 
 const LanisBrand = () => {
@@ -48,8 +33,6 @@ const SchoolBrand: React.FC<{ school: SchoolProfile }> = ({ school }) => (
 );
 
 // First-time visitors use the nearest Lanis theme to the school colour. Saved preferences take precedence.
-const THEME_COLOR_KEY = 'lanis_theme_color';
-
 // Shared school hero and login card; the rest of the page uses the Lanis homepage.
 const Hero: React.FC<{ school: SchoolProfile }> = ({ school }) => {
   const c = school.assets.campus;

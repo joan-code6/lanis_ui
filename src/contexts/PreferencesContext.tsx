@@ -6,12 +6,14 @@ import { settingsAPI } from '../services/api';
 import { UserPreferences, UserPreferencesPatch } from '../types';
 import { DEFAULT_SIDEBAR_ORDER, normalizeSidebarOrder } from '../utils/sidebarNavigation';
 import { canWriteAccountData, captureAccountDataGeneration } from '../utils/accountDataWrites';
+import { normalizeHideCompletedHomework } from '../utils/homeworkPreferences';
+import { applyThemeColorPalette, normalizeThemeColor, SECONDARY_THEME_COLOR_KEY } from '../utils/themeAssets';
 
 export const CURRENT_ONBOARDING_VERSION = 1;
 const LEGACY_PREFERENCES_OWNER_KEY = 'lanis_preferences_legacy_owner';
 
 export const DEFAULT_USER_PREFERENCES: UserPreferences = {
-  appearance: { theme_mode: 'system', theme_color: 'ruby' },
+  appearance: { theme_mode: 'system', theme_color: '#f43f5e', secondary_theme_color: '#047857' },
   sidebar: { order: DEFAULT_SIDEBAR_ORDER, hidden_items: [], show_feedback_button: true },
   dashboard: {
     module_order: [],
@@ -27,7 +29,7 @@ export const DEFAULT_USER_PREFERENCES: UserPreferences = {
     notification_limit: 20,
   },
   timetable: { view_mode: 'rolling', layout_mode: 'cards', show_substitutions: true, show_homework: true, show_exams: true, class_colors: {} },
-  homework: { completed_display: 'green' },
+  homework: { hide_completed_in_overview: false },
   vertretungsplan: { class_override: '' },
   onboarding: { version: 0, status: 'not_started', last_step: 'welcome' },
 };
@@ -64,6 +66,7 @@ const mergePersistedPatch = (
   current: UserPreferences,
   patch: UserPreferencesPatch,
   persisted: UserPreferences,
+  persistedResponse: Partial<UserPreferences>,
 ): UserPreferences => {
   const merged = { ...current };
   for (const group of Object.keys(patch) as Array<keyof UserPreferences>) {
@@ -72,8 +75,10 @@ const mergePersistedPatch = (
 
     const mergedGroup = { ...merged[group] } as Record<string, unknown>;
     const persistedGroup = persisted[group] as unknown as Record<string, unknown>;
+    const persistedResponseGroup = persistedResponse[group] as Record<string, unknown> | undefined;
     for (const field of Object.keys(fields)) {
-      if (Object.prototype.hasOwnProperty.call(persistedGroup, field)) {
+      if (persistedResponseGroup && Object.prototype.hasOwnProperty.call(persistedResponseGroup, field)
+        && Object.prototype.hasOwnProperty.call(persistedGroup, field)) {
         mergedGroup[field] = persistedGroup[field];
       }
     }
@@ -83,7 +88,13 @@ const mergePersistedPatch = (
 };
 
 const normalizePreferences = (value?: Partial<UserPreferences>): UserPreferences => {
-  const homework = value?.homework as (Partial<UserPreferences['homework']> & { hide_completed_in_overview?: boolean }) | undefined;
+  const appearance = value?.appearance;
+  const themeColor = normalizeThemeColor(appearance?.theme_color) ?? DEFAULT_USER_PREFERENCES.appearance.theme_color;
+  const secondaryThemeColor = normalizeThemeColor(appearance?.secondary_theme_color)
+    ?? DEFAULT_USER_PREFERENCES.appearance.secondary_theme_color;
+  const homework = value?.homework as (Partial<UserPreferences['homework']> & {
+    completed_display?: 'orange' | 'green' | 'hidden';
+  }) | undefined;
   const dashboard = value?.dashboard;
   const sidebar = value?.sidebar;
   const showFeedbackButton = typeof sidebar?.show_feedback_button === 'boolean'
@@ -98,14 +109,10 @@ const normalizePreferences = (value?: Partial<UserPreferences>): UserPreferences
     : [];
   const dashboardPreferences = { ...dashboard };
   Reflect.deleteProperty(dashboardPreferences, 'pinned_modules');
-  const migratedHomework = homework?.completed_display
-    ? { completed_display: homework.completed_display }
-    : typeof homework?.hide_completed_in_overview === 'boolean'
-      ? { completed_display: homework.hide_completed_in_overview ? 'hidden' as const : 'orange' as const }
-      : undefined;
+  const hideCompletedHomework = normalizeHideCompletedHomework(homework);
 
   return mergePreferences(DEFAULT_USER_PREFERENCES, {
-    appearance: value?.appearance,
+    appearance: { ...appearance, theme_color: themeColor, secondary_theme_color: secondaryThemeColor },
     sidebar: { ...sidebar, hidden_items: hiddenSidebarItems, show_feedback_button: showFeedbackButton },
     dashboard: {
       ...dashboardPreferences,
@@ -113,7 +120,7 @@ const normalizePreferences = (value?: Partial<UserPreferences>): UserPreferences
       hidden_modules: hiddenModules,
     },
     timetable: value?.timetable,
-    homework: migratedHomework,
+    homework: { hide_completed_in_overview: hideCompletedHomework },
     vertretungsplan: value?.vertretungsplan,
     onboarding: value?.onboarding,
   });
@@ -131,14 +138,13 @@ const legacyPreferences = (): UserPreferences => {
         : legacyDark === 'false'
           ? 'light'
           : 'system';
-  const color = localStorage.getItem('lanis_theme_color');
-  const themeColor = color === 'emerald' || color === 'sapphire' || color === 'amethyst'
-    || color === 'ruby' || color === 'amber' || color === 'cyan' || color === 'coral' || color === 'blush' || color === 'moss'
-    ? color
-    : 'ruby';
+  const themeColor = normalizeThemeColor(localStorage.getItem('lanis_theme_color'))
+    ?? DEFAULT_USER_PREFERENCES.appearance.theme_color;
+  const secondaryThemeColor = normalizeThemeColor(localStorage.getItem(SECONDARY_THEME_COLOR_KEY))
+    ?? DEFAULT_USER_PREFERENCES.appearance.secondary_theme_color;
   const timetableMode = localStorage.getItem('lanis_timetable_view_mode');
   return mergePreferences(DEFAULT_USER_PREFERENCES, {
-    appearance: { theme_mode: themeMode, theme_color: themeColor },
+    appearance: { theme_mode: themeMode, theme_color: themeColor, secondary_theme_color: secondaryThemeColor },
     timetable: { view_mode: timetableMode === 'week' ? 'week' : 'rolling' },
   });
 };
@@ -175,6 +181,10 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode; sync?: b
   const preferencesRef = useRef(preferences);
   const saveQueueRef = useRef<Promise<boolean>>(Promise.resolve(true));
   const cacheKey = cacheKeyForUser(user);
+
+  useEffect(() => {
+    applyThemeColorPalette(preferences.appearance.secondary_theme_color, 'secondary');
+  }, [preferences.appearance.secondary_theme_color]);
 
   const applyPreferences = useCallback((next: UserPreferences) => {
     preferencesRef.current = next;
@@ -226,6 +236,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode; sync?: b
         if (controller.signal.aborted || !canWriteAccountData(writeGeneration)) return;
         let next = normalizePreferences({
           ...response.preferences,
+          appearance: { ...localFallback.appearance, ...response.preferences.appearance },
           sidebar: {
             ...localFallback.sidebar,
             ...cached?.preferences.sidebar,
@@ -239,6 +250,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode; sync?: b
           if (controller.signal.aborted || !canWriteAccountData(writeGeneration)) return;
           next = normalizePreferences({
             ...migrated.preferences,
+            appearance: { ...next.appearance, ...migrated.preferences.appearance },
             sidebar: { ...next.sidebar, ...migrated.preferences.sidebar },
             dashboard: { ...next.dashboard, ...migrated.preferences.dashboard },
           });
@@ -312,7 +324,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode; sync?: b
           }
         }
         const persisted = normalizePreferences(response.preferences);
-        const saved = normalizePreferences(mergePersistedPatch(next, patch, persisted));
+        const saved = normalizePreferences(mergePersistedPatch(next, patch, persisted, response.preferences));
         const hasUnsyncedLocalChanges = JSON.stringify(saved) !== JSON.stringify(persisted);
         if (canWriteAccountData(writeGeneration)
           && JSON.stringify(preferencesRef.current) === JSON.stringify(next)) {

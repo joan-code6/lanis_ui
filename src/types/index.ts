@@ -96,18 +96,17 @@ export interface User {
 }
 
 export type ThemeMode = 'system' | 'light' | 'dark' | 'oled';
-export type ThemeColor = 'emerald' | 'sapphire' | 'amethyst' | 'ruby' | 'amber' | 'cyan' | 'coral' | 'blush' | 'moss';
+export type ThemeColor = `#${string}`;
 export type DashboardViewMode = 'grid' | 'list';
 export type TimetableViewMode = 'rolling' | 'week';
 export type TimetableLayoutMode = 'cards' | 'compact';
 export type OnboardingStatus = 'not_started' | 'in_progress' | 'completed' | 'skipped';
 export type OnboardingStep = 'welcome' | 'appearance' | 'dashboard' | 'timetable' | 'homework' | 'guide' | 'complete';
-export type CompletedHomeworkDisplay = 'orange' | 'green' | 'hidden';
-
 export interface UserPreferences {
   appearance: {
     theme_mode: ThemeMode;
     theme_color: ThemeColor;
+    secondary_theme_color: ThemeColor;
   };
   sidebar: {
     order: string[];
@@ -136,7 +135,7 @@ export interface UserPreferences {
     class_colors: Record<string, string>;
   };
   homework: {
-    completed_display: CompletedHomeworkDisplay;
+    hide_completed_in_overview: boolean;
   };
   vertretungsplan: {
     class_override: string;
