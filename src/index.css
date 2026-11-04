@@ -468,3 +468,9 @@ html.oled body::after {
   width: 100%;
   height: 220px;
 }
+
+/* Subtle theme-coloured emphasis for the current/upcoming lesson. */
+[data-lesson-focus] {
+  outline: 1px solid theme('colors.primary.500');
+  outline-offset: -1px;
+}
