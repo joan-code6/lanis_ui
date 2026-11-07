@@ -7,12 +7,11 @@ import { betaPrompt, isAndroidBrowser, googleGroupJoinUrl, hasPendingBetaJoin, c
 const GROUP_URL = 'https://groups.google.com/g/lanis-beta/about';
 const JOIN_URL = 'https://play.google.com/apps/testing/de.joancode.lanis';
 
-export default function AndroidBeta({ manual = false }: { manual?: boolean }) {
+export default function AndroidBeta({ manual = false, explicitJoin = false, onClose }: { manual?: boolean; explicitJoin?: boolean; onClose?: () => void }) {
   const { token } = useAuth();
   const [state, setState] = useState<AndroidBetaState | null>(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
-  const [explicitJoin] = useState(hasPendingBetaJoin);
   const [open, setOpen] = useState(false);
   const dialog = useRef<HTMLDialogElement>(null);
   const generation = useRef(0);
@@ -42,7 +41,7 @@ export default function AndroidBeta({ manual = false }: { manual?: boolean }) {
 
   useEffect(() => {
     if ((!manual && !explicitJoin && !eligible) || !state?.available) { setOpen(false); return; }
-    if (manual || open || locallyClosed.current || (!explicitJoin && !betaPrompt(state))) return;
+    if ((!explicitJoin && hasPendingBetaJoin()) || manual || open || locallyClosed.current || (!explicitJoin && !betaPrompt(state))) return;
     const timer = window.setInterval(() => {
       const pwa = document.querySelector('pwa-install') as (HTMLElement & { isDialogHidden?: boolean }) | null;
       if (pwa?.isDialogHidden === false || document.visibilityState !== 'visible' || document.documentElement.classList.contains('onboarding-active') || document.querySelector('[role="dialog"], [role="alertdialog"], dialog[open], [aria-modal="true"]')) return;
@@ -65,12 +64,13 @@ export default function AndroidBeta({ manual = false }: { manual?: boolean }) {
   function closeLocally() {
     locallyClosed.current = true;
     setOpen(false);
+    onClose?.();
   }
 
   async function dismiss(action: 'dismiss') {
     if (!token || mutation.current) return;
     mutation.current = true; generation.current++; setBusy(true); setError('');
-    try { setState(await androidBetaAPI.change(token, action)); locallyClosed.current = true; setOpen(false); }
+    try { setState(await androidBetaAPI.change(token, action)); locallyClosed.current = true; setOpen(false); onClose?.(); }
     catch { setError('Die Erinnerung konnte nicht gespeichert werden. Bitte versuche es erneut.'); }
     finally { mutation.current = false; setBusy(false); }
   }
@@ -97,7 +97,7 @@ export default function AndroidBeta({ manual = false }: { manual?: boolean }) {
     <div>{error ? <button type="button" className="btn btn-secondary" onClick={closeLocally}>Ohne Speichern schließen</button> : <button type="button" className="btn btn-secondary" disabled={busy} onClick={() => void dismiss('dismiss')}>Nicht mehr anzeigen</button>}</div>
   </div>;
   const popup = open ? <dialog ref={dialog} aria-labelledby="beta-dialog-title" onCancel={event => { event.preventDefault(); if (error) closeLocally(); else void dismiss('dismiss'); }} className="m-auto max-h-[90dvh] w-[calc(100%-2rem)] max-w-md overflow-y-auto rounded-2xl border border-surface-200 bg-white p-5 text-surface-900 shadow-xl backdrop:bg-black/50 dark:border-surface-700 dark:bg-surface-900 dark:text-surface-100 sm:p-6">{content}</dialog> : null;
-  if (!manual) return popup;
+  if (!manual) return <>{popup}{explicitJoin && error && !open && <div role="alert" className="card mx-auto my-4 max-w-md"><p>{error}</p><button className="btn btn-secondary mt-3" onClick={() => void load()}>Erneut versuchen</button></div>}</>;
   return <>
     <section className="card" aria-labelledby="beta-help-title">
       <h3 id="beta-help-title" className="item-title">LANIS Android-App Beta</h3>

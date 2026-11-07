@@ -56,3 +56,8 @@ shown. It also works on desktop and after a previous automatic-invitation
 dismissal, without resetting that preference. Recruitment must still be enabled
 and its configuration must load successfully. Other URL parameters and the hash
 are preserved; `joinbeta` itself is removed to prevent repeated openings.
+
+Explicit link requests are handled independently of dashboard module loading. If
+beta configuration cannot be loaded, a visible error offers a retry while keeping
+the request pending. Before frontend production rollout, use the PR preview URL
+with `/?joinbeta`; the production website does not yet contain this feature.

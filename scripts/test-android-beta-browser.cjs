@@ -3,7 +3,7 @@ const root=path.resolve(__dirname, '..');
 const esbuild=require(root+'/node_modules/esbuild');
 const puppeteer=require(root+'/node_modules/puppeteer-core');
 (async()=>{
-const bundle=await esbuild.build({stdin:{contents:`import React from 'react';import{createRoot}from'react-dom/client';import AndroidBeta from './src/components/beta/AndroidBeta';import BetaJoinEntry from './src/components/beta/BetaJoinEntry';import{BrowserRouter,Routes,Route}from'react-router-dom';createRoot(document.getElementById('root')).render(<BrowserRouter><BetaJoinEntry><Routes><Route path='/login' element={<p>Login fixture</p>}/><Route path='*' element={<AndroidBeta manual={location.search.includes('manual')}/>}/></Routes></BetaJoinEntry></BrowserRouter>);`,resolveDir:root,loader:'tsx'},bundle:true,write:false,format:'iife',plugins:[{name:'mock',setup(build){build.onLoad({filter:/contexts\/AuthContext.tsx$/},()=>({contents:"export const useAuth=()=>({token:'test',isAuthenticated:!location.search.includes('signedout')});",loader:'ts'}));build.onLoad({filter:/services\/api.ts$/},()=>({contents:'export const androidBetaAPI=window.betaAPI;',loader:'ts'}));}}]});
+const bundle=await esbuild.build({stdin:{contents:`import React from 'react';import{createRoot}from'react-dom/client';import AndroidBeta from './src/components/beta/AndroidBeta';import BetaJoinEntry from './src/components/beta/BetaJoinEntry';import{BrowserRouter,Routes,Route}from'react-router-dom';createRoot(document.getElementById('root')).render(<BrowserRouter><BetaJoinEntry><Routes><Route path='/login' element={<p>Login fixture</p>}/><Route path='*' element={location.search.includes('dashboard-error') ? <p>Dashboard module error</p> : <AndroidBeta manual={location.search.includes('manual')}/>}/></Routes></BetaJoinEntry></BrowserRouter>);`,resolveDir:root,loader:'tsx'},bundle:true,write:false,format:'iife',plugins:[{name:'mock',setup(build){build.onLoad({filter:/contexts\/AuthContext.tsx$/},()=>({contents:"export const useAuth=()=>({token:'test',isAuthenticated:!location.search.includes('signedout')});",loader:'ts'}));build.onLoad({filter:/services\/api.ts$/},()=>({contents:'export const androidBetaAPI=window.betaAPI;',loader:'ts'}));}}]});
 const css=fs.readdirSync(root+'/dist/assets').find(x=>x.startsWith('index-')&&x.endsWith('.css'));
 const server=http.createServer((req,res)=>{res.setHeader('Content-Type',req.url==='/bundle.js'?'text/javascript':req.url==='/style.css'?'text/css':'text/html');res.end(req.url==='/bundle.js'?bundle.outputFiles[0].text:req.url==='/style.css'?fs.readFileSync(root+'/dist/assets/'+css):'<html><head><link rel="stylesheet" href="/style.css"></head><body class="bg-surface-50 dark:bg-surface-950"><main id="root" class="p-4 mx-auto max-w-3xl"></main><script src="/bundle.js"></script></body></html>')});await new Promise(r=>server.listen(0,'127.0.0.1',r));
 const browser=await puppeteer.launch({executablePath:process.env.CHROME_PATH || '/usr/bin/chromium',headless:true,args:['--no-sandbox']});
@@ -51,7 +51,7 @@ await page.goto(url+'?manual&disabled');await page.waitForSelector('section butt
 await page.goto(url+'?manual&offline');await page.waitForSelector('section [role=alert]');await page.evaluate(()=>{window.fail=false;[...document.querySelectorAll('button')].find(b=>b.textContent==='Erneut versuchen').click()});await page.waitForSelector('section button:not([disabled])');
 // Explicit shared links bypass automatic dismissal, survive login, and are consumed once.
 await page.setUserAgent('Mozilla/5.0 Desktop Chrome');
-await page.goto(url+'?joinbeta&dismissed&keep=1#example');await page.waitForSelector('dialog[open]');
+await page.goto(url+'?joinbeta&dismissed&dashboard-error&keep=1#example');await page.waitForSelector('dialog[open]');
 if(new URL(page.url()).searchParams.has('joinbeta')||!page.url().includes('keep=1')||!page.url().endsWith('#example'))throw Error('Join URL was not cleaned safely');
 if(await page.evaluate(()=>window.calls.some(c=>c.action==='presented')))throw Error('Explicit link changed automatic cooldown');
 await page.keyboard.press('Escape');await page.waitForFunction(()=>!document.querySelector('dialog[open]'));
@@ -60,6 +60,9 @@ await page.goto(url+'/dashboard?dismissed');await new Promise(r=>setTimeout(r,18
 await page.goto(url+'?joinbeta&signedout&dismissed');await page.waitForFunction(()=>location.pathname==='/login');
 if(await page.$('dialog[open]'))throw Error('Unauthenticated join showed popup');
 await page.goto(url+'/dashboard?dismissed');await page.waitForSelector('dialog[open]');
+await page.keyboard.press('Escape');await page.waitForFunction(()=>!document.querySelector('dialog[open]'));
+await page.goto(url+'?joinbeta&dismissed&offline&dashboard-error');await page.waitForSelector('[role=alert]');
+await page.evaluate(()=>{window.fail=false;[...document.querySelectorAll('button')].find(b=>b.textContent==='Erneut versuchen').click()});await page.waitForSelector('dialog[open]');
 console.log('Shared-link checks passed: desktop explicit intent, permanent-dismissal override, URL cleanup, one-time consumption, login and reload persistence.');
 console.log('Browser checks passed: two-step links, no email, presentation/cooldown/dismissal, save failures/local close and load recovery, native exclusion, activation gate, onboarding/modal arbitration, mobile and desktop dark layout.');
 }finally{await browser.close();server.close()}
