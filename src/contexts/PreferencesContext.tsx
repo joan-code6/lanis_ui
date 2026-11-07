@@ -261,8 +261,9 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode; sync?: b
         localStorage.removeItem('lanis_timetable_view_mode');
       } catch (error) {
         if (controller.signal.aborted) return;
-        console.error('Failed to load account preferences:', error);
+        console.error('Failed to load or sync account preferences:', error);
         if (!canWriteAccountData(writeGeneration)) return;
+        setSyncError('Einstellungen konnten nicht synchronisiert werden. Lokale Änderungen bleiben gespeichert.');
         applyPreferences(localFallback);
         writeCache(localFallback, cached?.dirty ?? true, writeGeneration);
       } finally {
