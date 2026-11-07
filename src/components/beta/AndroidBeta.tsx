@@ -43,8 +43,8 @@ export default function AndroidBeta({ manual = false, explicitJoin = false, onCl
     if ((!manual && !explicitJoin && !eligible) || !state?.available) { setOpen(false); return; }
     if ((!explicitJoin && hasPendingBetaJoin()) || manual || open || locallyClosed.current || (!explicitJoin && !betaPrompt(state))) return;
     const timer = window.setInterval(() => {
-      const pwa = document.querySelector('pwa-install') as (HTMLElement & { isDialogHidden?: boolean }) | null;
-      if (pwa?.isDialogHidden === false || document.visibilityState !== 'visible' || document.documentElement.classList.contains('onboarding-active') || document.querySelector('[role="dialog"], [role="alertdialog"], dialog[open], [aria-modal="true"]')) return;
+      const pwa = document.querySelector('pwa-install') as (HTMLElement & { isDialogHidden?: boolean; isInstallAvailable?: boolean }) | null;
+      if ((pwa?.isInstallAvailable === true && pwa.isDialogHidden === false) || document.visibilityState !== 'visible' || document.documentElement.classList.contains('onboarding-active') || document.querySelector('[role="dialog"], [role="alertdialog"], dialog[open], [aria-modal="true"]')) return;
       setOpen(true);
     }, 1500);
     return () => window.clearInterval(timer);
