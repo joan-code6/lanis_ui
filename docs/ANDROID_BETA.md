@@ -47,3 +47,12 @@ focus return, availability gating and failed-load recovery. Screenshots go to `/
 
 The normal build → Cloudflare PR-preview pipeline is authorized. Production and
 backend deployments remain outside scope. Local checks are recorded in the PR.
+
+### Shared invitation link
+
+Share `https://lanis.arg-server.de/?joinbeta` to open the beta popup explicitly.
+The request survives login and onboarding in the same tab and is consumed when
+shown. It also works on desktop and after a previous automatic-invitation
+dismissal, without resetting that preference. Recruitment must still be enabled
+and its configuration must load successfully. Other URL parameters and the hash
+are preserved; `joinbeta` itself is removed to prevent repeated openings.

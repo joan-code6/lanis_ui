@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { DevicePhoneMobileIcon, ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '../../contexts/AuthContext';
 import { androidBetaAPI, AndroidBetaState } from '../../services/api';
-import { betaPrompt, isAndroidBrowser, googleGroupJoinUrl } from '../../utils/androidBeta';
+import { betaPrompt, isAndroidBrowser, googleGroupJoinUrl, hasPendingBetaJoin, consumeBetaJoin } from '../../utils/androidBeta';
 
 const GROUP_URL = 'https://groups.google.com/g/lanis-beta/about';
 const JOIN_URL = 'https://play.google.com/apps/testing/de.joancode.lanis';
@@ -12,6 +12,7 @@ export default function AndroidBeta({ manual = false }: { manual?: boolean }) {
   const [state, setState] = useState<AndroidBetaState | null>(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [explicitJoin] = useState(hasPendingBetaJoin);
   const [open, setOpen] = useState(false);
   const dialog = useRef<HTMLDialogElement>(null);
   const generation = useRef(0);
@@ -40,25 +41,26 @@ export default function AndroidBeta({ manual = false }: { manual?: boolean }) {
   }, [load, open]);
 
   useEffect(() => {
-    if ((!manual && !eligible) || !state?.available) { setOpen(false); return; }
-    if (manual || open || locallyClosed.current || !betaPrompt(state)) return;
+    if ((!manual && !explicitJoin && !eligible) || !state?.available) { setOpen(false); return; }
+    if (manual || open || locallyClosed.current || (!explicitJoin && !betaPrompt(state))) return;
     const timer = window.setInterval(() => {
       const pwa = document.querySelector('pwa-install') as (HTMLElement & { isDialogHidden?: boolean }) | null;
       if (pwa?.isDialogHidden === false || document.visibilityState !== 'visible' || document.documentElement.classList.contains('onboarding-active') || document.querySelector('[role="dialog"], [role="alertdialog"], dialog[open], [aria-modal="true"]')) return;
       setOpen(true);
     }, 1500);
     return () => window.clearInterval(timer);
-  }, [manual, eligible, state, open]);
+  }, [manual, explicitJoin, eligible, state, open]);
 
   useEffect(() => {
     const node = dialog.current;
     if (!open || !node) return;
     const previous = document.activeElement as HTMLElement | null;
     node.showModal();
+    if (explicitJoin) consumeBetaJoin();
     // Only recruitment cooldown is recorded, never group membership or Play enrollment.
-    if (token && !manual) void androidBetaAPI.change(token, 'presented').catch(() => setError('Die Erinnerung konnte nicht gespeichert werden. Bitte versuche es erneut.'));
+    if (token && !manual && !explicitJoin) void androidBetaAPI.change(token, 'presented').catch(() => setError('Die Erinnerung konnte nicht gespeichert werden. Bitte versuche es erneut.'));
     return () => { node.close(); previous?.focus(); };
-  }, [open, token, manual]);
+  }, [open, token, manual, explicitJoin]);
 
   function closeLocally() {
     locallyClosed.current = true;
@@ -68,7 +70,7 @@ export default function AndroidBeta({ manual = false }: { manual?: boolean }) {
   async function dismiss(action: 'dismiss') {
     if (!token || mutation.current) return;
     mutation.current = true; generation.current++; setBusy(true); setError('');
-    try { setState(await androidBetaAPI.change(token, action)); setOpen(false); }
+    try { setState(await androidBetaAPI.change(token, action)); locallyClosed.current = true; setOpen(false); }
     catch { setError('Die Erinnerung konnte nicht gespeichert werden. Bitte versuche es erneut.'); }
     finally { mutation.current = false; setBusy(false); }
   }

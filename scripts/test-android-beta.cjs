@@ -21,3 +21,21 @@ assert.equal(joinLink.origin, 'https://accounts.google.com');
 assert.equal(joinLink.pathname, '/AccountChooser');
 assert.equal(joinLink.searchParams.get('continue'), 'https://groups.google.com/g/lanis-beta/about');
 assert.equal(new URL(googleGroupJoinUrl('https://groups.google.com/g/other/about?hl=de')).searchParams.get('continue'), 'https://groups.google.com/g/other/about?hl=de');
+
+const storage = new Map();
+const sessionStorage = { getItem: key => storage.get(key) ?? null, setItem: (key, value) => storage.set(key, value), removeItem: key => storage.delete(key) };
+const compiled = ts.transpileModule(fs.readFileSync('src/utils/androidBeta.ts', 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText;
+function helpers(storage) { const exports = {}; vm.runInNewContext(compiled, { exports, sessionStorage: storage }); return exports; }
+const first = helpers(sessionStorage);
+assert.equal(first.hasPendingBetaJoin(), false);
+first.rememberBetaJoin();
+const reloaded = helpers(sessionStorage);
+assert.equal(reloaded.hasPendingBetaJoin(), true);
+reloaded.consumeBetaJoin();
+assert.equal(reloaded.hasPendingBetaJoin(), false);
+const blocked = helpers(undefined);
+blocked.rememberBetaJoin();
+assert.equal(blocked.hasPendingBetaJoin(), true);
+blocked.consumeBetaJoin();
+assert.equal(blocked.hasPendingBetaJoin(), false);
+console.log('Join intent persists across reloads and handles blocked storage');

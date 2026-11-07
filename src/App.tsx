@@ -1,3 +1,4 @@
+import BetaJoinEntry from './components/beta/BetaJoinEntry';
 import Analytics from './analytics/Analytics';
 import React from 'react';
 import BrowserPushRuntime from './components/BrowserPushRuntime';
@@ -84,7 +85,7 @@ const AppRoutes: React.FC = () => {
     <Router>
       <Analytics />
       <BrowserPushRuntime />
-      <Routes>
+      <BetaJoinEntry><Routes>
         <Route path="/" element={<LandingRoot />} />
         <Route path="/landing" element={<Navigate to="/" replace />} />
         <Route path="/status" element={<StatusPage />} />
@@ -163,7 +164,7 @@ const AppRoutes: React.FC = () => {
             </ProtectedRoute>
           }
         />
-      </Routes>
+      </Routes></BetaJoinEntry>
     </Router>
   );
 };
