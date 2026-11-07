@@ -1497,3 +1497,9 @@ export const agentsAPI = {
     return (await apiClient.post(`/agents/authorization/${encodeURIComponent(request)}`, { approve, scopes, name, mode }, { headers: { 'X-Session-Token': token } })).data;
   },
 };
+
+export type AndroidBetaState = { available: boolean; group_url: string; join_url: string; dismissed: boolean; prompt_after: number; invitation_due: boolean };
+export const androidBetaAPI = {
+  async get(token: string): Promise<AndroidBetaState> { return (await apiClient.get('/settings/android-beta', { headers: { 'X-Session-Token': token } })).data; },
+  async change(token: string, action: 'presented' | 'later' | 'dismiss'): Promise<AndroidBetaState> { return (await apiClient.post('/settings/android-beta', { action }, { headers: { 'X-Session-Token': token } })).data; },
+};

@@ -29,6 +29,10 @@ const PrivacyPolicy: React.FC = () => {
 
         <section className="space-y-12 text-[14px] leading-relaxed text-[#555]">
           <div>
+            <h2 className="text-base font-semibold text-[#111] mb-3">Freiwillige Android-Beta</h2>
+            <p>Für die freiwillige Android-Beta speichern wir bei deinem LANIS-Konto nur, ob du die Einladung dauerhaft ausgeblendet hast und bis wann eine Erinnerung pausiert. Bei Kontolöschung werden diese Einstellungen entfernt. LANIS erfasst dafür keine Google-E-Mail-Adresse und prüft weder Gruppenmitgliedschaft noch Testbeitritt oder Installation. Die Links öffnen Google Groups und Google Play; dort gelten die Bedingungen und Datenschutzhinweise von Google. Du trittst der Gruppe und anschließend dem geschlossenen Test selbst mit deinem Play-Store-Google-Konto bei.</p>
+          </div>
+          <div>
             <h2 className="text-base font-semibold text-[#111] mb-3">Das Wichtigste vor der Anmeldung</h2>
             <ul className="list-disc space-y-2 pl-5">
               <li>Lanis UI und das Standard-Backend sind ein privates, inoffizielles Angebot desselben Betreibers. Sie gehören nicht zum Schulportal Hessen oder zum Land Hessen.</li>

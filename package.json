@@ -31,7 +31,8 @@
     "to-ico": "^1.0.1",
     "typescript": "^5.2.2",
     "vite": "^7.3.6",
-    "wrangler": "4.151.1"
+    "wrangler": "4.151.1",
+    "esbuild": "^0.25.0"
   },
   "scripts": {
     "predev": "npm run images:optimize",
@@ -46,7 +47,9 @@
     "deploy": "wrangler deploy",
     "deploy:preview": "wrangler versions upload",
     "test:analytics": "node --experimental-vm-modules scripts/test-analytics.mjs",
-    "test:push": "node --test scripts/test-browser-push.cjs"
+    "test:push": "node --test scripts/test-browser-push.cjs",
+    "test:beta": "node scripts/test-android-beta.cjs",
+    "test:beta:browser": "node scripts/test-android-beta-browser.cjs"
   },
   "browserslist": {
     "production": [
