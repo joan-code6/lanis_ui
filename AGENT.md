@@ -1,1 +1,3 @@
 dont run build...
+
+Keep UI copy short: use direct labels and avoid explanatory paragraphs when the controls already explain the action.

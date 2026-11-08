@@ -355,7 +355,7 @@ const Messages: React.FC = () => {
 
 
   return (
-    <div className="h-[calc(100dvh-3.5rem)] md:h-screen flex overflow-hidden">
+    <div className="flex flex-1 min-h-0 overflow-hidden">
       <SEO
         title="Nachrichten"
         description="Lanis Nachrichten — Kommuniziere mit Lehrkräften und Mitschülern über das Schulportal Hessen."
@@ -363,8 +363,8 @@ const Messages: React.FC = () => {
         noindex
       />
       {/* Messages list - hidden on mobile when conversation is selected */}
-      <div className={`${selectedConversation ? 'hidden lg:flex' : 'flex'} w-full lg:w-80 xl:w-1/3 border-r border-surface-100 dark:border-surface-800 flex-col bg-white dark:bg-surface-900`}>
-        <div className="p-4 border-b border-surface-100 dark:border-surface-800">
+      <div className={`${selectedConversation ? 'hidden lg:flex' : 'flex'} min-h-0 w-full lg:w-80 xl:w-1/3 border-r border-surface-100 dark:border-surface-800 flex-col bg-white dark:bg-surface-900`}>
+        <div className="shrink-0 p-4 border-b border-surface-100 dark:border-surface-800">
           <div className="flex items-center justify-between mb-4">
             <h1 className="page-title page-title-compact">Nachrichten</h1>
             <button
@@ -461,10 +461,10 @@ const Messages: React.FC = () => {
       </div>
 
       {/* Conversation view - visible on mobile only when conversation selected */}
-      <div className={`${selectedConversation ? 'flex' : 'hidden lg:flex'} flex-1 flex-col min-w-0`}>
+      <div className={`${selectedConversation ? 'flex' : 'hidden lg:flex'} flex-1 flex-col min-h-0 min-w-0`}>
         {selectedConversation ? (
           <>
-            <div className="border-b border-surface-100 dark:border-surface-800 p-4 bg-white/80 dark:bg-surface-900/80 backdrop-blur-sm">
+            <div className="shrink-0 border-b border-surface-100 dark:border-surface-800 p-4 bg-white/80 dark:bg-surface-900/80 backdrop-blur-sm">
               <div className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-3 min-w-0">
                   <button
@@ -517,7 +517,7 @@ const Messages: React.FC = () => {
                 ))}
               </div>
 
-              <div className="border-t border-surface-100 dark:border-surface-800 p-4 bg-white/80 dark:bg-surface-900/80 backdrop-blur-sm">
+              <div className="shrink-0 border-t border-surface-100 dark:border-surface-800 p-4 bg-white/80 dark:bg-surface-900/80 backdrop-blur-sm">
                 <textarea
                   rows={3}
                   className="input text-sm resize-none mb-3"

@@ -1,3 +1,4 @@
+import { authStorage, flushAuthStorage } from '../platform/authStorage';
 import { clearResourceCache } from './resourceCache';
 import { CUSTOM_BACKEND_STORAGE_KEY, clearBackendScopedStorage, getApiBaseUrl } from './backendConfig';
 
@@ -246,7 +247,7 @@ export const canWriteAccountData = (generation: number): boolean => {
 export const beginAccountDataDeletion = (accessToken: string, refreshToken: string): number => {
   // Persist recovery identity before sending DELETE. Keep it through browser
   // cleanup so a crash or a failed confirmation write remains recoverable.
-  window.localStorage.setItem(ACCOUNT_DATA_DELETION_RECOVERY_KEY, JSON.stringify({ accessToken, refreshToken }));
+  authStorage.setItem(ACCOUNT_DATA_DELETION_RECOVERY_KEY, JSON.stringify({ accessToken, refreshToken }));
   const generation = captureAccountDataGeneration() + 1;
   window.localStorage.setItem(ACCOUNT_DATA_GENERATION_KEY, `${generation}:deleting:${Date.now() + DELETION_LEASE_MS}`);
   deletionInProgress = true;
@@ -293,7 +294,7 @@ export const finishAccountDataDeletion = (generation: number): void => {
       ACCOUNT_DATA_GENERATION_KEY,
       `${nextGeneration}:active`,
     );
-    window.localStorage.removeItem(ACCOUNT_DATA_DELETION_RECOVERY_KEY);
+    authStorage.removeItem(ACCOUNT_DATA_DELETION_RECOVERY_KEY);
   } catch {
     // Keep the in-memory state aligned when local storage is unavailable.
   }
@@ -308,7 +309,7 @@ export const completeAccountDataDeletion = (expectedGeneration: number): boolean
   deletionInProgress = false;
   try {
     window.localStorage.removeItem(ACCOUNT_DATA_DELETION_CONFIRMED_KEY);
-    window.localStorage.removeItem(ACCOUNT_DATA_DELETION_RECOVERY_KEY);
+    authStorage.removeItem(ACCOUNT_DATA_DELETION_RECOVERY_KEY);
     window.localStorage.setItem(
       ACCOUNT_DATA_GENERATION_KEY,
       `${generation}:login`,
@@ -326,7 +327,15 @@ export const purgeDeletedAccountBrowserData = async (): Promise<boolean> => {
   // Keep recovery identity and coordination until every cleanup step succeeds.
   let storageClean = false;
   try {
-    clearBackendScopedStorage();
+    const recovery = authStorage.getItem(ACCOUNT_DATA_DELETION_RECOVERY_KEY);
+    try {
+      await clearBackendScopedStorage(true);
+    } finally {
+      if (recovery) {
+        authStorage.setItem(ACCOUNT_DATA_DELETION_RECOVERY_KEY, recovery);
+        await flushAuthStorage();
+      }
+    }
     const preserved = new Set([
       CUSTOM_BACKEND_STORAGE_KEY, ACCOUNT_DATA_GENERATION_KEY,
       ACCOUNT_DATA_DELETION_EPOCH_KEY, ACCOUNT_DATA_DELETION_CONFIRMED_KEY,
@@ -368,8 +377,8 @@ export const purgeDeletedAccountBrowserData = async (): Promise<boolean> => {
 const personalCacheOwner = (): string | null => {
   try {
     if (window.location.pathname === '/demo' || window.location.pathname.startsWith('/demo/')) return null;
-    if (!localStorage.getItem('auth_access_token')) return null;
-    const user = JSON.parse(localStorage.getItem('auth_user') || 'null');
+    if (!authStorage.getItem('auth_access_token')) return null;
+    const user = JSON.parse(authStorage.getItem('auth_user') || 'null');
     if (!user?.school_id || !user?.username) return null;
     return JSON.stringify([getApiBaseUrl(), user.school_id, user.username]);
   } catch { return null; }
@@ -414,7 +423,9 @@ export const clearSignedOutAccountData = (): void => {
   accountTokenGenerations.clear();
   publishLogout();
   try {
-    clearBackendScopedStorage();
+    void clearBackendScopedStorage(deleting).catch(error => {
+      console.warn('Native session cleanup failed:', error);
+    });
   } catch (error) {
     console.warn('Browser storage unavailable during local sign-out:', error);
   }
@@ -453,6 +464,6 @@ export const rememberAccountToken = (token: string): void => {
   accountTokenGenerations.set(token, captureAccountDataGeneration());
 };
 export const canUseAccountToken = (token: string): boolean => {
-  if (token === localStorage.getItem('auth_access_token')) rememberAccountToken(token);
+  if (token === authStorage.getItem('auth_access_token')) rememberAccountToken(token);
   return accountTokenGenerations.get(token) === captureAccountDataGeneration();
 };
