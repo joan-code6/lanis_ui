@@ -154,19 +154,46 @@ object Widgets {
             }
             else -> {
                 val selected = if (changes) lessons.filter { it.date >= today && (it.cancelled || it.changed) }
-                    else lessons.filter { it.date == today }
+                    else run {
+                        val todaysLessons = lessons.filter { it.date == today }
+                        val lastEnd = todaysLessons.mapNotNull { it.endInstant() }.maxOrNull()
+                        val date = if (todaysLessons.isNotEmpty() && (lastEnd == null || now.isBefore(lastEnd))) today
+                            else lessons.firstOrNull { it.date > today }?.date ?: today.plusDays(1)
+                        lessons.filter { it.date == date }
+                    }
                 val notices = if (changes) WidgetModel.notices(data, today) else emptyList()
                 val count = selected.size + notices.size
                 views.setTextViewText(R.id.widget_headline, if (changes) (if (count == 0) "Keine Änderungen" else "$count ${if (count == 1) "Änderung" else "Änderungen"}")
-                    else today.format(DateTimeFormatter.ofPattern("EEEE, d. MMM", Locale.GERMAN)))
-                views.setTextViewText(R.id.widget_detail, if (count == 0) (if (changes) "Im gespeicherten Plan liegen keine Änderungen vor." else "Heute sind keine Stunden eingetragen.") else if (changes) "In deinem persönlichen Stundenplan" else "${selected.size} Stunden · für dich geplant")
+                    else (selected.firstOrNull()?.date ?: today.plusDays(1)).format(DateTimeFormatter.ofPattern("EEEE, d. MMM", Locale.GERMAN)))
+                views.setTextViewText(R.id.widget_detail, if (count == 0) (if (changes) "Im gespeicherten Plan liegen keine Änderungen vor." else "Keine weiteren Stunden im gespeicherten Plan.") else if (changes) "In deinem persönlichen Stundenplan" else "${selected.size} Stunden · für dich geplant")
                 val height = manager.getAppWidgetOptions(id).getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 180)
                 val maxRows = ((height - 130) / 44).coerceIn(1, 6)
                 val rows = selected.map { Pair(it.subject + if (it.cancelled) " · entfällt" else "", detail(it, today)) } + notices
-                for ((subject, description) in rows.take(maxRows)) {
+                val firstStart = selected.mapNotNull { it.startInstant() }.minOrNull()
+                val lastEnd = selected.mapNotNull { it.endInstant() }.maxOrNull()
+                val showTime = !changes && selected.firstOrNull()?.date == today && firstStart != null && lastEnd != null && !now.isBefore(firstStart) && now.isBefore(lastEnd)
+                for ((index, entry) in rows.take(maxRows).withIndex()) {
+                    val (subject, description) = entry
                     val row = RemoteViews(context.packageName, R.layout.widget_lesson)
                     row.setTextViewText(R.id.lesson_subject, subject.take(80)); row.setTextColor(R.id.lesson_subject, foreground)
                     row.setTextViewText(R.id.lesson_detail, description.take(130)); row.setTextColor(R.id.lesson_detail, muted)
+                    if (showTime) {
+                        val lesson = selected[index]
+                        val start = lesson.startInstant()
+                        val end = lesson.endInstant()
+                        val followingStart = selected.getOrNull(index + 1)?.startInstant()
+                        val inLesson = start != null && end != null && !now.isBefore(start) && now.isBefore(end)
+                        val inBreak = end != null && followingStart != null && !now.isBefore(end) && now.isBefore(followingStart)
+                        if (inLesson || inBreak) {
+                            val fraction = if (inBreak) 1f else (Duration.between(start, now).toMillis().toFloat() / Duration.between(start, end).toMillis()).coerceIn(0f, 1f)
+                            val bitmap = android.graphics.Bitmap.createBitmap(600, 88, android.graphics.Bitmap.Config.ARGB_8888)
+                            val paint = android.graphics.Paint().apply { color = accent; strokeWidth = 3f }
+                            val y = (fraction * 84f + 2f)
+                            android.graphics.Canvas(bitmap).drawLine(0f, y, 600f, y, paint)
+                            row.setImageViewBitmap(R.id.lesson_time_line, bitmap)
+                            row.setViewVisibility(R.id.lesson_time_line, View.VISIBLE)
+                        }
+                    }
                     views.addView(R.id.widget_rows, row)
                 }
                 if (rows.size > maxRows) views.setTextViewText(R.id.widget_updated, "$age · +${rows.size - maxRows} weitere in LANIS${if (sourceError) " · Änderungen können fehlen" else ""}")
@@ -210,7 +237,7 @@ class WidgetTickWorker(context: Context, params: WorkerParameters) : Worker(cont
             if (state.optJSONObject("session")?.optString("auth_refresh_token").isNullOrEmpty()) return
             val now = Instant.now()
             val midnight = now.atZone(WidgetModel.zone).toLocalDate().plusDays(1).atStartOfDay(WidgetModel.zone).toInstant()
-            val next = (WidgetModel.lessons(state.optJSONObject("timetable")).flatMap { listOfNotNull(it.startInstant(), it.endInstant()) } + midnight)
+            val next = (WidgetModel.lessons(state.optJSONObject("timetable")).flatMap { listOfNotNull(it.startInstant(), it.endInstant()) } + midnight + now.plusSeconds(60))
                 .filter { it.isAfter(now.plusSeconds(10)) }.minOrNull() ?: midnight
             val request = OneTimeWorkRequestBuilder<WidgetTickWorker>().setInitialDelay(Duration.between(now, next).seconds + 2, TimeUnit.SECONDS).build()
             WorkManager.getInstance(context).enqueueUniqueWork("lanis-widget-tick", ExistingWorkPolicy.REPLACE, request)
