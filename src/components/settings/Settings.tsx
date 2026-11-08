@@ -658,7 +658,7 @@ const Settings: React.FC = () => {
   const requestedSection = location.pathname.slice(settingsRoot.length).split('/').filter(Boolean)[0];
   const sectionAliases: Record<string, SettingsSection> = {
     dashboard: 'notifications',
-    homework: 'timetable',
+    homework: 'appearance',
     vertretungsplan: 'timetable',
     sidebar: 'navigation',
     agents: 'connections',
@@ -1102,6 +1102,20 @@ const Settings: React.FC = () => {
       <div className="space-y-6">
         {section === 'appearance' && (
           <>
+        <section className="card">
+        <fieldset>
+          <legend className="label">Erledigte Hausaufgaben in „Mein Unterricht“</legend>
+          <label className="mt-3 flex cursor-pointer items-center gap-3">
+            <input
+              type="checkbox"
+              className="h-4 w-4 rounded border-surface-300 text-primary-600 focus:ring-primary-500"
+              checked={preferences.homework.hide_completed_in_overview}
+              onChange={event => void updatePreferences({ homework: { hide_completed_in_overview: event.target.checked } })}
+            />
+            <span className="text-sm text-surface-700 dark:text-surface-300">Erledigte Hausaufgaben ausblenden</span>
+          </label>
+        </fieldset>
+        </section>
         {/* Display mode */}
         <div className="card">
           <h3 className="item-title">Design</h3>
