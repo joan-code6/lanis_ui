@@ -33,7 +33,7 @@ test('revocation, validation errors and alternate plans never use cached persona
 import { normalizeAndroidTabs } from '../src/platform/androidNavigation';
 
 test('saved Android shortcuts recover from invalid or old preferences', () => {
-  assert.deepEqual(normalizeAndroidTabs(null), ['dashboard', 'timetable', 'messages']);
+  assert.deepEqual(normalizeAndroidTabs(null), ['dashboard', 'timetable', 'messages', 'courses']);
   assert.deepEqual(normalizeAndroidTabs(['calendar', 'calendar', 'unknown', 3]), ['calendar']);
   assert.deepEqual(normalizeAndroidTabs(['settings', 'courses', 'search', 'messages']), ['settings', 'courses', 'search', 'messages']);
   assert.deepEqual(normalizeAndroidTabs([]), []);

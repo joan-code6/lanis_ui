@@ -2,7 +2,7 @@ import { useSyncExternalStore } from 'react';
 
 const KEY = 'lanis_android_navigation';
 const EVENT = 'lanis:android-navigation';
-export const DEFAULT_ANDROID_TABS = ['dashboard', 'timetable', 'messages'];
+export const DEFAULT_ANDROID_TABS = ['dashboard', 'timetable', 'messages', 'courses'];
 export const ANDROID_TAB_IDS = ['dashboard', 'timetable', 'messages', 'courses', 'calendar', 'study-groups', 'dateispeicher', 'dateiverteilung', 'videokonferenz', 'vertretungsplan', 'dsb', 'wahlen', 'profile', 'settings', 'search'];
 export function normalizeAndroidTabs(value: unknown): string[] {
   return Array.isArray(value)
