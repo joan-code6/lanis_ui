@@ -118,21 +118,30 @@ export default function AndroidSettings({ notificationsOnly = false }: { notific
     {error && <div role="alert" className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-200">{error}<button className="ml-2 underline" disabled={busy} onClick={() => void run(load)}>Erneut versuchen</button></div>}
     {message && <p role="status" className="flex items-center gap-2 rounded-2xl bg-emerald-50 p-4 text-sm text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200"><CheckCircleIcon className="h-5 w-5 shrink-0" />{message}</p>}
     {nativeAvailable && !notificationsOnly && <AppLockSettings />}
-    {nativeAvailable && !notificationsOnly && status?.glyphSupported && <section className="card">
-      <h2 className="section-title">Glyph-Fortschritt</h2>
+    {nativeAvailable && !notificationsOnly && status?.lessonProgressSupported && <section className="card">
+      <h2 className="section-title">Unterrichtsfortschritt</h2>
       <div className="mt-4 flex items-center justify-between gap-4">
-        <div><p className="text-sm font-medium">Unterricht anzeigen</p><p className="mt-1 text-sm text-surface-500">Verbleibende Unterrichtszeit auf den Glyph-Leuchten.</p></div>
-        <SettingsSwitch label="Unterricht über Glyph anzeigen" checked={status.glyphLessonsEnabled} disabled={busy} onChange={() => void run(async () => {
+        <div><p className="text-sm font-medium">Unterricht anzeigen</p><p className="mt-1 text-sm text-surface-500">Verbleibende Unterrichtszeit als Live-Update.</p></div>
+        <SettingsSwitch label="Unterricht als Live-Update anzeigen" checked={status.glyphLessonsEnabled} disabled={busy} onChange={() => void run(async () => {
           setStatus(await toggleLessonProgress(LanisNative));
         })} />
       </div>
       {status.glyphLessonsEnabled && <div className="mt-4 space-y-4 border-t border-surface-200 pt-4 dark:border-surface-700">
         <div className="flex items-center justify-between gap-4"><div><p className="text-sm font-medium">Pausen anzeigen</p><p className="mt-1 text-sm text-surface-500">Auch Pausen und Freistunden zwischen zwei Unterrichtsstunden anzeigen.</p></div>
-          <SettingsSwitch label="Pausen über Glyph anzeigen" checked={status.glyphBreaksEnabled} disabled={busy} onChange={() => void run(async () => { setStatus(await LanisNative.setLessonProgress({ enabled: true, breaks: !status.glyphBreaksEnabled })); })} />
+          <SettingsSwitch label="Pausen als Live-Update anzeigen" checked={status.glyphBreaksEnabled} disabled={busy} onChange={() => void run(async () => { setStatus(await LanisNative.setLessonProgress({ enabled: true, breaks: !status.glyphBreaksEnabled })); })} />
         </div>
         {!status.notificationsAllowed && <button className="btn btn-secondary" disabled={busy} onClick={() => void run(async () => { await LanisNative.openNotificationSettings(); })}>Benachrichtigungen in Android erlauben</button>}
         {status.notificationsAllowed && !status.glyphPromotionAllowed && <button className="btn btn-secondary" disabled={busy} onClick={() => void run(async () => { await LanisNative.openProgressSettings(); })}>Live-Updates in Android erlauben</button>}
-        <p className="text-xs text-surface-500">Aktiviere Glyph Progress in den Nothing-Einstellungen. Android kann Aktualisierungen im Energiesparmodus verzögern.</p>
+        <div className="flex items-center justify-between gap-4"><p className="text-sm font-medium">Nur kurz vor Ende anzeigen</p>
+          <SettingsSwitch label="Live-Update erst vor Ende anzeigen" checked={status.glyphBeforeEndMinutes > 0} disabled={busy} onChange={() => void run(async () => { setStatus(await LanisNative.setLessonProgress({ enabled: true, breaks: status.glyphBreaksEnabled, beforeEndMinutes: status.glyphBeforeEndMinutes > 0 ? 0 : 5 })); })} />
+        </div>
+        {status.glyphBeforeEndMinutes > 0 && <label className="label block">Minuten vor Ende
+          <select className="input mt-2" disabled={busy} value={status.glyphBeforeEndMinutes} onChange={event => { const minutes = Number(event.target.value); void run(async () => { setStatus(await LanisNative.setLessonProgress({ enabled: true, breaks: status.glyphBreaksEnabled, beforeEndMinutes: minutes })); }); }}>
+            {Array.from({ length: 60 }, (_, i) => i + 1).map(minutes => <option key={minutes} value={minutes}>{minutes} {minutes === 1 ? 'Minute' : 'Minuten'}</option>)}
+          </select>
+        </label>}
+        <p className="text-xs text-surface-500">Android kann Aktualisierungen im Energiesparmodus verzögern.</p>
+        {status.glyphSupported && <p className="text-xs text-surface-500">Glyphs: Nothing-Einstellungen → Glyph Progress.</p>}
       </div>}
     </section>}
 

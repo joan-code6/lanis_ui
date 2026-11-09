@@ -73,9 +73,11 @@ class LanisNativePlugin : Plugin() {
             put("notificationsEnabled", state.optBoolean("notificationsEnabled"))
             put("pushConfigured", BuildConfig.PUSH_CONFIGURED)
             put("widgetPinSupported", AppWidgetManager.getInstance(context).isRequestPinAppWidgetSupported)
-            put("glyphSupported", LessonProgress.supported())
+            put("lessonProgressSupported", LessonProgress.supported())
+            put("glyphSupported", LessonProgress.glyphSupported())
             put("glyphLessonsEnabled", state.optBoolean("glyphLessonsEnabled"))
             put("glyphBreaksEnabled", state.optBoolean("glyphBreaksEnabled"))
+            put("glyphBeforeEndMinutes", state.optInt("glyphBeforeEndMinutes", 0).coerceIn(0, 60))
             put("glyphPromotionAllowed", android.os.Build.VERSION.SDK_INT >= 36 && context.getSystemService(NotificationManager::class.java).canPostPromotedNotifications())
             put("version", BuildConfig.VERSION_NAME)
         }
@@ -139,10 +141,13 @@ class LanisNativePlugin : Plugin() {
         }
     }
     @PluginMethod fun setLessonProgress(call: PluginCall) = task(call) {
-        if (!LessonProgress.supported()) return@task call.reject("Dieses Gerät unterstützt Glyph-Fortschritt nicht.")
+        if (!LessonProgress.supported()) return@task call.reject("Dieses Gerät unterstützt Live-Updates nicht.")
         synchronized(NativeStore.lock) {
             val state = NativeStore.read(context)
             if (state.optJSONObject("session")?.optString("auth_refresh_token").isNullOrEmpty()) return@task call.reject("Bitte melde dich erneut an.")
+            val minutes = call.getInt("beforeEndMinutes")
+            if (minutes != null && minutes !in 0..60) return@task call.reject("Wähle 1 bis 60 Minuten.")
+            if (minutes != null) state.put("glyphBeforeEndMinutes", minutes)
             state.put("glyphLessonsEnabled", call.getBoolean("enabled") ?: false)
                 .put("glyphBreaksEnabled", call.getBoolean("breaks") ?: false)
             NativeStore.write(context, state)

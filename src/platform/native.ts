@@ -6,9 +6,11 @@ export const isAndroid = Capacitor.getPlatform() === 'android';
 export const androidPresentation = isAndroid || (import.meta.env.DEV && new URLSearchParams(location.search).has('android-preview'));
 
 export interface DeviceStatus {
+  lessonProgressSupported: boolean;
   glyphSupported: boolean;
   glyphLessonsEnabled: boolean;
   glyphBreaksEnabled: boolean;
+  glyphBeforeEndMinutes: number;
   glyphPromotionAllowed: boolean;
   signedIn: boolean;
   appLockEnabled: boolean;
@@ -25,7 +27,7 @@ export type WidgetKind = 'next' | 'today' | 'changes';
 export interface NativeSession { [key: string]: string }
 
 interface LanisNativePlugin {
-  setLessonProgress(options: { enabled: boolean; breaks: boolean }): Promise<DeviceStatus>;
+  setLessonProgress(options: { enabled: boolean; breaks: boolean; beforeEndMinutes?: number }): Promise<DeviceStatus>;
   openProgressSettings(): Promise<void>;
   setAppLock(options: { enabled: boolean }): Promise<DeviceStatus>;
   openFile(options: { uri: string; mimeType: string }): Promise<void>;

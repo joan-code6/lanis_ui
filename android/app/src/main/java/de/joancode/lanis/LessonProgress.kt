@@ -14,7 +14,9 @@ object LessonProgress {
     private const val CHANNEL = "lesson-progress"
     private const val WORK = "lanis-lesson-progress"
     @androidx.annotation.ChecksSdkIntAtLeast(api = 36)
-    fun supported() = Build.VERSION.SDK_INT >= 36 && Build.MANUFACTURER.equals("Nothing", true) &&
+    fun supported() = supportsLiveUpdates(Build.VERSION.SDK_INT)
+    fun supportsLiveUpdates(sdk: Int) = sdk >= 36
+    fun glyphSupported() = supported() && Build.MANUFACTURER.equals("Nothing", true) &&
         Build.MODEL in setOf("A065", "Phone (2)")
 
     data class Window(val start: Instant, val end: Instant, val title: String, val isBreak: Boolean)
@@ -31,6 +33,12 @@ object LessonProgress {
         val next = windows.firstOrNull { it.start.isAfter(now) } ?: return null
         return Window(previous.end, next.start, "Pause", true)
     }
+    // The progress bar spans the visible countdown window, clamped to the actual interval.
+    fun visibleWindow(window: Window?, now: Instant, minutes: Int): Window? {
+        if (window == null || now.isBefore(window.start) || !now.isBefore(window.end)) return null
+        val start = if (minutes > 0) maxOf(window.start, window.end.minusSeconds(minutes.coerceAtMost(60) * 60L)) else window.start
+        return if (now.isBefore(start)) null else window.copy(start = start)
+    }
     fun stop(context: Context) {
         context.getSystemService(NotificationManager::class.java).cancel(ID)
         WorkManager.getInstance(context).cancelUniqueWork(WORK)
@@ -45,7 +53,9 @@ object LessonProgress {
             }
             val manager = context.getSystemService(NotificationManager::class.java)
             val now = Instant.now()
-            val active = current(WidgetModel.lessons(state.optJSONObject("timetable")), now, state.optBoolean("glyphBreaksEnabled"))
+            val interval = current(WidgetModel.lessons(state.optJSONObject("timetable")), now, state.optBoolean("glyphBreaksEnabled"))
+            val minutes = state.optInt("glyphBeforeEndMinutes", 0).coerceIn(0, 60)
+            val active = visibleWindow(interval, now, minutes)
             if (active == null || !manager.areNotificationsEnabled() || !manager.canPostPromotedNotifications()) manager.cancel(ID)
             else {
                 manager.createNotificationChannel(NotificationChannel(CHANNEL, "Unterrichtsfortschritt", NotificationManager.IMPORTANCE_LOW))
@@ -67,8 +77,10 @@ object LessonProgress {
             }
             val nextStart = WidgetModel.lessons(state.optJSONObject("timetable")).filter { !it.cancelled }
                 .mapNotNull { it.startInstant() }.filter { it.isAfter(now) }.minOrNull()
+            val upcomingWindow = interval?.let { maxOf(it.start, it.end.minusSeconds(minutes * 60L)) }?.takeIf { it.isAfter(now) }
+            val nextWake = listOfNotNull(nextStart, upcomingWindow).minOrNull()
             val delay = if (active != null) minOf(60L, Duration.between(now, active.end).seconds.coerceAtLeast(1))
-                else nextStart?.let { Duration.between(now, it).seconds.coerceIn(1, 900) } ?: 900L
+                else nextWake?.let { Duration.between(now, it).seconds.coerceIn(1, 900) } ?: 900L
             val request = OneTimeWorkRequestBuilder<LessonProgressWorker>().setInitialDelay(delay, TimeUnit.SECONDS).build()
             WorkManager.getInstance(context).enqueueUniqueWork(WORK, ExistingWorkPolicy.REPLACE, request)
         }
