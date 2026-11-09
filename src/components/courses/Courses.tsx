@@ -799,12 +799,12 @@ const Courses: React.FC = () => {
                   )}
                   
                   {course.homework && (!course.homework_done || !hideCompletedHomework) && (
-                    <div className="mt-3 rounded border border-secondary-200 bg-secondary-50/40 p-2 transition-colors dark:border-secondary-800 dark:bg-secondary-950/20">
-                      <div className="mb-1 flex items-center gap-1 text-xs font-medium text-secondary-700 dark:text-secondary-300">
+                    <div className={course.homework_done ? 'mt-3 rounded border border-green-200 bg-green-50/40 p-2 transition-colors dark:border-green-800 dark:bg-green-950/20' : 'mt-3 rounded border border-secondary-200 bg-secondary-50/40 p-2 transition-colors dark:border-secondary-800 dark:bg-secondary-950/20'}>
+                      <div className={course.homework_done ? 'mb-1 flex items-center gap-1 text-xs font-medium text-green-700 dark:text-green-300' : 'mb-1 flex items-center gap-1 text-xs font-medium text-secondary-700 dark:text-secondary-300'}>
                         {course.homework_done && <CheckCircleIcon className="h-3.5 w-3.5" />}
                         Hausaufgaben{course.homework_done ? ' · Erledigt' : ''}:
                       </div>
-                      <div className="text-sm text-secondary-800 dark:text-secondary-200">{course.homework?.trim()}</div>
+                      <div className={course.homework_done ? 'text-sm text-green-800 dark:text-green-200' : 'text-sm text-secondary-800 dark:text-secondary-200'}>{course.homework?.trim()}</div>
                     </div>
                   )}
 
@@ -965,11 +965,11 @@ const Courses: React.FC = () => {
 
                       {/* Homework Section */}
                       {entry.homework && (
-                        <div className="mb-4 rounded-lg border-l-4 border-secondary-400 bg-secondary-50/60 p-4 dark:border-secondary-500 dark:bg-secondary-950/25">
+                        <div className={entry.homework_done ? 'mb-4 rounded-lg border-l-4 border-green-400 bg-green-50/60 p-4 dark:border-green-500 dark:bg-green-950/25' : 'mb-4 rounded-lg border-l-4 border-secondary-400 bg-secondary-50/60 p-4 dark:border-secondary-500 dark:bg-secondary-950/25'}>
                           <div className="flex items-start justify-between mb-2">
                             <div className="flex items-center gap-2">
-                              <ClockIcon className="h-5 w-5 text-secondary-700 dark:text-secondary-300" />
-                              <span className="text-sm font-semibold text-secondary-900 dark:text-secondary-100">Hausaufgaben</span>
+                              <ClockIcon className={entry.homework_done ? 'h-5 w-5 text-green-700 dark:text-green-300' : 'h-5 w-5 text-secondary-700 dark:text-secondary-300'} />
+                              <span className={entry.homework_done ? 'text-sm font-semibold text-green-900 dark:text-green-100' : 'text-sm font-semibold text-secondary-900 dark:text-secondary-100'}>Hausaufgaben</span>
                             </div>
                             <button
                               disabled={isUpdating}
@@ -988,7 +988,7 @@ const Courses: React.FC = () => {
                               {entry.homework_done ? 'Erledigt' : 'Erledigt?'}
                             </button>
                           </div>
-                          <div className="whitespace-pre-wrap text-sm leading-relaxed text-secondary-900 dark:text-secondary-100">{entry.homework?.trim()}</div>
+                          <div className={entry.homework_done ? 'whitespace-pre-wrap text-sm leading-relaxed text-green-900 dark:text-green-100' : 'whitespace-pre-wrap text-sm leading-relaxed text-secondary-900 dark:text-secondary-100'}>{entry.homework?.trim()}</div>
                         </div>
                       )}
 
@@ -1095,10 +1095,10 @@ const Courses: React.FC = () => {
                           )}
 
                           {entry.homework && (
-                            <div className="mb-3 rounded border-l-4 border-secondary-400 bg-secondary-50/60 p-3 dark:border-secondary-500 dark:bg-secondary-950/25">
+                            <div className={entry.homework_done ? 'mb-3 rounded border-l-4 border-green-400 bg-green-50/60 p-3 dark:border-green-500 dark:bg-green-950/25' : 'mb-3 rounded border-l-4 border-secondary-400 bg-secondary-50/60 p-3 dark:border-secondary-500 dark:bg-secondary-950/25'}>
                               <div className="flex items-center gap-2 mb-1">
-                                <ClockIcon className="h-4 w-4 text-secondary-700 dark:text-secondary-300" />
-                                <span className="text-xs font-semibold text-secondary-900 dark:text-secondary-100">Hausaufgaben</span>
+                                <ClockIcon className={entry.homework_done ? 'h-4 w-4 text-green-700 dark:text-green-300' : 'h-4 w-4 text-secondary-700 dark:text-secondary-300'} />
+                                <span className={entry.homework_done ? 'text-xs font-semibold text-green-900 dark:text-green-100' : 'text-xs font-semibold text-secondary-900 dark:text-secondary-100'}>Hausaufgaben</span>
                                 <button
                                   disabled={isUpdating}
                                   onClick={(e) => {
@@ -1116,7 +1116,7 @@ const Courses: React.FC = () => {
                                   )} />
                                 </button>
                               </div>
-                              <div className="whitespace-pre-wrap text-xs text-secondary-900 dark:text-secondary-100">{entry.homework?.trim()}</div>
+                              <div className={entry.homework_done ? 'whitespace-pre-wrap text-xs text-green-900 dark:text-green-100' : 'whitespace-pre-wrap text-xs text-secondary-900 dark:text-secondary-100'}>{entry.homework?.trim()}</div>
                             </div>
                           )}
                           

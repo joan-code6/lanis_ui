@@ -69,6 +69,22 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
   const isMessagesPage = location.pathname.replace(/\/+$/, '') === `${basePath}/messages`;
 
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
+  const [isSidebarClosing, setIsSidebarClosing] = React.useState(false);
+  const dismissSidebar = () => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      setIsSidebarOpen(false);
+    } else {
+      setIsSidebarClosing(true);
+    }
+  };
+  React.useEffect(() => {
+    if (!isSidebarClosing) return;
+    const timer = window.setTimeout(() => {
+      setIsSidebarOpen(false);
+      setIsSidebarClosing(false);
+    }, 160);
+    return () => window.clearTimeout(timer);
+  }, [isSidebarClosing]);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = React.useState(() => (
     window.localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === 'true'
   ));
@@ -246,16 +262,16 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
       {isDemo && <DemoBar />}
       {isSidebarOpen && (
         <div id="mobile-menu" ref={menuRef} role="dialog" aria-modal="true" aria-label="Menü" tabIndex={-1} className={'fixed inset-x-0 bottom-0 flex z-40 md:hidden ' + (isDemo ? 'top-10' : 'inset-0')}>
-          <div className={'fixed inset-x-0 bottom-0 bg-surface-900/40 backdrop-blur-sm ' + (isDemo ? 'top-10' : 'inset-0')} onClick={() => setIsSidebarOpen(false)} />
-          <div className="relative flex flex-1 flex-col max-w-xs w-full bg-white dark:bg-surface-900 shadow-soft-lg animate-drawer-in">
-            <SidebarContent navigation={navigation} showCloseButton />
+          <div className={'fixed inset-x-0 bottom-0 bg-surface-900/40 backdrop-blur-sm ' + (isSidebarClosing ? 'animate-sidebar-backdrop-out ' : '') + (isDemo ? 'top-10' : 'inset-0')} onClick={dismissSidebar} />
+          <div className={`relative flex flex-1 flex-col max-w-xs w-full bg-white dark:bg-surface-900 shadow-soft-lg ${isSidebarClosing ? 'animate-sidebar-drawer-out' : 'animate-drawer-in'}`}>
+            {renderSidebarContent({ navigation, showCloseButton: true })}
           </div>
         </div>
       )}
 
-      <div className={'hidden md:flex md:flex-col md:fixed transition-[width] duration-300 ease-out ' + (isSidebarCollapsed ? 'md:w-[60px]' : 'md:w-64') + ' ' + (isDemo ? 'md:top-10 md:bottom-0' : 'md:inset-y-0')}>
+      <div data-sidebar-collapsed={isSidebarCollapsed} className={'desktop-sidebar hidden md:flex md:flex-col md:fixed transition-[width] duration-300 ease-out ' + (isSidebarCollapsed ? 'md:w-[60px]' : 'md:w-64') + ' ' + (isDemo ? 'md:top-10 md:bottom-0' : 'md:inset-y-0')}>
         <div className="flex-1 flex flex-col min-h-0 bg-white dark:bg-surface-900 border-r border-surface-100 dark:border-surface-800">
-          <SidebarContent navigation={navigation} isCollapsed={isSidebarCollapsed} canCollapse />
+          {renderSidebarContent({ navigation, isCollapsed: isSidebarCollapsed, canCollapse: true })}
         </div>
       </div>
 
@@ -266,7 +282,7 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
           aria-label="Menü öffnen"
           aria-expanded={isSidebarOpen}
           aria-controls="mobile-menu"
-          onClick={() => setIsSidebarOpen(true)}
+          onClick={() => { setIsSidebarClosing(false); setIsSidebarOpen(true); }}
         >
           <Bars3Icon className="h-5 w-5" />
         </button>
@@ -287,7 +303,7 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
           <MagnifyingGlassIcon className="h-5 w-5" />
         </button>
       </div>
-      <main ref={mainRef} className={'flex-1 min-h-0 min-w-0 focus:outline-none transition-[margin] duration-300 ease-out ' + (isMessagesPage ? 'flex flex-col overflow-hidden ' : 'overflow-y-auto ') + (isSidebarCollapsed ? 'md:ml-[60px]' : 'md:ml-64')}>
+      <main ref={mainRef} className={'layout-main flex-1 min-h-0 min-w-0 focus:outline-none transition-[margin] duration-300 ease-out ' + (isMessagesPage ? 'flex flex-col overflow-hidden ' : 'overflow-y-auto ') + (isSidebarCollapsed ? 'md:ml-[60px]' : 'md:ml-64')}>
         <BasePathProvider basePath={basePath}>
           <div className={'animate-fade-in' + (isMessagesPage ? ' flex flex-1 min-h-0 flex-col' : '')}>
             <AndroidConnectivity />
@@ -337,7 +353,8 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
     </PwaInstallProvider>
   );
 
-  function SidebarContent({
+  // Render as a helper so Layout updates preserve the sidebar DOM and CSS transitions.
+  function renderSidebarContent({
     navigation,
     isCollapsed = false,
     canCollapse = false,
@@ -350,10 +367,10 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
   }) {
     return (
       <>
-        <div className={`flex items-center flex-shrink-0 py-5 ${isCollapsed ? 'justify-center px-0' : 'justify-between px-5'}`}>
+        <div className={`sidebar-header flex items-center flex-shrink-0 py-5 ${isCollapsed ? 'justify-center px-0' : 'justify-between px-5'}`}>
           <Link
             to={`${basePath}/dashboard`}
-            className={`group relative flex items-center rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/50 ${isCollapsed ? 'h-10 w-10 justify-center' : 'gap-3'}`}
+            className={`group relative flex items-center rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/50 ${isCollapsed ? 'h-10 w-10 justify-center' : 'gap-3'}`}
             aria-label={isCollapsed ? 'Seitenleiste ausklappen' : 'Zum Dashboard'}
             title={isCollapsed ? 'Seitenleiste ausklappen' : undefined}
             onClick={(event) => {
@@ -390,7 +407,7 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
             <button
               type="button"
               onClick={() => setIsSidebarCollapsed(true)}
-              className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg text-surface-400 transition-colors hover:bg-surface-100 hover:text-surface-700 focus:outline-none focus:ring-2 focus:ring-primary-500/50 dark:text-surface-500 dark:hover:bg-surface-800 dark:hover:text-surface-200"
+              className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg text-surface-400 transition-colors hover:bg-surface-100 hover:text-surface-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/50 dark:text-surface-500 dark:hover:bg-surface-800 dark:hover:text-surface-200"
               aria-label="Seitenleiste einklappen"
               title="Seitenleiste einklappen"
             >
@@ -413,7 +430,7 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
           {showCloseButton && (
             <button
               type="button"
-              onClick={() => setIsSidebarOpen(false)}
+              onClick={dismissSidebar}
               className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-lg text-surface-500 transition-colors hover:bg-surface-100 hover:text-surface-700 focus:outline-none focus:ring-2 focus:ring-primary-500/50 dark:text-surface-400 dark:hover:bg-surface-800 dark:hover:text-surface-200"
               aria-label="Menü schließen"
               data-dialog-initial-focus=""
@@ -423,7 +440,7 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
           )}
         </div>
 
-        <div className={`flex-1 flex flex-col overflow-y-auto ${isCollapsed ? 'px-0' : 'px-3'} pb-4`}>
+        <div className={`sidebar-navigation flex-1 flex flex-col overflow-y-auto ${isCollapsed ? 'px-0' : 'px-3'} pb-4`}>
           <nav className="flex-1 space-y-1">
             {navigation.map((item, index) => {
               if (item.id === 'search') {
