@@ -303,7 +303,7 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
         <div className={`sidebar-header flex items-center flex-shrink-0 py-5 ${isCollapsed ? 'justify-center px-0' : 'justify-between px-5'}`}>
           <Link
             to={`${basePath}/dashboard`}
-            className={`group relative flex items-center rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/50 ${isCollapsed ? 'h-10 w-10 justify-center' : 'gap-3'}`}
+            className={`group relative flex items-center rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/50 ${isCollapsed ? 'h-10 w-10 justify-center' : 'gap-3'}`}
             aria-label={isCollapsed ? 'Seitenleiste ausklappen' : 'Zum Dashboard'}
             title={isCollapsed ? 'Seitenleiste ausklappen' : undefined}
             onClick={(event) => {
@@ -340,7 +340,7 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
             <button
               type="button"
               onClick={() => setIsSidebarCollapsed(true)}
-              className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg text-surface-400 transition-colors hover:bg-surface-100 hover:text-surface-700 focus:outline-none focus:ring-2 focus:ring-primary-500/50 dark:text-surface-500 dark:hover:bg-surface-800 dark:hover:text-surface-200"
+              className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg text-surface-400 transition-colors hover:bg-surface-100 hover:text-surface-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/50 dark:text-surface-500 dark:hover:bg-surface-800 dark:hover:text-surface-200"
               aria-label="Seitenleiste einklappen"
               title="Seitenleiste einklappen"
             >
@@ -364,7 +364,7 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
             <button
               type="button"
               onClick={() => setIsSidebarOpen(false)}
-              className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg text-surface-500 transition-colors hover:bg-surface-100 hover:text-surface-700 focus:outline-none focus:ring-2 focus:ring-primary-500/50 dark:text-surface-400 dark:hover:bg-surface-800 dark:hover:text-surface-200"
+              className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg text-surface-500 transition-colors hover:bg-surface-100 hover:text-surface-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/50 dark:text-surface-400 dark:hover:bg-surface-800 dark:hover:text-surface-200"
               aria-label="Menü schließen"
             >
               <XMarkIcon className="h-5 w-5" />
