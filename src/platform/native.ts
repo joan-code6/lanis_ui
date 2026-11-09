@@ -28,6 +28,7 @@ export interface NativeSession { [key: string]: string }
 
 interface LanisNativePlugin {
   setLessonProgress(options: { enabled: boolean; breaks: boolean; beforeEndMinutes?: number }): Promise<DeviceStatus>;
+  openGlyphSettings(): Promise<{ direct: boolean }>;
   openProgressSettings(): Promise<void>;
   setAppLock(options: { enabled: boolean }): Promise<DeviceStatus>;
   openFile(options: { uri: string; mimeType: string }): Promise<void>;

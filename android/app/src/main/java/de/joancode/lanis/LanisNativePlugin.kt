@@ -155,6 +155,26 @@ class LanisNativePlugin : Plugin() {
             call.resolve(status())
         }
     }
+    @PluginMethod fun openGlyphSettings(call: PluginCall) {
+        if (!LessonProgress.glyphSupported()) return call.reject("Glyph-Einstellungen sind auf diesem Gerät nicht verfügbar.")
+        val intents = listOf(
+            Intent("android.settings.GLYPH_INTERFACE_SETTINGS"),
+            Intent().setClassName("com.android.settings", "com.android.settings.Settings\$GlyphSettingsActivity"),
+            Intent(android.provider.Settings.ACTION_SETTINGS)
+        )
+        for ((index, intent) in intents.withIndex()) {
+            try {
+                activity.startActivity(intent)
+                call.resolve(JSObject().put("direct", index != intents.lastIndex))
+                return
+            } catch (_: android.content.ActivityNotFoundException) {
+                // Nothing OS versions expose different settings entry points.
+            } catch (_: SecurityException) {
+                // Some versions do not export their Glyph settings activity.
+            }
+        }
+        call.reject("Die Systemeinstellungen konnten nicht geöffnet werden.")
+    }
     @PluginMethod fun openProgressSettings(call: PluginCall) {
         activity.startActivity(Intent("android.settings.MANAGE_APP_PROMOTED_NOTIFICATIONS").putExtra("android.provider.extra.APP_PACKAGE", context.packageName))
         call.resolve()

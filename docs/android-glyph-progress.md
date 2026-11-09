@@ -22,3 +22,5 @@ Optional “Nur kurz vor Ende anzeigen” limits both lessons and enabled breaks
 Live Update lesson/break countdowns are now available on all Android 16+ devices. Hardware/OS eligibility does not guarantee OEM promotion. The UI uses “Unterrichtsfortschritt”; Nothing Phone (2) alone gets the additional Glyph settings hint. There is no documented public per-notification Glyph opt-out while keeping the promoted Live Update; no nonfunctional app-side Glyph toggle is exposed.
 
 Window/general Android update validation: TypeScript, Android JS regressions, all 19 native unit tests and Android debug lint pass. No new production frontend build or physical-device UI/Glyph verification was performed.
+
+The Nothing-only “Glyph-Einstellungen öffnen” button attempts the vendor Glyph settings action/activity, then falls back to system settings with a short navigation hint. Vendor entry points are best effort and have not been verified on a physical phone; it does not launch restricted SubSettings fragments or modify Glyph settings.
