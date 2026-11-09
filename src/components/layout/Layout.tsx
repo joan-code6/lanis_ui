@@ -218,7 +218,7 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
         </div>
       )}
 
-      <div className={'hidden md:flex md:flex-col md:fixed transition-[width] duration-300 ease-out ' + (isSidebarCollapsed ? 'md:w-[60px]' : 'md:w-64') + ' ' + (isDemo ? 'md:top-10 md:bottom-0' : 'md:inset-y-0')}>
+      <div data-sidebar-collapsed={isSidebarCollapsed} className={'desktop-sidebar hidden md:flex md:flex-col md:fixed transition-[width] duration-300 ease-out ' + (isSidebarCollapsed ? 'md:w-[60px]' : 'md:w-64') + ' ' + (isDemo ? 'md:top-10 md:bottom-0' : 'md:inset-y-0')}>
         <div className="flex-1 flex flex-col min-h-0 bg-white dark:bg-surface-900 border-r border-surface-100 dark:border-surface-800">
           {renderSidebarContent({ navigation, isCollapsed: isSidebarCollapsed, canCollapse: true })}
         </div>
@@ -248,7 +248,7 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
           <MagnifyingGlassIcon className="h-5 w-5" />
         </button>
       </div>
-      <main ref={mainRef} className={'flex-1 min-h-0 min-w-0 overflow-y-auto focus:outline-none pt-14 md:pt-0 transition-[margin] duration-300 ease-out ' + (isSidebarCollapsed ? 'md:ml-[60px]' : 'md:ml-64')}>
+      <main ref={mainRef} className={'layout-main flex-1 min-h-0 min-w-0 overflow-y-auto focus:outline-none pt-14 md:pt-0 transition-[margin] duration-300 ease-out ' + (isSidebarCollapsed ? 'md:ml-[60px]' : 'md:ml-64')}>
         <BasePathProvider basePath={basePath}>
           <div className="animate-fade-in">
             {!isDemo && <OutageNotice />}
@@ -300,7 +300,7 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
   }) {
     return (
       <>
-        <div className={`flex items-center flex-shrink-0 py-5 ${isCollapsed ? 'justify-center px-0' : 'justify-between px-5'}`}>
+        <div className={`sidebar-header flex items-center flex-shrink-0 py-5 ${isCollapsed ? 'justify-center px-0' : 'justify-between px-5'}`}>
           <Link
             to={`${basePath}/dashboard`}
             className={`group relative flex items-center rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/50 ${isCollapsed ? 'h-10 w-10 justify-center' : 'gap-3'}`}
@@ -372,7 +372,7 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
           )}
         </div>
 
-        <div className={`flex-1 flex flex-col overflow-y-auto ${isCollapsed ? 'px-0' : 'px-3'} pb-4`}>
+        <div className={`sidebar-navigation flex-1 flex flex-col overflow-y-auto ${isCollapsed ? 'px-0' : 'px-3'} pb-4`}>
           <nav className="flex-1 space-y-1">
             {navigation.map((item, index) => {
               if (item.id === 'search') {
