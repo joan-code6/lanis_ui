@@ -126,7 +126,6 @@ export default function AndroidSettings({ notificationsOnly = false }: { notific
           setStatus(await toggleLessonProgress(LanisNative));
         })} />
       </div>
-      <button type="button" className="btn btn-secondary mt-4" disabled={busy} onClick={() => void run(async () => { await LanisNative.openGlyphSettings(); })}>Glyph-Einstellungen öffnen</button>
       {status.glyphLessonsEnabled && <div className="mt-4 space-y-4 border-t border-surface-200 pt-4 dark:border-surface-700">
         <div className="flex items-center justify-between gap-4"><div><p className="text-sm font-medium">Pausen anzeigen</p><p className="mt-1 text-sm text-surface-500">Auch Pausen und Freistunden zwischen zwei Unterrichtsstunden anzeigen.</p></div>
           <SettingsSwitch label="Pausen als Live-Update anzeigen" checked={status.glyphBreaksEnabled} disabled={busy} onChange={() => void run(async () => { setStatus(await LanisNative.setLessonProgress({ enabled: true, breaks: !status.glyphBreaksEnabled })); })} />
