@@ -213,14 +213,14 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
         <div className={'fixed inset-x-0 bottom-0 flex z-40 md:hidden ' + (isDemo ? 'top-10' : 'inset-0')}>
           <div className={'fixed inset-x-0 bottom-0 bg-surface-900/40 backdrop-blur-sm ' + (isDemo ? 'top-10' : 'inset-0')} onClick={() => setIsSidebarOpen(false)} />
           <div className="relative flex flex-1 flex-col max-w-xs w-full bg-white dark:bg-surface-900 shadow-soft-lg animate-drawer-in">
-            <SidebarContent navigation={navigation} showCloseButton />
+            {renderSidebarContent({ navigation, showCloseButton: true })}
           </div>
         </div>
       )}
 
       <div className={'hidden md:flex md:flex-col md:fixed transition-[width] duration-300 ease-out ' + (isSidebarCollapsed ? 'md:w-[60px]' : 'md:w-64') + ' ' + (isDemo ? 'md:top-10 md:bottom-0' : 'md:inset-y-0')}>
         <div className="flex-1 flex flex-col min-h-0 bg-white dark:bg-surface-900 border-r border-surface-100 dark:border-surface-800">
-          <SidebarContent navigation={navigation} isCollapsed={isSidebarCollapsed} canCollapse />
+          {renderSidebarContent({ navigation, isCollapsed: isSidebarCollapsed, canCollapse: true })}
         </div>
       </div>
 
@@ -286,7 +286,8 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
     </PwaInstallProvider>
   );
 
-  function SidebarContent({
+  // Render as a helper so Layout updates preserve the sidebar DOM and CSS transitions.
+  function renderSidebarContent({
     navigation,
     isCollapsed = false,
     canCollapse = false,
