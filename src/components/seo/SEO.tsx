@@ -12,7 +12,7 @@ interface SEOProps {
 
 const SITE_NAME = 'Lanis';
 const BASE_URL = 'https://lanis.arg-server.de';
-const DEFAULT_IMAGE = '/icon.webp';
+const DEFAULT_IMAGE = '/opengraph.png?v=ruby';
 
 const SEO: React.FC<SEOProps> = ({
   title,
