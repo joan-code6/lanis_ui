@@ -658,7 +658,7 @@ const Settings: React.FC = () => {
   const requestedSection = location.pathname.slice(settingsRoot.length).split('/').filter(Boolean)[0];
   const sectionAliases: Record<string, SettingsSection> = {
     dashboard: 'notifications',
-    homework: 'timetable',
+    homework: 'appearance',
     vertretungsplan: 'timetable',
     sidebar: 'navigation',
     agents: 'connections',
@@ -1292,6 +1292,19 @@ const Settings: React.FC = () => {
             </form>
           </dialog>
         </div>
+
+
+        <section className="card">
+          <h3 className="item-title">Erweiterte Einstellungen</h3>
+          <div className="mt-4 flex items-center justify-between gap-4">
+            <span className="text-sm text-surface-700 dark:text-surface-300">Erledigte Hausaufgaben ausblenden</span>
+            <SettingsSwitch
+              label="Erledigte Hausaufgaben ausblenden"
+              checked={preferences.homework.hide_completed_in_overview}
+              onChange={() => void updatePreferences({ homework: { hide_completed_in_overview: !preferences.homework.hide_completed_in_overview } })}
+            />
+          </div>
+        </section>
 
           </>
         )}

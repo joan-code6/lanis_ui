@@ -349,8 +349,9 @@ const WeekBadge: React.FC<{ week: 'A' | 'B'; compact?: boolean }> = ({ week, com
 
 const HomeworkPreview: React.FC<{ homework?: TimetableLesson['homework']; compact?: boolean }> = ({ homework, compact = false }) => {
   const { preferences } = usePreferences();
-  if (!preferences.timetable.show_homework || !homework?.length) return null;
-  const allDone = homework.every(item => item.done);
+  const visibleHomework = homework?.filter(item => !preferences.homework.hide_completed_in_overview || !item.done);
+  if (!preferences.timetable.show_homework || !visibleHomework?.length) return null;
+  const allDone = visibleHomework.every(item => item.done);
 
   return (
     <div className={`${compact ? 'mt-1 p-1 sm:mt-2 sm:p-2' : 'mt-3 p-2.5'} rounded-lg border-l-4 text-left ${allDone ? 'border-emerald-400 bg-emerald-50 dark:border-emerald-500 dark:bg-emerald-950/35' : 'border-secondary-400 bg-secondary-50 dark:border-secondary-500 dark:bg-secondary-950/35'}`}>
@@ -362,7 +363,7 @@ const HomeworkPreview: React.FC<{ homework?: TimetableLesson['homework']; compac
         </span>
       </div>
       <div className={compact ? 'mt-0.5 space-y-0.5 sm:mt-1' : 'mt-1.5 space-y-1'}>
-        {homework.map((item, index) => (
+        {visibleHomework.map((item, index) => (
           <p key={item.entry_id || index} className={`whitespace-pre-wrap break-words ${compact ? 'text-[8px] leading-tight sm:text-[10px]' : 'text-xs leading-relaxed'} ${item.done ? 'text-emerald-700 line-through decoration-emerald-500/60 dark:text-emerald-300' : 'text-secondary-900 dark:text-secondary-100'}`}>
             {item.text}
           </p>
@@ -460,7 +461,7 @@ const TimelineView: React.FC<{
                   width: `${100 / laneCount}%`,
                 }}
               >
-                <CompactTimetableEntry focus={lessonFocus?.date === day.date && lessonFocus.entry === entry ? lessonFocus : undefined} entry={entry} colour={colourForLesson(entry.lesson)} showHomework={preferences.timetable.show_homework} onOpenCourse={onOpenCourse} />
+                <CompactTimetableEntry focus={lessonFocus?.date === day.date && lessonFocus.entry === entry ? lessonFocus : undefined} entry={entry} colour={colourForLesson(entry.lesson)} showHomework={preferences.timetable.show_homework} hideCompletedHomework={preferences.homework.hide_completed_in_overview} onOpenCourse={onOpenCourse} />
               </div>
             ))}
           </div>;
@@ -472,7 +473,7 @@ const TimelineView: React.FC<{
         <div className="mt-2 grid gap-2 sm:grid-cols-2">
           {unscheduled.map(({ day, entry }, index) => <div key={entry.exam ? `unscheduled-${entry.exam.id}` : `unscheduled-${day.date}-${index}`} className="rounded-lg bg-surface-50 p-1.5 dark:bg-surface-800/40">
             <p className="mb-1 px-1 text-[10px] font-medium text-surface-500">{day.name || format(new Date(`${day.date}T12:00:00`), 'EEEE', { locale: de })} · Stunden nicht angegeben</p>
-            <CompactTimetableEntry focus={lessonFocus?.date === day.date && lessonFocus.entry === entry ? lessonFocus : undefined} entry={entry} colour={colourForLesson(entry.lesson)} showHomework={preferences.timetable.show_homework} onOpenCourse={onOpenCourse} />
+            <CompactTimetableEntry focus={lessonFocus?.date === day.date && lessonFocus.entry === entry ? lessonFocus : undefined} entry={entry} colour={colourForLesson(entry.lesson)} showHomework={preferences.timetable.show_homework} hideCompletedHomework={preferences.homework.hide_completed_in_overview} onOpenCourse={onOpenCourse} />
           </div>)}
         </div>
       </section>}
@@ -485,8 +486,9 @@ const CompactTimetableEntry: React.FC<{
   focus?: LessonFocus;
   colour: string;
   showHomework: boolean;
+  hideCompletedHomework: boolean;
   onOpenCourse: (lesson: TimetableLesson) => void;
-}> = ({ entry: { lesson, exam }, focus, colour, showHomework, onOpenCourse }) => (
+}> = ({ entry: { lesson, exam }, focus, colour, showHomework, hideCompletedHomework, onOpenCourse }) => (
   <div
     {...lessonFocusAttributes(focus)}
     className={`relative flex h-full min-w-0 flex-col justify-center overflow-hidden rounded-md border p-1 shadow-sm transition sm:rounded-xl sm:p-2.5 ${exam ? 'border-violet-700 !bg-violet-600 !text-white dark:!bg-violet-700' : ''} ${lesson.cancelled ? '!border-red-700 !bg-red-600 !text-white opacity-70' : ''} ${lesson.substitution ? 'ring-2 ring-inset ring-amber-300' : ''} ${lesson.course_id ? 'cursor-pointer hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-surface-900' : ''}`}
@@ -518,7 +520,7 @@ const CompactTimetableEntry: React.FC<{
       {lesson.teacher && <p>{lesson.teacher}</p>}
       {lesson.room && <p>{lesson.room}</p>}
     </div>
-    {showHomework && Boolean(lesson.homework?.length) && <span className="mt-1 inline-flex items-center gap-0.5 text-[8px] font-semibold opacity-90 sm:text-[10px]" title="Hausaufgabe vorhanden"><BookOpenIcon className="h-2.5 w-2.5 sm:h-3 sm:w-3" /> HA</span>}
+    {showHomework && Boolean(lesson.homework?.some(item => !hideCompletedHomework || !item.done)) && <span className="mt-1 inline-flex items-center gap-0.5 text-[8px] font-semibold opacity-90 sm:text-[10px]" title="Hausaufgabe vorhanden"><BookOpenIcon className="h-2.5 w-2.5 sm:h-3 sm:w-3" /> HA</span>}
   </div>
 );
 

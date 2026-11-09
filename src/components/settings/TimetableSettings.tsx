@@ -494,18 +494,7 @@ const TimetableSettings: React.FC = () => {
             </div>
           ))}
         </div>
-        <fieldset className="mt-5 border-t border-surface-100 pt-5 dark:border-surface-800">
-          <legend className="label">Erledigte Hausaufgaben in „Mein Unterricht“</legend>
-          <label className="mt-3 flex cursor-pointer items-center gap-3">
-            <input
-              type="checkbox"
-              className="h-4 w-4 rounded border-surface-300 text-primary-600 focus:ring-primary-500"
-              checked={preferences.homework.hide_completed_in_overview}
-              onChange={event => void updatePreferences({ homework: { hide_completed_in_overview: event.target.checked } })}
-            />
-            <span className="text-sm text-surface-700 dark:text-surface-300">Erledigte Hausaufgaben ausblenden</span>
-          </label>
-        </fieldset>
+
       </section>
 
       {loading ? (
