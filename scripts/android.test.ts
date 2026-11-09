@@ -47,3 +47,29 @@ test('Android Back preserves demo mode when there is no browser history', () => 
   assert.equal(nativeBackFallback('/messages'), '/dashboard');
   for (const path of ['/dashboard', '/login', '/onboarding']) assert.equal(nativeBackFallback(path), null);
 });
+
+import { toggleLessonProgress } from '../src/platform/lessonProgress';
+import type { DeviceStatus } from '../src/platform/native';
+
+test('lesson progress can be enabled before notification permission is granted', async () => {
+  const current = { glyphLessonsEnabled: false, glyphBreaksEnabled: true, notificationsAllowed: false } as DeviceStatus;
+  let saved: { enabled: boolean; breaks: boolean } | undefined;
+  const result = await toggleLessonProgress({
+    getStatus: async () => current,
+    setLessonProgress: async options => { saved = options; return { ...current, glyphLessonsEnabled: options.enabled }; },
+  });
+  assert.deepEqual(saved, { enabled: true, breaks: true });
+  assert.equal(result.glyphLessonsEnabled, true);
+});
+
+test('lesson toggle uses current native state and can turn off after permission revocation', async () => {
+  const current = { glyphLessonsEnabled: true, glyphBreaksEnabled: false, notificationsAllowed: false } as DeviceStatus;
+  const result = await toggleLessonProgress({
+    getStatus: async () => current,
+    setLessonProgress: async options => {
+      assert.deepEqual(options, { enabled: false, breaks: false });
+      return { ...current, glyphLessonsEnabled: options.enabled };
+    },
+  });
+  assert.equal(result.glyphLessonsEnabled, false);
+});

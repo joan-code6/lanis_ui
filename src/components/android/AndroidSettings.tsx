@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
+import { App } from '@capacitor/app';
+import { toggleLessonProgress } from '../../platform/lessonProgress';
 import { ArrowPathIcon, ArrowUpIcon, ArrowDownIcon, XMarkIcon, ArrowTopRightOnSquareIcon, BellIcon, CalendarDaysIcon, CheckCircleIcon, ClockIcon, ShieldCheckIcon, Squares2X2Icon } from '@heroicons/react/24/outline';
 import { ANDROID_TAB_IDS, DEFAULT_ANDROID_TABS, useAndroidTabs } from '../../platform/androidNavigation';
 import { getSidebarLabel } from '../../utils/sidebarNavigation';
@@ -52,7 +54,14 @@ export default function AndroidSettings({ notificationsOnly = false }: { notific
     const lesson = snapshot.data?.days.find(day => day.date >= today)?.lessons.find(lesson => !lesson.cancelled);
     if (lesson) { setSubject(lesson.subject); setDetail([lesson.start_time, lesson.room && `Raum ${lesson.room}`].filter(Boolean).join(' · ')); }
   }, [token]);
-  useEffect(() => { const refresh = () => { void load().catch(() => {}); }; window.addEventListener('focus', refresh); return () => window.removeEventListener('focus', refresh); }, [load]);
+  useEffect(() => {
+    if (!nativeAvailable) return;
+    let active = true;
+    const refresh = () => { void LanisNative.getStatus().then(device => { if (active) setStatus(device); }).catch(() => {}); };
+    const listener = App.addListener('appStateChange', ({ isActive }) => { if (isActive) refresh(); });
+    window.addEventListener('focus', refresh);
+    return () => { active = false; window.removeEventListener('focus', refresh); void listener.then(handle => handle.remove()); };
+  }, [nativeAvailable]);
   useEffect(() => { void load().catch(() => setError('Einstellungen nicht geladen. Prüfe deine Verbindung.')); }, [load]);
 
   const run = async (action: () => Promise<void>) => {
@@ -114,15 +123,15 @@ export default function AndroidSettings({ notificationsOnly = false }: { notific
       <div className="mt-4 flex items-center justify-between gap-4">
         <div><p className="text-sm font-medium">Unterricht anzeigen</p><p className="mt-1 text-sm text-surface-500">Verbleibende Unterrichtszeit auf den Glyph-Leuchten.</p></div>
         <SettingsSwitch label="Unterricht über Glyph anzeigen" checked={status.glyphLessonsEnabled} disabled={busy} onChange={() => void run(async () => {
-          if (!status.glyphLessonsEnabled && !status.notificationsAllowed) { await LanisNative.openNotificationSettings(); return; }
-          setStatus(await LanisNative.setLessonProgress({ enabled: !status.glyphLessonsEnabled, breaks: status.glyphBreaksEnabled }));
+          setStatus(await toggleLessonProgress(LanisNative));
         })} />
       </div>
       {status.glyphLessonsEnabled && <div className="mt-4 space-y-4 border-t border-surface-200 pt-4 dark:border-surface-700">
         <div className="flex items-center justify-between gap-4"><div><p className="text-sm font-medium">Pausen anzeigen</p><p className="mt-1 text-sm text-surface-500">Auch Pausen und Freistunden zwischen zwei Unterrichtsstunden anzeigen.</p></div>
           <SettingsSwitch label="Pausen über Glyph anzeigen" checked={status.glyphBreaksEnabled} disabled={busy} onChange={() => void run(async () => { setStatus(await LanisNative.setLessonProgress({ enabled: true, breaks: !status.glyphBreaksEnabled })); })} />
         </div>
-        {!status.glyphPromotionAllowed && <button className="btn btn-secondary" disabled={busy} onClick={() => void run(async () => { await LanisNative.openProgressSettings(); })}>Live-Updates in Android erlauben</button>}
+        {!status.notificationsAllowed && <button className="btn btn-secondary" disabled={busy} onClick={() => void run(async () => { await LanisNative.openNotificationSettings(); })}>Benachrichtigungen in Android erlauben</button>}
+        {status.notificationsAllowed && !status.glyphPromotionAllowed && <button className="btn btn-secondary" disabled={busy} onClick={() => void run(async () => { await LanisNative.openProgressSettings(); })}>Live-Updates in Android erlauben</button>}
         <p className="text-xs text-surface-500">Aktiviere Glyph Progress in den Nothing-Einstellungen. Android kann Aktualisierungen im Energiesparmodus verzögern.</p>
       </div>}
     </section>}
