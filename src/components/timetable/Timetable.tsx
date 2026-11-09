@@ -264,8 +264,8 @@ const Timetable: React.FC = () => {
               const date = new Date(`${day.date}T12:00:00`);
               const today = isToday(date);
               return (
-                <section key={day.date} data-today={today ? 'true' : undefined} className={`card min-w-[84vw] snap-center !p-0 overflow-hidden sm:min-w-0 ${today ? '!border-primary-300 dark:!border-primary-700 ring-2 ring-primary-500/10' : ''}`}>
-                  <div className={`border-b px-4 py-3 ${today ? 'bg-primary-50 dark:bg-primary-950/60' : 'bg-surface-50 dark:bg-surface-800/50'}`}>
+                <section key={day.date} data-today={today ? 'true' : undefined} className="card min-w-[84vw] snap-center !p-0 overflow-hidden sm:min-w-0">
+                  <div className="border-b bg-surface-50 px-4 py-3 dark:bg-surface-800/50">
                     <div className="flex items-center justify-between">
                       <h2 className="font-semibold text-surface-900 dark:text-white">{day.name || format(date, 'EEEE', { locale: de })}</h2>
                       {today && <span className="badge badge-primary">Heute</span>}
