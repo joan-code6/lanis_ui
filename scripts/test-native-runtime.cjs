@@ -43,7 +43,7 @@ function runtime(signedIn = true) {
       if (name.endsWith('/native')) return { isAndroid: true, LanisNative: { async sync() {}, async setAppearance() {} } };
       if (name.endsWith('/authStorage')) return { async flushAuthStorage() {} };
       if (name.endsWith('/links')) return { nativeRoute: value => new URL(value).pathname };
-      if (name.endsWith('/themeAssets')) return { THEME_COLOR_HEX: {} };
+      if (name.endsWith('/themeAssets')) return { getThemeAssetName: () => "ruby" };
       throw new Error(`Unexpected import: ${name}`);
     },
   };

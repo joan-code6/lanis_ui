@@ -256,7 +256,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ fixedSchool }) => {
           </p>
         </div>
 
-        <form className="space-y-5" onSubmit={handleSubmit} aria-busy={isLoading}>
+        <form autoComplete="on" className="space-y-5" onSubmit={handleSubmit} aria-busy={isLoading}>
           <div className="space-y-4">
             {!fixedSchool && (
             <div ref={schoolFieldRef} className="relative" onBlur={event => {

@@ -36,6 +36,8 @@ class MainActivity : BridgeActivity() {
             WindowInsetsCompat.CONSUMED
         }
         ViewCompat.requestApplyInsets(root)
+        // Expose the HTML username/current-password fields to Android autofill services.
+        bridge.webView.importantForAutofill = android.view.View.IMPORTANT_FOR_AUTOFILL_YES
         bridge.webView.setBackgroundColor(Color.parseColor("#0a0a0a"))
         val appearance = runCatching { NativeStore.read(this) }.getOrNull()
         updateTaskAppearance(appearance?.optString("theme", "ruby") ?: "ruby")

@@ -8,7 +8,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { isAndroid, LanisNative } from '../../platform/native';
 import { authStorage, flushAuthStorage, reloadNativeCredentials } from '../../platform/authStorage';
 import { nativeRoute, nativeBackFallback } from '../../platform/links';
-import { THEME_COLOR_HEX } from '../../utils/themeAssets';
+import { getThemeAssetName } from '../../utils/themeAssets';
 
 export default function AndroidRuntime() {
   const { isAuthenticated, token } = useAuth();
@@ -86,7 +86,7 @@ export default function AndroidRuntime() {
   }, [isAuthenticated, token]);
 
   useEffect(() => {
-    if (isAndroid) void LanisNative.setAppearance({ dark: isDark, oled: isOled, accent: THEME_COLOR_HEX[themeColor], theme: themeColor }).catch(() => {});
+    if (isAndroid) void LanisNative.setAppearance({ dark: isDark, oled: isOled, accent: themeColor, theme: getThemeAssetName(themeColor) }).catch(() => {});
   }, [isDark, isOled, themeColor]);
 
   if (!isAndroid || !failure) return null;
