@@ -499,3 +499,14 @@ html.oled body::after {
 @media (prefers-reduced-motion: reduce) {
   .desktop-sidebar, .desktop-sidebar *, .layout-main { transition-duration: 0.01ms !important; }
 }
+
+@keyframes sidebar-drawer-out {
+  from { transform: translateX(0); }
+  to { transform: translateX(-100%); }
+}
+@keyframes sidebar-backdrop-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+.animate-sidebar-drawer-out { animation: sidebar-drawer-out 160ms ease-in forwards; }
+.animate-sidebar-backdrop-out { animation: sidebar-backdrop-out 160ms ease-in forwards; }
