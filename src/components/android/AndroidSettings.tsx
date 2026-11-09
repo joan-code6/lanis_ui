@@ -6,6 +6,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { notificationsAPI } from '../../services/api';
 import { isAndroid, LanisNative, type DeviceStatus, type WidgetKind } from '../../platform/native';
 import type { NotificationPreferences } from '../../types';
+import SettingsSwitch from '../settings/SettingsSwitch';
 import AppLockSettings from './AppLockSettings';
 
 const widgets: { kind: WidgetKind; title: string; size: string; description: string }[] = [
@@ -51,6 +52,7 @@ export default function AndroidSettings({ notificationsOnly = false }: { notific
     const lesson = snapshot.data?.days.find(day => day.date >= today)?.lessons.find(lesson => !lesson.cancelled);
     if (lesson) { setSubject(lesson.subject); setDetail([lesson.start_time, lesson.room && `Raum ${lesson.room}`].filter(Boolean).join(' · ')); }
   }, [token]);
+  useEffect(() => { const refresh = () => { void load().catch(() => {}); }; window.addEventListener('focus', refresh); return () => window.removeEventListener('focus', refresh); }, [load]);
   useEffect(() => { void load().catch(() => setError('Einstellungen nicht geladen. Prüfe deine Verbindung.')); }, [load]);
 
   const run = async (action: () => Promise<void>) => {
@@ -107,6 +109,24 @@ export default function AndroidSettings({ notificationsOnly = false }: { notific
     {error && <div role="alert" className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-200">{error}<button className="ml-2 underline" disabled={busy} onClick={() => void run(load)}>Erneut versuchen</button></div>}
     {message && <p role="status" className="flex items-center gap-2 rounded-2xl bg-emerald-50 p-4 text-sm text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200"><CheckCircleIcon className="h-5 w-5 shrink-0" />{message}</p>}
     {nativeAvailable && !notificationsOnly && <AppLockSettings />}
+    {nativeAvailable && !notificationsOnly && status?.glyphSupported && <section className="card">
+      <h2 className="section-title">Glyph-Fortschritt</h2>
+      <div className="mt-4 flex items-center justify-between gap-4">
+        <div><p className="text-sm font-medium">Unterricht anzeigen</p><p className="mt-1 text-sm text-surface-500">Verbleibende Unterrichtszeit auf den Glyph-Leuchten.</p></div>
+        <SettingsSwitch label="Unterricht über Glyph anzeigen" checked={status.glyphLessonsEnabled} disabled={busy} onChange={() => void run(async () => {
+          if (!status.glyphLessonsEnabled && !status.notificationsAllowed) { await LanisNative.openNotificationSettings(); return; }
+          setStatus(await LanisNative.setLessonProgress({ enabled: !status.glyphLessonsEnabled, breaks: status.glyphBreaksEnabled }));
+        })} />
+      </div>
+      {status.glyphLessonsEnabled && <div className="mt-4 space-y-4 border-t border-surface-200 pt-4 dark:border-surface-700">
+        <div className="flex items-center justify-between gap-4"><div><p className="text-sm font-medium">Pausen anzeigen</p><p className="mt-1 text-sm text-surface-500">Auch Pausen und Freistunden zwischen zwei Unterrichtsstunden anzeigen.</p></div>
+          <SettingsSwitch label="Pausen über Glyph anzeigen" checked={status.glyphBreaksEnabled} disabled={busy} onChange={() => void run(async () => { setStatus(await LanisNative.setLessonProgress({ enabled: true, breaks: !status.glyphBreaksEnabled })); })} />
+        </div>
+        {!status.glyphPromotionAllowed && <button className="btn btn-secondary" disabled={busy} onClick={() => void run(async () => { await LanisNative.openProgressSettings(); })}>Live-Updates in Android erlauben</button>}
+        <p className="text-xs text-surface-500">Aktiviere Glyph Progress in den Nothing-Einstellungen. Android kann Aktualisierungen im Energiesparmodus verzögern.</p>
+      </div>}
+    </section>}
+
     {!notificationsOnly && <>
       <section className="card !overflow-hidden !p-0">
         <div className="border-b border-surface-100 px-5 py-5 dark:border-surface-800 sm:px-6"><h2 className="flex items-center gap-2 text-base font-semibold text-surface-950 dark:text-white"><Squares2X2Icon className="h-5 w-5" />Widgets</h2></div>

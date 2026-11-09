@@ -16,6 +16,12 @@ class MainActivity : BridgeActivity() {
     val appLockBack = object : androidx.activity.OnBackPressedCallback(false) {
         override fun handleOnBackPressed() { moveTaskToBack(true) }
     }
+    override fun onResume() {
+        super.onResume()
+        java.util.concurrent.Executors.newSingleThreadExecutor().let { executor ->
+            executor.execute { try { LessonProgress.update(this) } finally { executor.shutdown() } }
+        }
+    }
     override fun onCreate(savedInstanceState: Bundle?) {
         registerPlugin(LanisNativePlugin::class.java)
         super.onCreate(savedInstanceState)

@@ -73,6 +73,10 @@ class LanisNativePlugin : Plugin() {
             put("notificationsEnabled", state.optBoolean("notificationsEnabled"))
             put("pushConfigured", BuildConfig.PUSH_CONFIGURED)
             put("widgetPinSupported", AppWidgetManager.getInstance(context).isRequestPinAppWidgetSupported)
+            put("glyphSupported", LessonProgress.supported())
+            put("glyphLessonsEnabled", state.optBoolean("glyphLessonsEnabled"))
+            put("glyphBreaksEnabled", state.optBoolean("glyphBreaksEnabled"))
+            put("glyphPromotionAllowed", android.os.Build.VERSION.SDK_INT >= 36 && context.getSystemService(NotificationManager::class.java).canPostPromotedNotifications())
             put("version", BuildConfig.VERSION_NAME)
         }
     }
@@ -133,6 +137,22 @@ class LanisNativePlugin : Plugin() {
             }
             call.resolve()
         }
+    }
+    @PluginMethod fun setLessonProgress(call: PluginCall) = task(call) {
+        if (!LessonProgress.supported()) return@task call.reject("Dieses Gerät unterstützt Glyph-Fortschritt nicht.")
+        synchronized(NativeStore.lock) {
+            val state = NativeStore.read(context)
+            if (state.optJSONObject("session")?.optString("auth_refresh_token").isNullOrEmpty()) return@task call.reject("Bitte melde dich erneut an.")
+            state.put("glyphLessonsEnabled", call.getBoolean("enabled") ?: false)
+                .put("glyphBreaksEnabled", call.getBoolean("breaks") ?: false)
+            NativeStore.write(context, state)
+            LessonProgress.update(context)
+            call.resolve(status())
+        }
+    }
+    @PluginMethod fun openProgressSettings(call: PluginCall) {
+        activity.startActivity(Intent("android.settings.MANAGE_APP_PROMOTED_NOTIFICATIONS").putExtra("android.provider.extra.APP_PACKAGE", context.packageName))
+        call.resolve()
     }
     @PluginMethod fun getStatus(call: PluginCall) = task(call) { call.resolve(status()) }
     @PluginMethod fun saveTimetable(call: PluginCall) = task(call) {

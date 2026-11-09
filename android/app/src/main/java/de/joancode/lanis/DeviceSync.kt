@@ -110,6 +110,7 @@ object DeviceSync {
         WorkManager.getInstance(context).enqueueUniqueWork("lanis-sync-now", ExistingWorkPolicy.KEEP, request)
     }
     fun cancel(context: Context) {
+        LessonProgress.stop(context)
         WorkManager.getInstance(context).cancelUniqueWork(PERIODIC)
         WorkManager.getInstance(context).cancelUniqueWork("lanis-sync-now")
         WorkManager.getInstance(context).cancelUniqueWork("lanis-widget-tick")

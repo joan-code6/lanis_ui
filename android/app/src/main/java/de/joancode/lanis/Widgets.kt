@@ -80,6 +80,7 @@ object WidgetModel {
 object Widgets {
     private val providers = listOf(NextLessonWidget::class.java, TodayWidget::class.java, ChangesWidget::class.java)
     fun updateAll(context: Context) {
+        LessonProgress.update(context)
         val manager = AppWidgetManager.getInstance(context)
         for (provider in providers) for (id in manager.getAppWidgetIds(ComponentName(context, provider))) update(context, manager, id, provider)
     }
