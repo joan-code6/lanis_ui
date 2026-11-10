@@ -363,10 +363,10 @@ const Messages: React.FC = () => {
         noindex
       />
       {/* Messages list - hidden on mobile when conversation is selected */}
-      <div className={`${selectedConversation ? 'hidden lg:flex' : 'flex'} w-full lg:w-80 xl:w-1/3 border-r border-surface-100 dark:border-surface-800 flex-col bg-white dark:bg-surface-900`}>
-        <div className="p-4 border-b border-surface-100 dark:border-surface-800">
+      <div className={`${selectedConversation ? 'hidden lg:flex' : 'flex'} w-full lg:w-80 xl:w-1/3 border-r border-surface-100 dark:border-surface-800 flex-col bg-surface-50 dark:bg-surface-950 lg:bg-white lg:dark:bg-surface-900`}>
+        <div className="p-4 sm:p-6 lg:p-4 border-b border-surface-100 dark:border-surface-800">
           <div className="flex items-center justify-between mb-4">
-            <h1 className="page-title page-title-compact">Nachrichten</h1>
+            <h1 className="page-title">Nachrichten</h1>
             <button
               onClick={() => setShowCompose(true)}
               className="btn btn-primary h-9 px-3 text-xs"
