@@ -1,5 +1,5 @@
-import { capture } from '../../analytics/client';
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { capture } from '../../analytics/client';
 import { format, isToday } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { Link, useNavigate } from 'react-router-dom';
@@ -79,6 +79,16 @@ const Timetable: React.FC = () => {
   const timeSlots = data?.time_slots || [];
   const examsError = Boolean(data?.exams_error);
   const substitutionSources = data?.substitution_sources || [];
+  const cachedAt = data?.offline_cached_at;
+  const selectedDayRef = useRef('');
+  const [selectedDay, setSelectedDay] = useState('');
+
+  useEffect(() => {
+    const refreshOnResume = () => refresh();
+    window.addEventListener('lanis:resume', refreshOnResume);
+    window.addEventListener('online', refreshOnResume);
+    return () => { window.removeEventListener('lanis:resume', refreshOnResume); window.removeEventListener('online', refreshOnResume); };
+  }, [refresh]);
 
   const weekOverride = timetableViewMode === 'week' && hasAlternatingWeeks ? selectedWeek : undefined;
   const displayedExams = preferences.timetable.show_exams ? exams : [];
@@ -112,7 +122,8 @@ const Timetable: React.FC = () => {
     if (centeredView.current === viewKey) return;
     const scroller = dayScrollerRef.current;
     const target = scroller?.querySelector<HTMLElement>('[data-lesson-focus]')
-      || scroller?.querySelector<HTMLElement>('[data-today="true"]');
+      || scroller?.querySelector<HTMLElement>('[data-today="true"]')
+      || scroller?.querySelector<HTMLElement>('[data-date]');
     if (scroller && target && window.matchMedia('(max-width: 639px)').matches) {
       const targetRect = target.getBoundingClientRect();
       const scrollerRect = scroller.getBoundingClientRect();
@@ -122,8 +133,21 @@ const Timetable: React.FC = () => {
         behavior: 'instant',
       });
     }
+    const day = target?.closest<HTMLElement>('[data-date]');
+    if (day) { selectedDayRef.current = day.dataset.date || ''; setSelectedDay(selectedDayRef.current); }
     if (data) centeredView.current = viewKey;
   }, [loading, data, lessonFocus, viewKey]);
+  const selectDay = (date: string) => {
+    const scroller = dayScrollerRef.current;
+    const day = scroller && [...scroller.querySelectorAll<HTMLElement>('[data-date]')].find(card => card.dataset.date === date);
+    if (!scroller || !day) return;
+    selectedDayRef.current = date;
+    setSelectedDay(date);
+    scroller.scrollTo({
+      left: scroller.scrollLeft + day.getBoundingClientRect().left - scroller.getBoundingClientRect().left - parseFloat(getComputedStyle(scroller).paddingLeft),
+      behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+    });
+  };
 
   const openCourse = (lesson: TimetableLesson) => {
     if (lesson.course_id) {
@@ -172,6 +196,7 @@ const Timetable: React.FC = () => {
           )}
         </div>
 
+        {cachedAt && <p role="status" className="mb-4 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-200">Gespeicherter Stundenplan · Stand {new Date(cachedAt).toLocaleString('de-DE')}. Neuere Änderungen können fehlen.</p>}
         <div role="status" className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-surface-500 dark:text-surface-400">
           {loading && <span className="skeleton inline-block h-4 w-32" aria-hidden="true" />}
           {substitutionSources.map(source => <span key={source.name} className={source.error ? 'text-amber-700 dark:text-amber-300' : ''}>
@@ -217,13 +242,31 @@ const Timetable: React.FC = () => {
             <TimelineView days={visibleDays} entriesByDate={entriesByDate} lessonFocus={lessonFocus} timeSlots={timeSlots} onOpenCourse={openCourse} />
           </div>
         ) : (
-          <div ref={dayScrollerRef} className="scrollbar-hide -mx-3 flex snap-x snap-mandatory gap-3 overflow-x-auto px-3 pb-3 sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 sm:pb-0 md:gap-4 xl:grid-cols-5">
+          <>
+          <div role="group" aria-label="Tag wählen" className="mb-3 flex gap-1.5 overflow-x-auto sm:hidden">
+            {visibleDays.map(day => {
+              const date = new Date(`${day.date}T12:00:00`);
+              const active = selectedDay === day.date;
+              return <button key={day.date} type="button" aria-pressed={active} aria-label={format(date, 'EEEE, d. MMMM', { locale: de })} onClick={() => selectDay(day.date)} className={`flex min-h-12 min-w-14 flex-1 flex-col items-center justify-center rounded-xl px-2 py-1 text-xs font-medium transition-colors ${active ? 'bg-primary-100 text-primary-800 dark:bg-primary-950 dark:text-primary-200' : 'text-surface-600 hover:bg-surface-100 dark:text-surface-400 dark:hover:bg-surface-800'}`}>
+                <span>{isToday(date) ? 'Heute' : format(date, 'EEEEEE', { locale: de })}</span>
+                <span className="text-sm font-semibold">{format(date, 'd.')}</span>
+              </button>;
+            })}
+          </div>
+          <div ref={dayScrollerRef} onScroll={event => {
+            const scroller = event.currentTarget;
+            const left = scroller.getBoundingClientRect().left + parseFloat(getComputedStyle(scroller).paddingLeft);
+            const nearest = [...scroller.querySelectorAll<HTMLElement>('[data-date]')].reduce<HTMLElement | undefined>((best, card) => !best || Math.abs(card.getBoundingClientRect().left - left) < Math.abs(best.getBoundingClientRect().left - left) ? card : best, undefined);
+            const date = nearest?.dataset.date;
+            if (date && date !== selectedDayRef.current) { selectedDayRef.current = date; setSelectedDay(date); }
+          }} className="scrollbar-hide -mx-3 flex snap-x snap-mandatory gap-3 overflow-x-auto px-3 pb-3 sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 sm:pb-0 md:gap-4 xl:grid-cols-3 2xl:grid-cols-5">
             {visibleDays.map(day => {
               const date = new Date(`${day.date}T12:00:00`);
               const today = isToday(date);
+              const highlightToday = today && lessonFocus?.date === day.date;
               return (
-                <section key={day.date} data-today={today ? 'true' : undefined} className={`card min-w-[84vw] snap-center !p-0 overflow-hidden sm:min-w-0 ${today ? '!border-primary-300 dark:!border-primary-700 ring-2 ring-primary-500/10' : ''}`}>
-                  <div className={`border-b px-4 py-3 ${today ? 'bg-primary-50 dark:bg-primary-950/60' : 'bg-surface-50 dark:bg-surface-800/50'}`}>
+                <section key={day.date} data-today={today ? 'true' : undefined} className={`card min-w-[84vw] snap-center !p-0 overflow-hidden sm:min-w-0 ${highlightToday ? '!border-primary-300 dark:!border-primary-700 ring-2 ring-primary-500/10' : ''}`} >
+                  <div className={`border-b px-4 py-3 ${highlightToday ? 'bg-primary-50 dark:bg-primary-950/60' : 'bg-surface-50 dark:bg-surface-800/50'}`} >
                     <div className="flex items-center justify-between">
                       <h2 className="font-semibold text-surface-900 dark:text-white">{day.name || format(date, 'EEEE', { locale: de })}</h2>
                       {today && <span className="badge badge-primary">Heute</span>}
@@ -304,6 +347,7 @@ const Timetable: React.FC = () => {
               );
             })}
           </div>
+          </>
         )}
       </div>
     </div>

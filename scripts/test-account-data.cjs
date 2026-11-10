@@ -19,6 +19,7 @@ const exportsObject = {};
 const context = {
   exports: exportsObject,
   require(name) {
+    if (name === '../platform/authStorage') return { authStorage: storage, async flushAuthStorage() {} };
     if (name === './resourceCache') return resourceCache;
     assert.equal(name, './backendConfig');
     return { CUSTOM_BACKEND_STORAGE_KEY: 'lanis_custom_backend_url', clearBackendScopedStorage() {} };
