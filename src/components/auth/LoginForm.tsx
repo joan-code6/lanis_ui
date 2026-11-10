@@ -94,8 +94,6 @@ const LoginForm: React.FC<LoginFormProps> = ({ fixedSchool }) => {
   const { isDark, isOled, themeMode, setThemeMode } = useTheme();
   const [formData, setFormData] = useState({
     school_id: fixedSchool?.id ?? '',
-    username: '',
-    password: '',
   });
   const [schoolSearch, setSchoolSearch] = useState('');
   const [schoolResults, setSchoolResults] = useState<School[]>([]);
@@ -124,11 +122,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ fixedSchool }) => {
     }
   }, []);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
+  const handleChange = () => {
     if (error) setError('');
   };
 
@@ -218,9 +212,17 @@ const LoginForm: React.FC<LoginFormProps> = ({ fixedSchool }) => {
     if (activeSchoolIndex >= 0) document.getElementById(`school-option-${activeSchoolIndex}`)?.scrollIntoView({ block: 'nearest' });
   }, [activeSchoolIndex]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (isLoading || !formData.school_id) return;
+    // Autofill can update WebView inputs without firing React change events.
+    // Read before disabling the fields, which excludes them from FormData.
+    const fields = new FormData(e.currentTarget);
+    const credentials = {
+      school_id: formData.school_id,
+      username: String(fields.get('username') ?? ''),
+      password: String(fields.get('password') ?? ''),
+    };
     setIsLoading(true);
     setError('');
     if (fixedSchool) {
@@ -228,7 +230,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ fixedSchool }) => {
       setCookie('lastSchoolName', fixedSchool.name);
       setCookie('lastSchoolLocation', fixedSchool.location);
     }
-    const success = await login(formData);
+    const success = await login(credentials);
     if (!success) {
       setError(navigator.onLine ? 'Anmeldung fehlgeschlagen. Prüfe deine Zugangsdaten.' : 'Offline. Prüfe deine Verbindung.');
     }
@@ -350,7 +352,6 @@ const LoginForm: React.FC<LoginFormProps> = ({ fixedSchool }) => {
                 required
                 className="input placeholder:text-surface-500 dark:placeholder:text-surface-400"
                 placeholder="vorname.nachname"
-                value={formData.username}
                 onChange={handleChange}
                 autoComplete="username"
                 autoCapitalize="none"
@@ -373,9 +374,11 @@ const LoginForm: React.FC<LoginFormProps> = ({ fixedSchool }) => {
                   required
                   className="input pr-11 placeholder:text-surface-500 dark:placeholder:text-surface-400"
                   placeholder="Passwort eingeben"
-                  value={formData.password}
                   onChange={handleChange}
                   autoComplete="current-password"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
                   enterKeyHint="go"
                   disabled={isLoading}
                 />
