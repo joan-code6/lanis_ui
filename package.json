@@ -71,7 +71,8 @@
     "test:analytics": "node --experimental-vm-modules scripts/test-analytics.mjs",
     "test:push": "node --test scripts/test-browser-push.cjs",
     "test:beta": "node scripts/test-android-beta.cjs",
-    "test:beta:browser": "node scripts/test-android-beta-browser.cjs"
+    "test:beta:browser": "node scripts/test-android-beta-browser.cjs",
+    "test:login": "node scripts/test-login-autofill.mjs"
   },
   "browserslist": {
     "production": [
