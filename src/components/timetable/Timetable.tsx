@@ -242,6 +242,7 @@ const Timetable: React.FC = () => {
                       <article {...lessonFocusAttributes(lessonFocus?.date === day.date && lessonFocus.entry.lesson === lesson ? lessonFocus : undefined)} key={`exam-${exam.id}-${index}`} className="rounded-xl border border-violet-200 bg-violet-50 p-3 dark:border-violet-800 dark:bg-violet-950/40">
                         <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
                           <p className="flex items-center gap-1.5 text-xs font-semibold text-violet-700 dark:text-violet-300"><AcademicCapIcon className="h-4 w-4" aria-hidden="true" />{exam.type || 'Klausur'}</p>
+                          {lesson.week_type && <WeekBadge week={lesson.week_type} />}
                           {lesson.period != null && <span className="badge badge-surface">{lesson.period} Std.</span>}
                         </div>
                         <p className="break-words font-semibold text-surface-900 dark:text-white">{lesson.subject}</p>
@@ -341,9 +342,9 @@ const SegmentedControl: React.FC<{
   </div>
 );
 
-const WeekBadge: React.FC<{ week: 'A' | 'B'; compact?: boolean }> = ({ week, compact = false }) => (
-  <span className={`${week === 'A' ? 'badge badge-primary' : 'badge border border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300'} ${compact ? '!px-1 !py-0 text-[8px] sm:!px-2.5 sm:!py-0.5 sm:text-xs' : ''}`}>
-    {compact ? week : `${week}-Woche`}
+const WeekBadge: React.FC<{ week: 'A' | 'B' }> = ({ week }) => (
+  <span className={`week-tag ${week === 'A' ? 'week-tag-a' : 'week-tag-b'}`} aria-label={`${week}-Woche`}>
+    {week}
   </span>
 );
 

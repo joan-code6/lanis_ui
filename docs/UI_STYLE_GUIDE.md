@@ -38,6 +38,8 @@ Use `segmented-control` with `segmented-control-option` for mutually exclusive s
 
 Use theme-aware `primary-*`, `secondary-*` and `surface-*` tokens. The secondary palette is derived from the saved homework hex color and is reserved for homework. Settings show a homework preview. Firefox uses the react-colorful saturation area, hue control and hex field instead of its native color dialog. Pair custom light surfaces and text with dark variants. Keep semantic status colors for errors, warnings and success. Verify light, dark and OLED modes; do not hardcode white text in place of surface-100 for ordinary headings.
 
+A/B school-week markers use `week-tag` with `week-tag-a` (primary) or `week-tag-b` (secondary): a single letter in a small tinted pill, shown next to the lesson period badge (`A` before `5–6 Std.`) instead of a wide `A-Woche` badge. The compact timetable grid keeps a neutral `bg-white/20` letter chip because its cells use arbitrary class colours.
+
 ## Intentional exceptions
 
 Messaging is a full-height split pane: retain its own scrolling, pane borders and compact controls. Its h1 uses `page-title page-title-compact` (18px at every breakpoint, same weight and colors). Calendar retains its height and scrolling constraints. Timetables retain their dense cells. These content layouts do not change the surrounding module typography or gutters.
