@@ -518,3 +518,9 @@ html.oled body::after {
   --os-handle-bg-hover: rgb(var(--color-surface-500) / 0.8);
   --os-handle-bg-active: rgb(var(--color-surface-500));
 }
+
+/* Let fixed module dialogs retain their position above the mobile header. */
+.layout-main [data-overlayscrollbars-padding],
+.layout-main [data-overlayscrollbars-viewport] {
+  z-index: auto;
+}
