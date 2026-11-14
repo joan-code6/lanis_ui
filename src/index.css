@@ -513,7 +513,8 @@ html.oled body::after {
 
 /* Overlay scrollbars keep the content width identical on short and long pages. */
 .layout-main > .os-scrollbar {
-  z-index: 60;
+  /* Above page content and the header (30), below drawers (40) and dialogs (50). */
+  z-index: 35;
   --os-size: 10px;
   --os-handle-bg: rgb(var(--color-surface-400) / 0.65);
   --os-handle-bg-hover: rgb(var(--color-surface-500) / 0.8);
