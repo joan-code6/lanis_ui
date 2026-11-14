@@ -4,6 +4,7 @@ import { App } from '@capacitor/app';
 import { Browser } from '@capacitor/browser';
 import type { PluginListenerHandle } from '@capacitor/core';
 import { useAuth } from '../../contexts/AuthContext';
+import { usePreferences } from '../../contexts/PreferencesContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { isAndroid, LanisNative } from '../../platform/native';
 import { authStorage, flushAuthStorage, reloadNativeCredentials } from '../../platform/authStorage';
@@ -12,7 +13,8 @@ import { getThemeAssetName } from '../../utils/themeAssets';
 
 export default function AndroidRuntime() {
   const { isAuthenticated, token } = useAuth();
-  const { isDark, isOled, themeColor } = useTheme();
+  const { isDark, isOled, themeColor, themeMode } = useTheme();
+  const { preferences, isLoading: preferencesLoading } = usePreferences();
   const navigate = useNavigate();
   // React Router can replace navigate after each route change. Native listeners
   // must stay mounted so getLaunchUrl is consumed only once per runtime.
@@ -86,8 +88,22 @@ export default function AndroidRuntime() {
   }, [isAuthenticated, token]);
 
   useEffect(() => {
-    if (isAndroid) void LanisNative.setAppearance({ dark: isDark, oled: isOled, accent: themeColor, theme: getThemeAssetName(themeColor) }).catch(() => {});
-  }, [isDark, isOled, themeColor]);
+    if (isAndroid) void LanisNative.setAppearance({ dark: isDark, oled: isOled, accent: themeColor, theme: getThemeAssetName(themeColor), themeMode }).catch(() => {});
+  }, [isDark, isOled, themeColor, themeMode]);
+
+  useEffect(() => {
+    if (!isAndroid || !isAuthenticated || preferencesLoading || currentPath.current.startsWith('/demo')) return;
+    let disposed = false;
+    void flushAuthStorage().then(async () => {
+      const owner = authStorage.getItem('auth_refresh_token');
+      if (!disposed && owner) await LanisNative.setWidgetPreferences({
+        owner,
+        showSubstitutions: preferences.timetable.show_substitutions,
+        classColors: preferences.timetable.class_colors,
+      });
+    }).catch(() => setFailure('Widget-Einstellungen konnten nicht aktualisiert werden.'));
+    return () => { disposed = true; };
+  }, [isAuthenticated, token, preferencesLoading, preferences.timetable.show_substitutions, preferences.timetable.class_colors]);
 
   if (!isAndroid || !failure) return null;
   return <button type="button" role="status" className="native-toast" onClick={() => setFailure('')}>{failure}<span className="sr-only"> Schließen</span></button>;

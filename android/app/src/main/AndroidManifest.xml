@@ -84,16 +84,17 @@
         <service android:name=".LanisMessagingService" android:exported="false">
             <intent-filter><action android:name="com.google.firebase.MESSAGING_EVENT" /></intent-filter>
         </service>
-        <receiver android:name=".NextLessonWidget" android:exported="false" android:label="@string/widget_next">
+        <!-- Legacy placed instances remain supported; only the two new providers are discoverable. -->
+        <receiver android:name=".NextLessonWidget" android:exported="false" android:label="@string/widget_today">
             <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_next" />
         </receiver>
         <receiver android:name=".TodayWidget" android:exported="false" android:label="@string/widget_today">
-            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /><action android:name="android.intent.action.CONFIGURATION_CHANGED" /></intent-filter>
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_today" />
         </receiver>
         <receiver android:name=".ChangesWidget" android:exported="false" android:label="@string/widget_changes">
-            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /><action android:name="android.intent.action.CONFIGURATION_CHANGED" /></intent-filter>
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_changes" />
         </receiver>
         <service android:name=".TimetableTileService" android:exported="true" android:label="@string/widget_today"

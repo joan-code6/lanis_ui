@@ -5,4 +5,4 @@
     android:minResizeWidth="180dp" android:minResizeHeight="110dp"
     android:initialLayout="@layout/lanis_widget" android:previewLayout="@layout/lanis_widget"
     android:description="@string/widget_next_description" android:resizeMode="horizontal|vertical"
-    android:widgetCategory="home_screen" android:updatePeriodMillis="1800000" />
+    android:widgetFeatures="hide_from_picker" android:widgetCategory="home_screen" android:updatePeriodMillis="1800000" />

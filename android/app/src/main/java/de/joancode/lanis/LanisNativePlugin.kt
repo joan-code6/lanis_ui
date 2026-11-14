@@ -197,7 +197,7 @@ class LanisNativePlugin : Plugin() {
     @PluginMethod fun sync(call: PluginCall) = task(call) { DeviceSync.sync(context); call.resolve(status()) }
     @PluginMethod fun pinWidget(call: PluginCall) {
         val receiver = when (call.getString("kind")) {
-            "next" -> NextLessonWidget::class.java
+            "next" -> TodayWidget::class.java // Compatibility with older WebView assets.
             "today" -> TodayWidget::class.java
             "changes" -> ChangesWidget::class.java
             else -> return call.reject("Unbekanntes Widget.")
@@ -205,6 +205,25 @@ class LanisNativePlugin : Plugin() {
         val manager = AppWidgetManager.getInstance(context)
         val requested = manager.isRequestPinAppWidgetSupported && manager.requestPinAppWidget(ComponentName(context, receiver), null, null)
         call.resolve(JSObject().put("requested", requested))
+    }
+    @PluginMethod fun setWidgetPreferences(call: PluginCall) = task(call) {
+        synchronized(NativeStore.lock) {
+            val state = NativeStore.read(context)
+            val owner = call.getString("owner")
+            if (owner.isNullOrEmpty() || state.optJSONObject("session")?.optString("auth_refresh_token") != owner) return@task call.resolve()
+            val colors = call.getObject("classColors") ?: JSObject()
+            val valid = JSONObject()
+            for (key in colors.keys()) {
+                val value = colors.optString(key)
+                if (key.length <= 512 && value.matches(Regex("#[a-fA-F0-9]{6}"))) valid.put(key, value)
+            }
+            state.put("widgetPreferences", JSONObject().put("showSubstitutions", call.getBoolean("showSubstitutions", true))
+                .put("classColors", valid))
+            NativeStore.write(context, state)
+            Widgets.updateAll(context)
+            WidgetTickWorker.schedule(context)
+            call.resolve()
+        }
     }
     @PluginMethod fun setAppearance(call: PluginCall) = task(call) {
         val dark = call.getBoolean("dark", false) ?: false
@@ -216,6 +235,7 @@ class LanisNativePlugin : Plugin() {
         if (!accent.matches(Regex("^#[A-Fa-f0-9]{6}$"))) return@task call.reject("Ungültige Farbe.")
         synchronized(NativeStore.lock) {
             val state = NativeStore.read(context).put("dark", dark).put("oled", oled).put("accent", accent).put("theme", theme)
+                .put("themeMode", call.getString("themeMode", if (oled) "oled" else if (dark) "dark" else "light"))
             NativeStore.write(context, state)
             Widgets.updateAll(context)
         }

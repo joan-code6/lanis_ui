@@ -23,7 +23,7 @@ export interface DeviceStatus {
   widgetPinSupported: boolean;
   version: string;
 }
-export type WidgetKind = 'next' | 'today' | 'changes';
+export type WidgetKind = 'today' | 'changes';
 export interface NativeSession { [key: string]: string }
 
 interface LanisNativePlugin {
@@ -37,7 +37,8 @@ interface LanisNativePlugin {
   clearSession(): Promise<void>;
   getStatus(): Promise<DeviceStatus>;
   sync(): Promise<DeviceStatus>;
-  setAppearance(options: { dark: boolean; oled: boolean; accent: string; theme: string }): Promise<void>;
+  setAppearance(options: { dark: boolean; oled: boolean; accent: string; theme: string; themeMode: 'system' | 'light' | 'dark' | 'oled' }): Promise<void>;
+  setWidgetPreferences(options: { owner: string; showSubstitutions: boolean; classColors: Record<string, string> }): Promise<void>;
   pinWidget(options: { kind: WidgetKind }): Promise<{ requested: boolean }>;
   saveTimetable(options: { data: TimetableResponse; owner: string }): Promise<void>;
   getTimetable(): Promise<{ data?: TimetableResponse; updatedAt: number }>;

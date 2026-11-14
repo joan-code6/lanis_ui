@@ -7,11 +7,15 @@ The Android app packages the existing React/Vite interface with Capacitor 8. It 
 - Android bottom navigation, native back-button handling, keyboard/system-bar insets, external links in browser tabs, and bundled UI fonts.
 - Encrypted Android Keystore-backed login and personal timetable snapshot in `noBackupFilesDir`. Tokens are held in memory in JavaScript, with encrypted native persistence, instead of WebView localStorage.
 - Cached personal timetable fallback when a request fails due to connectivity or server errors, visibly dated and marked as cached. Authentication failures do not fall back to private data.
-- Three resizable native home-screen widgets: next lesson, today's lessons, and changes/notices from the resolved personal timetable. These use Android RemoteViews so they work without a running WebView.
+- Two resizable native home-screen widgets: **Stundenplan** and **Änderungen**, using Android RemoteViews without a running WebView. Already-placed next-lesson widgets render the timetable and are hidden from the picker on Android 9+.
 - WorkManager refresh at a 15-minute minimum interval when connected, app resume refresh, widget refresh button, and cached lesson-boundary updates. These are best-effort; Android can delay them. The app does not start foreground services or request exact alarms. WorkManager contributes its own library manifest declarations.
 - FCM notifications, permission handling, category/window/preview preferences, device-token rotation, and session binding to reject queued notifications from a previous login.
 - Launcher shortcuts, a timetable Quick Settings tile, and native file sharing/saving through the Android chooser.
 - On logout, encrypted snapshots and credentials are deleted, scheduled work and displayed notifications are cancelled, and widgets are cleared. Existing backend logout revokes subscriptions.
+
+Widgets use a date-led layout without app branding, lesson-count/end-of-day summaries, sync timestamps or open icons. Timetable rows retain identical columns and padding when highlighted. After the last active lesson ends, the timetable advances to the next cached day with lessons, skipping weekends and empty days. Expired caches never invent a future school day. Resize to show more entries; overflow is indicated explicitly.
+
+Saved accent colours, light/dark/system/OLED appearance and course colour overrides apply to the widgets. The timetable honours the substitution-overlay preference without changing the shared resolved cache; the dedicated Änderungen widget always shows changes. Account-owned widget preferences are encrypted alongside the timetable and cleared on logout. App lock continues to hide lesson details. Source/sync failures show a warning without a timestamp or an authoritative “Keine Änderungen”.
 
 Substitution widgets show resolved personal-timetable changes and unmatched notices. They do not claim to show every raw entry in a school's substitution plan. Homework/exam widgets and incoming share-to-submission intents are outside this implementation.
 
@@ -99,8 +103,7 @@ See [device verification](android-device-verification.md) for the Windows build 
 The Android launcher switches activity aliases to follow the selected app colour.
 Those aliases forward through a separate, nonvisual activity so changing the icon cannot remove the running app task. Native bridge payload logging is disabled, including in debug APKs, because session calls carry credentials.
 All nine variants reuse the generated PNGs in `public/favicon/themes`, with a 16.667% foreground inset to compensate for Android's adaptive-icon cropping. The splash icon has matching padding. Regenerate the resources with `node scripts/generate-android-icons.mjs`; launchers
-may take a moment to refresh their icon cache. Widgets use these same assets,
-Outfit typography, neutral card surfaces, and the selected accent and OLED mode.
+may take a moment to refresh their icon cache. Widgets use Outfit typography and the selected accent and appearance, without app logos.
 Outfit's upstream license is included in `docs/licenses/Outfit-OFL.txt`.
 
 Recent Apps receives a task icon matching the selected colour, restored at startup and updated when the theme changes. It uses a rendered bitmap because Launcher3/Pixel recents still ignore resource-only task icons. Android may normalize its shape and size. System screens that read the fixed application icon, such as App Info, can still show Ruby.

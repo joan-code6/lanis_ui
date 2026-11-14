@@ -1,8 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="wrap_content" android:paddingTop="9dp" android:paddingBottom="3dp">
-    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
-    <TextView android:id="@+id/lesson_subject" android:layout_width="match_parent" android:layout_height="wrap_content" android:fontFamily="@font/outfit" android:textSize="14sp" android:textStyle="bold" android:maxLines="1" android:ellipsize="end" />
-    <TextView android:id="@+id/lesson_detail" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:fontFamily="@font/outfit" android:textSize="12sp" android:maxLines="1" android:ellipsize="end" />
-</LinearLayout>
-    <ImageView android:id="@+id/lesson_time_line" android:layout_width="match_parent" android:layout_height="match_parent" android:scaleType="fitXY" android:visibility="gone" android:importantForAccessibility="no" />
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="wrap_content">
+    <ImageView android:id="@+id/lesson_highlight" android:layout_width="match_parent" android:layout_height="match_parent" android:src="@drawable/widget_row_background" android:scaleType="fitXY" android:visibility="gone" android:importantForAccessibility="no" />
+    <ImageView android:id="@+id/lesson_separator" android:layout_width="match_parent" android:layout_height="1dp" android:layout_marginHorizontal="8dp" android:importantForAccessibility="no" />
+    <!-- Highlighting changes only the background. Every row keeps the same columns and padding. -->
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:minHeight="60dp" android:paddingHorizontal="8dp" android:paddingVertical="12dp" android:gravity="center_vertical">
+        <LinearLayout android:layout_width="42dp" android:layout_height="wrap_content" android:orientation="vertical" android:layout_marginEnd="10dp">
+            <TextView android:id="@+id/lesson_start" android:layout_width="match_parent" android:layout_height="wrap_content" android:fontFamily="@font/outfit" android:textSize="11sp" android:maxLines="1" />
+            <TextView android:id="@+id/lesson_end" android:layout_width="match_parent" android:layout_height="wrap_content" android:fontFamily="@font/outfit" android:textSize="11sp" android:maxLines="1" />
+        </LinearLayout>
+        <LinearLayout android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:orientation="vertical">
+            <TextView android:id="@+id/lesson_subject" android:layout_width="match_parent" android:layout_height="wrap_content" android:fontFamily="@font/outfit" android:textSize="15sp" android:textStyle="bold" android:maxLines="1" android:ellipsize="end" />
+            <TextView android:id="@+id/lesson_detail" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="3dp" android:fontFamily="@font/outfit" android:textSize="11sp" android:maxLines="1" android:ellipsize="end" />
+        </LinearLayout>
+        <TextView android:id="@+id/lesson_room" android:layout_width="54dp" android:layout_height="wrap_content" android:layout_marginStart="10dp" android:gravity="end" android:fontFamily="@font/outfit" android:textSize="13sp" android:maxLines="1" android:ellipsize="end" />
+    </LinearLayout>
 </FrameLayout>

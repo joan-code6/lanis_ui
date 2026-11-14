@@ -18,197 +18,192 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 
-/** Native widgets consume the same resolved API model as the React timetable. */
-object WidgetModel {
-    val zone: ZoneId = ZoneId.of("Europe/Berlin")
-    data class Lesson(val date: LocalDate, val start: String, val end: String, val subject: String,
-        val room: String, val teacher: String, val cancelled: Boolean, val changed: Boolean, val info: String, val period: String) {
-        fun endInstant(): Instant? = try { date.atTime(LocalTime.parse(end)).atZone(zone).toInstant() } catch (_: Exception) { null }
-        fun startInstant(): Instant? = try { date.atTime(LocalTime.parse(start)).atZone(zone).toInstant() } catch (_: Exception) { null }
-    }
-    fun lessons(data: JSONObject?): List<Lesson> {
-        val result = mutableListOf<Lesson>()
-        val days = data?.optJSONArray("days") ?: return result
-        val slots = data.optJSONArray("time_slots")
-        for (dayIndex in 0 until days.length()) {
-            val day = days.optJSONObject(dayIndex) ?: continue
-            val date = try { LocalDate.parse(day.getString("date")) } catch (_: Exception) { continue }
-            val lessons = day.optJSONArray("lessons") ?: continue
-            for (index in 0 until lessons.length()) {
-                val lesson = lessons.optJSONObject(index) ?: continue
-                val period = lesson.optString("period")
-                val periods = Regex("\\d+").findAll(period).map { it.value.toInt() }.toList()
-                fun slotTime(periodNumber: Int?, field: String): String {
-                    if (periodNumber == null || slots == null) return ""
-                    for (i in 0 until slots.length()) {
-                        val slot = slots.optJSONObject(i) ?: continue
-                        if (slot.optInt("period") == periodNumber) return slot.optString(field)
-                    }
-                    return ""
-                }
-                result += Lesson(date, lesson.optString("start_time").ifEmpty { slotTime(periods.firstOrNull(), "start_time") },
-                    lesson.optString("end_time").ifEmpty { slotTime(periods.lastOrNull(), "end_time") },
-                    lesson.optString("subject", "Unterricht"), lesson.optString("room"), lesson.optString("teacher"),
-                    lesson.optBoolean("cancelled"), lesson.optJSONObject("substitution") != null,
-                    lesson.optString("info").ifEmpty { lesson.optJSONObject("substitution")?.optString("info") ?: "" }, period)
-            }
-        }
-        return result.sortedWith(compareBy<Lesson> { it.date }.thenBy { it.start.ifEmpty { "99:99" } }.thenBy { Regex("\\d+").find(it.period)?.value?.toInt() ?: 999 })
-    }
-    fun next(lessons: List<Lesson>, now: Instant): Lesson? {
-        val today = now.atZone(zone).toLocalDate()
-        return lessons.firstOrNull { !it.cancelled && it.date >= today && (it.date > today || it.endInstant()?.isAfter(now) == true) }
-    }
-    fun notices(data: JSONObject?, today: LocalDate): List<Pair<String, String>> {
-        val result = mutableListOf<Pair<String, String>>()
-        val days = data?.optJSONArray("days") ?: return result
-        for (i in 0 until days.length()) {
-            val day = days.optJSONObject(i) ?: continue
-            val date = try { LocalDate.parse(day.getString("date")) } catch (_: Exception) { continue }
-            if (date < today) continue
-            val notices = day.optJSONArray("substitutionNotices") ?: continue
-            for (j in 0 until notices.length()) {
-                val notice = notices.optJSONObject(j) ?: continue
-                result += Pair(notice.optString("subject").ifEmpty { notice.optString("kind", "Hinweis") },
-                    "${date.format(DateTimeFormatter.ofPattern("EEE d.M.", Locale.GERMAN))} · ${notice.optString("info").ifEmpty { notice.optString("kind") }}")
-            }
-        }
-        return result
-    }
-}
-
+/** Date-led native layouts; all lesson rows share exactly the same column geometry. */
 object Widgets {
+    // Keep the old provider alive for already-placed widgets; it renders the timetable now.
     private val providers = listOf(NextLessonWidget::class.java, TodayWidget::class.java, ChangesWidget::class.java)
     fun updateAll(context: Context) {
         LessonProgress.update(context)
         val manager = AppWidgetManager.getInstance(context)
         for (provider in providers) for (id in manager.getAppWidgetIds(ComponentName(context, provider))) update(context, manager, id, provider)
     }
-    private fun open(context: Context, path: String, id: Int) = PendingIntent.getActivity(context, id,
-        Intent(context, MainActivity::class.java).setAction(Intent.ACTION_VIEW).setData(Uri.parse("https://lanis.arg-server.de$path"))
+    private fun open(context: Context, id: Int) = PendingIntent.getActivity(context, id,
+        Intent(context, MainActivity::class.java).setAction(Intent.ACTION_VIEW).setData(Uri.parse("https://lanis.arg-server.de/timetable"))
             .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
-    fun update(context: Context, manager: AppWidgetManager, id: Int, provider: Class<out AppWidgetProvider>) {
-        val state = try { NativeStore.read(context) } catch (_: Exception) { JSONObject() }
-        val next = provider == NextLessonWidget::class.java
-        val changes = provider == ChangesWidget::class.java
-        val title = if (next) "Nächste Stunde" else if (changes) "Vertretungen" else "Dein Schultag"
-        val dark = state.optBoolean("dark")
-        val foreground = Color.parseColor(if (dark) "#f5f5f5" else "#171717")
-        val muted = Color.parseColor(if (dark) "#a3a3a3" else "#737373")
-        val accent = try { Color.parseColor(state.optString("accent", "#e11d48")) } catch (_: Exception) { Color.parseColor("#e11d48") }
-        val views = RemoteViews(context.packageName, R.layout.lanis_widget)
-        views.setInt(R.id.widget_root, "setBackgroundResource", if (state.optBoolean("oled")) R.drawable.widget_background_oled else if (dark) R.drawable.widget_background_dark else R.drawable.widget_background)
-        views.setTextViewText(R.id.widget_title, title)
-        val icon = when (state.optString("theme", "ruby")) {
-            "coral" -> R.drawable.ic_lanis_coral
-            "blush" -> R.drawable.ic_lanis_blush
-            "moss" -> R.drawable.ic_lanis_moss
-            "cyan" -> R.drawable.ic_lanis_cyan
-            "emerald" -> R.drawable.ic_lanis_emerald
-            "sapphire" -> R.drawable.ic_lanis_sapphire
-            "amethyst" -> R.drawable.ic_lanis_amethyst
-            "amber" -> R.drawable.ic_lanis_amber
-            else -> R.drawable.ic_lanis_ruby
+
+    private fun blend(base: Int, accent: Int, fraction: Float): Int = androidx.core.graphics.ColorUtils.blendARGB(base, accent, fraction)
+    private fun readable(accent: Int, surface: Int): Int {
+        if (androidx.core.graphics.ColorUtils.calculateContrast(accent, surface) >= 4.5) return accent
+        val target = if (androidx.core.graphics.ColorUtils.calculateLuminance(surface) < .5) Color.WHITE else Color.BLACK
+        for (step in 1..20) {
+            val adjusted = blend(accent, target, step / 20f)
+            if (androidx.core.graphics.ColorUtils.calculateContrast(adjusted, surface) >= 4.5) return adjusted
         }
-        views.setImageViewResource(R.id.widget_logo, icon)
-        views.setTextColor(R.id.widget_title, accent)
+        return target
+    }
+    fun update(context: Context, manager: AppWidgetManager, id: Int, provider: Class<out AppWidgetProvider>) {
+        val state = runCatching { NativeStore.read(context) }.getOrDefault(JSONObject())
+        val preferences = state.optJSONObject("widgetPreferences")
+        val changes = provider == ChangesWidget::class.java
+        val oled = state.optBoolean("oled")
+        val dark = oled || if (state.optString("themeMode") == "system")
+            context.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK == android.content.res.Configuration.UI_MODE_NIGHT_YES
+            else state.optBoolean("dark")
+        val accent = runCatching { Color.parseColor(state.optString("accent", "#f43f5e")) }.getOrDefault(Color.rgb(244, 63, 94))
+        val surface = if (oled) Color.BLACK else blend(Color.parseColor(if (dark) "#242124" else "#ffffff"), accent, .035f)
+        val foreground = Color.parseColor(if (dark) "#f5f0f3" else "#30242b")
+        val muted = Color.parseColor(if (dark) "#bdaeb7" else "#796b73")
+        val brand = readable(accent, surface)
+        val line = blend(surface, foreground, .12f)
+        val views = RemoteViews(context.packageName, R.layout.lanis_widget)
+        views.setInt(R.id.widget_background, "setColorFilter", surface)
         views.setTextColor(R.id.widget_headline, foreground)
         views.setTextColor(R.id.widget_detail, muted)
-        views.setTextColor(R.id.widget_updated, muted)
+        views.setTextColor(R.id.widget_empty, foreground)
+        views.setTextColor(R.id.widget_notice, brand)
+        views.setTextColor(R.id.widget_more, muted)
+        views.setTextColor(R.id.widget_count, brand)
         views.setInt(R.id.widget_refresh, "setColorFilter", muted)
-        views.setOnClickPendingIntent(R.id.widget_root, open(context, "/timetable", id))
+        views.setOnClickPendingIntent(R.id.widget_root, open(context, id))
         views.setOnClickPendingIntent(R.id.widget_refresh, PendingIntent.getBroadcast(context, id,
             Intent(context, provider).setAction("de.joancode.lanis.REFRESH"), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE))
         views.removeAllViews(R.id.widget_rows)
+        val widgetHeight = manager.getAppWidgetOptions(id).getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, if (changes) 320 else 360)
         val now = Instant.now()
         val today = now.atZone(WidgetModel.zone).toLocalDate()
         val signedIn = !state.optJSONObject("session")?.optString("auth_refresh_token").isNullOrEmpty()
         val data = state.optJSONObject("timetable")
-        val lessons = WidgetModel.lessons(data)
-        val updated = state.optLong("lastUpdated")
+        val lessons = WidgetModel.lessons(data, changes || preferences?.optBoolean("showSubstitutions", true) != false)
+        val date = WidgetModel.schoolDay(lessons, now)
         val sourceError = data?.optJSONArray("substitution_sources")?.let { sources ->
             (0 until sources.length()).any { sources.optJSONObject(it)?.optBoolean("error") == true }
         } ?: false
-        val age = if (updated > 0) "Stand ${Instant.ofEpochMilli(updated).atZone(WidgetModel.zone).format(DateTimeFormatter.ofPattern("dd.MM. HH:mm"))}" else "Noch nicht aktualisiert"
-        views.setTextViewText(R.id.widget_updated, if (state.optString("syncError").isNotEmpty() || sourceError) "$age · Änderungen können fehlen" else age)
-        views.setViewVisibility(R.id.widget_refresh, if (signedIn) View.VISIBLE else View.GONE)
+        val unavailable = state.optString("syncError").isNotEmpty() || sourceError
+        views.setViewVisibility(R.id.widget_count, View.GONE)
+        views.setViewVisibility(R.id.widget_detail, View.GONE)
+        views.setViewVisibility(R.id.widget_empty, View.GONE)
+        views.setViewVisibility(R.id.widget_more, View.GONE)
+        views.setViewVisibility(R.id.widget_notice, if (unavailable) View.VISIBLE else View.GONE)
+        views.setTextViewText(R.id.widget_notice, "Aktualisierung nicht möglich · Neuere Änderungen können fehlen.")
+        views.setViewVisibility(R.id.widget_refresh, if (signedIn && !changes) View.VISIBLE else View.GONE)
+        fun message(title: String, detail: String) {
+            views.setTextViewText(R.id.widget_headline, title)
+            views.setTextViewText(R.id.widget_detail, detail)
+            views.setViewVisibility(R.id.widget_detail, View.VISIBLE)
+        }
         when {
             AppLock.enabled(context) -> {
-                views.setTextViewText(R.id.widget_headline, "LANIS gesperrt")
-                views.setTextViewText(R.id.widget_detail, "Zum Entsperren tippen")
-                views.setTextViewText(R.id.widget_updated, "")
+                message("LANIS gesperrt", "Zum Entsperren tippen")
                 views.setViewVisibility(R.id.widget_refresh, View.GONE)
+                views.setViewVisibility(R.id.widget_notice, View.GONE)
             }
             !signedIn -> {
-                views.setTextViewText(R.id.widget_headline, "Noch nicht angemeldet")
-                views.setTextViewText(R.id.widget_detail, "Zum Anmelden tippen")
-                views.setTextViewText(R.id.widget_updated, "")
+                message("Noch nicht angemeldet", "Zum Anmelden tippen")
+                views.setViewVisibility(R.id.widget_notice, View.GONE)
             }
-            data == null -> {
-                views.setTextViewText(R.id.widget_headline, "Stundenplan wird geladen")
-                views.setTextViewText(R.id.widget_detail, "Zum Öffnen tippen oder aktualisieren.")
+            widgetHeight < 170 -> {
+                views.setViewVisibility(R.id.widget_refresh, View.GONE)
+                message("Widget vergrößern", "Für den Stundenplan mehr Höhe wählen.")
             }
-            next -> {
-                val lesson = WidgetModel.next(lessons, now)
-                views.setTextViewText(R.id.widget_headline, lesson?.subject?.take(80) ?: "Keine weitere Stunde")
-                views.setTextViewText(R.id.widget_detail, if (lesson == null) "Im gespeicherten Zeitraum ist kein weiterer Unterricht eingetragen." else detail(lesson, today))
-            }
+            data == null -> message("Stundenplan wird geladen", "Zum Öffnen tippen oder aktualisieren.")
+            date == null -> message("Kein weiterer Schultag", "Im gespeicherten Plan ist kein weiterer Unterricht eingetragen.")
             else -> {
-                val selected = if (changes) lessons.filter { it.date >= today && (it.cancelled || it.changed) }
-                    else run {
-                        val todaysLessons = lessons.filter { it.date == today }
-                        val lastEnd = todaysLessons.mapNotNull { it.endInstant() }.maxOrNull()
-                        val date = if (todaysLessons.isNotEmpty() && (lastEnd == null || now.isBefore(lastEnd))) today
-                            else lessons.firstOrNull { it.date > today }?.date ?: today.plusDays(1)
-                        lessons.filter { it.date == date }
-                    }
-                val notices = if (changes) WidgetModel.notices(data, today) else emptyList()
-                val count = selected.size + notices.size
-                views.setTextViewText(R.id.widget_headline, if (changes) (if (count == 0) "Keine Änderungen" else "$count ${if (count == 1) "Änderung" else "Änderungen"}")
-                    else (selected.firstOrNull()?.date ?: today.plusDays(1)).format(DateTimeFormatter.ofPattern("EEEE, d. MMM", Locale.GERMAN)))
-                views.setTextViewText(R.id.widget_detail, if (count == 0) (if (changes) "Im gespeicherten Plan liegen keine Änderungen vor." else "Keine weiteren Stunden im gespeicherten Plan.") else if (changes) "In deinem persönlichen Stundenplan" else "${selected.size} Stunden · für dich geplant")
-                val height = manager.getAppWidgetOptions(id).getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 180)
-                val maxRows = ((height - 130) / 44).coerceIn(1, 6)
-                val rows = selected.map { Pair(it.subject + if (it.cancelled) " · entfällt" else "", detail(it, today)) } + notices
-                val firstStart = selected.mapNotNull { it.startInstant() }.minOrNull()
-                val lastEnd = selected.mapNotNull { it.endInstant() }.maxOrNull()
-                val showTime = !changes && selected.firstOrNull()?.date == today && firstStart != null && lastEnd != null && !now.isBefore(firstStart) && now.isBefore(lastEnd)
-                for ((index, entry) in rows.take(maxRows).withIndex()) {
-                    val (subject, description) = entry
-                    val row = RemoteViews(context.packageName, R.layout.widget_lesson)
-                    row.setTextViewText(R.id.lesson_subject, subject.take(80)); row.setTextColor(R.id.lesson_subject, foreground)
-                    row.setTextViewText(R.id.lesson_detail, description.take(130)); row.setTextColor(R.id.lesson_detail, muted)
-                    if (showTime) {
-                        val lesson = selected[index]
-                        val start = lesson.startInstant()
-                        val end = lesson.endInstant()
-                        val followingStart = selected.getOrNull(index + 1)?.startInstant()
-                        val inLesson = start != null && end != null && !now.isBefore(start) && now.isBefore(end)
-                        val inBreak = end != null && followingStart != null && !now.isBefore(end) && now.isBefore(followingStart)
-                        if (inLesson || inBreak) {
-                            val fraction = if (inBreak) 1f else (Duration.between(start, now).toMillis().toFloat() / Duration.between(start, end).toMillis()).coerceIn(0f, 1f)
-                            val bitmap = android.graphics.Bitmap.createBitmap(600, 88, android.graphics.Bitmap.Config.ARGB_8888)
-                            val paint = android.graphics.Paint().apply { color = accent; strokeWidth = 3f }
-                            val y = (fraction * 84f + 2f)
-                            android.graphics.Canvas(bitmap).drawLine(0f, y, 600f, y, paint)
-                            row.setImageViewBitmap(R.id.lesson_time_line, bitmap)
-                            row.setViewVisibility(R.id.lesson_time_line, View.VISIBLE)
-                        }
-                    }
-                    views.addView(R.id.widget_rows, row)
+                val selected = lessons.filter { it.date == date }
+                val changed = selected.filter { it.cancelled || it.changed }
+                val notices = if (changes) WidgetModel.notices(data, date) else emptyList()
+                val count = changed.size + notices.size
+                val fontScale = context.resources.configuration.fontScale.coerceAtLeast(1f)
+                val rowHeight = (if (changes) 118 else 60) * fontScale
+                val totalRows = if (changes) count else selected.size
+                val headerHeight = 88 * fontScale
+                val warningHeight = if (unavailable) 48 * fontScale else 0f
+                val overflowHeight = if (totalRows * rowHeight + warningHeight > widgetHeight - headerHeight) 24 * fontScale else 0f
+                val available = widgetHeight - headerHeight - overflowHeight - warningHeight
+                val maxRows = (available / rowHeight).toInt().coerceIn(0, 10)
+                if (maxRows == 0 && totalRows > 0) {
+                    views.setViewVisibility(R.id.widget_refresh, View.GONE)
+                    message("Widget vergrößern", "Für deine Schriftgröße wird mehr Höhe benötigt.")
+                    manager.updateAppWidget(id, views)
+                    return
                 }
-                if (rows.size > maxRows) views.setTextViewText(R.id.widget_updated, "$age · +${rows.size - maxRows} weitere in LANIS${if (sourceError) " · Änderungen können fehlen" else ""}")
+                if (changes) {
+                    views.setTextViewText(R.id.widget_headline, when (date) { today -> "Heute"; today.plusDays(1) -> "Morgen"; else -> date.format(DateTimeFormatter.ofPattern("EEEE", Locale.GERMAN)) })
+                    views.setTextViewText(R.id.widget_detail, date.format(DateTimeFormatter.ofPattern("EEEE, d. MMM", Locale.GERMAN)))
+                    views.setViewVisibility(R.id.widget_detail, View.VISIBLE)
+                    views.setViewVisibility(R.id.widget_count, View.VISIBLE)
+                    views.setTextViewText(R.id.widget_count, "$count ${if (count == 1) "Änderung" else "Änderungen"}")
+                    if (count == 0 && unavailable) views.setViewVisibility(R.id.widget_count, View.GONE)
+                    if (count == 0) {
+                        views.setTextViewText(R.id.widget_empty, if (unavailable) "Änderungen nicht verfügbar" else "Keine Änderungen")
+                        views.setViewVisibility(R.id.widget_empty, View.VISIBLE)
+                    }
+                    for ((index, lesson) in changed.take(maxRows).withIndex()) {
+                        val row = RemoteViews(context.packageName, R.layout.widget_change)
+                        row.setTextViewText(R.id.change_subject, lesson.subject)
+                        row.setTextViewText(R.id.change_time, lesson.start.ifBlank { "${lesson.period}. Std." })
+                        row.setTextViewText(R.id.change_kind, if (lesson.originalRoom.isNotBlank() && lesson.originalRoom != lesson.room && !lesson.cancelled) "Raumwechsel" else if (lesson.cancelled) "" else lesson.kind.ifBlank { "Vertretung" })
+                        row.setViewVisibility(R.id.change_kind, if (lesson.cancelled) View.GONE else View.VISIBLE)
+                        row.setTextViewText(R.id.change_value, WidgetModel.changeDetail(lesson))
+                        val extra = lesson.info.ifBlank { if (lesson.cancelled) listOf(lesson.start, lesson.end).filter { it.isNotBlank() }.joinToString("–") else "" }
+                        row.setTextViewText(R.id.change_info, extra)
+                        row.setViewVisibility(R.id.change_info, if (extra.isBlank()) View.GONE else View.VISIBLE)
+                        row.setTextColor(R.id.change_subject, foreground); row.setTextColor(R.id.change_time, muted)
+                        row.setTextColor(R.id.change_kind, muted); row.setTextColor(R.id.change_value, brand); row.setTextColor(R.id.change_info, muted)
+                        row.setInt(R.id.change_separator, "setBackgroundColor", line)
+                        row.setViewVisibility(R.id.change_separator, if (index == 0) View.INVISIBLE else View.VISIBLE)
+                        views.addView(R.id.widget_rows, row)
+                    }
+                    for (notice in notices.take((maxRows - changed.size).coerceAtLeast(0))) {
+                        val row = RemoteViews(context.packageName, R.layout.widget_change)
+                        row.setTextViewText(R.id.change_subject, notice.subject)
+                        row.setTextViewText(R.id.change_value, notice.detail)
+                        row.setTextColor(R.id.change_subject, foreground); row.setTextColor(R.id.change_value, brand)
+                        row.setViewVisibility(R.id.change_time, View.GONE); row.setViewVisibility(R.id.change_kind, View.GONE); row.setViewVisibility(R.id.change_info, View.GONE)
+                        row.setInt(R.id.change_separator, "setBackgroundColor", line)
+                        views.addView(R.id.widget_rows, row)
+                    }
+                } else {
+                    views.setTextViewText(R.id.widget_headline, date.format(DateTimeFormatter.ofPattern("EEEE, d. MMM", Locale.GERMAN)))
+                    // Keep today's current/upcoming lessons visible when a widget is too short for the full day.
+                    val focus = selected.indexOfFirst { !it.cancelled && (it.endInstant()?.isAfter(now) == true) }.coerceAtLeast(0)
+                    val first = if (selected.size > maxRows && date == today) focus.coerceAtMost((selected.size - maxRows).coerceAtLeast(0)) else 0
+                    for ((index, lesson) in selected.drop(first).take(maxRows).withIndex()) {
+                        val row = RemoteViews(context.packageName, R.layout.widget_lesson)
+                        val current = WidgetModel.isCurrent(lesson, now)
+                        val colour = WidgetModel.colourOverride(lesson, preferences)?.let { Color.parseColor(it) } ?: accent
+                        val tint = blend(surface, colour, if (dark) .23f else .12f)
+                        row.setInt(R.id.lesson_highlight, "setColorFilter", tint)
+                        row.setViewVisibility(R.id.lesson_highlight, if (current) View.VISIBLE else View.GONE)
+                        row.setTextViewText(R.id.lesson_start, lesson.start.ifBlank { "${lesson.period}." })
+                        row.setTextViewText(R.id.lesson_end, lesson.end)
+                        row.setTextViewText(R.id.lesson_subject, lesson.subject)
+                        row.setTextViewText(R.id.lesson_room, if (lesson.cancelled) "—" else lesson.room)
+                        row.setTextViewText(R.id.lesson_detail, when {
+                            lesson.cancelled -> "Entfällt"
+                            lesson.changed -> if (lesson.originalRoom != lesson.room && lesson.originalRoom.isNotBlank()) "Raum geändert" else lesson.kind.ifBlank { "Vertretung" }
+                            else -> listOfNotNull(if (current) "Jetzt" else null, lesson.teacher.takeIf { it.isNotBlank() }).joinToString(" · ")
+                        })
+                        val rowSurface = if (current) tint else surface
+                        val rowBrand = readable(colour, rowSurface)
+                        row.setTextColor(R.id.lesson_subject, if (lesson.cancelled) muted else if (WidgetModel.colourOverride(lesson, preferences) != null) rowBrand else foreground)
+                        row.setTextColor(R.id.lesson_detail, if (lesson.changed && !lesson.cancelled) readable(accent, rowSurface) else muted)
+                        row.setTextColor(R.id.lesson_room, if (current) rowBrand else if (lesson.cancelled) muted else foreground)
+                        row.setTextColor(R.id.lesson_start, muted); row.setTextColor(R.id.lesson_end, muted)
+                        row.setInt(R.id.lesson_subject, "setPaintFlags", android.graphics.Paint.ANTI_ALIAS_FLAG or if (lesson.cancelled) android.graphics.Paint.STRIKE_THRU_TEXT_FLAG else 0)
+                        row.setInt(R.id.lesson_separator, "setBackgroundColor", line)
+                        row.setViewVisibility(R.id.lesson_separator, if (index == 0 || current) View.INVISIBLE else View.VISIBLE)
+                        views.addView(R.id.widget_rows, row)
+                    }
+                }
+                val total = totalRows
+                if (total > maxRows) {
+                    views.setTextViewText(R.id.widget_more, "+${total - maxRows} weitere im Plan")
+                    views.setViewVisibility(R.id.widget_more, View.VISIBLE)
+                }
             }
         }
         manager.updateAppWidget(id, views)
     }
-    private fun detail(lesson: WidgetModel.Lesson, today: LocalDate): String = listOfNotNull(
-        if (lesson.date != today) lesson.date.format(DateTimeFormatter.ofPattern("EEE d.M.", Locale.GERMAN)) else null,
-        if (lesson.start.isNotEmpty()) lesson.start + if (lesson.end.isNotEmpty()) "–${lesson.end}" else "" else "${lesson.period}. Stunde",
-        lesson.room.takeIf { it.isNotBlank() }?.let { "Raum $it" },
-        lesson.teacher.takeIf { it.isNotBlank() },
-        if (lesson.cancelled) "Entfällt" else lesson.info.takeIf { it.isNotBlank() }
-    ).joinToString(" · ").take(200)
 }
 
 open class LanisWidgetProvider : AppWidgetProvider() {
@@ -223,23 +218,24 @@ open class LanisWidgetProvider : AppWidgetProvider() {
     override fun onReceive(context: Context, intent: Intent) {
         super.onReceive(context, intent)
         if (intent.action == "de.joancode.lanis.REFRESH") DeviceSync.enqueue(context)
+        if (intent.action == Intent.ACTION_CONFIGURATION_CHANGED) Widgets.updateAll(context)
     }
 }
 class NextLessonWidget : LanisWidgetProvider()
 class TodayWidget : LanisWidgetProvider()
 class ChangesWidget : LanisWidgetProvider()
 
-/** Re-project cached lessons at their boundaries; no network or exact-alarm permission needed. */
+/** Re-project cached lessons at boundaries, including the switch to the next school day. */
 class WidgetTickWorker(context: Context, params: WorkerParameters) : Worker(context, params) {
     override fun doWork(): Result { Widgets.updateAll(applicationContext); schedule(applicationContext); return Result.success() }
     companion object {
         fun schedule(context: Context) {
-            val state = try { NativeStore.read(context) } catch (_: Exception) { return }
+            val state = runCatching { NativeStore.read(context) }.getOrNull() ?: return
             if (state.optJSONObject("session")?.optString("auth_refresh_token").isNullOrEmpty()) return
             val now = Instant.now()
             val midnight = now.atZone(WidgetModel.zone).toLocalDate().plusDays(1).atStartOfDay(WidgetModel.zone).toInstant()
-            val next = (WidgetModel.lessons(state.optJSONObject("timetable")).flatMap { listOfNotNull(it.startInstant(), it.endInstant()) } + midnight + now.plusSeconds(60))
-                .filter { it.isAfter(now.plusSeconds(10)) }.minOrNull() ?: midnight
+            val next = (WidgetModel.lessons(state.optJSONObject("timetable")).flatMap { listOfNotNull(it.startInstant(), it.endInstant()) } + midnight)
+                .filter { it.isAfter(now) }.minOrNull() ?: midnight
             val request = OneTimeWorkRequestBuilder<WidgetTickWorker>().setInitialDelay(Duration.between(now, next).seconds + 2, TimeUnit.SECONDS).build()
             WorkManager.getInstance(context).enqueueUniqueWork("lanis-widget-tick", ExistingWorkPolicy.REPLACE, request)
         }

@@ -6,7 +6,8 @@ const ts = require('typescript');
 const { test } = require('node:test');
 
 function runtime(signedIn = true) {
-  const hooks = [], listeners = new Map(), calls = [];
+  const hooks = [], listeners = new Map(), calls = [], widgetPreferences = [];
+  let preferences = { timetable: { show_substitutions: true, class_colors: {} } };
   let cursor = 0, launchReads = 0, removed = 0;
   let route = '/dashboard', authenticated = signedIn;
   const react = {
@@ -39,9 +40,10 @@ function runtime(signedIn = true) {
       } };
       if (name === '@capacitor/browser') return { Browser: {} };
       if (name.endsWith('/AuthContext')) return { useAuth: () => ({ isAuthenticated: authenticated, token: authenticated ? 'test' : null }) };
+      if (name.endsWith('/PreferencesContext')) return { usePreferences: () => ({ preferences, isLoading: false }) };
       if (name.endsWith('/ThemeContext')) return { useTheme: () => ({ themeColor: 'ruby' }) };
-      if (name.endsWith('/native')) return { isAndroid: true, LanisNative: { async sync() {}, async setAppearance() {} } };
-      if (name.endsWith('/authStorage')) return { async flushAuthStorage() {} };
+      if (name.endsWith('/native')) return { isAndroid: true, LanisNative: { async sync() {}, async setAppearance() {}, async setWidgetPreferences(value) { widgetPreferences.push(value); } } };
+      if (name.endsWith('/authStorage')) return { async flushAuthStorage() {}, authStorage: { getItem: () => 'test-owner' } };
       if (name.endsWith('/links')) return { nativeRoute: value => new URL(value).pathname };
       if (name.endsWith('/themeAssets')) return { getThemeAssetName: () => "ruby" };
       throw new Error(`Unexpected import: ${name}`);
@@ -53,7 +55,7 @@ function runtime(signedIn = true) {
     route = nextRoute; authenticated = nextAuthenticated; cursor = 0;
     context.exports.default();
   }
-  return { render, calls, listeners, get launchReads() { return launchReads; }, get removed() { return removed; } };
+  return { render, calls, listeners, widgetPreferences, setPreferences(value) { preferences = value; }, get launchReads() { return launchReads; }, get removed() { return removed; } };
 }
 
 const settle = () => new Promise(resolve => setImmediate(resolve));
@@ -82,4 +84,23 @@ test('a signed-out launch waits for login and is not replayed after leaving the 
   r.render('/messages'); await settle();
   assert.equal(r.launchReads, 1);
   assert.equal(r.calls.length, 1);
+});
+
+
+test('widget preferences follow changes and remain account-owned outside demo mode', async () => {
+  const r = runtime();
+  r.render(); await settle();
+  assert.equal(r.widgetPreferences.length, 1);
+  assert.equal(r.widgetPreferences[0].owner, 'test-owner');
+  assert.equal(r.widgetPreferences[0].showSubstitutions, true);
+  r.setPreferences({ timetable: { show_substitutions: false, class_colors: { 'subject:mathe': '#123456' } } });
+  r.render(); await settle();
+  assert.equal(r.widgetPreferences.at(-1).showSubstitutions, false);
+  assert.equal(r.widgetPreferences.at(-1).classColors['subject:mathe'], '#123456');
+  const count = r.widgetPreferences.length;
+  r.setPreferences({ timetable: { show_substitutions: true, class_colors: {} } });
+  r.render('/demo/timetable'); await settle();
+  assert.equal(r.widgetPreferences.length, count, 'demo previews must not change home-screen widgets');
+  r.render('/login', false); await settle();
+  assert.equal(r.widgetPreferences.length, count, 'signed-out defaults must not replace account preferences');
 });
