@@ -8,7 +8,7 @@ const MAX_CHARACTERS = 750_000;
 const MAX_ENTRY_CHARACTERS = 125_000;
 type Saved = { data: unknown; updatedAt: number };
 
-/** A bounded, account-owned cache. No tokens, search results or demo data. */
+/** Bounded account-owned snapshots; scope keys never include access tokens. */
 export function createResourcePersistence(): ResourcePersistence {
   let entries: Record<string, Saved> | undefined;
   const allowed = (key: string): boolean => {

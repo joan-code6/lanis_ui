@@ -283,7 +283,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode; sync?: b
       }
     };
     // Serialize a possible migration with edits made while the screen is open.
-    saveQueueRef.current = saveQueueRef.current.then(load).then(() => true);
+    saveQueueRef.current = saveQueueRef.current.then(load, load).then(() => true, () => false);
     return () => controller.abort();
   }, [applyPreferences, cacheKey, sync, token, writeCache]);
 
