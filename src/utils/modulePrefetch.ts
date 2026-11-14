@@ -29,9 +29,9 @@ export function modulePreloadOrder(modules: Module[], preferences: UserPreferenc
   ].filter((id): id is string => Boolean(id)))];
 }
 
-export async function prefetchModule(id: string, token: string, preferences: UserPreferences): Promise<void> {
+export async function prefetchModule(id: string, token: string, preferences: UserPreferences, signal?: AbortSignal): Promise<void> {
   const connection = (navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } }).connection;
-  if (!navigator.onLine || connection?.saveData || ['slow-2g', '2g'].includes(connection?.effectiveType || '')) return;
+  if (signal?.aborted || !navigator.onLine || connection?.saveData || ['slow-2g', '2g'].includes(connection?.effectiveType || '')) return;
   const requests: Record<string, [string, Record<string, unknown>?][]> = {
     messages: [['/nachrichten/headers', { get_type: 'All', last: 0 }]],
     courses: [['/meinunterricht']],
@@ -46,6 +46,7 @@ export async function prefetchModule(id: string, token: string, preferences: Use
     wahlen: [['/wahlen']],
   };
   for (const [url, params] of requests[id] || []) {
+    if (signal?.aborted) return;
     try {
       await readAPI(url, { headers: { 'X-Session-Token': token }, params }, true);
     } catch {
@@ -53,4 +54,19 @@ export async function prefetchModule(id: string, token: string, preferences: Use
       return;
     }
   }
+}
+
+/** Two workers prevent one slow module from blocking the entire warm-up. */
+export async function preloadModules(
+  ids: string[], token: string, preferences: UserPreferences, signal: AbortSignal,
+): Promise<void> {
+  const pending = [...new Set(ids)];
+  let index = 0;
+  const worker = async () => {
+    while (!signal.aborted && index < pending.length) {
+      const id = pending[index++];
+      await prefetchModule(id, token, preferences, signal);
+    }
+  };
+  await Promise.all([worker(), worker()]);
 }
