@@ -1,0 +1,38 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const vm = require('node:vm');
+const ts = require('typescript');
+const compiled = ts.transpileModule(fs.readFileSync('src/utils/search.ts', 'utf8'), {
+  compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
+}).outputText;
+const loaded = { exports: {} };
+vm.runInNewContext(compiled, { module: loaded, exports: loaded.exports });
+const { searchText, searchScore, rankSearchResults } = loaded.exports;
+assert(searchText('  MÜLLER   mathe ', { name: 'Mathematik', teacher: 'Müller' }));
+assert(searchText('mueller', 'Müller'));
+assert(searchText('strasse', 'Straße'));
+assert(searchText('vertretung', 'Vertretungsplan'));
+assert(searchText('kalnder', 'Kalender'));
+assert(searchText('kalneder', 'Kalender'));
+assert(searchText('mathe', '<b>Mathematik</b>'));
+assert(!searchText('   ', 'Kalender'));
+assert(!searchText('xyz', 'Kalender'));
+assert(!searchText('ab', 'ac'));
+assert(!searchText('mathe mueller', { name: 'Mathematik', teacher: 'Schmidt' }));
+assert(!searchText('kalxxxx', 'Kalender'));
+assert(searchScore('kalender', 'Kalender') > searchScore('kalender', 'Kalender Übersicht'));
+assert(searchScore('kalender', 'Kalender Übersicht') > searchScore('kalender', 'Zum Kalender'));
+assert(searchScore('kalender', 'Zum Kalender') > searchScore('kalender', 'Kalnder'));
+const item = (id, title, category = 'Nachrichten', href = '/messages?conversation=1', subtitle = '') => ({ id, title, category, href, subtitle });
+const cached = item('msg-1', 'Mathematik');
+const live = item('api-msg-1', 'Mathematik');
+const semantic = item('sem-msg-1', 'Mathematik');
+assert.equal(rankSearchResults('mathe', [cached, live], [semantic]).length, 1);
+assert.equal(rankSearchResults('mathe', [cached, item('api-msg-2', 'Mathematik', 'Nachrichten', '/messages?conversation=2')], []).length, 2);
+assert.equal(rankSearchResults('mathe', [item('course-1', 'Mathematik', 'Unterricht', '/courses/1')], [item('sem-crs-1', 'Mathematik', 'Unterricht', '/courses/1')]).length, 1);
+assert.equal(rankSearchResults('mathe', [item('api-exam-1', 'Mathematik', 'Lerngruppen', '/study-groups'), item('api-exam-2', 'Mathematik', 'Lerngruppen', '/study-groups')], []).length, 2);
+assert.equal(rankSearchResults('mathe', [cached], [item('sem-msg-1', 'Updated subject')]).length, 1);
+const ranked = rankSearchResults('kalender', [item('a', 'Kalender Übersicht', 'Kalender', '/calendar', 'Kalender'), item('b', 'Kalender', 'Kalender', '/calendar')], [item('sem-ev-1', 'Ähnlicher Termin', 'Kalender', '/calendar?event=1')]);
+assert.equal(ranked[0].id, 'b');
+assert.equal(ranked.at(-1).id, 'sem-ev-1');
+console.log('Global search checks passed: multiword matching, umlauts, typos, relevance, and cross-source deduplication.');

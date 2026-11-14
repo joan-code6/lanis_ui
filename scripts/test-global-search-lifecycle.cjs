@@ -1,0 +1,131 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const vm = require('node:vm');
+const ts = require('typescript');
+
+// A small hook host lets us exercise request races and keyboard events without a browser.
+let hooks = [], cursor = 0, effects = [], dirty = false, tree;
+const timers = new Map();
+let timerId = 0;
+const same = (a, b) => a && b && a.length === b.length && a.every((v, i) => Object.is(v, b[i]));
+const React = {
+  useState(initial) {
+    const i = cursor++;
+    if (!(i in hooks)) hooks[i] = typeof initial === 'function' ? initial() : initial;
+    return [hooks[i], value => {
+      const next = typeof value === 'function' ? value(hooks[i]) : value;
+      if (!Object.is(next, hooks[i])) { hooks[i] = next; dirty = true; }
+    }];
+  },
+  useRef(initial) { const i = cursor++; return hooks[i] ||= { current: initial }; },
+  useMemo(fn, deps) {
+    const i = cursor++;
+    if (!same(hooks[i]?.deps, deps)) hooks[i] = { deps, value: fn() };
+    return hooks[i].value;
+  },
+  useCallback(fn, deps) { return React.useMemo(() => fn, deps); },
+  useEffect(fn, deps) {
+    const i = cursor++;
+    if (!same(hooks[i]?.deps, deps)) effects.push(() => {
+      hooks[i]?.cleanup?.();
+      hooks[i] = { deps, cleanup: fn() };
+    });
+  },
+};
+const jsx = (type, props) => ({ type, props });
+function load(path, require) {
+  const module = { exports: {} };
+  vm.runInNewContext(ts.transpileModule(fs.readFileSync(path, 'utf8'), {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, jsx: ts.JsxEmit.ReactJSX, esModuleInterop: true },
+  }).outputText, {
+    module, exports: module.exports, require, AbortController,
+    setTimeout: fn => { timers.set(++timerId, fn); return timerId; },
+    clearTimeout: id => timers.delete(id),
+  });
+  return module.exports;
+}
+const matching = load('src/utils/search.ts');
+const semanticRequests = [];
+const pending = () => { let resolve; const promise = new Promise(r => { resolve = r; }); return { promise, resolve }; };
+const empty = async () => ({ success: false });
+const navigated = [];
+const api = {
+  authAPI: { getUserProfile: empty }, messagesAPI: { searchRecipients: empty, getMessageHeaders: empty },
+  calendarAPI: { getEvents: empty }, coursesAPI: { getCourses: empty }, appsAPI: { getModules: empty },
+  timetableAPI: { getTimetable: empty }, studyGroupsAPI: { getStudyGroups: empty }, dateiverteilungAPI: { getOverview: empty },
+  searchAPI: { semanticSearch(token, query, count, signal) {
+    const request = { ...pending(), query, signal }; semanticRequests.push(request); return request.promise;
+  } },
+};
+const Component = load('src/components/search/GlobalSearch.tsx', name => {
+  if (name === 'react') return React;
+  if (name === 'react/jsx-runtime') return { jsx, jsxs: jsx };
+  if (name === 'react-router-dom') return { useNavigate: () => href => navigated.push(href) };
+  if (name.endsWith('/AuthContext')) return { useAuth: () => ({ token: 'test', user: null }) };
+  if (name.endsWith('/services/api')) return api;
+  if (name.endsWith('/utils/search')) return matching;
+  if (name.endsWith('/moduleCache')) return { readModulesCache: () => [] };
+  if (name.endsWith('/courseNormalization')) return { normalizeCourseList: () => [] };
+  if (name.endsWith('/accountDataWrites')) return { readPersonalCache: () => null };
+  if (name.endsWith('/analytics/client')) return { capture: empty };
+  if (name.endsWith('/analytics/policy')) return { resultCountBucket: () => '0', searchCategory: x => x };
+  if (name.startsWith('@heroicons')) return new Proxy({}, { get: () => 'icon' });
+  throw new Error(`Unexpected import ${name}`);
+}).default;
+let props = { isOpen: true, onClose() {}, basePath: '/demo' };
+function render() {
+  let passes = 0;
+  do {
+    dirty = false; cursor = 0; effects = [];
+    tree = Component(props);
+    effects.forEach(effect => effect());
+    assert(++passes < 20, 'render should settle');
+  } while (dirty);
+}
+function nodes(node) {
+  if (Array.isArray(node)) return node.flatMap(nodes);
+  if (!node || typeof node !== 'object') return [];
+  return [node, ...nodes(node.props?.children)];
+}
+const input = () => nodes(tree).find(node => node.type === 'input');
+const options = () => nodes(tree).filter(node => node.props?.role === 'option');
+const type = value => { input().props.onChange({ target: { value } }); render(); };
+const key = value => { input().props.onKeyDown({ key: value, preventDefault() {} }); render(); };
+const runTimers = () => { const callbacks = [...timers.values()]; timers.clear(); callbacks.forEach(fn => fn()); };
+const flush = async () => { for (let i = 0; i < 10; i++) await Promise.resolve(); render(); };
+const result = (id, category, href) => ({ id, category, href, title: id, subtitle: '', icon: '' });
+(async () => {
+  render();
+  type('old'); runTimers(); await flush();
+  type('new');
+  key('ArrowDown'); // Navigating an empty list must keep the selection at zero.
+  assert(semanticRequests[0].signal.aborted, 'replaced query cancels in-flight semantics');
+  runTimers(); await flush();
+  semanticRequests[1].resolve({ success: true, results: [
+    result('sem-msg-1', 'Nachrichten', '/messages?conversation=1'),
+    result('sem-crs-1', 'Unterricht', '/courses/1'),
+    result('sem-msg-2', 'Nachrichten', '/messages?conversation=2'),
+  ] });
+  await flush();
+  semanticRequests[0].resolve({ success: true, results: [result('stale', 'Kalender', '/calendar')] });
+  await flush();
+  assert.equal(options().length, 3, 'old responses must not overwrite the current results');
+  assert(options()[0].props['aria-selected'], 'first arriving result remains selected after an empty-list arrow press');
+  key('ArrowDown');
+  assert.equal(options().find(node => node.props['aria-selected']).props.children[1].props.children[0].props.children, 'sem-msg-2');
+  key('Enter');
+  assert.equal(navigated.at(-1), '/demo/messages?conversation=2', 'Enter opens the highlighted row in displayed group order');
+  // A slow source must not hold back results from a completed source.
+  api.calendarAPI.getEvents = () => new Promise(() => {});
+  api.messagesAPI.searchRecipients = async () => ({ success: true, results: [
+    { id: 'person-1', name: 'Partial Person', username: 'partial' },
+  ] });
+  type('partial'); runTimers(); await flush();
+  assert.equal(options().length, 1, 'fast keyword results appear while calendar and semantics are pending');
+  props = { ...props, isOpen: false }; render();
+  assert(semanticRequests.at(-1).signal.aborted, 'closing cancels active search');
+  semanticRequests.at(-1).resolve({ success: true, results: [result('late', 'Kalender', '/calendar')] });
+  await flush();
+  assert.equal(tree, null);
+  console.log('Global search lifecycle checks passed: query races, partial responses, close cancellation, grouped keyboard selection, and demo routes.');
+})().catch(error => { console.error(error); process.exitCode = 1; });

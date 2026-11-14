@@ -1,3 +1,4 @@
+import { searchText, rankSearchResults } from '../../utils/search';
 import { resultCountBucket, searchCategory } from '../../analytics/policy';
 import { capture } from '../../analytics/client';
 import { readPersonalCache } from '../../utils/accountDataWrites';
@@ -66,6 +67,15 @@ function moduleInAppHref(
 ): string | undefined {
   const moduleLinks = `${module.url || ''} ${module.direct_url || ''}`.toLowerCase();
   const moduleName = String(module.name || '').toLowerCase();
+  const nativePages = [
+    ['nachrichten', 'messages'], ['meinunterricht', 'courses'], ['kalender', 'calendar'],
+    ['stundenplan', 'timetable'], ['lerngruppen', 'study-groups'],
+  ];
+  for (const [applet, route] of nativePages) {
+    if (moduleLinks.includes(`/${applet}.php`) || moduleName.replace(/\s+/g, '').includes(applet)) {
+      return `${basePath}/${route}`;
+    }
+  }
   const isDateispeicher = moduleName.includes('dateispeicher') || moduleLinks.includes('/dateispeicher.php');
   const isDateiverteilung = moduleName.includes('dateiverteilung') || moduleLinks.includes('/dateiverteilung.php');
   const isVideokonferenz = moduleName.includes('videokonferenz') || moduleLinks.includes('/videokonferenz.php');
@@ -104,28 +114,6 @@ const CATEGORY_ICONS: Record<string, React.ComponentType<{ className?: string }>
   Suche: MagnifyingGlassIcon,
 };
 
-function fuzzyMatch(query: string, text: string): boolean {
-  if (!query || !text) return false;
-  return text.toLowerCase().includes(query.toLowerCase().trim());
-}
-
-function collectTexts(obj: unknown, depth: number = 0): string {
-  if (depth > 4) return '';
-  if (typeof obj === 'string') return obj + ' ';
-  if (typeof obj === 'number') return String(obj) + ' ';
-  if (Array.isArray(obj)) {
-    return obj.map(item => collectTexts(item, depth + 1)).join(' ');
-  }
-  if (obj && typeof obj === 'object') {
-    return Object.values(obj).map(v => collectTexts(v, depth + 1)).join(' ');
-  }
-  return '';
-}
-
-function searchText(query: string, obj: unknown): boolean {
-  return fuzzyMatch(query, collectTexts(obj));
-}
-
 function htmlToText(value: unknown): string {
   if (typeof value !== 'string') return '';
   return new DOMParser().parseFromString(value, 'text/html').body.textContent?.replace(/\s+/g, ' ').trim() || '';
@@ -149,8 +137,8 @@ function searchCacheData(
       if (Array.isArray(msgs)) {
         for (const m of msgs) {
           if (searchText(query, m)) {
-            const subj = m.Betreff || '';
-            const sender = m.Sender || '';
+            const subj = htmlToText(m.Betreff);
+            const sender = htmlToText(m.SenderName) || m.Sender || '';
             const empf = Array.isArray(m.empf) ? m.empf.join(', ') : '';
             let sub = sender ? `Von: ${sender}` : '';
             if (empf) sub += sub ? `  An: ${empf}` : `An: ${empf}`;
@@ -229,7 +217,7 @@ function searchCacheData(
       const data = p?.data || p;
       for (const [k, v] of Object.entries(data)) {
         if (k === 'ts') continue;
-        if (fuzzyMatch(query, k) || fuzzyMatch(query, v as string)) {
+        if (searchText(query, [k, v])) {
           results.push({
             id: `user-${k}`,
             title: (v as string) || k,
@@ -273,13 +261,12 @@ function searchCacheData(
     { name: 'Einstellungen', href: '/settings', icon: Cog6ToothIcon, cat: 'Einstellungen' },
   ];
   for (const n of nav) {
-    if (fuzzyMatch(query, n.name)) {
+    if (searchText(query, n.name)) {
       results.push({ id: `nav-${n.name}`, title: n.name, subtitle: 'Seite', category: n.cat, icon: n.icon, href: n.href });
     }
   }
 
-  results.sort((a, b) => (a.title.toLowerCase().startsWith(query.toLowerCase()) ? 0 : 1) - (b.title.toLowerCase().startsWith(query.toLowerCase()) ? 0 : 1));
-  return results.slice(0, 30);
+  return results;
 }
 
 export default function GlobalSearch({
@@ -299,11 +286,13 @@ export default function GlobalSearch({
   const timerRef = useRef<ReturnType<typeof setTimeout>>();
   const abortedRef = useRef(false);
 
-  const [query, setQuery] = useState('');
+  const [input, setQuery] = useState('');
+  const query = input.trim().replace(/\s+/g, ' ');
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [tier, setTier] = useState<0 | 1 | 2 | 3>(0);
   const [apiResults, setApiResults] = useState<SearchItem[]>([]);
   const [semanticResults, setSemanticResults] = useState<SearchItem[]>([]);
+  const [semanticLoading, setSemanticLoading] = useState(false);
 
   const planNavigation = useMemo<NavigationItem[]>(() => {
     const moduleItems: NavigationItem[] = [
@@ -325,27 +314,16 @@ export default function GlobalSearch({
       : moduleItems;
   }, [basePath, hasDsbModule, hasNativeDateispeicher, hasNativeDateiverteilung, hasNativeSubstitutionPlan, hasVideokonferenzModule]);
 
-  const cachedModules = readModulesCache(user);
+  const cachedModules = basePath === '/demo' ? [] : readModulesCache(user);
   const cacheResults = useMemo(
     () => searchCacheData(query, planNavigation, basePath, cachedModules),
     [basePath, cachedModules, planNavigation, query],
   );
 
-  const combinedResults = useMemo(() => {
-    const seen = new Set<string>();
-    const all: SearchItem[] = [];
-    // First: keyword results (cache + API)
-    for (const r of [...cacheResults, ...apiResults]) {
-      const key = r.id + r.title;
-      if (!seen.has(key)) { seen.add(key); all.push(r); }
-    }
-    // Second: semantic results that weren't already found by keyword
-    for (const r of semanticResults) {
-      const key = r.id + r.title;
-      if (!seen.has(key)) { seen.add(key); all.push(r); }
-    }
-    return all;
-  }, [cacheResults, apiResults, semanticResults]);
+  const combinedResults = useMemo(
+    () => rankSearchResults(query, [...apiResults, ...cacheResults], semanticResults),
+    [query, cacheResults, apiResults, semanticResults],
+  );
 
   const groupedResults = useMemo(() => {
     const groups: Record<string, SearchItem[]> = {};
@@ -354,6 +332,15 @@ export default function GlobalSearch({
     }
     return Object.entries(groups);
   }, [combinedResults]);
+
+  // Keyboard navigation must use the same order as the category groups on screen.
+  const displayedResults = useMemo(() => groupedResults.flatMap(([, items]) => items), [groupedResults]);
+  useEffect(() => {
+    setSelectedIndex(index => Math.min(index, Math.max(0, displayedResults.length - 1)));
+  }, [displayedResults.length]);
+  useEffect(() => {
+    if (isOpen) listRef.current?.querySelector('[aria-selected="true"]')?.scrollIntoView({ block: 'nearest' });
+  }, [isOpen, selectedIndex]);
 
   // reset on open
   useEffect(() => {
@@ -364,7 +351,8 @@ export default function GlobalSearch({
       setSemanticResults([]);
       setTier(0);
       abortedRef.current = false;
-      setTimeout(() => inputRef.current?.focus(), 50);
+      const timer = setTimeout(() => inputRef.current?.focus(), 50);
+      return () => clearTimeout(timer);
     }
   }, [isOpen]);
 
@@ -373,7 +361,7 @@ export default function GlobalSearch({
   // ── Tier 2: auto API search (debounced) ─────────────────────────
 
   useEffect(() => {
-    if (!token || query.length < 1) {
+    if (!isOpen || !token || query.length < 1) {
       setTier(0);
       setApiResults([]);
       return;
@@ -400,13 +388,13 @@ export default function GlobalSearch({
         messagesAPI.getMessageHeaders(token, 'All', 0, controller.signal).then(res =>
           !res.success ? [] : res.conversations.filter(message => searchText(query, message)).map(message => ({
             id: `api-msg-${message.Uniquid || message.Id}`,
-            title: message.Betreff || 'Kein Betreff',
+            title: htmlToText(message.Betreff) || 'Kein Betreff',
             subtitle: htmlToText(message.SenderName) || message.Sender || 'Nachricht',
             category: 'Nachrichten', icon: ChatBubbleLeftRightIcon,
             href: `/messages?conversation=${encodeURIComponent(message.Uniquid || message.Id)}`,
           }))),
-        calendarAPI.getEvents(token, { search: query }, controller.signal).then(res =>
-          !res.success ? [] : res.events.map(event => ({
+        calendarAPI.getEvents(token, {}, controller.signal).then(res =>
+          !res.success ? [] : res.events.filter(event => searchText(query, event)).map(event => ({
             id: `api-ev-${event.id}`, title: event.title,
             subtitle: event.start ? new Date(event.start).toLocaleDateString('de-DE') : event.category_name || '',
             category: 'Kalender', icon: CalendarDaysIcon,
@@ -464,11 +452,14 @@ export default function GlobalSearch({
         }),
       ];
 
-      const settled = await Promise.allSettled(tasks);
-      const r = settled.flatMap(result => result.status === 'fulfilled' ? result.value : []);
+      await Promise.allSettled(tasks.map(async task => {
+        const results = await task;
+        if (!abortedRef.current && !controller.signal.aborted) {
+          setApiResults(previous => [...previous, ...results]);
+        }
+      }));
 
       if (!abortedRef.current && !controller.signal.aborted) {
-        setApiResults(r);
         setTier(3);
         // at this point totalResults = cacheResults + apiResults
       }
@@ -478,24 +469,28 @@ export default function GlobalSearch({
       controller.abort();
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [basePath, hasNativeDateiverteilung, planNavigation, query, token]);
+  }, [isOpen, basePath, hasNativeDateiverteilung, planNavigation, query, token]);
 
   // ── Semantic search (parallel to Tier 2) ────────────────────────
 
   const semanticTimerRef = useRef<ReturnType<typeof setTimeout>>();
 
   useEffect(() => {
-    if (!token || query.length < 2) {
+    if (!isOpen || !token || query.length < 2) {
       setSemanticResults([]);
+      setSemanticLoading(false);
       return;
     }
 
+    setSemanticResults([]);
+    setSemanticLoading(true);
+    const controller = new AbortController();
     if (semanticTimerRef.current) clearTimeout(semanticTimerRef.current);
     semanticTimerRef.current = setTimeout(async () => {
       if (abortedRef.current) return;
       try {
-        const res = await searchAPI.semanticSearch(token, query, 15);
-        if (!abortedRef.current && res.success && res.results) {
+        const res = await searchAPI.semanticSearch(token, query, 15, controller.signal);
+        if (!abortedRef.current && !controller.signal.aborted && res.success && res.results) {
           const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
             ChatBubbleLeftRightIcon,
             AcademicCapIcon,
@@ -513,17 +508,22 @@ export default function GlobalSearch({
             subtitle: r.subtitle,
             category: r.category,
             icon: iconMap[r.icon] || MagnifyingGlassIcon,
-            href: r.href,
+            href: r.category === 'Module' ? moduleInAppHref({ name: r.title }, planNavigation, basePath) || r.href : r.href,
           }));
           setSemanticResults(mapped);
         }
       } catch {
         // Semantic search is optional — fail silently
+      } finally {
+        if (!controller.signal.aborted) setSemanticLoading(false);
       }
     }, 600);
 
-    return () => { if (semanticTimerRef.current) clearTimeout(semanticTimerRef.current); };
-  }, [query, token]);
+    return () => {
+      controller.abort();
+      if (semanticTimerRef.current) clearTimeout(semanticTimerRef.current);
+    };
+  }, [isOpen, query, token, planNavigation, basePath]);
 
   const wasOpen = useRef(false);
   const reportedSearch = useRef(false);
@@ -557,28 +557,28 @@ export default function GlobalSearch({
     reportSearch('selected');
     void capture('search_result_selected', { category: searchCategory(item.category) });
     onClose();
-    if (item.href) navigate(item.href);
+    if (item.href) navigate(basePath && !item.href.startsWith(`${basePath}/`) ? `${basePath}${item.href}` : item.href);
     item.action?.();
-  }, [onClose, navigate, query, combinedResults.length, tier, token]);
+  }, [onClose, navigate, basePath, query, combinedResults.length, tier, token]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Escape') { e.preventDefault(); onClose(); return; }
 
-    const flat = [...combinedResults];
+    const flat = displayedResults;
 
-    if (e.key === 'ArrowDown') { e.preventDefault(); setSelectedIndex(prev => Math.min(prev + 1, flat.length - 1)); }
+    if (e.key === 'ArrowDown') { e.preventDefault(); setSelectedIndex(prev => Math.max(0, Math.min(prev + 1, flat.length - 1))); }
     else if (e.key === 'ArrowUp') { e.preventDefault(); setSelectedIndex(prev => Math.max(prev - 1, 0)); }
     else if (e.key === 'Enter') {
       e.preventDefault();
       const sel = flat[selectedIndex];
       if (sel) executeAction(sel);
     }
-  }, [onClose, combinedResults, selectedIndex, executeAction]);
+  }, [onClose, displayedResults, selectedIndex, executeAction]);
 
   if (!isOpen) return null;
 
-  const showLoading = tier === 2;
-  const showEmpty = tier >= 3 && query.length >= 1 && combinedResults.length === 0;
+  const showLoading = tier === 1 || tier === 2 || semanticLoading;
+  const showEmpty = !showLoading && (!token || tier >= 3) && query.length >= 1 && combinedResults.length === 0;
 
   return (
     <div className="fixed inset-0 z-[100] flex items-start justify-center pt-[15vh] sm:pt-[20vh] px-4">
@@ -589,7 +589,13 @@ export default function GlobalSearch({
           <input
             ref={inputRef}
             type="text"
-            value={query}
+            role="combobox"
+            aria-label="LANIS durchsuchen"
+            aria-expanded="true"
+            aria-controls="global-search-results"
+            aria-activedescendant={displayedResults[selectedIndex] ? `global-search-result-${selectedIndex}` : undefined}
+            autoComplete="off"
+            value={input}
             onChange={e => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Suchen..."
@@ -598,7 +604,7 @@ export default function GlobalSearch({
           <kbd className="hidden sm:inline-flex items-center justify-center min-w-[20px] h-[20px] px-1 rounded text-[11px] font-medium text-surface-400 bg-surface-100 dark:bg-surface-800/80 dark:text-surface-500 border border-surface-200/60 dark:border-surface-700/60">esc</kbd>
         </div>
 
-        <div ref={listRef} className="max-h-80 overflow-y-auto p-2">
+        <div ref={listRef} id="global-search-results" role="listbox" aria-label="Suchergebnisse" className="max-h-80 overflow-y-auto p-2">
           {query.length === 0 && (
             <div className="py-12 text-center">
               <MagnifyingGlassIcon className="h-8 w-8 text-surface-300 dark:text-surface-600 mx-auto mb-3 opacity-60" />
@@ -606,10 +612,14 @@ export default function GlobalSearch({
             </div>
           )}
 
-          {showLoading && (
+          {showLoading && combinedResults.length === 0 && (
             <div role="status" aria-busy="true" aria-label="Suchergebnisse werden geladen">
               {[0, 1, 2].map(i => <div key={i} className="flex items-center gap-3 rounded-xl px-3 py-2.5" aria-hidden="true"><div className="skeleton h-8 w-8 shrink-0 rounded-lg" /><div className="min-w-0 flex-1"><div className="skeleton h-5 w-3/4" /><div className="skeleton mt-1 h-4 w-1/2" /></div></div>)}
             </div>
+          )}
+
+          {showLoading && combinedResults.length > 0 && (
+            <p role="status" className="px-3 py-2 text-xs text-surface-500">Weitere Ergebnisse werden gesucht…</p>
           )}
 
           {showEmpty && (
@@ -637,6 +647,10 @@ export default function GlobalSearch({
                 {items.map((item, idx) => (
                   <button
                     key={item.id}
+                    id={`global-search-result-${before + idx}`}
+                    role="option"
+                    aria-selected={before + idx === selectedIndex}
+                    onMouseEnter={() => setSelectedIndex(before + idx)}
                     onClick={() => executeAction(item)}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all duration-150 text-sm ${
                       before + idx === selectedIndex
