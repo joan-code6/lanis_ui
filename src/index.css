@@ -510,3 +510,29 @@ html.oled body::after {
 }
 .animate-sidebar-drawer-out { animation: sidebar-drawer-out 160ms ease-in forwards; }
 .animate-sidebar-backdrop-out { animation: sidebar-backdrop-out 160ms ease-in forwards; }
+
+/* Overlay scrollbars keep the content width identical on short and long pages. */
+.layout-main > .os-scrollbar {
+  /* Above page content and the header (30), below drawers (40) and dialogs (50). */
+  z-index: 35;
+  --os-size: 10px;
+  --os-handle-bg: rgb(var(--color-surface-400) / 0.65);
+  --os-handle-bg-hover: rgb(var(--color-surface-500) / 0.8);
+  --os-handle-bg-active: rgb(var(--color-surface-500));
+}
+
+/* Let fixed module dialogs retain their position above the mobile header. */
+.layout-main [data-overlayscrollbars-padding],
+.layout-main [data-overlayscrollbars-viewport] {
+  z-index: auto;
+}
+
+/* Always suppress the native gutter, including WebViews with partial CSS support. */
+.layout-main [data-overlayscrollbars-viewport] {
+  scrollbar-width: none !important;
+}
+.layout-main [data-overlayscrollbars-viewport]::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
