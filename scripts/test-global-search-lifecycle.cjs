@@ -39,6 +39,7 @@ function load(path, require) {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, jsx: ts.JsxEmit.ReactJSX, esModuleInterop: true },
   }).outputText, {
     module, exports: module.exports, require, AbortController,
+    DOMParser: class { parseFromString(text) { return { body: { textContent: text.replace(/<[^>]*>/g, '') } }; } },
     setTimeout: fn => { timers.set(++timerId, fn); return timerId; },
     clearTimeout: id => timers.delete(id),
   });
@@ -89,6 +90,11 @@ function nodes(node) {
 }
 const input = () => nodes(tree).find(node => node.type === 'input');
 const options = () => nodes(tree).filter(node => node.props?.role === 'option');
+const related = () => {
+  const button = nodes(tree).find(node => node.type === 'button' && node.props.children === 'Ähnliche Inhalte suchen');
+  assert(button, 'related search should be available explicitly');
+  button.props.onClick(); render();
+};
 const type = value => { input().props.onChange({ target: { value } }); render(); };
 const key = value => { input().props.onKeyDown({ key: value, preventDefault() {} }); render(); };
 const runTimers = () => { const callbacks = [...timers.values()]; timers.clear(); callbacks.forEach(fn => fn()); };
@@ -96,13 +102,16 @@ const flush = async () => { for (let i = 0; i < 10; i++) await Promise.resolve()
 const result = (id, category, href) => ({ id, category, href, title: id, subtitle: '', icon: '' });
 (async () => {
   render();
-  type('old'); runTimers(); await flush();
+  type('hkpu'); runTimers(); await flush();
+  assert.equal(semanticRequests.length, 0, 'a short specific query must not automatically request unrelated semantic matches');
+  assert.equal(options().length, 0);
+  type('old'); related(); runTimers(); await flush();
   type('new');
   key('ArrowDown'); // Navigating an empty list must keep the selection at zero.
   assert(semanticRequests[0].signal.aborted, 'replaced query cancels in-flight semantics');
-  runTimers(); await flush();
+  related(); runTimers(); await flush();
   semanticRequests[1].resolve({ success: true, results: [
-    result('sem-msg-1', 'Nachrichten', '/messages?conversation=1'),
+    { ...result('sem-msg-1', 'Nachrichten', '/messages?conversation=1'), subtitle: 'Von: 1724128' },
     result('sem-crs-1', 'Unterricht', '/courses/1'),
     result('sem-msg-2', 'Nachrichten', '/messages?conversation=2'),
   ] });
@@ -110,6 +119,7 @@ const result = (id, category, href) => ({ id, category, href, title: id, subtitl
   semanticRequests[0].resolve({ success: true, results: [result('stale', 'Kalender', '/calendar')] });
   await flush();
   assert.equal(options().length, 3, 'old responses must not overwrite the current results');
+  assert(!JSON.stringify(options()).includes('Von: 1724128'), 'related results also hide unresolved numeric sender IDs');
   assert(options()[0].props['aria-selected'], 'first arriving result remains selected after an empty-list arrow press');
   key('ArrowDown');
   assert.equal(options().find(node => node.props['aria-selected']).props.children[1].props.children[0].props.children, 'sem-msg-2');
@@ -120,12 +130,34 @@ const result = (id, category, href) => ({ id, category, href, title: id, subtitl
   api.messagesAPI.searchRecipients = async () => ({ success: true, results: [
     { id: 'person-1', name: 'Partial Person', username: 'partial' },
   ] });
-  type('partial'); runTimers(); await flush();
+  type('partial'); related(); runTimers(); await flush();
   assert.equal(options().length, 1, 'fast keyword results appear while calendar and semantics are pending');
+  api.messagesAPI.getMessageHeaders = async () => ({ success: true, conversations: [
+    { Id: '1', Uniquid: '1', Betreff: 'API Test', Sender: '1724128', SenderName: '1724128' },
+  ] });
+  api.messagesAPI.searchRecipients = async () => ({ success: true, results: [
+    { id: '1724128', name: 'Known Person', username: 'hkpu' },
+  ] });
+  type('hkpu'); runTimers(); await flush();
+  // Name resolution also lets a username query match that person's messages.
+  assert(options().some(node => JSON.stringify(node).includes('Von: Known Person')), 'live results resolve numeric senders');
+  assert(!options().some(node => JSON.stringify(node).includes('Von: 1724128')));
+  api.messagesAPI.getMessageHeaders = async () => ({ success: true, conversations: Array.from({ length: 20 }, (_, i) => ({
+    Id: String(i), Uniquid: String(i), Betreff: `Specific target ${i}`, Sender: '1724128',
+  })) });
+  api.messagesAPI.searchRecipients = empty;
+  type('specific'); runTimers(); await flush();
+  assert.equal(options().length, 3, 'initial results must not flood the dialog with one category');
+  const more = nodes(tree).find(node => node.type === 'button' && node.props.children === 'Weitere Treffer anzeigen');
+  assert(more); more.props.onClick(); render();
+  assert.equal(options().length, 20, 'additional direct results remain available on request');
+  type('uniquezz'); runTimers(); await flush();
+  assert.equal(options().length, 0, 'a new query resets expanded and related results');
+  related(); runTimers(); await flush();
   props = { ...props, isOpen: false }; render();
   assert(semanticRequests.at(-1).signal.aborted, 'closing cancels active search');
   semanticRequests.at(-1).resolve({ success: true, results: [result('late', 'Kalender', '/calendar')] });
   await flush();
   assert.equal(tree, null);
-  console.log('Global search lifecycle checks passed: query races, partial responses, close cancellation, grouped keyboard selection, and demo routes.');
+  console.log('Global search lifecycle checks passed: explicit related search, compact/expanded results, sender names, request races, and keyboard navigation.');
 })().catch(error => { console.error(error); process.exitCode = 1; });

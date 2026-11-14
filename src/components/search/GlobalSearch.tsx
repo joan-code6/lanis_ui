@@ -1,4 +1,4 @@
-import { searchText, rankSearchResults } from '../../utils/search';
+import { searchText, rankSearchResults, messageSearchData, compactSearchResults } from '../../utils/search';
 import { resultCountBucket, searchCategory } from '../../analytics/policy';
 import { capture } from '../../analytics/client';
 import { readPersonalCache } from '../../utils/accountDataWrites';
@@ -119,6 +119,15 @@ function htmlToText(value: unknown): string {
   return new DOMParser().parseFromString(value, 'text/html').body.textContent?.replace(/\s+/g, ' ').trim() || '';
 }
 
+function readSenderNames(basePath: string): Record<string, string> {
+  if (basePath === '/demo') return {};
+  try {
+    const parsed = JSON.parse(readPersonalCache('username_cache') || '{}');
+    const data = parsed?.data || parsed;
+    return Object.fromEntries(Object.entries(data).filter((entry): entry is [string, string] => typeof entry[1] === 'string'));
+  } catch { return {}; }
+}
+
 // ── Tier 1: cache search ──────────────────────────────────────────
 
 function searchCacheData(
@@ -129,6 +138,7 @@ function searchCacheData(
 ): SearchItem[] {
   if (!query || query.length < 1) return [];
   const results: SearchItem[] = [];
+  const senderNames = readSenderNames(basePath);
 
   try {
     const raw = basePath === '/demo' ? null : readPersonalCache('messages_cache_v2');
@@ -136,9 +146,10 @@ function searchCacheData(
       const msgs = JSON.parse(raw);
       if (Array.isArray(msgs)) {
         for (const m of msgs) {
-          if (searchText(query, m)) {
-            const subj = htmlToText(m.Betreff);
-            const sender = htmlToText(m.SenderName) || m.Sender || '';
+          const fields = messageSearchData(m, senderNames);
+          if (searchText(query, fields)) {
+            const subj = htmlToText(fields.subject);
+            const sender = htmlToText(fields.sender);
             const empf = Array.isArray(m.empf) ? m.empf.join(', ') : '';
             let sub = sender ? `Von: ${sender}` : '';
             if (empf) sub += sub ? `  An: ${empf}` : `An: ${empf}`;
@@ -183,7 +194,7 @@ function searchCacheData(
       results.push({
         id: `mod-${module.url || module.name}`,
         title: module.name,
-        subtitle: module.url || module.folders?.join(', ') || '',
+        subtitle: module.folders?.join(' · ') || 'Modul',
         category: 'Module',
         icon: HomeIcon,
         href: moduleInAppHref(module, planNavigation, basePath) || '/dashboard',
@@ -216,8 +227,8 @@ function searchCacheData(
       const p = JSON.parse(raw);
       const data = p?.data || p;
       for (const [k, v] of Object.entries(data)) {
-        if (k === 'ts') continue;
-        if (searchText(query, [k, v])) {
+        if (k === 'ts' || typeof v !== 'string') continue;
+        if (searchText(query, [/^\d+$/.test(k) ? '' : k, v])) {
           results.push({
             id: `user-${k}`,
             title: (v as string) || k,
@@ -240,7 +251,7 @@ function searchCacheData(
         results.push({
           id: 'profile',
           title: 'Dein Profil',
-          subtitle: typeof fv === 'string' ? fv : '',
+          subtitle: typeof fv === 'string' && !/^\d+$/.test(fv) ? fv : 'Profildaten',
           category: 'Profil',
           icon: UserIcon,
           href: '/profile',
@@ -285,6 +296,7 @@ export default function GlobalSearch({
   const listRef = useRef<HTMLDivElement>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout>>();
   const abortedRef = useRef(false);
+  const senderNamesRef = useRef<Record<string, string>>({});
 
   const [input, setQuery] = useState('');
   const query = input.trim().replace(/\s+/g, ' ');
@@ -293,6 +305,8 @@ export default function GlobalSearch({
   const [apiResults, setApiResults] = useState<SearchItem[]>([]);
   const [semanticResults, setSemanticResults] = useState<SearchItem[]>([]);
   const [semanticLoading, setSemanticLoading] = useState(false);
+  const [relatedQuery, setRelatedQuery] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState(false);
 
   const planNavigation = useMemo<NavigationItem[]>(() => {
     const moduleItems: NavigationItem[] = [
@@ -325,13 +339,15 @@ export default function GlobalSearch({
     [query, cacheResults, apiResults, semanticResults],
   );
 
+  const visibleResults = useMemo(() => compactSearchResults(combinedResults, expanded), [combinedResults, expanded]);
+
   const groupedResults = useMemo(() => {
     const groups: Record<string, SearchItem[]> = {};
-    for (const item of combinedResults) {
+    for (const item of visibleResults) {
       (groups[item.category] ??= []).push(item);
     }
     return Object.entries(groups);
-  }, [combinedResults]);
+  }, [visibleResults]);
 
   // Keyboard navigation must use the same order as the category groups on screen.
   const displayedResults = useMemo(() => groupedResults.flatMap(([, items]) => items), [groupedResults]);
@@ -346,6 +362,8 @@ export default function GlobalSearch({
   useEffect(() => {
     if (isOpen) {
       setQuery('');
+      setRelatedQuery(null);
+      setExpanded(false);
       setSelectedIndex(0);
       setApiResults([]);
       setSemanticResults([]);
@@ -356,7 +374,11 @@ export default function GlobalSearch({
     }
   }, [isOpen]);
 
-  useEffect(() => { setSelectedIndex(0); }, [query]);
+  useEffect(() => {
+    setSelectedIndex(0);
+    setExpanded(false);
+    setRelatedQuery(null);
+  }, [query]);
 
   // ── Tier 2: auto API search (debounced) ─────────────────────────
 
@@ -376,23 +398,41 @@ export default function GlobalSearch({
       setTier(2);
       setApiResults([]);
 
+      const recipientRequest = messagesAPI.searchRecipients(token, query, controller.signal);
+      const senderNames = readSenderNames(basePath);
+      senderNamesRef.current = senderNames;
       const tasks: Array<Promise<SearchItem[]>> = [
-        messagesAPI.searchRecipients(token, query, controller.signal).then(res =>
-          !res.success ? [] : res.results.map(user => ({
+        recipientRequest.then(res =>
+          !res.success ? [] : res.results.filter(user => searchText(query, [user.name, user.username])).map(user => ({
             id: `api-usr-${user.id}`,
             title: user.name || user.username,
             subtitle: user.type ? `${user.type} · ${user.username}` : user.username,
             category: 'Nutzer', icon: UserIcon,
             href: `/messages?compose=1&recipient=${encodeURIComponent(user.id)}&recipientName=${encodeURIComponent(user.name || user.username)}&recipientUsername=${encodeURIComponent(user.username || '')}`,
           }))),
-        messagesAPI.getMessageHeaders(token, 'All', 0, controller.signal).then(res =>
-          !res.success ? [] : res.conversations.filter(message => searchText(query, message)).map(message => ({
-            id: `api-msg-${message.Uniquid || message.Id}`,
-            title: htmlToText(message.Betreff) || 'Kein Betreff',
-            subtitle: htmlToText(message.SenderName) || message.Sender || 'Nachricht',
-            category: 'Nachrichten', icon: ChatBubbleLeftRightIcon,
-            href: `/messages?conversation=${encodeURIComponent(message.Uniquid || message.Id)}`,
-          }))),
+        Promise.all([
+          messagesAPI.getMessageHeaders(token, 'All', 0, controller.signal),
+          recipientRequest.catch(() => null),
+        ]).then(([res, recipients]) => {
+          const senderUsernames: Record<string, string> = {};
+          for (const person of recipients?.success ? recipients.results : []) {
+            senderUsernames[person.id] = person.username;
+            const name = person.name || person.username;
+            if (name) { senderNames[person.id] = name; senderNames[person.username] = name; }
+          }
+          if (!res.success) return [];
+          return res.conversations.flatMap(message => {
+            const fields = messageSearchData(message, senderNames, senderUsernames);
+            if (!searchText(query, fields)) return [];
+            return [{
+              id: `api-msg-${message.Uniquid || message.Id}`,
+              title: htmlToText(fields.subject) || 'Kein Betreff',
+              subtitle: htmlToText(fields.sender) ? `Von: ${htmlToText(fields.sender)}` : 'Nachricht · Absender unbekannt',
+              category: 'Nachrichten', icon: ChatBubbleLeftRightIcon,
+              href: `/messages?conversation=${encodeURIComponent(message.Uniquid || message.Id)}`,
+            }];
+          });
+        }),
         calendarAPI.getEvents(token, {}, controller.signal).then(res =>
           !res.success ? [] : res.events.filter(event => searchText(query, event)).map(event => ({
             id: `api-ev-${event.id}`, title: event.title,
@@ -471,12 +511,12 @@ export default function GlobalSearch({
     };
   }, [isOpen, basePath, hasNativeDateiverteilung, planNavigation, query, token]);
 
-  // ── Semantic search (parallel to Tier 2) ────────────────────────
+  // ── Related content (requested explicitly) ────────────────────────
 
   const semanticTimerRef = useRef<ReturnType<typeof setTimeout>>();
 
   useEffect(() => {
-    if (!isOpen || !token || query.length < 2) {
+    if (!isOpen || !token || query.length < 3 || relatedQuery !== query) {
       setSemanticResults([]);
       setSemanticLoading(false);
       return;
@@ -505,7 +545,9 @@ export default function GlobalSearch({
           const mapped: SearchItem[] = res.results.map((r: SemanticSearchResult) => ({
             id: r.id,
             title: r.title,
-            subtitle: r.subtitle,
+            subtitle: r.category === 'Nachrichten' && /^(?:Von:\s*)?\d+$/i.test(r.subtitle.trim())
+              ? (senderNamesRef.current[r.subtitle.replace(/\D/g, '')] ? `Von: ${senderNamesRef.current[r.subtitle.replace(/\D/g, '')]}` : 'Nachricht · Absender unbekannt')
+              : htmlToText(r.subtitle),
             category: r.category,
             icon: iconMap[r.icon] || MagnifyingGlassIcon,
             href: r.category === 'Module' ? moduleInAppHref({ name: r.title }, planNavigation, basePath) || r.href : r.href,
@@ -523,7 +565,7 @@ export default function GlobalSearch({
       controller.abort();
       if (semanticTimerRef.current) clearTimeout(semanticTimerRef.current);
     };
-  }, [isOpen, query, token, planNavigation, basePath]);
+  }, [isOpen, query, token, planNavigation, basePath, relatedQuery]);
 
   const wasOpen = useRef(false);
   const reportedSearch = useRef(false);
@@ -672,6 +714,24 @@ export default function GlobalSearch({
           })}
 
         </div>
+
+        {query && (combinedResults.length > visibleResults.length || (token && query.length >= 3)) && (
+          <div className="flex flex-wrap items-center justify-center gap-3 px-4 py-2 border-t border-surface-100/80 dark:border-surface-800/60">
+            {combinedResults.length > visibleResults.length && !expanded && (
+              <button type="button" onClick={() => setExpanded(true)} className="text-xs text-primary-600 dark:text-primary-400 hover:underline">
+                Weitere Treffer anzeigen
+              </button>
+            )}
+            {token && query.length >= 3 && relatedQuery !== query && (
+              <button type="button" onClick={() => setRelatedQuery(query)} className="text-xs text-primary-600 dark:text-primary-400 hover:underline">
+                Ähnliche Inhalte suchen
+              </button>
+            )}
+            {relatedQuery === query && !semanticLoading && (
+              <span role="status" className="text-xs text-surface-500">Suche nach ähnlichen Inhalten abgeschlossen</span>
+            )}
+          </div>
+        )}
 
         <div className="flex items-center justify-center gap-4 px-5 py-2 border-t border-surface-100/80 dark:border-surface-800/60 text-[11px] text-surface-400 dark:text-surface-500">
           <span className="flex items-center gap-1"><kbd className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded text-[10px] font-medium bg-surface-100 dark:bg-surface-800/80 border border-surface-200/60 dark:border-surface-700/60">↑↓</kbd> navigieren</span>
