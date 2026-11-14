@@ -111,5 +111,50 @@ const config = { headers: { 'X-Session-Token': 'test' }, params: { refresh: fals
     'dashboard order keeps priority when a module is hidden in the sidebar');
   assert.deepEqual(preloadOrder([], ['dateispeicher']), ['timetable', 'calendar', 'messages', 'dateispeicher'],
     'dashboard-visible modules remain in fallback when hidden in sidebar');
-  console.log('Module prefetch checks passed');
+  preferences.timetable = { view_mode: 'rolling', show_substitutions: true };
+  const browser = { onLine: true, connection: { saveData: false, effectiveType: '4g' } };
+  const requests = [];
+  let active = 0;
+  let peak = 0;
+  const schedulerContext = { exports: {}, navigator: browser, require: path => path.includes('sidebarNavigation') ? {
+    normalizeSidebarOrder: order => order,
+  } : { readAPI: (url) => new Promise(resolve => {
+    active++;
+    peak = Math.max(peak, active);
+    requests.push({ url, finish() { active--; resolve({ data: { success: true } }); } });
+  }) } };
+  vm.runInNewContext(transpile(fs.readFileSync('src/utils/modulePrefetch.ts', 'utf8')), schedulerContext);
+  const drain = async () => { for (let i = 0; i < 12; i++) await Promise.resolve(); };
+  const controller = new AbortController();
+  const scheduled = schedulerContext.exports.preloadModules(['calendar', 'messages', 'courses', 'courses', 'wahlen'], 'token', preferences, controller.signal);
+  assert.deepEqual(requests.map(r => r.url), ['/kalender', '/nachrichten/headers']);
+  requests[1].finish();
+  await drain();
+  assert.equal(requests[2].url, '/meinunterricht', 'a slow calendar does not hold up later modules');
+  requests[2].finish();
+  await drain();
+  assert.equal(requests[3].url, '/wahlen', 'duplicate module IDs do not waste work');
+  requests[3].finish();
+  requests[0].finish();
+  await drain();
+  assert.equal(requests[4].url, '/kalender/events', 'a module retains its sequential dependent reads');
+  requests[4].finish();
+  await scheduled;
+  assert.equal(peak, 2, 'background warm-up never exceeds two simultaneous requests');
+  requests.length = 0;
+  const cancel = new AbortController();
+  const cancelled = schedulerContext.exports.preloadModules(['calendar', 'messages', 'courses'], 'token', preferences, cancel.signal);
+  cancel.abort();
+  requests.forEach(r => r.finish());
+  await cancelled;
+  assert.equal(requests.length, 2, 'cleanup stops both queued modules and calendar follow-up reads');
+  requests.length = 0;
+  browser.connection.saveData = true;
+  await schedulerContext.exports.preloadModules(['messages', 'courses'], 'token', preferences, new AbortController().signal);
+  assert.equal(requests.length, 0, 'Data Saver still suppresses speculative requests');
+  browser.connection.saveData = false;
+  browser.onLine = false;
+  await schedulerContext.exports.preloadModules(['messages'], 'token', preferences, new AbortController().signal);
+  assert.equal(requests.length, 0, 'offline startup never schedules warm-up requests');
+  console.log('Module prefetch checks passed: bounded concurrency, priority, deduplication, queue cancellation and constrained connections.');
 })().catch(error => { console.error(error); process.exitCode = 1; });
