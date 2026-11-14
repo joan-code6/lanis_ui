@@ -12,6 +12,7 @@ const BACKEND_SCOPED_STORAGE_KEYS = [
   'profile_cache',
   'username_cache',
   'dsb_plan_cache_v2',
+  'resource_snapshots_v1',
 ];
 
 const BACKEND_SCOPED_COOKIE_KEYS = [
