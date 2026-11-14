@@ -10,12 +10,12 @@ const TimetableLessonFields: React.FC<{
   details: Detail[];
 }> = ({ title, secondary, badges, details }) => (
   <>
-    <div className="mb-2 flex items-start justify-between gap-2">
-      <div>
+    <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
+      <div className="min-w-0 flex-1 basis-28 break-words">
         {title}
         {secondary}
       </div>
-      <div className="flex shrink-0 items-center gap-1.5">{badges}</div>
+      <div className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-1.5">{badges}</div>
     </div>
     <div className="space-y-1 text-xs text-surface-500 dark:text-surface-400">
       {details.map(({ icon: Icon, value }, index) => (

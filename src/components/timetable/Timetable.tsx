@@ -242,7 +242,10 @@ const Timetable: React.FC = () => {
                       <article {...lessonFocusAttributes(lessonFocus?.date === day.date && lessonFocus.entry.lesson === lesson ? lessonFocus : undefined)} key={`exam-${exam.id}-${index}`} className="rounded-xl border border-violet-200 bg-violet-50 p-3 dark:border-violet-800 dark:bg-violet-950/40">
                         <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
                           <p className="flex items-center gap-1.5 text-xs font-semibold text-violet-700 dark:text-violet-300"><AcademicCapIcon className="h-4 w-4" aria-hidden="true" />{exam.type || 'Klausur'}</p>
-                          {lesson.period != null && <span className="badge badge-surface">{lesson.period} Std.</span>}
+                          <div className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-1.5">
+                            {lesson.week_type && <WeekBadge week={lesson.week_type} />}
+                            {lesson.period != null && <span className="badge badge-surface">{lesson.period} Std.</span>}
+                          </div>
                         </div>
                         <p className="break-words font-semibold text-surface-900 dark:text-white">{lesson.subject}</p>
                         <div className="mt-2 space-y-1 text-xs text-surface-500 dark:text-surface-400">
@@ -276,7 +279,7 @@ const Timetable: React.FC = () => {
                         }}
                       >
                         <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
-                          <div className="min-w-0 flex-1 break-words">
+                          <div className="min-w-0 flex-1 basis-28 break-words">
                             <p className={`font-semibold text-surface-900 dark:text-white ${lesson.cancelled ? 'line-through' : ''}`}>{lesson.subject}</p>
                             {lesson.class_name && <p className="text-xs text-surface-500">{lesson.class_name}</p>}
                           </div>
@@ -341,9 +344,9 @@ const SegmentedControl: React.FC<{
   </div>
 );
 
-const WeekBadge: React.FC<{ week: 'A' | 'B'; compact?: boolean }> = ({ week, compact = false }) => (
-  <span className={`${week === 'A' ? 'badge badge-primary' : 'badge border border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300'} ${compact ? '!px-1 !py-0 text-[8px] sm:!px-2.5 sm:!py-0.5 sm:text-xs' : ''}`}>
-    {compact ? week : `${week}-Woche`}
+const WeekBadge: React.FC<{ week: 'A' | 'B' }> = ({ week }) => (
+  <span className={`week-tag ${week === 'A' ? 'week-tag-a' : 'week-tag-b'}`} title={`${week}-Woche`}>
+    {week}<span className="sr-only">-Woche</span>
   </span>
 );
 
@@ -512,7 +515,7 @@ const CompactTimetableEntry: React.FC<{
       <span className={`min-w-0 break-words text-[10px] font-bold leading-tight sm:text-sm ${lesson.cancelled ? 'line-through' : ''}`} title={lesson.subject}>
         <span className="sm:hidden">{shortSubject(lesson.subject)}</span><span className="hidden sm:inline">{lesson.subject}</span>
       </span>
-      {exam ? <AcademicCapIcon className="h-3 w-3 shrink-0 sm:h-4 sm:w-4" aria-label={exam.type || 'Klausur'} /> : lesson.week_type ? <span className="rounded bg-white/20 px-1 text-[8px] font-bold sm:text-[10px]">{lesson.week_type}</span> : null}
+      {exam ? <AcademicCapIcon className="h-3 w-3 shrink-0 sm:h-4 sm:w-4" aria-label={exam.type || 'Klausur'} /> : lesson.week_type ? <span className="rounded bg-white/20 px-1 text-[8px] font-bold sm:text-[10px]" title={`${lesson.week_type}-Woche`}>{lesson.week_type}<span className="sr-only">-Woche</span></span> : null}
     </div>
     <div className="mt-1 space-y-0.5 text-[8px] leading-tight opacity-90 sm:mt-2 sm:space-y-1 sm:text-xs sm:leading-normal">
       {exam && <p className="truncate font-semibold">{exam.type || 'Klausur'}</p>}
