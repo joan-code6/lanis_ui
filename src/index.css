@@ -273,7 +273,7 @@ html.oled ::-webkit-scrollbar-thumb {
     @apply bg-surface-100 dark:bg-surface-800 text-surface-600 dark:text-surface-400;
   }
 
-  /* Compact A/B school-week tag, nested inside the period badge. */
+  /* Compact A/B school-week tag, placed beside the period badge. */
   .week-tag {
     @apply inline-flex items-center justify-center rounded px-1 py-0.5 text-[10px] font-bold leading-none;
   }
@@ -283,7 +283,7 @@ html.oled ::-webkit-scrollbar-thumb {
   }
 
   .week-tag-b {
-    @apply bg-secondary-100 text-secondary-700 border border-secondary-200 dark:bg-secondary-950 dark:text-secondary-300 dark:border-secondary-800;
+    @apply bg-surface-100 text-surface-700 border border-surface-200 dark:bg-surface-800 dark:text-surface-300 dark:border-surface-700;
   }
 
   .skeleton {
