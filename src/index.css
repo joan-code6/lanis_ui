@@ -510,3 +510,11 @@ html.oled body::after {
 }
 .animate-sidebar-drawer-out { animation: sidebar-drawer-out 160ms ease-in forwards; }
 .animate-sidebar-backdrop-out { animation: sidebar-backdrop-out 160ms ease-in forwards; }
+
+/* Overlay scrollbars keep the content width identical on short and long pages. */
+.layout-main > .os-scrollbar {
+  --os-size: 10px;
+  --os-handle-bg: rgb(var(--color-surface-400) / 0.65);
+  --os-handle-bg-hover: rgb(var(--color-surface-500) / 0.8);
+  --os-handle-bg-active: rgb(var(--color-surface-500));
+}

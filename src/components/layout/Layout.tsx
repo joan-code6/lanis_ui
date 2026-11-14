@@ -1,4 +1,6 @@
 import React from 'react';
+import { OverlayScrollbars } from 'overlayscrollbars';
+import 'overlayscrollbars/overlayscrollbars.css';
 import { capture, analyticsEnabled } from '../../analytics/client';
 import { supportContext } from '../../analytics/supportContext';
 import { modulePreloadOrder, prefetchModule } from '../../utils/modulePrefetch';
@@ -95,6 +97,13 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
   const [hasWahlenModule, setHasWahlenModule] = React.useState(false);
   const [hasVideokonferenzModule, setHasVideokonferenzModule] = React.useState(false);
   const mainRef = React.useRef<HTMLElement>(null);
+  React.useLayoutEffect(() => {
+    if (!mainRef.current) return;
+    const scrollbar = OverlayScrollbars(mainRef.current, {
+      scrollbars: { theme: 'os-theme-dark', autoHide: 'leave', clickScroll: true },
+    });
+    return () => scrollbar.destroy();
+  }, []);
   const pwaRef = React.useRef<any>(null);
 
   const appIconUrl = getThemeIconUrl(themeColor);
@@ -122,7 +131,10 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
   }, [appIconUrl, manifestUrl, themeColor]);
 
   React.useLayoutEffect(() => {
-    mainRef.current?.scrollTo(0, 0);
+    if (mainRef.current) {
+      const scrollbar = OverlayScrollbars(mainRef.current);
+      (scrollbar?.elements().viewport ?? mainRef.current).scrollTo(0, 0);
+    }
   }, [location.pathname]);
 
   React.useEffect(() => {
