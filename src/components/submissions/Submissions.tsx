@@ -356,9 +356,9 @@ const SubmissionDetailView: React.FC<{
                   <button type="button" onClick={() => void upload()} disabled={!selectedFiles.length || busy || refreshing} className="btn btn-primary w-full disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto">{busy ? 'Wird hochgeladen …' : 'Hochladen'}</button>
                 </div>
               </div>
-            ) : (
-              <div className="mt-5 flex items-start gap-2 rounded-xl bg-surface-100 px-4 py-3 text-sm text-surface-600 dark:bg-surface-800 dark:text-surface-300"><InformationCircleIcon className="mt-0.5 h-5 w-5 shrink-0" />{attemptClosed ? 'Diese Abgabe erlaubt keine weiteren Versuche.' : detail.status === 'closed' ? 'Die Abgabe ist geschlossen.' : 'Das Hochladen ist derzeit nicht möglich.'}</div>
-            )}
+            ) : detail.status !== 'closed' ? (
+              <div className="mt-5 flex items-start gap-2 rounded-xl bg-surface-100 px-4 py-3 text-sm text-surface-600 dark:bg-surface-800 dark:text-surface-300"><InformationCircleIcon className="mt-0.5 h-5 w-5 shrink-0" />{attemptClosed ? 'Diese Abgabe erlaubt keine weiteren Versuche.' : 'Das Hochladen ist derzeit nicht möglich.'}</div>
+            ) : null}
             {uploadStatuses.length > 0 && <UploadResults statuses={uploadStatuses} />}
           </div>
         </section>
