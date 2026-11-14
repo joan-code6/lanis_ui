@@ -143,7 +143,7 @@ const settingsSections: Array<{
   description: string;
   icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
 }> = [
-  { id: 'android', title: 'Android und Widgets', description: 'Widgets, Offline-Daten und Kurzbefehle.', icon: DevicePhoneMobileIcon },
+  { id: 'android', title: 'Android', description: 'Navigation, App-Sperre und Unterrichtsfortschritt.', icon: DevicePhoneMobileIcon },
   {
     id: 'appearance',
     title: 'Erscheinungsbild',
@@ -189,7 +189,7 @@ const settingsSections: Array<{
 ];
 
 const sectionMeta: Record<SettingsSection, { title: string; subtitle: string }> = {
-  android: { title: 'Android und Widgets', subtitle: '' },
+  android: { title: 'Android', subtitle: '' },
   home: { title: 'Einstellungen', subtitle: 'Passe Lanis an deinen Schulalltag an.' },
   appearance: { title: 'Erscheinungsbild', subtitle: 'Wähle ein Design sowie Primär- und Hausaufgabenfarbe.' },
   timetable: { title: 'Stundenplan & Vertretungsplan', subtitle: 'Lege deine Klasse und deine Stundenplan-Einstellungen fest.' },
