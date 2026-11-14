@@ -99,10 +99,18 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
   const mainRef = React.useRef<HTMLElement>(null);
   React.useLayoutEffect(() => {
     if (!mainRef.current) return;
+    const mobile = window.matchMedia('(max-width: 767px)');
     const scrollbar = OverlayScrollbars(mainRef.current, {
-      scrollbars: { theme: 'os-theme-dark', autoHide: 'leave', clickScroll: true },
+      scrollbars: { theme: 'os-theme-dark', autoHide: mobile.matches ? 'never' : 'leave', clickScroll: 'instant' },
     });
-    return () => scrollbar.destroy();
+    const updateVisibility = () => scrollbar.options({
+      scrollbars: { autoHide: mobile.matches ? 'never' : 'leave' },
+    });
+    mobile.addEventListener('change', updateVisibility);
+    return () => {
+      mobile.removeEventListener('change', updateVisibility);
+      scrollbar.destroy();
+    };
   }, []);
   const pwaRef = React.useRef<any>(null);
 
