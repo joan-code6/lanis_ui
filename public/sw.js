@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lanis-ui-shell-v9'
+const CACHE_NAME = 'lanis-ui-shell-v10'
 const OFFLINE_RESPONSE = () =>
   new Response('Offline', {
     status: 503,

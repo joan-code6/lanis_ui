@@ -20,22 +20,21 @@ const iconSizes = {
   'android-chrome-512x512.png': 512,
 };
 
-const sourceVector = sourceBase.map((channel, index) => channel - sourceHat[index]);
-const sourceVectorMagnitude = sourceVector.reduce((sum, channel) => sum + channel ** 2, 0);
-
 const clampByte = (value) => Math.round(Math.max(0, Math.min(255, value)));
 
-function recolor(source, theme) {
+function recolor(source, theme, inputBase = sourceBase, inputHat = sourceHat) {
+  const sourceVector = inputBase.map((channel, index) => channel - inputHat[index]);
+  const sourceVectorMagnitude = sourceVector.reduce((sum, channel) => sum + channel ** 2, 0);
   const result = Buffer.alloc(source.length);
 
   for (let offset = 0; offset < source.length; offset += 4) {
     const pixel = [source[offset], source[offset + 1], source[offset + 2]];
     let mix = pixel.reduce(
-      (sum, channel, index) => sum + (channel - sourceHat[index]) * sourceVector[index],
+      (sum, channel, index) => sum + (channel - inputHat[index]) * sourceVector[index],
       0,
     ) / sourceVectorMagnitude;
 
-    const reconstructed = sourceHat.map(
+    const reconstructed = inputHat.map(
       (channel, index) => channel + mix * sourceVector[index],
     );
     const residualLuminance = (
@@ -63,16 +62,21 @@ const { data: source, info } = await sharp(sourcePath)
   .raw()
   .toBuffer({ resolveWithObject: true });
 
-for (const [themeName, theme] of Object.entries(themes)) {
-  // Cyan uses its existing artwork; recoloring the newer source subtly alters it.
-  if (themeName === 'cyan') continue;
+// Cyan retains its original background and shading through its own source.
+const cyanSource = await sharp(fileURLToPath(new URL('./assets/icon-source-cyan.png', import.meta.url)))
+  .ensureAlpha().raw().toBuffer({ resolveWithObject: true });
 
+for (const [themeName, theme] of Object.entries(themes)) {
   const themeDirectory = join(faviconDirectory, 'themes', themeName);
   await mkdir(themeDirectory, { recursive: true });
 
-  const themedIcon = recolor(source, theme);
+  const isCyan = themeName === 'cyan';
+  const themedIcon = isCyan
+    ? recolor(cyanSource.data, theme, [1, 188, 214], sourceHat)
+    : recolor(source, theme);
+  const sourceInfo = isCyan ? cyanSource.info : info;
   for (const [filename, size] of Object.entries(iconSizes)) {
-    await sharp(themedIcon, { raw: info })
+    await sharp(themedIcon, { raw: sourceInfo })
       .resize(size, size)
       .png({ compressionLevel: 9 })
       .toFile(join(themeDirectory, filename));
