@@ -5,6 +5,8 @@ const require = createRequire(import.meta.url);
 const source = await readFile(require.resolve('@heroicons/react/24/solid/AcademicCapIcon'), 'utf8');
 const paths = [...source.matchAll(/d: "([^"]+)"/g)].map(match => match[1]);
 if (paths.length !== 3) throw new Error('Academic cap SVG paths changed; review before regenerating icons.');
+// Refresh web artwork first so native resources cannot silently keep old hats.
+await import('./generate-themed-icons.mjs');
 const output = 'android/app/src/main/res/drawable';
 const glyph = color => paths.map(path => `<path android:fillColor="${color}" android:pathData="${path}" />`).join('');
 await writeFile(`${output}/ic_stat_lanis.xml`, `<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24">${glyph('#ffffff')}</vector>\n`);
