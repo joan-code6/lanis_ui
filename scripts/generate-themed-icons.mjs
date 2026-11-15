@@ -7,18 +7,19 @@ const sourcePath = join(faviconDirectory, 'android-chrome-512x512.png');
 
 const sourceBase = [244, 63, 94];
 const sourceHat = [18, 52, 70];
-const softInkHat = [18, 52, 70];
 
+// Keep cyan's familiar ink hat; give the other themes richer, harmonious shades.
+// These stay dark enough to preserve the hat silhouette at favicon sizes.
 const themes = {
-  cyan: { base: [1, 188, 214], hat: softInkHat, themeColor: '#06b6d4' },
-  emerald: { base: [16, 185, 129], hat: softInkHat, themeColor: '#10b981' },
-  sapphire: { base: [59, 130, 246], hat: softInkHat, themeColor: '#3b82f6' },
-  amethyst: { base: [168, 85, 247], hat: softInkHat, themeColor: '#a855f7' },
-  ruby: { base: [244, 63, 94], hat: softInkHat, themeColor: '#f43f5e' },
-  amber: { base: [245, 158, 11], hat: softInkHat, themeColor: '#f59e0b' },
-  coral: { base: [248, 131, 121], hat: softInkHat, themeColor: '#f88379' },
-  blush: { base: [254, 227, 234], hat: softInkHat, themeColor: '#fee3ea' },
-  moss: { base: [75, 87, 63], hat: softInkHat, themeColor: '#4b573f' },
+  cyan: { base: [1, 188, 214], hat: sourceHat, themeColor: '#06b6d4' },
+  emerald: { base: [16, 185, 129], hat: [5, 78, 59], themeColor: '#10b981' },
+  sapphire: { base: [59, 130, 246], hat: [23, 55, 112], themeColor: '#3b82f6' },
+  amethyst: { base: [168, 85, 247], hat: [76, 29, 112], themeColor: '#a855f7' },
+  ruby: { base: [244, 63, 94], hat: [112, 20, 46], themeColor: '#f43f5e' },
+  amber: { base: [245, 158, 11], hat: [112, 57, 12], themeColor: '#f59e0b' },
+  coral: { base: [248, 131, 121], hat: [130, 45, 43], themeColor: '#f88379' },
+  blush: { base: [254, 227, 234], hat: [144, 42, 81], themeColor: '#fee3ea' },
+  moss: { base: [75, 87, 63], hat: [19, 40, 18], themeColor: '#4b573f' },
 };
 
 const iconSizes = {
@@ -73,6 +74,9 @@ const { data: source, info } = await sharp(sourcePath)
   .toBuffer({ resolveWithObject: true });
 
 for (const [themeName, theme] of Object.entries(themes)) {
+  // Cyan uses its existing artwork; recoloring the newer source subtly alters it.
+  if (themeName === 'cyan') continue;
+
   const themeDirectory = join(faviconDirectory, 'themes', themeName);
   await mkdir(themeDirectory, { recursive: true });
 
