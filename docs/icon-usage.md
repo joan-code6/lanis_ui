@@ -2,8 +2,11 @@
 
 The theme palette is defined in `scripts/icon-palettes.mjs`. Run
 `node scripts/generate-themed-icons.mjs` and `node scripts/generate-opengraph.mjs`
-after changing it. The immutable raster source is `scripts/assets/icon-source.png`;
-public files are generated output. Cyan keeps its existing artwork.
+after changing it. The immutable raster sources are
+`scripts/assets/icon-source.png` and `scripts/assets/icon-source-cyan.png`;
+public files are generated output. Option D applies `round(channel * 0.4)` to
+each harmonious hat color, including cyan. Cyan has its own source to preserve
+its original background and shading.
 
 | Surface | Source | Behavior |
 | --- | --- | --- |
@@ -20,7 +23,7 @@ public files are generated output. Cyan keeps its existing artwork.
 | Android recent-apps/task icon | `MainActivity.kt` | Selected launcher resource |
 | Android system splash | `ic_lanis_splash` → `ic_lanis` → `ic_lanis_ruby` | Default ruby |
 | Android notification/status, quick-settings tile, shortcuts, monochrome launcher | `ic_stat_lanis` | Monochrome glyph, intentionally independent of the color palette |
-| Admin portal header | `lanis_admin/public/lanis-logo.png` | Existing cyan branding, preserved |
+| Admin portal header | `lanis_admin/public/lanis-logo.png` | Cyan option D; copied from the shared generated cyan artwork |
 
 `lanis_api` contains no bundled LANIS icon references. The admin portal is a
 separate repository. Android resources live on the separate `feat/android-app`
