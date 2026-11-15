@@ -8,7 +8,7 @@ let mode = 'up';
 const now = new Date().toISOString();
 const stats = { checks: 10, available_checks: 9, failed_checks: 1, unknown_checks: 0, uptime_percent: 90, coverage_percent: 50 };
 const makeStatus = () => ({ success: true, service: 'Schulportal Hessen', generated_at: now,
-  current: { status: mode === 'stale' ? 'down' : mode, checked_at: now, stale: mode === 'stale', features: [] },
+  current: { status: ['rate_limited', 'access_denied', 'request_budget_exhausted', 'stale_rate_limit'].includes(mode) ? 'unknown' : mode === 'stale' ? 'down' : mode, error: mode === 'stale_rate_limit' ? 'rate_limited' : mode, checked_at: now, stale: mode === 'stale' || mode === 'stale_rate_limit', features: [] },
   summary: { ...stats, period_days: 90 },
   summary_windows: Object.fromEntries(['24h', '7d', '30d', '90d'].map(key => [key, { ...stats, period_days: 1 }])),
   history_windows: Object.fromEntries([['24h', 48, 1800000], ['7d', 28, 21600000]].map(([key, count, width]) => [key, Array.from({ length: count }, (_, index) => ({ ...stats, start: new Date(Date.now() - (count - index) * width).toISOString(), end: new Date(Date.now() - (count - index - 1) * width).toISOString(), status: index === count - 2 ? 'degraded' : index === 0 ? 'unknown' : 'up' }))])),
@@ -21,7 +21,16 @@ try {
   page.on('pageerror', error => errors.push(error.message));
   await page.setRequestInterception(true);
   page.on('request', request => {
-    if (request.url().endsWith('/status') && request.resourceType() === 'fetch') {
+    if (request.url().includes('/status/incident/') && request.resourceType() === 'fetch') {
+      void request.respond({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify({
+        id: 'measurement-gap', started_at: now, resolved_at: null, duration_seconds: 60,
+        status: 'down', checks: 1, affected_features: ['login'], last_checked_at: now,
+        observations: [
+          { checked_at: now, status: 'down', features: [] },
+          ...['rate_limited', 'access_denied', 'request_budget_exhausted', 'rate_limited'].map(error => ({ checked_at: now, status: 'unknown', error, features: [] })),
+        ],
+      }) });
+    } else if (request.url().endsWith('/status') && request.resourceType() === 'fetch') {
       void request.respond({ status: mode === 'error' ? 503 : 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify(makeStatus()) });
     } else void request.continue();
   });
@@ -71,6 +80,33 @@ try {
     assert.doesNotMatch(await page.$eval('main', el => el.textContent), /Resolved|955 Minuten/);
     await page.screenshot({ path: `/tmp/lanis-status-${width}.png`, fullPage: true });
   }
+  for (const width of [375, 1440]) {
+    await page.setViewport({ width, height: 950 });
+    for (const [state, title] of [
+      ['rate_limited', 'Prüfung durch Anfragelimit pausiert'],
+      ['access_denied', 'Statusprüfung ohne Zugriff'],
+      ['request_budget_exhausted', 'Statusprüfung unvollständig'],
+      ['stale_rate_limit', 'Letzte Prüfung durch Anfragelimit begrenzt'],
+    ]) {
+      mode = state;
+      await page.goto(`${origin}/status`, { waitUntil: 'networkidle0' });
+      const notice = await page.$eval('aside[role=status]', element => element.textContent);
+      assert.match(notice, new RegExp(title));
+      assert.doesNotMatch(notice, /rate_limited|access_denied|request_budget_exhausted/);
+      assert.match(await page.$eval('[aria-label=Komponentenstatus]', element => element.textContent), /Modulübersicht/);
+      assert.equal(await page.$$eval('[aria-label=Komponentenstatus] .bg-rose-500', elements => elements.length), 0);
+      assert.match(await page.$eval('main', element => element.textContent), /zählen weder als erreichbar noch als ausgefallen/);
+      await page.evaluate(() => document.documentElement.classList.add('dark'));
+      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+    }
+    await page.goto(`${origin}/status/incident/measurement-gap`, { waitUntil: 'networkidle0' });
+    const timeline = await page.$eval('ol', element => element.textContent);
+    assert.match(timeline, /Prüfung durch Anfragelimit pausiert/);
+    assert.match(timeline, /Statusprüfung ohne Zugriff/);
+    assert.match(timeline, /Statusprüfung unvollständig/);
+    assert.match(await page.$eval('main', element => element.textContent), /Noch aktiv/);
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+  }
   for (const state of ['down', 'stale', 'error']) {
     mode = state;
     await page.goto(`${origin}/status`, { waitUntil: 'networkidle0' });
@@ -85,5 +121,5 @@ try {
   await page.evaluate(() => document.documentElement.classList.add('dark'));
   await page.screenshot({ path: '/tmp/lanis-status-dark.png', fullPage: true });
   assert.deepEqual(errors, []);
-  console.log('Status smoke passed: desktop/mobile, history selection, fresh/down/stale/unavailable, homepage, no runtime errors.');
+  console.log('Status smoke passed: desktop/mobile, dark mode, history selection, fresh/down/stale/unavailable, rate limits, blocked/incomplete checks, incident measurement gaps, homepage, no runtime errors.');
 } finally { await browser.close(); }

@@ -4,6 +4,7 @@ import { ArrowLeftIcon, ArrowPathIcon, CheckCircleIcon, ExclamationTriangleIcon 
 import AppIcon from '../AppIcon';
 import { getApiBaseUrl } from '../../utils/backendConfig';
 import { PublicIncident, formatTimestamp, statusColors, statusLabels } from '../../services/publicStatus';
+import { getMeasurementNotice } from '../../services/statusMeasurement';
 import { formatDuration } from '../../utils/formatDuration';
 
 const featureName = (name: string) => name === 'login' ? 'Anmeldung' : name === 'modules' ? 'Module' : name;
@@ -37,6 +38,7 @@ export default function IncidentPage() {
   const timeline = observations.filter((check, index) => index === 0
     || index === observations.length - 1
     || check.status !== observations[index - 1].status
+    || check.error !== observations[index - 1].error
     || check.features.map(feature => `${feature.name}:${feature.status}`).join() !== observations[index - 1].features.map(feature => `${feature.name}:${feature.status}`).join());
   const resolved = Boolean(data?.resolved_at);
   const StateIcon = resolved ? CheckCircleIcon : ExclamationTriangleIcon;
@@ -96,18 +98,22 @@ export default function IncidentPage() {
                   <span className="text-xs text-surface-500">{data.checks} bestätigte Checks</span>
                 </div>
                 <ol className="mt-4 divide-y rounded-2xl border bg-white px-5 dark:bg-surface-900 sm:px-6">
-                  {timeline.map((check, index) => (
-                    <li key={`${check.checked_at}-${index}`} className="flex gap-3 py-4">
-                      <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${statusColors[check.status]}`} aria-hidden="true" />
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-                          <p className="text-sm font-medium">{statusLabels[check.status]}</p>
-                          <time className="text-xs text-surface-500" dateTime={check.checked_at || undefined}>{formatTimestamp(check.checked_at)}</time>
+                  {timeline.map((check, index) => {
+                    const notice = getMeasurementNotice(check);
+                    return (
+                      <li key={`${check.checked_at}-${index}`} className="flex gap-3 py-4">
+                        <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${statusColors[check.status]}`} aria-hidden="true" />
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                            <p className="text-sm font-medium">{notice?.title ?? statusLabels[check.status]}</p>
+                            <time className="text-xs text-surface-500" dateTime={check.checked_at || undefined}>{formatTimestamp(check.checked_at)}</time>
+                          </div>
+                          {notice && <p className="mt-1 text-xs leading-relaxed text-surface-500">{notice.description}</p>}
+                          <p className="mt-1 text-xs text-surface-500">{check.features.map(feature => `${featureName(feature.name)}: ${statusLabels[feature.status]}`).join(' · ')}</p>
                         </div>
-                        <p className="mt-1 text-xs text-surface-500">{check.features.map(feature => `${featureName(feature.name)}: ${statusLabels[feature.status]}`).join(' · ')}</p>
-                      </div>
-                    </li>
-                  ))}
+                      </li>
+                    );
+                  })}
                   {!timeline.length && <li className="py-5 text-sm text-surface-500">Keine einzelnen Prüfergebnisse verfügbar.</li>}
                 </ol>
               </section>
@@ -144,7 +150,7 @@ export default function IncidentPage() {
                   </div>
                 ) : <p className="mt-4 rounded-2xl border p-5 text-sm text-surface-500">Keine Kontoergebnisse verfügbar.</p>}
               </section>
-              <p className="mt-5 text-xs leading-relaxed text-surface-500">Der Verlauf zeigt beobachtete Statusänderungen. Messlücken bestätigen keine durchgehende Ausfallzeit. Ergebnisse können je nach Schule oder Konto abweichen.</p>
+              <p className="mt-5 text-xs leading-relaxed text-surface-500">Der Verlauf zeigt beobachtete Statusänderungen. Unbekannte Messungen, auch durch Anfragelimits, bestätigen weder einen Ausfall noch eine Wiederherstellung. Ein offener Eintrag bleibt bis zur bestätigten Wiederherstellung bestehen; Messlücken belegen keine durchgehende Ausfallzeit. Ergebnisse können je nach Schule oder Konto abweichen.</p>
               <p className="mt-3 break-all text-xs text-surface-400">ID: {data.id}</p>
             </>
           )}

@@ -83,12 +83,15 @@ export function formatTimestamp(value: string | null): string {
 export function formatPercent(value: number | null): string {
   return value === null ? '—' : `${value.toLocaleString('de-DE', { maximumFractionDigits: 2 })} %`;
 }
-export function freshStatus(data: PublicStatus | null): ServiceStatus {
-  if (!data || data.current.stale || !data.current.checked_at) return 'unknown';
+export function isStatusStale(data: PublicStatus | null): boolean {
+  if (!data || data.current.stale || !data.current.checked_at) return true;
   const age = Date.now() - Date.parse(data.current.checked_at);
-  return Number.isFinite(age) && age >= -60_000 && age <= data.measurement.stale_after_seconds * 1000
-    ? data.current.status : 'unknown';
+  return !Number.isFinite(age) || age < -60_000 || age > data.measurement.stale_after_seconds * 1000;
 }
+export function freshStatus(data: PublicStatus | null): ServiceStatus {
+  return data && !isStatusStale(data) ? data.current.status : 'unknown';
+}
+
 export function usePublicStatus(enabled = true) {
   const [data, setData] = useState<PublicStatus | null>(null);
   const [loading, setLoading] = useState(enabled);
