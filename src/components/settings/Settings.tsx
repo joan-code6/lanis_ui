@@ -1340,6 +1340,12 @@ const Settings: React.FC = () => {
           </div>
 
           <div className="mt-5 space-y-4 border-t border-surface-100 pt-5 dark:border-surface-800">
+            {pushSupported && (
+              <p className="rounded-xl bg-surface-50 p-3 text-xs text-surface-600 dark:bg-surface-800 dark:text-surface-300">
+                <strong>Brave:</strong> Aktiviere unter Einstellungen → Datenschutz und Sicherheit die Option
+                „Google-Dienste für Push-Nachrichten verwenden“ und starte Brave neu.
+              </p>
+            )}
             {!notificationConfigured && (
               <p className="rounded-xl bg-amber-50 p-3 text-xs text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
                 Push-Benachrichtigungen sind auf diesem Server noch nicht eingerichtet.
