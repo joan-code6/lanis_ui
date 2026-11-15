@@ -1,3 +1,4 @@
+import { Select, SelectOption } from '../ui/Select';
 import { capture } from '../../analytics/client';
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
@@ -317,18 +318,18 @@ const Kalender: React.FC = () => {
             <span className="text-xs font-medium text-surface-600">Filter:</span>
           </div>
 
-          <select
-            value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
+          <Select
+            aria-label="Kategorie filtern" value={selectedCategory}
+            onValueChange={(value) => setSelectedCategory(value)}
             className="input text-xs py-1.5 w-auto"
           >
-            <option value="">Alle Kategorien</option>
+            <SelectOption value="">Alle Kategorien</SelectOption>
             {categories.map((cat) => (
-              <option key={cat.id} value={cat.id}>
+              <SelectOption key={cat.id} value={cat.id}>
                 {cat.name}
-              </option>
+              </SelectOption>
             ))}
-          </select>
+          </Select>
 
           <div className="relative">
             <MagnifyingGlassIcon className="h-3.5 w-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-surface-400" />

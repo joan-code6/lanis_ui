@@ -7,8 +7,6 @@ export function ThemeColorPicker({ id, value, onChange }: { id: string; value: T
     const normalized = normalizeThemeColor(color);
     if (normalized) onChange(normalized);
   };
-  const firefox = typeof navigator !== 'undefined' && /firefox/i.test(navigator.userAgent);
-  if (!firefox) return <input id={id} type="color" value={value} onChange={event => onChange(event.target.value as ThemeColor)} className="input mt-2 h-16 w-full cursor-pointer p-2" />;
   return <div className="theme-color-picker mt-2 space-y-4">
     <HexColorPicker color={value} onChange={changeColor} />
     <label className="label block" htmlFor={id}>Hex

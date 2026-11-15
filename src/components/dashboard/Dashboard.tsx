@@ -1,3 +1,4 @@
+import { Select, SelectOption } from '../ui/Select';
 import { useDialogFocus } from '../../hooks/useDialogFocus';
 import { openExternal } from '../../platform/files';
 import { DashboardModulesSkeleton } from '../shared/LoadingSkeletons';
@@ -527,18 +528,18 @@ const Dashboard: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2 w-full sm:w-auto">
-          <select
-            value={selectedFolder}
-            onChange={(e) => setSelectedFolder(e.target.value)}
+          <Select
+            aria-label="Ordner filtern" value={selectedFolder}
+            onValueChange={(value) => setSelectedFolder(value)}
             className="hidden input text-sm flex-1 min-w-0 sm:flex-none sm:w-auto sm:max-w-[200px]"
           >
-            <option value="all">Alle Ordner</option>
+            <SelectOption value="all">Alle Ordner</SelectOption>
             {folders.map((folder) => (
-              <option key={folder} value={folder}>
+              <SelectOption key={folder} value={folder}>
                 {folder}
-              </option>
+              </SelectOption>
             ))}
-          </select>
+          </Select>
 
           <div className="flex bg-surface-100 dark:bg-surface-800 rounded-lg p-0.5 flex-shrink-0">
             <button

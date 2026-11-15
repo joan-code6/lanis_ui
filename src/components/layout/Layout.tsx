@@ -1,3 +1,4 @@
+import { Select, SelectOption } from '../ui/Select';
 import { useDialogFocus } from '../../hooks/useDialogFocus';
 import AndroidNavigation from '../android/AndroidNavigation';
 import AndroidConnectivity from '../android/AndroidConnectivity';
@@ -117,7 +118,7 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
 
   React.useEffect(() => {
     const back = (event: Event) => {
-      if (event.defaultPrevented) return;
+      if (event.defaultPrevented || document.querySelector('[data-input-popup]')) return;
       if (isSearchOpen) { event.preventDefault(); setIsSearchOpen(false); }
       else if (showLogoutConfirmation) { event.preventDefault(); if (!isLoggingOut) setShowLogoutConfirmation(false); }
       else if (isSidebarOpen) { event.preventDefault(); setIsSidebarOpen(false); }
@@ -574,6 +575,7 @@ function FeedbackDialog({ token, onClose, openerRef }: {
     dialog?.querySelector<HTMLElement>(focusableSelector)?.focus();
 
     const onKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || document.querySelector('[data-input-popup]')) return;
       if (event.key === 'Escape') {
         if (isSubmittingRef.current) return;
         onClose();
@@ -688,11 +690,11 @@ function FeedbackDialog({ token, onClose, openerRef }: {
           <fieldset disabled={isSubmitting} className="m-0 min-w-0 space-y-4 border-0 p-0">
           <label className="block text-sm font-medium text-surface-700 dark:text-surface-300">
             Worum geht es?
-            <select value={category} onChange={(event) => setCategory(event.target.value as FeedbackCategory)} className="input mt-1.5 w-full">
-              <option value="feature">Idee für eine Funktion</option>
-              <option value="bug">Fehler melden</option>
-              <option value="general">Allgemeines Feedback</option>
-            </select>
+            <Select value={category} onValueChange={(value) => setCategory(value as FeedbackCategory)} className="input mt-1.5 w-full">
+              <SelectOption value="feature">Idee für eine Funktion</SelectOption>
+              <SelectOption value="bug">Fehler melden</SelectOption>
+              <SelectOption value="general">Allgemeines Feedback</SelectOption>
+            </Select>
           </label>
           <label className="block text-sm font-medium text-surface-700 dark:text-surface-300">
             Kurzer Titel

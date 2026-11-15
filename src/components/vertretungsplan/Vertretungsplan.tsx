@@ -1,3 +1,4 @@
+import { Select, SelectOption } from '../ui/Select';
 import { SubstitutionPlanSkeleton } from '../shared/ModuleLoadingSkeletons';
 import { useCachedResource } from '../../hooks/useCachedResource';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -354,15 +355,15 @@ const Vertretungsplan: React.FC = () => {
                 <label htmlFor="vertretungsplan-class" className="text-sm font-medium text-surface-600 dark:text-surface-300">
                   Klasse
                 </label>
-                <select
+                <Select
                   id="vertretungsplan-class"
                   className="input w-auto min-w-36 text-sm"
                   value={activeClass}
-                  onChange={event => setSelectedClass(event.target.value)}
+                  onValueChange={value => setSelectedClass(value)}
                 >
-                  <option value="all">Alle Klassen</option>
-                  {selectionOptions.map(value => <option key={value} value={value}>{value}</option>)}
-                </select>
+                  <SelectOption value="all">Alle Klassen</SelectOption>
+                  {selectionOptions.map(value => <SelectOption key={value} value={value}>{value}</SelectOption>)}
+                </Select>
               </div>
             )}
 

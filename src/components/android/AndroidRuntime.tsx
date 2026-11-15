@@ -1,3 +1,4 @@
+import { dismissInputPopup } from '../../utils/inputPopups';
 import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { App } from '@capacitor/app';
@@ -45,6 +46,8 @@ export default function AndroidRuntime() {
     void track(App.addListener('appUrlOpen', ({ url }) => open(url)));
     void App.getLaunchUrl().then(result => { if (!disposed && result) open(result.url); });
     void track(App.addListener('backButton', () => {
+      // Close the top input popup before its containing dialog or route.
+      if (dismissInputPopup()) return;
       // Dialogs/drawers get first chance to consume the Android back gesture.
       const event = new Event('lanis:back', { cancelable: true });
       if (!window.dispatchEvent(event)) return;

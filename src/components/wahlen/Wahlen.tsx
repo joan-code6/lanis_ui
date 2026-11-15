@@ -1,3 +1,4 @@
+import { Select, SelectOption } from '../ui/Select';
 import { useCachedResource } from '../../hooks/useCachedResource';
 import React, { FormEvent, useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
@@ -222,10 +223,10 @@ const Wahlen: React.FC = () => {
         {field.label || field.id}
       </span>
       {field.kind === 'select' ? (
-        <select className="input" value={fields[field.id] || ''} onChange={event => updateField(field, event.target.value)}>
-          <option value="">Bitte auswählen</option>
-          {(field.options || []).map(option => <option key={`${field.id}-${option.value}`} value={option.value}>{option.label}</option>)}
-        </select>
+        <Select className="input" value={fields[field.id] || ''} onValueChange={value => updateField(field, value)}>
+          <SelectOption value="">Bitte auswählen</SelectOption>
+          {(field.options || []).map(option => <SelectOption key={`${field.id}-${option.value}`} value={option.value}>{option.label}</SelectOption>)}
+        </Select>
       ) : (
         <input className="input" type={field.kind === 'email' ? 'email' : 'text'} value={fields[field.id] || ''} onChange={event => updateField(field, event.target.value)} />
       )}
@@ -237,10 +238,10 @@ const Wahlen: React.FC = () => {
       return (
         <label key={control.id} className="block max-w-2xl">
           <span className="mb-1.5 block text-sm font-medium text-surface-700 dark:text-surface-300">{control.label || 'Auswahl'}</span>
-          <select className="input" value={typeof selections[control.id] === 'string' ? selections[control.id] as string : ''} onChange={event => updateSelect(control, event.target.value)}>
-            <option value="">Bitte auswählen</option>
-            {(control.options || []).map(option => <option key={`${control.id}-${option.value}`} value={option.value} disabled={option.disabled}>{option.label}</option>)}
-          </select>
+          <Select className="input" value={typeof selections[control.id] === 'string' ? selections[control.id] as string : ''} onValueChange={value => updateSelect(control, value)}>
+            <SelectOption value="">Bitte auswählen</SelectOption>
+            {(control.options || []).map(option => <SelectOption key={`${control.id}-${option.value}`} value={option.value} disabled={option.disabled}>{option.label}</SelectOption>)}
+          </Select>
           {control.required && <span className="mt-1 block text-xs text-surface-500">Pflichtauswahl</span>}
         </label>
       );
@@ -255,10 +256,10 @@ const Wahlen: React.FC = () => {
           <span className="min-w-0 flex-1 text-sm font-medium text-surface-800 dark:text-surface-200">{control.name || control.label}</span>
         </label>
         {isChecked(value) && (control.teacher_options || []).length > 0 && (
-          <select className="input mt-3 text-sm" value={teacherValue(value)} onChange={event => updateTeacher(control, event.target.value)}>
-            <option value="">Lehrkraft optional auswählen</option>
-            {(control.teacher_options || []).map(teacher => <option key={teacher} value={teacher}>{teacher}</option>)}
-          </select>
+          <Select className="input mt-3 text-sm" aria-label="Lehrkraft auswählen" value={teacherValue(value)} onValueChange={value => updateTeacher(control, value)}>
+            <SelectOption value="">Lehrkraft optional auswählen</SelectOption>
+            {(control.teacher_options || []).map(teacher => <SelectOption key={teacher} value={teacher}>{teacher}</SelectOption>)}
+          </Select>
         )}
       </div>
     );

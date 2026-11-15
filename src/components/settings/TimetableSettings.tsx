@@ -1,3 +1,6 @@
+import { ColorPicker } from '../ui/ColorPicker';
+import { TimeInput } from '../ui/TimeInput';
+import { Select, SelectOption } from '../ui/Select';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import axios from 'axios';
 import { addDays, format, parseISO, startOfWeek } from 'date-fns';
@@ -585,20 +588,20 @@ const TimetableSettings: React.FC = () => {
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <label className="label" htmlFor="custom-lesson-weekday">Wochentag</label>
-                <select
+                <Select
                   id="custom-lesson-weekday"
                   className="input"
                   value={weekdayForDate(draft.date)}
-                  onChange={event => {
-                    const option = weekdayOptions.find(item => item.weekday === Number(event.target.value));
+                  onValueChange={value => {
+                    const option = weekdayOptions.find(item => item.weekday === Number(value));
                     if (option) updateDraft('date', option.date);
                   }}
                   required
                 >
                   {weekdayOptions.map(option => (
-                    <option key={option.weekday} value={option.weekday}>{option.label}</option>
+                    <SelectOption key={option.weekday} value={option.weekday}>{option.label}</SelectOption>
                   ))}
-                </select>
+                </Select>
               </div>
               <div>
                 <label className="label" htmlFor="custom-lesson-period">Stunde / Bereich</label>
@@ -612,14 +615,12 @@ const TimetableSettings: React.FC = () => {
                 <p className="mt-0.5 text-xs text-surface-500">Wird für diesen Kurs bzw. diese Klasse verwendet.</p>
               </div>
               <div className="flex shrink-0 items-center gap-2">
-                <input
+                <ColorPicker
                   id="custom-lesson-colour"
-                  type="color"
                   aria-label={`Farbe für ${colourLesson.subject}`}
-                  className="h-9 w-11 cursor-pointer rounded-lg border border-surface-300 bg-transparent p-0.5 dark:border-surface-600"
                   value={draftClassColour(colourKey, defaultColour)}
-                  onChange={event => changeClassColour(colourKey, event.target.value)}
-                  onBlur={saveClassColours}
+                  onValueChange={value => changeClassColour(colourKey, value)}
+                  onCommit={saveClassColours}
                   disabled={draft.removed}
                 />
                 <button
@@ -653,12 +654,10 @@ const TimetableSettings: React.FC = () => {
 
             <div className="grid gap-4 sm:grid-cols-3">
               <div>
-                <label className="label" htmlFor="custom-lesson-start">Beginn</label>
-                <input id="custom-lesson-start" type="time" className="input" value={draft.start_time || ''} onChange={event => updateDraft('start_time', event.target.value)} disabled={draft.removed} />
+                <TimeInput id="custom-lesson-start" label="Beginn" className="input" value={draft.start_time || ''} onValueChange={value => updateDraft('start_time', value)} disabled={draft.removed} />
               </div>
               <div>
-                <label className="label" htmlFor="custom-lesson-end">Ende</label>
-                <input id="custom-lesson-end" type="time" className="input" value={draft.end_time || ''} onChange={event => updateDraft('end_time', event.target.value)} disabled={draft.removed} />
+                <TimeInput id="custom-lesson-end" label="Ende" className="input" value={draft.end_time || ''} onValueChange={value => updateDraft('end_time', value)} disabled={draft.removed} />
               </div>
               <div>
                 <label className="label" htmlFor="custom-lesson-duration">Dauer (Stunden)</label>
@@ -669,23 +668,23 @@ const TimetableSettings: React.FC = () => {
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <label className="label" htmlFor="custom-lesson-week">Woche</label>
-                <select id="custom-lesson-week" className="input" value={draft.week_type || ''} onChange={event => updateDraft('week_type', (event.target.value || undefined) as CustomLesson['week_type'])} disabled={draft.removed}>
-                  <option value="">Jede Woche</option>
-                  <option value="A">A-Woche</option>
-                  <option value="B">B-Woche</option>
-                </select>
+                <Select id="custom-lesson-week" className="input" value={draft.week_type || ''} onValueChange={value => updateDraft('week_type', (value || undefined) as CustomLesson['week_type'])} disabled={draft.removed}>
+                  <SelectOption value="">Jede Woche</SelectOption>
+                  <SelectOption value="A">A-Woche</SelectOption>
+                  <SelectOption value="B">B-Woche</SelectOption>
+                </Select>
               </div>
               <div>
                 <label className="label" htmlFor="custom-lesson-class">Kurs verknüpfen</label>
-                <select id="custom-lesson-class" className="input" value={draft.course_id || ''} onChange={event => selectCourse(event.target.value)} disabled={draft.removed}>
-                  <option value="">Kein Kurs</option>
+                <Select id="custom-lesson-class" className="input" value={draft.course_id || ''} onValueChange={value => selectCourse(value)} disabled={draft.removed}>
+                  <SelectOption value="">Kein Kurs</SelectOption>
                   {draft.course_id && !selectedClass && (
-                    <option value={draft.course_id}>{draft.class_name || draft.course_id}</option>
+                    <SelectOption value={draft.course_id}>{draft.class_name || draft.course_id}</SelectOption>
                   )}
                   {classLinks.map(link => (
-                    <option key={link.course_id} value={link.course_id}>{link.name || 'Unbenannter Kurs'}</option>
+                    <SelectOption key={link.course_id} value={link.course_id}>{link.name || 'Unbenannter Kurs'}</SelectOption>
                   ))}
-                </select>
+                </Select>
               </div>
             </div>
 

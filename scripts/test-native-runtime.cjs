@@ -11,6 +11,7 @@ function runtime(signedIn = true) {
   let preferences = { appearance: { theme_mode: 'dark', theme_color: '#123456', secondary_theme_color: '#047857' }, timetable: { show_substitutions: true, class_colors: {} } };
   let cursor = 0, launchReads = 0, removed = 0;
   let route = '/dashboard', authenticated = signedIn;
+  let popupOpen = false;
   const react = {
     useRef(value) { const i = cursor++; return hooks[i] ||= { current: value }; },
     useState(value) { cursor++; return [value, () => {}]; },
@@ -47,6 +48,7 @@ function runtime(signedIn = true) {
       if (name.endsWith('/authStorage')) return { async flushAuthStorage() {}, authStorage: { getItem: () => 'test-owner' } };
       if (name.endsWith('/links')) return { nativeRoute: value => new URL(value).pathname };
       if (name.endsWith('/themeAssets')) return { getThemeAssetName: () => "ruby" };
+      if (name.endsWith('/inputPopups')) return { dismissInputPopup: () => popupOpen };
       throw new Error(`Unexpected import: ${name}`);
     },
   };
@@ -56,10 +58,19 @@ function runtime(signedIn = true) {
     route = nextRoute; authenticated = nextAuthenticated; cursor = 0;
     context.exports.default();
   }
-  return { render, calls, listeners, widgetPreferences, appearances, setLoading(value) { preferencesLoading = value; }, setPreferences(value) { preferences = { ...value, appearance: value.appearance || preferences.appearance }; }, get launchReads() { return launchReads; }, get removed() { return removed; } };
+  return { render, calls, listeners, widgetPreferences, appearances, setPopupOpen(value) { popupOpen = value; }, setLoading(value) { preferencesLoading = value; }, setPreferences(value) { preferences = { ...value, appearance: value.appearance || preferences.appearance }; }, get launchReads() { return launchReads; }, get removed() { return removed; } };
 }
 
 const settle = () => new Promise(resolve => setImmediate(resolve));
+
+test('Android back dismisses an input popup before navigating or closing its parent', async () => {
+  const r = runtime();
+  r.render(); await settle();
+  r.calls.length = 0;
+  r.setPopupOpen(true);
+  r.listeners.get('backButton')();
+  assert.deepEqual(r.calls, []);
+});
 
 test('widget launch is consumed once and subsequent navigation stays on the selected page', async () => {
   const r = runtime();

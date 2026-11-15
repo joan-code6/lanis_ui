@@ -24,6 +24,7 @@ export function useDialogFocus(active: boolean, ref: RefObject<HTMLElement>, onD
     }
     (dialog.querySelector<HTMLElement>('[data-dialog-initial-focus]') || controls()[0] || dialog).focus();
     const keydown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || document.querySelector('[data-input-popup]')) return;
       if (event.key === 'Escape') { event.preventDefault(); dismiss.current(); return; }
       if (event.key !== 'Tab') return;
       const items = controls();

@@ -1,3 +1,5 @@
+import { TimeInput } from '../ui/TimeInput';
+import { Select, SelectOption } from '../ui/Select';
 import { ThemeColorPicker } from './ThemeColorPicker';
 import { authStorage, flushAuthStorage } from '../../platform/authStorage';
 import { saveBlob } from '../../platform/files';
@@ -1392,46 +1394,36 @@ const Settings: React.FC = () => {
               <legend className="item-title mb-3">Aktive Zeiten</legend>
               <div className="grid gap-4 sm:grid-cols-3">
               <div>
-                <label className="label" htmlFor="notification-start">Von</label>
-                <div className="relative">
-                  <ClockIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-surface-400" />
-                  <input
-                    id="notification-start"
-                    type="time"
-                    className="input pl-9 text-sm"
+                  <TimeInput
+                    id="notification-start" label="Von"
+                    className="input text-sm"
                     value={notificationPrefs.start_time}
-                    onChange={event => setNotificationPrefs(previous => ({ ...previous, start_time: event.target.value }))}
+                    onValueChange={value => setNotificationPrefs(previous => ({ ...previous, start_time: value }))}
                     disabled={notificationsLoading || notificationsSaving}
                   />
-                </div>
               </div>
               <div>
-                <label className="label" htmlFor="notification-end">Bis</label>
-                <div className="relative">
-                  <ClockIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-surface-400" />
-                  <input
-                    id="notification-end"
-                    type="time"
-                    className="input pl-9 text-sm"
+                  <TimeInput
+                    id="notification-end" label="Bis"
+                    className="input text-sm"
                     value={notificationPrefs.end_time}
-                    onChange={event => setNotificationPrefs(previous => ({ ...previous, end_time: event.target.value }))}
+                    onValueChange={value => setNotificationPrefs(previous => ({ ...previous, end_time: value }))}
                     disabled={notificationsLoading || notificationsSaving}
                   />
-                </div>
               </div>
               <div>
                 <label className="label" htmlFor="notification-interval">Prüfintervall</label>
-                <select
+                <Select
                   id="notification-interval"
                   className="input text-sm"
                   value={notificationPrefs.poll_interval_minutes}
-                  onChange={event => setNotificationPrefs(previous => ({ ...previous, poll_interval_minutes: Number(event.target.value) }))}
+                  onValueChange={value => setNotificationPrefs(previous => ({ ...previous, poll_interval_minutes: Number(value) }))}
                   disabled={notificationsLoading || notificationsSaving}
                 >
                   {[5, 10, 15, 30, 60].map(minutes => (
-                    <option key={minutes} value={minutes}>{minutes} Minuten</option>
+                    <SelectOption key={minutes} value={minutes}>{minutes} Minuten</SelectOption>
                   ))}
-                </select>
+                </Select>
               </div>
               </div>
             </fieldset>}

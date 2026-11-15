@@ -36,7 +36,9 @@ Use `settings-preview-option` alongside `segmented-control-option` for choices w
 
 Use `segmented-control` with `segmented-control-option` for mutually exclusive settings choices; the selected option is indicated by `aria-checked="true"`.
 
-Use theme-aware `primary-*`, `secondary-*` and `surface-*` tokens. The secondary palette is derived from the saved homework hex color and is reserved for homework. Settings show a homework preview. Firefox uses the react-colorful saturation area, hue control and hex field instead of its native color dialog. Pair custom light surfaces and text with dark variants. Keep semantic status colors for errors, warnings and success. Verify light, dark and OLED modes; do not hardcode white text in place of surface-100 for ordinary headings.
+Use `Select`/`SelectOption` from `components/ui/Select` for dropdowns (Radix), `TimeInput` for editable 24-hour times (React Aria), and `ColorPicker` for compact course-color popovers (Radix + react-colorful). Appearance dialogs use the inline `ThemeColorPicker`. These controls replace browser-native select, time and color pickers on every platform. Give each control a visible label or an accessible name. Popups stay inside their containing modal, restore focus on dismissal, and consume Android back before route navigation. Keep system file-access, biometric, permission, sharing and installation prompts: the platform controls access to those capabilities. Existing styled HTML dialogs remain in use.
+
+Use theme-aware `primary-*`, `secondary-*` and `surface-*` tokens. The secondary palette is derived from the saved homework hex color and is reserved for homework. Settings show a homework preview. All browsers use react-colorful saturation, hue and hex controls for color selection. Pair custom light surfaces and text with dark variants. Keep semantic status colors for errors, warnings and success. Verify light, dark and OLED modes; do not hardcode white text in place of surface-100 for ordinary headings.
 
 ## Intentional exceptions
 

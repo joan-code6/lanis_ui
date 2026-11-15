@@ -1,3 +1,4 @@
+import { Select, SelectOption } from '../ui/Select';
 import { capture } from '../../analytics/client';
 import { useCachedState } from '../../hooks/useCachedState';
 import { readPersonalCache, writePersonalCache } from '../../utils/accountDataWrites';
@@ -625,20 +626,20 @@ const Courses: React.FC = () => {
                   <span className="text-xs font-medium text-surface-700 dark:text-surface-300 hidden sm:inline">Filter:</span>
                 </div>
 
-                <select
-                  value={filterAttendance}
-                  onChange={(e) => setFilterAttendance(e.target.value)}
+                <Select
+                  aria-label="Anwesenheit filtern" value={filterAttendance}
+                  onValueChange={(value) => setFilterAttendance(value)}
                   className="text-xs sm:text-sm border border-surface-300 dark:border-surface-600 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white dark:bg-surface-800 text-surface-700 dark:text-surface-300 min-w-0"
                 >
-                  <option value="all">Alle Einträge</option>
-                  <option value="anwesend">Anwesend</option>
-                  <option value="entschuldigt">Entschuldigt</option>
-                  <option value="unentschuldigt">Unentschuldigt</option>
-                  <option value="fehlend">Fehlend</option>
+                  <SelectOption value="all">Alle Einträge</SelectOption>
+                  <SelectOption value="anwesend">Anwesend</SelectOption>
+                  <SelectOption value="entschuldigt">Entschuldigt</SelectOption>
+                  <SelectOption value="unentschuldigt">Unentschuldigt</SelectOption>
+                  <SelectOption value="fehlend">Fehlend</SelectOption>
                   {dynamicAttendanceOptions.map((option) => (
-                    <option key={option} value={option}>{option}</option>
+                    <SelectOption key={option} value={option}>{option}</SelectOption>
                   ))}
-                </select>
+                </Select>
 
                 <button
                   onClick={() => { void capture('course_filter_changed', { homework_only: !showOnlyHomework }); setShowOnlyHomework(!showOnlyHomework); }}
