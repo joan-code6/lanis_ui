@@ -1,5 +1,5 @@
 import { Capacitor, registerPlugin } from '@capacitor/core';
-import type { TimetableResponse } from '../types';
+import type { TimetableResponse, UserPreferences } from '../types';
 
 export const isAndroid = Capacitor.getPlatform() === 'android';
 // Preview only changes presentation; it never enables native APIs in a browser.
@@ -38,7 +38,7 @@ interface LanisNativePlugin {
   getStatus(): Promise<DeviceStatus>;
   sync(): Promise<DeviceStatus>;
   setAppearance(options: { dark: boolean; oled: boolean; accent: string; theme: string; themeMode: 'system' | 'light' | 'dark' | 'oled' }): Promise<void>;
-  setWidgetPreferences(options: { owner: string; showSubstitutions: boolean; classColors: Record<string, string> }): Promise<void>;
+  setWidgetPreferences(options: { appearance: UserPreferences['appearance']; owner: string; showSubstitutions: boolean; classColors: Record<string, string> }): Promise<void>;
   pinWidget(options: { kind: WidgetKind }): Promise<{ requested: boolean }>;
   saveTimetable(options: { data: TimetableResponse; owner: string }): Promise<void>;
   getTimetable(): Promise<{ data?: TimetableResponse; updatedAt: number }>;

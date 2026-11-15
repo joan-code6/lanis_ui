@@ -211,14 +211,8 @@ class LanisNativePlugin : Plugin() {
             val state = NativeStore.read(context)
             val owner = call.getString("owner")
             if (owner.isNullOrEmpty() || state.optJSONObject("session")?.optString("auth_refresh_token") != owner) return@task call.resolve()
-            val colors = call.getObject("classColors") ?: JSObject()
-            val valid = JSONObject()
-            for (key in colors.keys()) {
-                val value = colors.optString(key)
-                if (key.length <= 512 && value.matches(Regex("#[a-fA-F0-9]{6}"))) valid.put(key, value)
-            }
-            state.put("widgetPreferences", JSONObject().put("showSubstitutions", call.getBoolean("showSubstitutions", true))
-                .put("classColors", valid))
+            if (!WidgetAppearance.save(state, call.getObject("appearance"), call.getBoolean("showSubstitutions", true) ?: true,
+                    call.getObject("classColors") ?: JSObject())) return@task call.reject("Ungültige Darstellung.")
             NativeStore.write(context, state)
             Widgets.updateAll(context)
             WidgetTickWorker.schedule(context)

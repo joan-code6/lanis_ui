@@ -64,6 +64,12 @@ object DeviceSync {
             if (!data.optBoolean("success") || data.optJSONArray("days") == null) throw SyncFailure()
             state.put("timetable", data).put("lastUpdated", System.currentTimeMillis()).put("syncError", "")
             NativeStore.write(context, state)
+            // Refresh the stored account appearance even when the WebView is not running.
+            // A settings outage must retain the last valid palette and cached timetable.
+            try {
+                val preferences = request(backend, "/settings/preferences", token)
+                if (WidgetAppearance.fromAccount(state, preferences)) NativeStore.write(context, state)
+            } catch (_: Exception) { /* Keep the encrypted preference snapshot. */ }
             // Push registration errors do not prevent timetable caching.
             if (state.optBoolean("notificationsEnabled") && state.optString("fcmToken").isNotEmpty()) {
                 try {

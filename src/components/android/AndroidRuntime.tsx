@@ -13,7 +13,7 @@ import { getThemeAssetName } from '../../utils/themeAssets';
 
 export default function AndroidRuntime() {
   const { isAuthenticated, token } = useAuth();
-  const { isDark, isOled, themeColor, themeMode } = useTheme();
+  const { isDark, themeColor, themeMode } = useTheme();
   const { preferences, isLoading: preferencesLoading } = usePreferences();
   const navigate = useNavigate();
   // React Router can replace navigate after each route change. Native listeners
@@ -88,8 +88,12 @@ export default function AndroidRuntime() {
   }, [isAuthenticated, token]);
 
   useEffect(() => {
-    if (isAndroid) void LanisNative.setAppearance({ dark: isDark, oled: isOled, accent: themeColor, theme: getThemeAssetName(themeColor), themeMode }).catch(() => {});
-  }, [isDark, isOled, themeColor, themeMode]);
+    if (!isAndroid || (isAuthenticated && preferencesLoading) || currentPath.current.startsWith('/demo')) return;
+    const saved = isAuthenticated ? preferences.appearance : { theme_mode: themeMode, theme_color: themeColor };
+    const oled = saved.theme_mode === 'oled';
+    const dark = oled || saved.theme_mode === 'dark' || (saved.theme_mode === 'system' && isDark);
+    void LanisNative.setAppearance({ dark, oled, accent: saved.theme_color, theme: getThemeAssetName(saved.theme_color), themeMode: saved.theme_mode }).catch(() => {});
+  }, [isAuthenticated, preferencesLoading, preferences.appearance, isDark, themeColor, themeMode]);
 
   useEffect(() => {
     if (!isAndroid || !isAuthenticated || preferencesLoading || currentPath.current.startsWith('/demo')) return;
@@ -98,12 +102,13 @@ export default function AndroidRuntime() {
       const owner = authStorage.getItem('auth_refresh_token');
       if (!disposed && owner) await LanisNative.setWidgetPreferences({
         owner,
+        appearance: preferences.appearance,
         showSubstitutions: preferences.timetable.show_substitutions,
         classColors: preferences.timetable.class_colors,
       });
     }).catch(() => setFailure('Widget-Einstellungen konnten nicht aktualisiert werden.'));
     return () => { disposed = true; };
-  }, [isAuthenticated, token, preferencesLoading, preferences.timetable.show_substitutions, preferences.timetable.class_colors]);
+  }, [isAuthenticated, token, preferencesLoading, preferences.appearance, preferences.timetable.show_substitutions, preferences.timetable.class_colors]);
 
   if (!isAndroid || !failure) return null;
   return <button type="button" role="status" className="native-toast" onClick={() => setFailure('')}>{failure}<span className="sr-only"> Schließen</span></button>;

@@ -45,16 +45,15 @@ object Widgets {
         val state = runCatching { NativeStore.read(context) }.getOrDefault(JSONObject())
         val preferences = state.optJSONObject("widgetPreferences")
         val changes = provider == ChangesWidget::class.java
-        val oled = state.optBoolean("oled")
-        val dark = oled || if (state.optString("themeMode") == "system")
-            context.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK == android.content.res.Configuration.UI_MODE_NIGHT_YES
-            else state.optBoolean("dark")
-        val accent = runCatching { Color.parseColor(state.optString("accent", "#f43f5e")) }.getOrDefault(Color.rgb(244, 63, 94))
-        val surface = if (oled) Color.BLACK else blend(Color.parseColor(if (dark) "#242124" else "#ffffff"), accent, .035f)
-        val foreground = Color.parseColor(if (dark) "#f5f0f3" else "#30242b")
-        val muted = Color.parseColor(if (dark) "#bdaeb7" else "#796b73")
-        val brand = readable(accent, surface)
-        val line = blend(surface, foreground, .12f)
+        val palette = WidgetAppearance.palette(state,
+            context.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK == android.content.res.Configuration.UI_MODE_NIGHT_YES)
+        val dark = palette.dark
+        val accent = Color.parseColor(palette.accent)
+        val surface = Color.parseColor(palette.surface)
+        val foreground = Color.parseColor(palette.foreground)
+        val muted = Color.parseColor(palette.muted)
+        val brand = Color.parseColor(palette.emphasis)
+        val line = Color.parseColor(palette.line)
         val views = RemoteViews(context.packageName, R.layout.lanis_widget)
         views.setInt(R.id.widget_background, "setColorFilter", surface)
         views.setTextColor(R.id.widget_headline, foreground)
@@ -170,8 +169,10 @@ object Widgets {
                     for ((index, lesson) in selected.drop(first).take(maxRows).withIndex()) {
                         val row = RemoteViews(context.packageName, R.layout.widget_lesson)
                         val current = WidgetModel.isCurrent(lesson, now)
-                        val colour = WidgetModel.colourOverride(lesson, preferences)?.let { Color.parseColor(it) } ?: accent
-                        val tint = blend(surface, colour, if (dark) .23f else .12f)
+                        val override = WidgetModel.colourOverride(lesson, preferences)
+                        val colour = override?.let { Color.parseColor(it) } ?: accent
+                        val tint = Color.parseColor(if (override == null) palette.highlight else
+                            if (dark) WidgetAppearance.primary(override, black = .78) else WidgetAppearance.primary(override, white = .96))
                         row.setInt(R.id.lesson_highlight, "setColorFilter", tint)
                         row.setViewVisibility(R.id.lesson_highlight, if (current) View.VISIBLE else View.GONE)
                         row.setTextViewText(R.id.lesson_start, lesson.start.ifBlank { "${lesson.period}." })
@@ -185,7 +186,7 @@ object Widgets {
                         })
                         val rowSurface = if (current) tint else surface
                         val rowBrand = readable(colour, rowSurface)
-                        row.setTextColor(R.id.lesson_subject, if (lesson.cancelled) muted else if (WidgetModel.colourOverride(lesson, preferences) != null) rowBrand else foreground)
+                        row.setTextColor(R.id.lesson_subject, if (lesson.cancelled) muted else if (override != null) rowBrand else foreground)
                         row.setTextColor(R.id.lesson_detail, if (lesson.changed && !lesson.cancelled) readable(accent, rowSurface) else muted)
                         row.setTextColor(R.id.lesson_room, if (current) rowBrand else if (lesson.cancelled) muted else foreground)
                         row.setTextColor(R.id.lesson_start, muted); row.setTextColor(R.id.lesson_end, muted)
