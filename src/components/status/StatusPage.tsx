@@ -16,7 +16,7 @@ import {
   PublicStatus,
   usePublicStatus,
 } from '../../services/publicStatus';
-import { getMeasurementNotice } from '../../services/statusMeasurement';
+import { observationLabel } from '../../services/statusLabel';
 import { getApiBaseUrl } from '../../utils/backendConfig';
 import { getCustomBackendUrl } from '../../utils/backendConfig';
 
@@ -31,7 +31,6 @@ export default function StatusPage() {
   const [windowKey, setWindowKey] = useState<'24h' | '7d' | '30d' | '90d'>('90d');
   const { data, loading, error, status, refresh } = usePublicStatus();
   const customBackend = getCustomBackendUrl();
-  const measurementNotice = getMeasurementNotice(data?.current, isStatusStale(data));
   const windowLabels = {
     '24h': '24 Stunden',
     '7d': '7 Tage',
@@ -129,7 +128,7 @@ export default function StatusPage() {
                 <span className="font-medium">{service.name}</span>
                 <span className="flex items-center gap-2 text-sm text-surface-600 dark:text-surface-300">
                   <span className={`h-2.5 w-2.5 rounded-full ${statusColors[service.state]}`} />
-                  {loading ? 'Wird geladen' : statusLabels[service.state]}
+                  {loading ? 'Wird geladen' : service.name === 'Schulportal Hessen' && data && !isStatusStale(data) ? observationLabel(data.current) : statusLabels[service.state]}
                 </span>
               </div>
             ))}
@@ -142,25 +141,14 @@ export default function StatusPage() {
             </aside>
           )}
 
-          {measurementNotice && (
-            <aside role="status" className="mt-4 rounded-xl border border-surface-200 bg-surface-100 px-4 py-3 text-sm text-surface-700 dark:border-surface-700 dark:bg-surface-900 dark:text-surface-200">
-              <p className="font-semibold">{measurementNotice.title}</p>
-              <p className="mt-1 leading-relaxed">{measurementNotice.description}</p>
-            </aside>
-          )}
-
           <section className="mt-4 grid gap-3 sm:grid-cols-2" aria-label="Komponentenstatus">
             {featureReadings.map(feature => (
               <div key={feature.name} className="flex items-center justify-between rounded-xl border bg-white px-4 py-3 dark:bg-surface-900">
-                <div><p className="text-sm font-medium">{feature.name === 'login' ? 'Anmeldung' : 'Modulübersicht'}</p><p className="text-xs text-surface-500">{status === 'unknown' ? 'Keine aktuelle Messung' : feature.latency_ms == null ? 'Keine Latenzmessung' : `${feature.latency_ms} ms aktuell`}{data?.summary_windows?.[windowKey]?.latency?.features?.[feature.name]?.median == null ? '' : ` · Median ${data.summary_windows[windowKey].latency?.features?.[feature.name]?.median} ms`}{data?.summary_windows?.[windowKey]?.latency?.features?.[feature.name]?.p95 == null ? '' : ` · p95 ${data.summary_windows[windowKey].latency?.features?.[feature.name]?.p95} ms`}</p></div>
+                <div><p className="text-sm font-medium">{feature.name === 'login' ? 'Anmeldung' : 'Module'}</p><p className="text-xs text-surface-500">{status === 'unknown' ? 'Keine aktuelle Messung' : feature.latency_ms == null ? 'Keine Latenzmessung' : `${feature.latency_ms} ms aktuell`}{data?.summary_windows?.[windowKey]?.latency?.features?.[feature.name]?.median == null ? '' : ` · Median ${data.summary_windows[windowKey].latency?.features?.[feature.name]?.median} ms`}{data?.summary_windows?.[windowKey]?.latency?.features?.[feature.name]?.p95 == null ? '' : ` · p95 ${data.summary_windows[windowKey].latency?.features?.[feature.name]?.p95} ms`}</p></div>
                 <span className="flex items-center gap-2 text-sm text-surface-600 dark:text-surface-300"><span className={`h-2.5 w-2.5 rounded-full ${statusColors[status === 'unknown' ? 'unknown' : feature.status]}`} />{statusLabels[status === 'unknown' ? 'unknown' : feature.status]}</span>
               </div>
             ))}
           </section>
-
-          <p className="mt-2 text-xs leading-relaxed text-surface-500">
-            Geprüft werden Anmeldung und Modulübersicht, keine einzelnen Modulaktionen. Die Ergebnisse können je nach Schule, Konto oder Netzwerk abweichen.
-          </p>
 
           <p className="mt-3 text-sm text-surface-500">
             {error ? 'Status nicht verfügbar' : `Stand: ${formatTimestamp(data?.current.checked_at ?? null)}`}
@@ -243,10 +231,6 @@ export default function StatusPage() {
               {shortRange && data && !data.history_windows?.[windowKey] && ' · Keine Zeitverlaufsdaten verfügbar'}
             </p>
 
-            <p className="mt-2 text-xs leading-relaxed text-surface-500">
-              Die Abdeckung zeigt, für welchen Teil des Zeitraums verlässliche Messungen vorliegen. Unbekannte Zeiträume, etwa durch Anfragelimits oder Messlücken, zählen weder als erreichbar noch als ausgefallen.
-            </p>
-
             <div className="mt-5 flex flex-wrap gap-4 text-xs text-surface-500">
               {Object.entries(statusLabels).map(([key, label]) => (
                 <span key={key} className="flex items-center gap-1.5">
@@ -256,13 +240,6 @@ export default function StatusPage() {
               ))}
             </div>
           </section>
-
-          {data?.measurement.description && (
-            <details className="mt-8 rounded-xl border px-4 py-3 text-sm text-surface-600 dark:text-surface-300">
-              <summary className="cursor-pointer font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary-500">So wird gemessen</summary>
-              <p className="mt-3 leading-relaxed">{data.measurement.description}</p>
-            </details>
-          )}
 
           <section className="mt-12 border-t pt-8" aria-labelledby="incidents-title">
             <h2 id="incidents-title" className="text-xl font-semibold">Störungen</h2>

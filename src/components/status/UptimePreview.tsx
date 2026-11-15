@@ -1,5 +1,7 @@
 import { Link } from 'react-router-dom';
-import { formatPercent, getEffectiveDailyStatus, statusColors, statusLabels, usePublicStatus } from '../../services/publicStatus';
+import { formatPercent, getEffectiveDailyStatus, isStatusStale, statusColors, statusLabels, usePublicStatus } from '../../services/publicStatus';
+
+import { observationLabel } from '../../services/statusLabel';
 
 export default function UptimePreview() {
   const { data, status } = usePublicStatus();
@@ -18,7 +20,7 @@ export default function UptimePreview() {
             <p className="text-xs text-surface-500">Schulportal Hessen</p>
             <p className="mt-1 flex items-center gap-2 text-sm font-semibold text-surface-900 dark:text-surface-100">
               <span className={`h-2.5 w-2.5 rounded-full ${statusColors[status]}`} />
-              {statusLabels[status]}
+              {data && !isStatusStale(data) ? observationLabel(data.current) : statusLabels[status]}
             </p>
           </div>
           <p className="text-2xl font-semibold tracking-tight text-surface-900 dark:text-surface-100">
