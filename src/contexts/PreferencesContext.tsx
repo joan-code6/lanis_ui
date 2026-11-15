@@ -180,6 +180,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode; sync?: b
   const [loadedCacheKey, setLoadedCacheKey] = useState<string | null>(null);
   const preferencesRef = useRef(preferences);
   const saveQueueRef = useRef<Promise<boolean>>(Promise.resolve(true));
+  const editRevision = useRef(0);
   const cacheKey = cacheKeyForUser(user);
 
   useEffect(() => {
@@ -228,12 +229,19 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode; sync?: b
       return () => controller.abort();
     }
 
-    setIsLoading(true);
+    // Clean, account-owned preferences can open the saved screen immediately.
+    // Dirty migrations still finish before exposing editable settings.
+    const canRestore = Boolean(cached && !cached.dirty);
+    setIsLoading(!canRestore);
+    if (canRestore) setLoadedCacheKey(cacheKey);
+    const revision = editRevision.current;
     setSyncError('');
     const load = async () => {
       try {
+        if (controller.signal.aborted) return;
         const response = await settingsAPI.getPreferences(token, controller.signal);
         if (controller.signal.aborted || !canWriteAccountData(writeGeneration)) return;
+        if (revision !== editRevision.current) return;
         let next = normalizePreferences({
           ...response.preferences,
           appearance: { ...localFallback.appearance, ...response.preferences.appearance },
@@ -255,6 +263,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode; sync?: b
             dashboard: { ...next.dashboard, ...migrated.preferences.dashboard },
           });
         }
+        if (revision !== editRevision.current) return;
         applyPreferences(next);
         writeCache(next, false, writeGeneration);
         localStorage.removeItem('pinned_modules');
@@ -263,6 +272,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode; sync?: b
         if (controller.signal.aborted) return;
         console.error('Failed to load account preferences:', error);
         if (!canWriteAccountData(writeGeneration)) return;
+        if (revision !== editRevision.current) return;
         applyPreferences(localFallback);
         writeCache(localFallback, cached?.dirty ?? true, writeGeneration);
       } finally {
@@ -272,11 +282,13 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode; sync?: b
         }
       }
     };
-    load();
+    // Serialize a possible migration with edits made while the screen is open.
+    saveQueueRef.current = saveQueueRef.current.then(load, load).then(() => true, () => false);
     return () => controller.abort();
   }, [applyPreferences, cacheKey, sync, token, writeCache]);
 
   const updatePreferences = useCallback((patch: UserPreferencesPatch): Promise<boolean> => {
+    editRevision.current++;
     const writeGeneration = captureAccountDataGeneration();
     for (const section of ['appearance', 'dashboard', 'timetable', 'homework', 'sidebar'] as const) {
       if (patch[section] && !patch.onboarding) void capture('settings_updated', { section });
