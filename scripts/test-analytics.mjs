@@ -304,3 +304,25 @@ assert.equal(authCalls.length,0,'token rotation preserves attribution');
 storageHandler.namespace.handleStorage({key:'auth_user',oldValue:'account-a',newValue:'account-b'});
 assert.equal(reloads,1);assert.deepEqual(authCalls,['reset','token','user','auth','reload']);
 console.log('Cross-tab account switch clears SDK identity and attribution before the existing reload; token rotation is unchanged.');
+
+async function reloadSecondTab() {
+ const ctx = vm.createContext({URL,Date,window:{location:{href:secondTab.browser.location.href}},
+  document:{referrer:'https://google.de/search?q=PRIVATE'},
+  localStorage:memoryStore(secondTab.storage),sessionStorage:memoryStore(secondTab.session)});
+ const mod = new vm.SourceTextModule(attributionCode,{context:ctx});await mod.link(()=>{});await mod.evaluate();
+ return mod.namespace.attributionProperties();
+}
+assert.equal(secondTab.session.get('lanis_analytics_boundary_v1'),'1','consented account boundary survives document replacement');
+// Another tab can repopulate shared first-touch storage while this tab reloads.
+secondTab.storage.set('lanis_analytics_first_v1',JSON.stringify({source:'google',entry:'shared_link',campaign:'community'}));
+const afterReload = await reloadSecondTab();
+assert.equal(afterReload.first_campaign,undefined,'tagged URL cannot reattribute the old account campaign after reload');
+assert.equal(afterReload.session_campaign,undefined);
+assert.equal(afterReload.first_source,'unknown');assert.equal(afterReload.session_source,'unknown');
+assert.equal(secondTab.session.has('lanis_analytics_boundary_v1'),false,'one-use marker is consumed after persisting the unknown session');
+assert.equal((await reloadSecondTab()).session_campaign,undefined,'another immediate reload retains the unknown session');
+secondTab.api.resetAnalyticsIdentity();secondTab.api.setConsent('denied');
+assert.equal(secondTab.session.size,0,'withdrawal also clears the pending reload boundary');
+const unconsented = await harness();unconsented.api.resetAnalyticsIdentity();
+assert.equal(unconsented.session.size,0,'no reset marker is stored without consent');
+console.log('Fresh-document tagged-URL reload, repeated reload, withdrawal and no-consent boundary tests passed.');

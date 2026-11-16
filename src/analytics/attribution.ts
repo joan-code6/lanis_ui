@@ -8,6 +8,7 @@ export const campaignMedia = ['link', 'social'] as const;
 type Touch = { source: string; entry: string; campaign?: string; campaign_source?: string; campaign_medium?: string };
 const FIRST = 'lanis_analytics_first_v1';
 const SESSION = 'lanis_analytics_session_v1';
+const BOUNDARY = 'lanis_analytics_boundary_v1';
 const IDLE = 30 * 60 * 1000;
 let current: Touch | undefined;
 let boundary = false;
@@ -54,20 +55,28 @@ function copyTouch(v: Touch): Touch {
 export function attributionProperties(): Record<string, string> {
   try {
     const now = Date.now();
+    const resetBoundary = sessionStorage.getItem(BOUNDARY) === '1';
     const session = JSON.parse(sessionStorage.getItem(SESSION) || 'null');
     if (!current) {
-      current = session && validTouch(session.touch) && typeof session.at === 'number' && now >= session.at && now - session.at < IDLE
-        ? copyTouch(session.touch) : boundary ? { source: 'unknown', entry: 'other' } : classifyArrival(window.location.href, document.referrer);
+      current = resetBoundary || boundary ? { source: 'unknown', entry: 'other' } : session && validTouch(session.touch) && typeof session.at === 'number' && now >= session.at && now - session.at < IDLE
+        ? copyTouch(session.touch) : classifyArrival(window.location.href, document.referrer);
     } else if (session && now - session.at >= IDLE) current = { source: 'unknown', entry: 'other' };
     const storedFirst = JSON.parse(localStorage.getItem(FIRST) || 'null');
-    const first = validTouch(storedFirst) ? copyTouch(storedFirst) : current;
+    const first = !resetBoundary && validTouch(storedFirst) ? copyTouch(storedFirst) : current;
     localStorage.setItem(FIRST, JSON.stringify(first));
     sessionStorage.setItem(SESSION, JSON.stringify({ touch: current, at: now }));
+    sessionStorage.removeItem(BOUNDARY); // Consume only after the unknown touch survives another reload.
     return Object.fromEntries([['first', first], ['session', current]].flatMap(([prefix, touch]) => Object.entries(touch).map(([key, value]) => [`${prefix}_${key}`, value]))) as Record<string, string>;
   } catch { return {}; } // Storage unavailable: no attribution; never interrupt the app.
 }
-export function clearAttribution(): void {
+export function clearAttribution(preserveBoundary = false): void {
   current = undefined;
   boundary = true; // Do not reattribute the next account to the previous document arrival.
-  try { localStorage.removeItem(FIRST); sessionStorage.removeItem(SESSION); } catch { /* Best effort. */ }
+  try {
+    localStorage.removeItem(FIRST);
+    sessionStorage.removeItem(SESSION);
+    sessionStorage.removeItem(BOUNDARY);
+    // The caller permits this flag only under the existing analytics consent gate.
+    if (preserveBoundary) sessionStorage.setItem(BOUNDARY, '1');
+  } catch { /* Best effort. */ }
 }

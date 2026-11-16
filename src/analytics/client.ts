@@ -215,7 +215,7 @@ export async function capturePage(): Promise<void> {
 }
 
 export function resetAnalyticsIdentity(): void {
-  clearAttribution();
+  clearAttribution(allowed());
   usableContentReported = false;
   generation++;
   for (const request of pendingRequests) request.abort();

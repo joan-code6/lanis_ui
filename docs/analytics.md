@@ -285,7 +285,7 @@ arrival. Internal SPA navigation never overwrites that session. Tabs have separa
 sessions; browser-first storage is shared, best effort and not transactional.
 Storage failure omits attribution. Anonymous-to-account identification retains
 the consenting browser journey. Logout, account switch and consent withdrawal
-clear both stores and prevent reuse of the previous document arrival. Token
+clear both stores and prevent reuse of the previous document arrival. While consent is active, an identity reset also writes a one-use tab-local `lanis_analytics_boundary_v1` flag (no identity or source data). The next capture consumes it only after persisting an unknown session, so an account-switch reload cannot reuse campaign tags still in the URL. Withdrawal removes this flag too; no flag is written before consent. Token
 rotation for the same account preserves them. This is browser-first attribution,
 **not** a permanent account-first trait; earliest observed account events define
 an account cohort. Multiple devices can have different browser-first sources.
