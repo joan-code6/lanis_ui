@@ -47,6 +47,7 @@
     "preview": "vite preview",
     "deploy": "wrangler deploy",
     "deploy:preview": "wrangler versions upload",
+    "test:navigation": "node scripts/test-back-navigation.cjs",
     "test:analytics": "node --experimental-vm-modules scripts/test-analytics.mjs",
     "test:push": "node --test scripts/test-browser-push.cjs",
     "test:beta": "node scripts/test-android-beta.cjs",

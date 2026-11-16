@@ -1,3 +1,4 @@
+import { useBackNavigation } from '../../hooks/useBackNavigation';
 import { capture } from '../../analytics/client';
 import { useCachedState } from '../../hooks/useCachedState';
 import { readPersonalCache, writePersonalCache } from '../../utils/accountDataWrites';
@@ -316,6 +317,7 @@ const Courses: React.FC = () => {
   const navigate = useNavigate();
   const { id: courseIdFromUrl } = useParams();
   const basePath = useBasePath();
+  const navigateBack = useBackNavigation(`${basePath}/courses`);
   const [viewMode, setViewMode] = useState<ViewMode>(courseIdFromUrl ? 'course-detail' : 'overview');
   const [courses, setCourses, hasCourses] = useCachedState<CourseEntry[]>('courses', () => {
     try {
@@ -580,7 +582,7 @@ const Courses: React.FC = () => {
     } else if (viewMode === 'weekly') {
       setViewMode('overview');
     } else {
-      navigate(`${basePath}/courses`);
+      navigateBack();
     }
   };
 
@@ -713,6 +715,7 @@ const Courses: React.FC = () => {
             {viewMode !== 'overview' && (
               <button
                 onClick={goBack}
+                aria-label="Zurück"
                 className="mr-4 p-2 text-surface-500 dark:text-surface-400 hover:text-surface-700 dark:text-surface-300 rounded-lg hover:bg-surface-200 dark:bg-surface-700"
               >
                 <ArrowLeftIcon className="h-5 w-5" />
