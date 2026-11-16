@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
-import { ArrowPathIcon, KeyIcon } from '@heroicons/react/24/outline';
+import { ArrowLeftOnRectangleIcon, ArrowPathIcon, KeyIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '../../contexts/AuthContext';
 import { authAPI } from '../../services/api';
+import './PasswordChangeGate.css';
 
 export default function PasswordChangeGate({ children }: { children: React.ReactNode }) {
   const { token, logout } = useAuth();
@@ -49,37 +50,34 @@ export default function PasswordChangeGate({ children }: { children: React.React
   if (!required) return <>{children}</>;
 
   return (
-    <main className="min-h-[100dvh] flex items-center justify-center bg-surface-50 px-4 py-8 dark:bg-surface-950">
-      <div className="card w-full max-w-md space-y-5 text-center">
-        <header className="flex flex-col items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-300">
-            <KeyIcon className="h-6 w-6" aria-hidden="true" />
-          </div>
-          <h1 className="text-2xl font-bold tracking-tight text-surface-900 dark:text-surface-100">Ändere zuerst dein Passwort</h1>
-        </header>
-        <div className="space-y-3">
-          <p className="text-sm text-surface-600 dark:text-surface-400">
+    <main className="password-change-page">
+      <div className="card password-change-card">
+        <div className="password-change-emblem">
+          <div><KeyIcon aria-hidden="true" /></div>
+        </div>
+        <h1>Ändere zuerst dein Passwort</h1>
+        <div className="password-change-copy">
+          <p>
             Das Schulportal verlangt ein neues Passwort, bevor du LANIS nutzen kannst.
           </p>
-          <p className="text-sm text-surface-600 dark:text-surface-400">
+          <p>
             Ändere es im Schulportal. Komm danach hierher zurück und klicke auf „Erneut versuchen“.
           </p>
         </div>
-        <div className="flex flex-col items-center gap-1">
-          <a className="btn btn-primary justify-center" href="https://start.schulportal.hessen.de/benutzerverwaltung.php?a=userChangePassword" target="_blank" rel="noopener noreferrer">
+        <div className="password-change-actions">
+          <a className="btn btn-primary password-change-primary" href="https://start.schulportal.hessen.de/benutzerverwaltung.php?a=userChangePassword" target="_blank" rel="noopener noreferrer">
             Passwort im Schulportal ändern
           </a>
-          <button className="btn btn-ghost justify-center" type="button" disabled={checking} onClick={() => void retry()}>
+          <button className="btn btn-ghost password-change-retry" type="button" disabled={checking} onClick={() => void retry()}>
             <ArrowPathIcon className={`mr-2 h-4 w-4${checking ? ' animate-spin' : ''}`} aria-hidden="true" />
             {checking ? 'Wird geprüft…' : 'Erneut versuchen'}
           </button>
         </div>
         {error && <p role="alert" className="text-sm text-red-600 dark:text-red-400">{error}</p>}
-        {token && <div className="flex justify-center">
-          <button type="button" className="btn btn-ghost !px-2 !py-1 !text-xs" disabled={checking} onClick={() => void handleLogout()}>
-            Abmelden
-          </button>
-        </div>}
+        {token && <button type="button" className="btn btn-ghost password-change-logout" disabled={checking} onClick={() => void handleLogout()}>
+          <ArrowLeftOnRectangleIcon aria-hidden="true" />
+          Abmelden
+        </button>}
       </div>
     </main>
   );
