@@ -1,3 +1,4 @@
+import { useBackNavigation } from '../../hooks/useBackNavigation';
 import { useCachedState } from '../../hooks/useCachedState';
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -307,7 +308,7 @@ const SubmissionDetailView: React.FC<{
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex min-w-0 items-start gap-3">
-          <button type="button" onClick={onBack} className="mt-1 rounded-lg p-2 text-surface-500 hover:bg-surface-200 hover:text-surface-800 dark:text-surface-400 dark:hover:bg-surface-800 dark:hover:text-surface-100" aria-label="Zurück zu den Abgaben">
+          <button type="button" onClick={onBack} className="mt-1 rounded-lg p-2 text-surface-500 hover:bg-surface-200 hover:text-surface-800 dark:text-surface-400 dark:hover:bg-surface-800 dark:hover:text-surface-100" aria-label="Zurück">
             <ArrowLeftIcon className="h-5 w-5" />
           </button>
           <div className="min-w-0">
@@ -418,6 +419,7 @@ const Submissions: React.FC = () => {
   }, [id]);
 
   const listPath = `${basePath}/courses/submissions`;
+  const goBack = useBackNavigation(id ? listPath : `${basePath}/courses`);
   const openSubmission = (submission: Submission) => navigate(`${listPath}/${encodeURIComponent(submission.detail_ref || submission.id)}`);
 
   const loadList = async (signal?: AbortSignal, refresh = false) => {
@@ -497,7 +499,7 @@ const Submissions: React.FC = () => {
   return (
     <div className="min-h-full min-w-0 module-padding">
       {isDetail && detail && detail.detail_ref === id ? (
-        <SubmissionDetailView key={id} detail={detail} refreshError={error} refreshing={loading || detailNavigationPending} token={token} onBack={() => navigate(listPath)} onRefresh={async () => { if (id && currentIdRef.current === id) await loadDetail(id, undefined, true); }} />
+        <SubmissionDetailView key={id} detail={detail} refreshError={error} refreshing={loading || detailNavigationPending} token={token} onBack={goBack} onRefresh={async () => { if (id && currentIdRef.current === id) await loadDetail(id, undefined, true); }} />
       ) : !isDetail ? (
         <div className="mx-auto max-w-7xl space-y-6">
           <header className="page-header page-header-actions">
@@ -505,8 +507,8 @@ const Submissions: React.FC = () => {
               <button
                 type="button"
                 className="mt-0.5 rounded-lg p-2 text-surface-500 transition-colors hover:bg-surface-100 hover:text-surface-800 dark:text-surface-400 dark:hover:bg-surface-800 dark:hover:text-white"
-                onClick={() => navigate(`${basePath}/courses`)}
-                aria-label="Zurück zu Mein Unterricht"
+                onClick={goBack}
+                aria-label="Zurück"
               >
                 <ArrowLeftIcon className="h-5 w-5" />
               </button>
@@ -566,7 +568,7 @@ const Submissions: React.FC = () => {
       ) : loading || detailNavigationPending ? (
         <div className="mx-auto max-w-5xl space-y-4"><div className="h-10 w-2/3 animate-pulse rounded bg-surface-200 dark:bg-surface-800" /><div className="card h-96 animate-pulse bg-surface-100 dark:bg-surface-900" /></div>
       ) : (
-        <div className="mx-auto max-w-5xl"><div role="alert" className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900/70 dark:bg-red-950/30 dark:text-red-200"><ExclamationCircleIcon className="mt-0.5 h-5 w-5 shrink-0" />{error || 'Die Abgabe konnte nicht geladen werden.'}</div><button type="button" className="btn btn-secondary mt-4" onClick={() => navigate(listPath)}>Zurück zu den Abgaben</button></div>
+        <div className="mx-auto max-w-5xl"><div role="alert" className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900/70 dark:bg-red-950/30 dark:text-red-200"><ExclamationCircleIcon className="mt-0.5 h-5 w-5 shrink-0" />{error || 'Die Abgabe konnte nicht geladen werden.'}</div><button type="button" className="btn btn-secondary mt-4" onClick={goBack}>Zurück</button></div>
       )}
     </div>
   );

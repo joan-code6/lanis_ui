@@ -1,3 +1,4 @@
+import BackButton from '../BackButton';
 import { ThemeColorPicker } from './ThemeColorPicker';
 import { capture } from '../../analytics/client';
 import { AnalyticsControls } from '../../analytics/Analytics';
@@ -1074,10 +1075,10 @@ const Settings: React.FC = () => {
       />
       <div className="page-header">
         {section !== 'home' && (
-          <Link to={settingsRoot} className="mb-3 inline-flex items-center text-sm font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300">
+          <BackButton fallback={settingsRoot} className="mb-3 inline-flex items-center text-sm font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300">
             <ArrowLeftIcon className="mr-1.5 h-4 w-4" />
-            Alle Einstellungen
-          </Link>
+            Zurück
+          </BackButton>
         )}
         <h1 className="page-title">{sectionMeta[section].title}</h1>
         <p className="page-subtitle">{sectionMeta[section].subtitle}</p>
