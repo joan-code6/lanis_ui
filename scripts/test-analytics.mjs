@@ -310,17 +310,29 @@ async function reloadSecondTab() {
   document:{referrer:'https://google.de/search?q=PRIVATE'},
   localStorage:memoryStore(secondTab.storage),sessionStorage:memoryStore(secondTab.session)});
  const mod = new vm.SourceTextModule(attributionCode,{context:ctx});await mod.link(()=>{});await mod.evaluate();
- return mod.namespace.attributionProperties();
+ return mod.namespace;
 }
 assert.equal(secondTab.session.get('lanis_analytics_boundary_v1'),'1','consented account boundary survives document replacement');
 // Another tab can repopulate shared first-touch storage while this tab reloads.
 secondTab.storage.set('lanis_analytics_first_v1',JSON.stringify({source:'google',entry:'shared_link',campaign:'community'}));
-const afterReload = await reloadSecondTab();
+const reloadedTab = await reloadSecondTab();
+const afterReload = reloadedTab.attributionProperties();
 assert.equal(afterReload.first_campaign,undefined,'tagged URL cannot reattribute the old account campaign after reload');
 assert.equal(afterReload.session_campaign,undefined);
 assert.equal(afterReload.first_source,'unknown');assert.equal(afterReload.session_source,'unknown');
 assert.equal(secondTab.session.has('lanis_analytics_boundary_v1'),false,'one-use marker is consumed after persisting the unknown session');
-assert.equal((await reloadSecondTab()).session_campaign,undefined,'another immediate reload retains the unknown session');
+assert.equal((await reloadSecondTab()).attributionProperties().session_campaign,undefined,'another immediate reload retains the unknown session');
+// The marker is consumed. A delayed second tab clears shared storage, then an
+// old third tab rebuilds it before receiving the account switch storage event.
+secondTab.storage.delete('lanis_analytics_first_v1');
+secondTab.storage.set('lanis_analytics_first_v1',JSON.stringify({source:'google',entry:'shared_link',campaign:'community'}));
+const afterLateWrite = reloadedTab.attributionProperties();
+assert.equal(afterLateWrite.first_source,'unknown','later events cannot adopt an old tab first touch');
+assert.equal(afterLateWrite.first_campaign,undefined);
+secondTab.storage.set('lanis_analytics_first_v1',JSON.stringify({source:'google',entry:'shared_link',campaign:'community'}));
+const afterLateWriteAndReload = (await reloadSecondTab()).attributionProperties();
+assert.equal(afterLateWriteAndReload.first_source,'unknown','tab-local first touch survives reload despite stale shared storage');
+assert.equal(afterLateWriteAndReload.first_campaign,undefined);
 secondTab.api.resetAnalyticsIdentity();secondTab.api.setConsent('denied');
 assert.equal(secondTab.session.size,0,'withdrawal also clears the pending reload boundary');
 const unconsented = await harness();unconsented.api.resetAnalyticsIdentity();

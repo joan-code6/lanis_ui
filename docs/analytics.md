@@ -277,12 +277,15 @@ controlled link campaigns, not proof of the app that opened a link. A complete
 allowlisted tuple is required; duplicate tuple parameters invalidate it.
 
 Only after consent, the first observed coarse touch is persisted in
-`lanis_analytics_first_v1` (localStorage); the current tab's touch and last event
+`lanis_analytics_first_v1` (localStorage); the current tab's touch, pinned first-touch snapshot and last event
 activity time are in `lanis_analytics_session_v1` (sessionStorage). Thirty minutes
 without captured activity starts an unknown session within an open document.
 New documents reuse an unexpired tab session; otherwise they classify the current
 arrival. Internal SPA navigation never overwrites that session. Tabs have separate
 sessions; browser-first storage is shared, best effort and not transactional.
+A tab reads shared first-touch storage only to bootstrap its first snapshot;
+subsequent events and reloads use its tab-local snapshot. Delayed writes from
+another account's tab cannot replace that snapshot after an account boundary.
 Storage failure omits attribution. Anonymous-to-account identification retains
 the consenting browser journey. Logout, account switch and consent withdrawal
 clear both stores and prevent reuse of the previous document arrival. While consent is active, an identity reset also writes a one-use tab-local `lanis_analytics_boundary_v1` flag (no identity or source data). The next capture consumes it only after persisting an unknown session, so an account-switch reload cannot reuse campaign tags still in the URL. Withdrawal removes this flag too; no flag is written before consent. Token

@@ -11,6 +11,7 @@ const SESSION = 'lanis_analytics_session_v1';
 const BOUNDARY = 'lanis_analytics_boundary_v1';
 const IDLE = 30 * 60 * 1000;
 let current: Touch | undefined;
+let first: Touch | undefined;
 let boundary = false;
 
 export function classifyArrival(href: string, referrer: string): Touch {
@@ -61,16 +62,25 @@ export function attributionProperties(): Record<string, string> {
       current = resetBoundary || boundary ? { source: 'unknown', entry: 'other' } : session && validTouch(session.touch) && typeof session.at === 'number' && now >= session.at && now - session.at < IDLE
         ? copyTouch(session.touch) : classifyArrival(window.location.href, document.referrer);
     } else if (session && now - session.at >= IDLE) current = { source: 'unknown', entry: 'other' };
-    const storedFirst = JSON.parse(localStorage.getItem(FIRST) || 'null');
-    const first = !resetBoundary && validTouch(storedFirst) ? copyTouch(storedFirst) : current;
+    if (!first) {
+      // Pin this tab's first touch across documents. Other tabs may still be
+      // processing an account switch and must not replace it via shared storage.
+      if (resetBoundary || boundary) first = copyTouch(current);
+      else if (session && validTouch(session.first)) first = copyTouch(session.first);
+      else {
+        const storedFirst = JSON.parse(localStorage.getItem(FIRST) || 'null');
+        first = validTouch(storedFirst) ? copyTouch(storedFirst) : copyTouch(current);
+      }
+    }
     localStorage.setItem(FIRST, JSON.stringify(first));
-    sessionStorage.setItem(SESSION, JSON.stringify({ touch: current, at: now }));
+    sessionStorage.setItem(SESSION, JSON.stringify({ touch: current, first, at: now }));
     sessionStorage.removeItem(BOUNDARY); // Consume only after the unknown touch survives another reload.
     return Object.fromEntries([['first', first], ['session', current]].flatMap(([prefix, touch]) => Object.entries(touch).map(([key, value]) => [`${prefix}_${key}`, value]))) as Record<string, string>;
   } catch { return {}; } // Storage unavailable: no attribution; never interrupt the app.
 }
 export function clearAttribution(preserveBoundary = false): void {
   current = undefined;
+  first = undefined;
   boundary = true; // Do not reattribute the next account to the previous document arrival.
   try {
     localStorage.removeItem(FIRST);
