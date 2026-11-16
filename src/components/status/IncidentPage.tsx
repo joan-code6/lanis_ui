@@ -1,3 +1,4 @@
+import BackButton from '../BackButton';
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ArrowLeftIcon, ArrowPathIcon, CheckCircleIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
@@ -48,9 +49,9 @@ export default function IncidentPage() {
           <Link to="/" className="flex items-center gap-2.5 font-semibold">
             <AppIcon alt="" className="h-7 w-7 rounded-lg" />Lanis
           </Link>
-          <Link to="/status" className="btn btn-secondary gap-2 text-sm">
-            <ArrowLeftIcon className="h-4 w-4" aria-hidden="true" />Statusübersicht
-          </Link>
+          <BackButton fallback="/status" className="btn btn-secondary gap-2 text-sm">
+            <ArrowLeftIcon className="h-4 w-4" aria-hidden="true" />Zurück
+          </BackButton>
         </nav>
 
         <main className="pb-12 pt-12 sm:pt-16">
