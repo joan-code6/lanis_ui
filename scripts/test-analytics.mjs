@@ -51,7 +51,7 @@ async function harness({production=true, deferred=false,host='https://t.lanis.ar
   const code=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2020}}).outputText.replaceAll('import.meta.env',JSON.stringify({PROD:production,VITE_POSTHOG_KEY:'phc_testpublic',VITE_POSTHOG_HOST:host}));
   const module=new vm.SourceTextModule(code,{context,importModuleDynamically:async()=>{await gate;return sdkModule;}});
   await module.link(spec=>spec==='./attribution'?attributionModule:policyModule);await module.evaluate();
-  return {api:module.namespace,storage,sent,calls,browser,resolveImport,getConfig:()=>config};
+  return {api:module.namespace,storage,session,sent,calls,browser,resolveImport,getConfig:()=>config};
 }
 const h=await harness();
 await h.api.capture('login_started'); assert.equal(h.calls.length,0,'no SDK before consent');
@@ -265,3 +265,42 @@ assert.equal(JSON.stringify([...firstStore,...sessionStore]).includes('PRIVATE')
 let cancelled=false;const cancelView=experienceModule.namespace.startExperience('courses',()=>cancelled);cancelView('ready');cancelled=true;
 while(frames.length)frames.shift()();assert.equal(experienceEvents.length,1,'cancel during paint suppresses stale view');
 console.log('Session navigation, return/idle boundaries, storage non-leakage and paint cancellation passed.');
+
+// Run the real AuthContext storage handler: a second tab must clear attribution
+// before reloading into the newly selected account. No real account/API is used.
+const authSource = await readFile(new URL('../src/contexts/AuthContext.tsx', import.meta.url), 'utf8');
+const authTree = ts.createSourceFile('AuthContext.tsx', authSource, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+let handler;
+function findStorageHandler(node) {
+ if (ts.isVariableDeclaration(node) && node.name.getText(authTree) === 'handleStorage') handler = node.initializer.getText(authTree);
+ ts.forEachChild(node, findStorageHandler);
+}
+findStorageHandler(authTree);assert.ok(handler);
+const secondTab = await harness({returnCapture:true});
+secondTab.api.setConsent('granted');
+secondTab.browser.location.href = 'https://lanis.example/?utm_campaign=community&utm_source=community&utm_medium=social';
+await secondTab.api.capturePage();
+assert.ok(secondTab.storage.has('lanis_analytics_first_v1'));
+assert.ok(secondTab.session.has('lanis_analytics_session_v1'));
+let reloads = 0; const authCalls = [];
+const storageContext = vm.createContext({
+ window:{location:{reload:()=>{
+  assert.equal(secondTab.storage.has('lanis_analytics_first_v1'),false,'first touch cleared before reload');
+  assert.equal(secondTab.session.has('lanis_analytics_session_v1'),false,'old tab session cleared before reload');
+  authCalls.push('reload');reloads++;
+ }}},
+ localStorage:{getItem:key=>secondTab.storage.get(key)??null},
+ USER_KEY:'auth_user',ACCESS_TOKEN_KEY:'auth_access_token',REFRESH_TOKEN_KEY:'auth_refresh_token',TOKEN_EXPIRES_KEY:'auth_expires_at',
+ isSameAccountIdentity:(oldValue,newValue)=>oldValue===newValue,
+ resetAnalyticsIdentity:()=>{authCalls.push('reset');secondTab.api.resetAnalyticsIdentity();},
+ setToken:()=>authCalls.push('token'),setUser:()=>authCalls.push('user'),setIsAuthenticated:()=>authCalls.push('auth'),clearResourceCache:()=>{},
+});
+const storageHandler = new vm.SourceTextModule(ts.transpileModule('export const handleStorage = '+handler,{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2020}}).outputText,{context:storageContext});
+await storageHandler.link(()=>{});await storageHandler.evaluate();
+storageHandler.namespace.handleStorage({key:'auth_user',oldValue:'same-account',newValue:'same-account'});
+assert.equal(authCalls.length,0,'same-account profile event preserves the tab');
+storageHandler.namespace.handleStorage({key:'auth_access_token',oldValue:'old-token',newValue:'rotated-token'});
+assert.equal(authCalls.length,0,'token rotation preserves attribution');
+storageHandler.namespace.handleStorage({key:'auth_user',oldValue:'account-a',newValue:'account-b'});
+assert.equal(reloads,1);assert.deepEqual(authCalls,['reset','token','user','auth','reload']);
+console.log('Cross-tab account switch clears SDK identity and attribution before the existing reload; token rotation is unchanged.');
