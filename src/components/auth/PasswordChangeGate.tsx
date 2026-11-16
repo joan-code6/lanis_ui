@@ -51,11 +51,11 @@ export default function PasswordChangeGate({ children }: { children: React.React
   return (
     <main className="min-h-[100dvh] flex items-center justify-center bg-surface-50 px-4 py-8 dark:bg-surface-950">
       <div className="card w-full max-w-md space-y-6">
-        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-300">
-          <KeyIcon className="h-6 w-6" aria-hidden="true" />
-        </div>
         <div className="space-y-3">
-          <h1 className="text-2xl font-bold tracking-tight text-surface-900 dark:text-surface-100">Ändere zuerst dein Passwort</h1>
+          <h1 className="flex items-start gap-3 text-2xl font-bold tracking-tight text-surface-900 dark:text-surface-100">
+            <KeyIcon className="mt-1.5 h-5 w-5 shrink-0 text-primary-700 dark:text-primary-300" aria-hidden="true" />
+            <span>Ändere zuerst dein Passwort</span>
+          </h1>
           <p className="text-sm text-surface-600 dark:text-surface-400">
             Das Schulportal verlangt ein neues Passwort, bevor du LANIS nutzen kannst.
           </p>
