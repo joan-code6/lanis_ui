@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
-import { ArrowPathIcon, KeyIcon } from '@heroicons/react/24/outline';
+import { ArrowPathIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '../../contexts/AuthContext';
 import { authAPI } from '../../services/api';
 
@@ -51,9 +51,6 @@ export default function PasswordChangeGate({ children }: { children: React.React
   return (
     <main className="min-h-[100dvh] flex items-center justify-center bg-surface-50 px-4 py-8 dark:bg-surface-950">
       <div className="card w-full max-w-md space-y-6">
-        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-300">
-          <KeyIcon className="h-6 w-6" aria-hidden="true" />
-        </div>
         <div className="space-y-3">
           <h1 className="text-2xl font-bold tracking-tight text-surface-900 dark:text-surface-100">Ändere zuerst dein Passwort</h1>
           <p className="text-sm text-surface-600 dark:text-surface-400">
