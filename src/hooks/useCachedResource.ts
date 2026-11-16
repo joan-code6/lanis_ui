@@ -21,25 +21,24 @@ export function useCachedResource<T>(
   const snapshot = useSyncExternalStore(subscribe, getSnapshot);
   const refresh = useCallback(() => {
     if (key) {
-      const epoch = analyticsEpoch(); const page = window.location.pathname; const done = startExperience(resource);
+      const epoch = analyticsEpoch(); const page = window.location.pathname; const started = performance.now();
       void refreshResource(key, loadRef.current, true).then(() => {
         if (epoch !== analyticsEpoch()) return;
         const state = readResource<T>(key);
-        done(state.error ? 'failed' : 'ready');
-        void capture('content_refreshed', { resource: resourceLabel(resource), outcome: state.error ? 'failed' : 'ready' }, page);
+        void capture('content_refreshed', { resource: resourceLabel(resource), outcome: state.error ? 'failed' : 'ready', duration_ms: performance.now() - started }, page);
       });
     }
   }, [key, resource]);
 
   useEffect(() => {
     if (!key) return;
-    const done = startExperience(resource);
+    let cancelled = false;
+    const done = startExperience(resource, () => cancelled);
     const cached = readResource<T>(key);
     if (cached.data !== undefined) done('ready', true, Math.max(0, Date.now() - cached.updatedAt));
     void refreshResource(key, loadRef.current).then(() => {
       if (!cancelled && cached.data === undefined) done(readResource<T>(key).error ? 'failed' : 'ready');
     });
-    let cancelled = false;
     // Cache requests may continue after navigation; view timing must stop.
     return () => { cancelled = true; };
   }, [key]);

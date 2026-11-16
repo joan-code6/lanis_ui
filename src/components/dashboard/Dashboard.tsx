@@ -1,3 +1,4 @@
+import { startExperience } from '../../analytics/experience';
 import { DashboardModulesSkeleton } from '../shared/LoadingSkeletons';
 import { useCachedState } from '../../hooks/useCachedState';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
@@ -83,6 +84,8 @@ const Dashboard: React.FC = () => {
 
   const loadModules = async (signal?: AbortSignal, writeGeneration = captureAccountDataGeneration()) => {
     if (!token) return;
+    const done = startExperience('dashboard', () => signal?.aborted === true);
+    if (hasModules || modules.length > 0) done(modules.length ? 'ready' : 'empty', true);
     setIsUpdating(true);
     try {
       setError('');
@@ -90,11 +93,14 @@ const Dashboard: React.FC = () => {
       if (signal?.aborted) return;
       if (modulesResponse.success) {
         setModules(modulesResponse.modules);
+        done(modulesResponse.modules.length ? 'ready' : 'empty');
         writeModulesCache(user, modulesResponse.modules, writeGeneration);
       }
+      if (!modulesResponse.success) done('failed');
       setIsLoading(false);
     } catch (error) {
       if (axios.isCancel(error)) return;
+      done('failed');
       console.error('Error loading modules:', error);
       setError('Fehler beim Laden der Module.');
       setIsLoading(false);

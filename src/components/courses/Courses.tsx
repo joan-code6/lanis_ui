@@ -1,3 +1,4 @@
+import { startExperience } from '../../analytics/experience';
 import { useBackNavigation } from '../../hooks/useBackNavigation';
 import { capture } from '../../analytics/client';
 import { useCachedState } from '../../hooks/useCachedState';
@@ -386,6 +387,8 @@ const Courses: React.FC = () => {
 
   const loadCourses = async (signal?: AbortSignal) => {
     if (!token) return;
+    const done = startExperience('courses', () => signal?.aborted === true);
+    if (hasCourses || courses.length > 0) done(courses.length ? 'ready' : 'empty', true);
     const writeGeneration = captureAccountDataGeneration();
     setIsUpdating(true);
     try {
@@ -395,17 +398,20 @@ const Courses: React.FC = () => {
       if (response.success) {
         const courseList = normalizeCourseList(response);
         setCourses(courseList);
+        done(courseList.length ? 'ready' : 'empty');
         if (canWriteAccountData(writeGeneration)) {
           const cachedCourses = JSON.stringify(courseList);
           notifyDemoCacheWrite('courses_cache', cachedCourses);
           writePersonalCache('courses_cache', cachedCourses, writeGeneration);
         }
       } else {
+        done('failed');
         setError('Fehler beim Laden der Kurse.');
       }
       setIsLoading(false);
     } catch (error) {
       if (axios.isCancel(error)) return;
+      done('failed');
       console.error('Error loading courses:', error);
       setError('Fehler beim Laden der Kurse.');
       setIsLoading(false);
@@ -416,6 +422,8 @@ const Courses: React.FC = () => {
 
   const loadCourseDetails = async (courseId: string, signal?: AbortSignal) => {
     if (!token) return;
+    const done = startExperience('course-detail', () => signal?.aborted === true);
+    if (hasCourse && selectedCourse?.success) done('ready', true);
     setIsUpdating(true);
     const writeGeneration = captureAccountDataGeneration();
 
@@ -444,12 +452,15 @@ const Courses: React.FC = () => {
           }
         }
         setSelectedCourse(resolvedCourse);
+        done('ready');
       } else {
+        done('failed');
         setError('Fehler beim Laden der Kursdetails.');
       }
       setIsLoading(false);
     } catch (error) {
       if (axios.isCancel(error)) return;
+      done('failed');
       console.error('Error loading course details:', error);
       setError('Fehler beim Laden der Kursdetails.');
       setIsLoading(false);
