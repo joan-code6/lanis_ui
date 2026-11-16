@@ -941,8 +941,13 @@ const Courses: React.FC = () => {
                         {(entry.homework || (entry.files && entry.files.length > 0)) && (
                           <div className="flex items-center gap-2">
                             {entry.homework && (
-                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-secondary-100 text-secondary-800 dark:bg-secondary-900 dark:text-secondary-100">
-                                <ClockIcon className="h-3 w-3 mr-1" />
+                              <span className={clsx(
+                                  "inline-flex items-center px-2 py-1 rounded-full text-xs font-medium",
+                                  entry.homework_done
+                                    ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-100'
+                                    : 'bg-secondary-100 text-secondary-800 dark:bg-secondary-900 dark:text-secondary-100'
+                                )} title={entry.homework_done ? 'Hausaufgaben erledigt' : 'Hausaufgaben offen'}>
+                                {entry.homework_done ? <CheckCircleIcon className="h-3 w-3 mr-1" /> : <ClockIcon className="h-3 w-3 mr-1" />}
                                 HA
                               </span>
                             )}
@@ -1077,7 +1082,12 @@ const Courses: React.FC = () => {
                             
                             <div className="flex items-center gap-2">
                               {entry.homework && (
-                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-secondary-100 dark:bg-secondary-900/40 text-secondary-800 dark:text-secondary-100">
+                                <span className={clsx(
+                                  "inline-flex items-center px-2 py-1 rounded-full text-xs font-medium",
+                                  entry.homework_done
+                                    ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-100'
+                                    : 'bg-secondary-100 dark:bg-secondary-900/40 text-secondary-800 dark:text-secondary-100'
+                                )} title={entry.homework_done ? 'Hausaufgaben erledigt' : 'Hausaufgaben offen'}>
                                   HA
                                 </span>
                               )}
