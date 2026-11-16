@@ -9,6 +9,7 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import { CURRENT_ONBOARDING_VERSION, PreferencesProvider, usePreferences } from './contexts/PreferencesContext';
 import Layout from './components/layout/Layout';
 import LoginForm from './components/auth/LoginForm';
+import PasswordChangeGate from './components/auth/PasswordChangeGate';
 import Dashboard from './components/dashboard/Dashboard';
 import Messages from './components/messages/Messages';
 import Courses from './components/courses/Courses';
@@ -177,9 +178,11 @@ const App: React.FC = () => {
     <HelmetProvider>
       <ThemeProvider>
         <AuthProvider>
-          <PreferencesProvider>
-            <AppRoutes />
-          </PreferencesProvider>
+          <PasswordChangeGate>
+            <PreferencesProvider>
+              <AppRoutes />
+            </PreferencesProvider>
+          </PasswordChangeGate>
         </AuthProvider>
       </ThemeProvider>
     </HelmetProvider>

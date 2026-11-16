@@ -5,6 +5,7 @@ const vm = require('node:vm');
 const ts = require('typescript');
 const axios = require('axios');
 const values = new Map();
+const events = [];
 const storage = {
   get length() { return values.size; },
   key(index) { return [...values.keys()][index] ?? null; },
@@ -12,8 +13,8 @@ const storage = {
   setItem(key, value) { values.set(key, String(value)); },
   removeItem(key) { values.delete(key); },
 };
-const window = { localStorage: storage, location: { pathname: '/messages', href: '' }, addEventListener() {}, setInterval() { return 1; }, clearInterval() {} };
-const context = { window, localStorage: storage, navigator: {}, console, URL, document: { cookie: '' }, setTimeout, clearTimeout, Blob, FormData, AbortController };
+const window = { dispatchEvent(event) { events.push(event.type); }, localStorage: storage, location: { pathname: '/messages', href: '' }, addEventListener() {}, setInterval() { return 1; }, clearInterval() {} };
+const context = { Event, window, localStorage: storage, navigator: {}, console, URL, document: { cookie: '' }, setTimeout, clearTimeout, Blob, FormData, AbortController };
 const modules = new Map();
 function load(relative) {
   const filename = path.resolve(__dirname, '../src', relative);
@@ -43,13 +44,13 @@ function login(username) {
   storage.setItem('auth_expires_at', String(Date.now() + 3600000));
   storage.setItem('auth_user', JSON.stringify({ school_id: '123', username }));
 }
-function deferredRequest(status = 200, token = storage.getItem('auth_access_token')) {
+function deferredRequest(status = 200, token = storage.getItem('auth_access_token'), data) {
   let settle;
   const started = new Promise(resolve => {
     const adapter = config => new Promise((resolveResponse, reject) => {
       settle = () => status === 200
         ? resolveResponse({ data: { secret: 'A' }, status, headers: {}, config })
-        : reject(new axios.AxiosError('HTTP error', undefined, config, {}, { status, config }));
+        : reject(new axios.AxiosError('HTTP error', undefined, config, {}, { status, config, data }));
       resolve();
     });
     deferredRequest.result = testClient.get('/private', { headers: { 'X-Session-Token': token }, adapter });
@@ -67,7 +68,28 @@ function deferredRequest(status = 200, token = storage.getItem('auth_access_toke
   } }));
   assert.equal(window.location.href, pendingApproval, 'Failed sign-in must not navigate or discard the approval');
   window.location.href = '';
+  // Password-change responses open the gate without discarding the session.
+  const passwordData = { detail: { code: 'password_change_required' } };
+  const passwordError = async config => {
+    throw new axios.AxiosError('Password change required', undefined, config, {}, { status: 403, config, data: passwordData });
+  };
+  await assert.rejects(testClient.post('/login', {}, { adapter: passwordError }));
+  assert.deepEqual(events.splice(0), ['lanis:password-change-required']);
   login('A');
+  await assert.rejects(testClient.get('/private', { headers: { 'X-Session-Token': 'A-token' }, adapter: passwordError }));
+  assert.deepEqual(events.splice(0), ['lanis:password-change-required']);
+  assert.equal(storage.getItem('auth_access_token'), 'A-token');
+  await assert.rejects(testClient.get('/private', { adapter: async config => {
+    throw new axios.AxiosError('Forbidden', undefined, config, {}, { status: 403, config });
+  } }));
+  assert.deepEqual(events, [], 'An ordinary permission error must not open the password gate');
+  const oldPassword = deferredRequest(403, 'A-token', passwordData);
+  await oldPassword.started;
+  lifecycle.clearSignedOutAccountData();
+  login('A');
+  oldPassword.finish();
+  await assert.rejects(oldPassword.result(), axios.isCancel);
+  assert.deepEqual(events, [], 'A previous session must not block the current account');
   const generationA = lifecycle.captureAccountDataGeneration();
   const memoryGenerationA = memory.resourceCacheGeneration();
   memory.updateResource('account-module', 'private-A', memoryGenerationA);
