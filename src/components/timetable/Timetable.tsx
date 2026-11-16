@@ -278,12 +278,12 @@ const Timetable: React.FC = () => {
                           }
                         }}
                       >
-                        <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
-                          <div className="min-w-0 flex-1 basis-28 break-words">
+                        <div className="mb-2 flex items-start justify-between gap-2">
+                          <div className="min-w-0 flex-1 break-words">
                             <p className={`font-semibold text-surface-900 dark:text-white ${lesson.cancelled ? 'line-through' : ''}`}>{lesson.subject}</p>
                             {lesson.class_name && <p className="text-xs text-surface-500">{lesson.class_name}</p>}
                           </div>
-                          <div className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-1.5">
+                          <div className="ml-auto flex shrink-0 items-center justify-end gap-1.5">
                             {lesson.week_type && <WeekBadge week={lesson.week_type} />}
                             {lesson.period != null && <span className="badge badge-surface">{lesson.period}{typeof lesson.period === 'number' ? '.' : ''} Std.</span>}
                             {lesson.course_id && <ChevronRightIcon className="h-4 w-4 shrink-0 text-primary-500" aria-hidden="true" />}
