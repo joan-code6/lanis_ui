@@ -26,9 +26,12 @@ try {
   } else if(url.startsWith('http://127.0.0.1:5198/') || url.startsWith('data:')) await request.continue();
   else {outbound.push({url,body:request.postData()});await request.respond({status:200,contentType:'application/json',headers:{'Access-Control-Allow-Origin':'*'},body:'{"status":1}'});}
  });
- await page.goto('http://127.0.0.1:5198/privacy-policy?private=SECRET',{waitUntil:'networkidle0'});
+ await page.goto('http://127.0.0.1:5198/privacy-policy?private=SECRET&utm_source=community&utm_medium=social&utm_campaign=community',{waitUntil:'networkidle0'});
  assert.equal(outbound.some(r=>(new URL(r.url).hostname === 't.lanis.arg-server.de' || new URL(r.url).hostname.endsWith('.posthog.com'))),false,'no PostHog traffic before consent');
+ assert.equal(await page.evaluate(()=>localStorage.getItem('lanis_analytics_first_v1')),null);
+ assert.equal(await page.evaluate(()=>sessionStorage.getItem('lanis_analytics_session_v1')),null);
  assert.equal(await page.evaluate(()=>Object.keys(localStorage).some(k=>k.startsWith('ph_'))),false);
+ assert.equal(await page.evaluate(()=>Object.keys(localStorage).some(k=>k.startsWith('lanis_analytics_first'))),false);
  await page.evaluate(async()=>{
   const client=await import('/src/analytics/client.ts');client.setConsent('granted');await client.initializeAnalytics();
  });
@@ -52,6 +55,7 @@ try {
  assert.equal(typeof event.properties.distinct_id,'string','ingestion retains random distinct ID');
  assert.equal(typeof event.properties.$session_id,'string','session metadata retained');
  assert.equal(event.properties.page,'/privacy-policy');assert.equal(event.properties.$geoip_disable,true);
+ assert.equal(event.properties.first_campaign,'community');assert.equal(event.properties.session_source,'unknown');
  assert.equal(event.properties.$current_url,undefined);assert.equal(event.properties.$set,undefined);
  await page.evaluate(async sdkURL=>{const {default:ph}=await import(sdkURL);if(ph.config.request_batching!==false)throw new Error('Batching must be disabled');ph.capture('message_replied');},sdkURL);
  await new Promise(r=>setTimeout(r,300));
@@ -59,6 +63,8 @@ try {
  await page.evaluate(async()=>{const c=await import('/src/analytics/client.ts');c.setConsent('denied');await c.capture('message_sent');});
  await new Promise(r=>setTimeout(r,3500));assert.equal(outbound.length,before,'no queued or new captures after withdrawal');
  assert.equal(await page.evaluate(()=>Object.keys(localStorage).some(k=>k.startsWith('ph_') && k.endsWith('_posthog'))),false,'withdrawal clears identity storage');
+ assert.equal(await page.evaluate(()=>localStorage.getItem('lanis_analytics_first_v1')),null);
+ assert.equal(await page.evaluate(()=>sessionStorage.getItem('lanis_analytics_session_v1')),null);
  await page.evaluate(async sdkURL=>{const c=await import('/src/analytics/client.ts');c.setConsent('granted');await c.capture('message_replied');const {default:ph}=await import(sdkURL);ph.capture('message_sent',{}, {send_instantly:true});},sdkURL);
  await new Promise(r=>setTimeout(r,300));assert.ok(outbound.length>before,'capture resumes after regrant');
  const linked=await page.evaluate(async sdkURL=>{

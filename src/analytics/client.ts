@@ -1,3 +1,4 @@
+import { attributionProperties, clearAttribution } from './attribution';
 import type { PostHog } from 'posthog-js';
 import { AnalyticsEvent, engagedFeatures, routeLabel, sanitizeEventProperties } from './policy';
 
@@ -13,6 +14,7 @@ let accountContext: { token: string; backend: string; key: string; resolveToken?
 let accountRef: string | undefined;
 let identityPending: Promise<void> | undefined;
 let identityRetryAt = 0;
+let usableContentReported = false;
 const pendingRequests = new Set<AbortController>();
 
 export function configureAccountAnalytics(token: string | null, backend: string, key: string, resolveToken?: () => Promise<string | null>): void {
@@ -131,10 +133,10 @@ export function initializeAnalytics(): Promise<void> {
       disable_session_recording: true, enable_recording_console_log: false,
       disable_surveys: true, disable_external_dependency_loading: true,
       advanced_disable_flags: true, advanced_disable_feature_flags: true,
-      save_referrer: false, store_google: false,
+      save_referrer: false, store_google: false, save_campaign_params: false,
       before_send: event => {
         if (!event || !allowed()) return null;
-        const properties = sanitizeEventProperties(event.event, event.properties || {});
+        const properties = sanitizeEventProperties(event.event, { ...event.properties, ...attributionProperties(), identity_kind: accountRef ? 'account' : 'browser' });
         if (!properties) return null;
         const page = routeLabel(typeof event.properties?.page === 'string'
           ? event.properties.page : window.location.pathname);
@@ -167,6 +169,8 @@ export function setConsent(consent: Exclude<Consent, null>): void {
 }
 
 export function stopAnalytics(): void {
+  clearAttribution();
+  usableContentReported = false;
   generation++;
   for (const request of pendingRequests) request.abort();
   accountRef = undefined;
@@ -190,6 +194,10 @@ export async function capture(event: AnalyticsEvent, properties: Record<string, 
   if (!allowed() || currentGeneration !== generation) return;
   try {
     const result = client?.capture(event, { ...properties, page });
+    if (result && accountRef && event === 'content_ready' && properties.outcome === 'ready' && properties.resource !== 'other' && properties.resource !== 'vertretungsplan-options' && !usableContentReported) {
+      usableContentReported = true;
+      client?.capture('account_content_ready', { ...properties, page });
+    }
     const feature = engagedFeatures[event];
     if (result && feature) client?.capture('feature_engaged', { feature, page });
   } catch { /* Best effort. */ }
@@ -207,6 +215,8 @@ export async function capturePage(): Promise<void> {
 }
 
 export function resetAnalyticsIdentity(): void {
+  clearAttribution();
+  usableContentReported = false;
   generation++;
   for (const request of pendingRequests) request.abort();
   accountContext = undefined;

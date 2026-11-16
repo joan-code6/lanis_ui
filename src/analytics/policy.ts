@@ -1,3 +1,4 @@
+import { sources, entries, campaigns, campaignSources, campaignMedia } from './attribution';
 /** Closed vocabulary: no user-controlled strings are accepted as event properties. */
 export const eventRules = {
   login_started: {}, login_succeeded: {}, login_failed: {}, logout_completed: {},
@@ -30,7 +31,8 @@ export const eventRules = {
   '$pageview': {}, '$identify': {}, '$exception': {},
   analytics_identity_unavailable: {},
   api_request_completed: { outcome: ['success', 'http_error', 'network_error', 'cancelled'], method: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'] },
-  content_ready: { outcome: ['ready', 'failed'], cached: [true, false] },
+  content_ready: { outcome: ['ready', 'empty', 'failed'], cached: [true, false] },
+  account_content_ready: { cached: [true, false] },
   content_refreshed: { outcome: ['ready', 'failed'] },
   message_read: {},
   web_vital: { metric: ['CLS', 'FCP', 'INP', 'LCP', 'TTFB'], rating: ['good', 'needs-improvement', 'poor'] },
@@ -72,8 +74,8 @@ export function sanitizeEventProperties(event: string, properties: Record<string
   if (typeof properties.diagnostic_id === 'string' && /^ld_[a-f0-9]{32}$/.test(properties.diagnostic_id)) safe.diagnostic_id = properties.diagnostic_id;
   if (event === 'ui_interaction' && typeof properties.destination === 'string') safe.destination = routeLabel(properties.destination);
   if (event === 'web_vital' && typeof properties.value === 'number' && Number.isFinite(properties.value)) safe.value = Math.max(0, Math.min(properties.value, 3600000));
-  if (event === 'content_ready' || event === 'content_refreshed') {
-    const names = ['dsb', 'study-groups', 'videokonferenz', 'wahlen', 'timetable', 'attendance', 'calendar', 'dateiverteilung', 'dateispeicher', 'dateispeicher-search', 'vertretungsplan', 'vertretungsplan-options', 'other'];
+  if (event === 'content_ready' || event === 'content_refreshed' || event === 'account_content_ready') {
+    const names = ['dashboard', 'courses', 'course-detail', 'dsb', 'study-groups', 'videokonferenz', 'wahlen', 'timetable', 'attendance', 'calendar', 'dateiverteilung', 'dateispeicher', 'dateispeicher-search', 'vertretungsplan', 'vertretungsplan-options', 'other'];
     safe.resource = names.includes(String(properties.resource)) ? properties.resource : 'other';
     for (const key of ['duration_ms', 'stale_ms']) if (typeof properties[key] === 'number' && Number.isFinite(properties[key])) safe[key] = Math.round(Math.max(0, Math.min(Number(properties[key]), 604800000)));
   }
@@ -94,6 +96,13 @@ export function sanitizeEventProperties(event: string, properties: Record<string
     safe.$exception_level = 'error';
     if (['error', 'rejection', 'react', 'api'].includes(String(properties.error_origin))) safe.error_origin = properties.error_origin;
   }
+  for (const prefix of ['first', 'session']) {
+    for (const [key, values] of Object.entries({ source: sources, entry: entries, campaign: campaigns, campaign_source: campaignSources, campaign_medium: campaignMedia })) {
+      const name = `${prefix}_${key}`;
+      if ((values as readonly unknown[]).includes(properties[name])) safe[name] = properties[name];
+    }
+  }
+  if (properties.identity_kind === 'account' || properties.identity_kind === 'browser') safe.identity_kind = properties.identity_kind;
   // Only opaque SDK identifiers and validated backend account references survive.
   for (const key of ['distinct_id', '$session_id', '$window_id', '$device_id', '$anon_distinct_id']) {
     const value = properties[key];
@@ -106,7 +115,7 @@ export function sanitizeEventProperties(event: string, properties: Record<string
   if (['Desktop', 'Mobile', 'Tablet'].includes(String(properties.$device_type))) safe.$device_type = properties.$device_type;
   if (typeof properties.$browser_version === 'number' && Number.isFinite(properties.$browser_version) && properties.$browser_version >= 0 && properties.$browser_version <= 10000) safe.$browser_version = Math.floor(properties.$browser_version);
   safe.app = 'lanis_ui';
-  safe.schema_version = 3;
+  safe.schema_version = 4;
   safe.environment = 'production';
   safe.$process_person_profile = false;
   safe.$geoip_disable = true;

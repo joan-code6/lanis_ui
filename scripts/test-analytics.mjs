@@ -4,7 +4,10 @@ import ts from 'typescript';
 import vm from 'node:vm';
 
 const policySource = await readFile(new URL('../src/analytics/policy.ts', import.meta.url), 'utf8');
-const policyCode = ts.transpileModule(policySource, { compilerOptions: { module: ts.ModuleKind.ESNext } }).outputText;
+const attributionSource = await readFile(new URL('../src/analytics/attribution.ts', import.meta.url), 'utf8');
+const attributionCode = ts.transpileModule(attributionSource, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2020 } }).outputText;
+const attributionURL = `data:text/javascript;base64,${Buffer.from(attributionCode).toString('base64')}`;
+const policyCode = ts.transpileModule(policySource, { compilerOptions: { module: ts.ModuleKind.ESNext } }).outputText.replace("'./attribution'", JSON.stringify(attributionURL));
 const policy = await import(`data:text/javascript;base64,${Buffer.from(policyCode).toString('base64')}`);
 assert.equal(policy.routeLabel('/courses/private-school-course'), '/courses/:id');
 assert.equal(policy.routeLabel('/demo/messages'), '/messages');
@@ -25,7 +28,7 @@ assert.equal(policy.sanitizeEventProperties('api_request_failed', {module:'PRIVA
 // Isolated browser/SDK model tests: exercise actual client module and consent races.
 async function harness({production=true, deferred=false,host='https://t.lanis.arg-server.de',returnCapture=false,fetcher=async()=>({ok:false})}={}) {
   const storage = new Map(); const sent=[]; const calls=[];
-  const browser = new EventTarget(); browser.location={pathname:'/messages'};
+  const browser = new EventTarget(); browser.location={pathname:'/messages',href:'https://lanis.example/messages'};
   let resolveImport;
   const gate = deferred ? new Promise(resolve=>{resolveImport=resolve}) : Promise.resolve();
   let config; let optedOut=false;let distinctId='random_browser_id_12345';
@@ -38,13 +41,16 @@ async function harness({production=true, deferred=false,host='https://t.lanis.ar
     opt_in_capturing(){optedOut=false;}, opt_out_capturing(){optedOut=true;calls.push(['optout']);}, reset(){distinctId='random_browser_id_reset';calls.push(['reset']);},
   };
   const sdk={init(key,value){assert.equal(key,'phc_testpublic');config=value;calls.push(['init']);return instance;}};
-  const context=vm.createContext({window:browser,localStorage:{getItem:key=>storage.get(key)??null,setItem:(key,value)=>storage.set(key,value)},Event,Promise,AbortController,setTimeout,clearTimeout,fetch:fetcher});
-  const policyModule=new vm.SourceTextModule(policyCode,{context}); await policyModule.link(()=>{}); await policyModule.evaluate();
+  const session = new Map();
+  const store = map => ({getItem:key=>map.get(key)??null,setItem:(key,value)=>map.set(key,value),removeItem:key=>map.delete(key)});
+  const context=vm.createContext({URL,document:{referrer:''},sessionStorage:store(session),window:browser,localStorage:store(storage),Event,Promise,AbortController,setTimeout,clearTimeout,fetch:fetcher});
+  const policyModule=new vm.SourceTextModule(policyCode,{context}); const attributionModule=new vm.SourceTextModule(attributionCode,{context});await attributionModule.link(()=>{});await attributionModule.evaluate();
+  await policyModule.link(()=>attributionModule); await policyModule.evaluate();
   const sdkModule=new vm.SyntheticModule(['default'],function(){this.setExport('default',sdk)},{context});await sdkModule.link(()=>{});await sdkModule.evaluate();
   const source=await readFile(new URL('../src/analytics/client.ts',import.meta.url),'utf8');
   const code=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2020}}).outputText.replaceAll('import.meta.env',JSON.stringify({PROD:production,VITE_POSTHOG_KEY:'phc_testpublic',VITE_POSTHOG_HOST:host}));
   const module=new vm.SourceTextModule(code,{context,importModuleDynamically:async()=>{await gate;return sdkModule;}});
-  await module.link(()=>policyModule);await module.evaluate();
+  await module.link(spec=>spec==='./attribution'?attributionModule:policyModule);await module.evaluate();
   return {api:module.namespace,storage,sent,calls,browser,resolveImport,getConfig:()=>config};
 }
 const h=await harness();
@@ -163,7 +169,7 @@ const experienceClient=new vm.SyntheticModule(['analyticsEnabled','analyticsEpoc
 const experienceModule=new vm.SourceTextModule(ts.transpileModule(experienceSource,{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2020}}).outputText,{context:experienceContext});await experienceModule.link(()=>experienceClient);await experienceModule.evaluate();
 assert.equal(experienceModule.namespace.resourceLabel('dateispeicher-search:PRIVATE'),'dateispeicher-search');
 assert.equal(experienceModule.namespace.resourceLabel('["timetable","PRIVATE"]'),'timetable');
-const finishView=experienceModule.namespace.startExperience('dateispeicher:PRIVATE');experienceClock=200;finishView('ready',true,300);
+const finishView=experienceModule.namespace.startExperience('dateispeicher:PRIVATE');experienceClock=200;finishView('ready',true,300);finishView('failed');
 while(frames.length)frames.shift()();assert.equal(experienceEvents[0].props.duration_ms,100);assert.equal(JSON.stringify(experienceEvents).includes('PRIVATE'),false);
 const staleView=experienceModule.namespace.startExperience('calendar');staleView('ready');experienceEpoch++;while(frames.length)frames.shift()();assert.equal(experienceEvents.length,1);
 const frame=policy.sanitizedExceptionList([{type:'Error',stacktrace:{frames:[{filename:'/assets/app.js',lineno:1,colno:2,chunk_id:'12345678-1234-1234-1234-123456789abc',vars:{secret:'PRIVATE'}}]}}])[0].stacktrace.frames[0];assert.ok(frame.chunk_id);assert.equal(frame.vars,undefined);
@@ -194,3 +200,68 @@ const staleDiagnostic=rotation.api.storeDiagnostic('error',new Error('private'))
 rotation.api.resetAnalyticsIdentity();unblockSession('obsolete');await staleDiagnostic;
 assert.equal(refreshedRequests.length,2,'logout while resolving a token cannot send diagnostics');
 console.log('Analytics uses refreshed session tokens and rejects stale token resolutions after logout.');
+
+// Attribution uses closed categories, never raw domains/paths/UTM values.
+const attribution = await import(attributionURL);
+for (const [ref, expected] of [
+ ['https://www.google.de/search?q=PRIVATE','google'], ['https://www.bing.com/search?q=PRIVATE','bing'],
+ ['https://duckduckgo.com/?q=PRIVATE','other_search'], ['https://l.facebook.com/PRIVATE','social'],
+ ['https://google.de.attacker.invalid/PRIVATE','referring_website'], ['https://private-school.example/PRIVATE','referring_website'],
+ ['', 'unknown'], ['https://lanis.example/schule/PRIVATE','unknown'], ['invalid','unknown']
+]) {
+ const touch=attribution.classifyArrival('https://lanis.example/schule/PRIVATE?secret=PRIVATE',ref);
+ assert.equal(touch.source,expected);assert.equal(touch.entry,'school_page');assert.equal(JSON.stringify(touch).includes('PRIVATE'),false);
+}
+const tagged=attribution.classifyArrival('https://lanis.example/?utm_campaign=community&utm_source=community&utm_medium=social','');
+assert.equal(tagged.campaign,'community');assert.equal(tagged.source,'unknown');assert.equal(tagged.entry,'shared_link');
+for(const query of ['utm_campaign=PRIVATE&utm_source=community&utm_medium=social','utm_campaign=community&utm_source=community&utm_medium=social&utm_source=PRIVATE'])
+ assert.equal(attribution.classifyArrival('https://lanis.example/?'+query,'').campaign,undefined);
+for(const event of Object.keys(policy.eventRules)) {
+ const safe=policy.sanitizeEventProperties(event,{first_source:'PRIVATE',session_entry:'PRIVATE',first_campaign:'PRIVATE',$referrer:'PRIVATE',utm_source:'PRIVATE'});
+ assert.equal(JSON.stringify(safe).includes('PRIVATE'),false);
+}
+const lifecycle=await harness({returnCapture:true,fetcher:async()=>({ok:true,json:async()=>({account_ref:accountRef})})});
+await lifecycle.api.capturePage();assert.equal(lifecycle.storage.size,0,'no attribution storage before consent');
+lifecycle.api.setConsent('granted');lifecycle.browser.location.href='https://lanis.example/?utm_campaign=community&utm_source=community&utm_medium=social';
+await lifecycle.api.capture('login_started');
+assert.equal(lifecycle.sent.at(-1).properties.first_campaign,'community');assert.equal(lifecycle.sent.at(-1).properties.identity_kind,'browser');
+lifecycle.api.configureAccountAnalytics('private','https://backend.example','account-a');
+await lifecycle.api.capture('login_succeeded');
+assert.equal(lifecycle.sent.at(-1).properties.first_campaign,'community','anonymous attribution survives first identification');
+await lifecycle.api.capture('content_ready',{resource:'courses',outcome:'empty'});
+await lifecycle.api.capture('content_ready',{resource:'vertretungsplan-options',outcome:'ready'});
+assert.equal(lifecycle.sent.filter(e=>e.event==='account_content_ready').length,0);
+await Promise.all([lifecycle.api.capture('content_ready',{resource:'courses',outcome:'ready',cached:true}),lifecycle.api.capture('content_ready',{resource:'courses',outcome:'ready'})]);
+assert.equal(lifecycle.sent.filter(e=>e.event==='account_content_ready').length,1,'usable outcome deduplicated');
+lifecycle.api.configureAccountAnalytics('rotated','https://backend.example','account-a');
+await lifecycle.api.capture('content_ready',{resource:'courses',outcome:'ready'});
+assert.equal(lifecycle.sent.filter(e=>e.event==='account_content_ready').length,1,'token rotation preserves outcome');
+lifecycle.api.configureAccountAnalytics('other','https://backend.example','account-b');
+await lifecycle.api.capture('content_ready',{resource:'courses',outcome:'ready'});
+assert.equal(lifecycle.sent.at(-1).properties.first_campaign,undefined,'account switch clears previous attribution');
+assert.equal(lifecycle.sent.filter(e=>e.event==='account_content_ready').length,2);
+lifecycle.api.setConsent('denied');assert.equal(lifecycle.storage.has('lanis_analytics_first_v1'),false);
+console.log('Coarse attribution, campaign allowlist, non-leakage, identity boundaries and usable-outcome deduplication passed.');
+
+// Session persistence, internal navigation, return documents and idle expiration.
+const firstStore=new Map(), sessionStore=new Map();let now=100000;
+const memoryStore=map=>({getItem:k=>map.get(k)??null,setItem:(k,v)=>map.set(k,v),removeItem:k=>map.delete(k)});
+async function arrivalModel(href,referrer) {
+ const ctx=vm.createContext({URL,Date:{now:()=>now},window:{location:{href}},document:{referrer},localStorage:memoryStore(firstStore),sessionStorage:memoryStore(sessionStore)});
+ const mod=new vm.SourceTextModule(attributionCode,{context:ctx});await mod.link(()=>{});await mod.evaluate();return {api:mod.namespace,ctx};
+}
+const a=await arrivalModel('https://lanis.example/schule/PRIVATE','https://google.de/search?q=PRIVATE');
+assert.equal(a.api.attributionProperties().first_source,'google');
+a.ctx.window.location.href='https://lanis.example/courses/PRIVATE';
+assert.equal(a.api.attributionProperties().session_entry,'school_page','internal navigation preserves arrival');
+const b=await arrivalModel('https://lanis.example/timetable','https://lanis.example/dashboard');
+assert.equal(b.api.attributionProperties().session_source,'google','return document within session preserves touch');
+now+=31*60*1000;const c=await arrivalModel('https://lanis.example/','https://bing.com/search?q=PRIVATE');
+assert.equal(c.api.attributionProperties().first_source,'google');assert.equal(c.api.attributionProperties().session_source,'bing');
+now+=31*60*1000;assert.equal(c.api.attributionProperties().session_source,'unknown','idle open document does not reuse old referrer');
+c.api.clearAttribution();assert.equal(firstStore.size,0);assert.equal(sessionStore.size,0);
+assert.equal(c.api.attributionProperties().first_source,'unknown','reset cannot replay previous account arrival');
+assert.equal(JSON.stringify([...firstStore,...sessionStore]).includes('PRIVATE'),false);
+let cancelled=false;const cancelView=experienceModule.namespace.startExperience('courses',()=>cancelled);cancelView('ready');cancelled=true;
+while(frames.length)frames.shift()();assert.equal(experienceEvents.length,1,'cancel during paint suppresses stale view');
+console.log('Session navigation, return/idle boundaries, storage non-leakage and paint cancellation passed.');

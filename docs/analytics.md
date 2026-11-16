@@ -40,12 +40,12 @@ of this change.
   resets, shared devices, logout, declined consent, blockers and network failures
   affect counts. Install completion depends on browser `appinstalled` support.
 
-## Event contract (schema version 3)
+## Event contract (schema version 4)
 
-Every event has `app=lanis_ui`, `schema_version=3`, `environment=production`,
+Every event has `app=lanis_ui`, `schema_version=4`, `environment=production`,
 a sanitized `page`/`$pathname`, opaque identity/session metadata, identified-only person profiles and disabled GeoIP enrichment. `account_ref` appears only after successful backend identification; `release` is the build SHA or `local`. The public token is retained
 for ingestion. Coarse browser/OS names, browser major version and device type are retained from closed vocabularies to diagnose compatibility. Other SDK properties are removed before transmission, including
-full URLs, referrers, campaign parameters, page titles, initial person properties,
+full URLs, raw referrers, arbitrary campaign parameters, page titles, initial person properties,
 error objects, element text, school IDs and account details. Unknown event names
 and unknown property keys/values are rejected.
 
@@ -228,7 +228,7 @@ Backend request events are optional: configure backend `POSTHOG_PROJECT_KEY` (pu
 
 Source map uploading is configured for trusted builds with a management token; until that secret is configured, diagnosing original source requires matching build artifacts. Generic messages intentionally sacrifice message-based grouping. No recordings or arbitrary DOM/form capture are enabled. Document scroll depth does not measure scrolling inside nested module panes. Time on a hidden/closed page is best effort, subject to browser unload/network limits.
 
-Existing dashboards include v2 browser data. Filter `schema_version=3` and `account_ref is set` for account-based reporting; old events cannot be retroactively linked. Feature flags are deployment controls, not an event taxonomy; no unused flags are created merely to match events.
+Existing dashboards include v2 browser data. Filter `schema_version=4` and `account_ref is set` for account-based reporting; old events cannot be retroactively linked. Feature flags are deployment controls, not an event taxonomy; no unused flags are created merely to match events.
 
 [LANIS — Accounts and diagnostics](https://eu.posthog.com/project/214484/dashboard/1052059) provides six verified native v3 reports: identified active accounts, browser API outcomes, p95 endpoint latency, exceptions/affected accounts, visible engagement segments, and account-linkage failures. It deliberately excludes v2 data. Queries currently return zero/no data until rollout. The connector lacks Data Catalog and dashboard-template scopes; these reports are operational definitions, not approved catalog metrics.
 
@@ -247,3 +247,114 @@ The official PostHog Rollup plugin uploads private hidden source maps only when 
 The connector cannot create alert destinations (`hog_function:write` unavailable). `scripts/configure-analytics-alerts.mjs` prepares or idempotently applies Discord lifecycle alerts once an authorized management key and webhook are supplied through environment variables. No webhook credentials are committed. Spike detection must be enabled/tuned in PostHog before spike lifecycle alerts can fire.
 
 The experience reports now extend the v3 board with content readiness p95, explicit refresh outcomes, p75 LCP/INP and successful content workflows. CLS remains a unitless score and is not mixed into the milliseconds chart. These reports execute successfully but contain no production v3 data before deployment.
+
+## Acquisition and useful experience (schema v4)
+
+This change keeps consent v2, the existing opt-in prompt, navigation and workflows.
+Coarse discovery categories are part of the optional usage analysis described in
+the privacy policy; no survey or automatic SDK attribution is enabled. All new
+work is behind the existing production/configuration/consent/demo gate. No extra
+application API request is introduced. Analytics is never awaited by loaders.
+
+Every event can carry `first_` and `session_` versions of these closed fields:
+
+| Field suffix | Allowed values |
+| --- | --- |
+| `source` | google, bing, other_search, social, referring_website, unknown |
+| `entry` | homepage, school_page, status, shared_link, other |
+| `campaign` | school_directory, community, release_notes |
+| `campaign_source` | lanis, community |
+| `campaign_medium` | link, social |
+
+`identity_kind=browser/account` distinguishes anonymous captures from resolved
+opaque accounts. `account_ref` is still supplied exclusively by lanis_api. No
+school reference, school domain, arbitrary referring domain, external destination,
+full URL, referral path or arbitrary UTM value is transmitted. Domain matching is
+local, exact or subdomain matching against fixed search/social lists; unlisted
+search engines fall into referring_website. Missing, invalid and same-origin
+referrers are **unknown**, never proven direct traffic or WhatsApp. Tags describe
+controlled link campaigns, not proof of the app that opened a link. A complete
+allowlisted tuple is required; duplicate tuple parameters invalidate it.
+
+Only after consent, the first observed coarse touch is persisted in
+`lanis_analytics_first_v1` (localStorage); the current tab's touch and last event
+activity time are in `lanis_analytics_session_v1` (sessionStorage). Thirty minutes
+without captured activity starts an unknown session within an open document.
+New documents reuse an unexpired tab session; otherwise they classify the current
+arrival. Internal SPA navigation never overwrites that session. Tabs have separate
+sessions; browser-first storage is shared, best effort and not transactional.
+Storage failure omits attribution. Anonymous-to-account identification retains
+the consenting browser journey. Logout, account switch and consent withdrawal
+clear both stores and prevent reuse of the previous document arrival. Token
+rotation for the same account preserves them. This is browser-first attribution,
+**not** a permanent account-first trait; earliest observed account events define
+an account cohort. Multiple devices can have different browser-first sources.
+
+There is no pre-consent snapshot, storage or tracking. Consent granted after
+navigation uses the then-current URL/category and document referrer if available;
+it cannot recover the original landing page, lost tags or earlier funnel steps.
+Existing consenting browsers start collecting at the first v4 event. Referrer
+policies, blockers, browser resets and shared devices limit coverage. No historical
+attribution is reconstructed, and these categories cannot prove the SEO hypothesis.
+
+`content_ready` now also allows `outcome=empty`. Dashboard modules and course
+lists distinguish empty, failed and usable results; course details record accepted
+content after existing fallback loading. All retain only resource category,
+cache flag and bounded duration. Cached views report once, without counting their
+background revalidation as another view. Shared-resource explicit refreshes emit
+only `content_refreshed` with duration. Paint callbacks are one-shot and drop
+cancelled navigation, old account/consent epochs and loads started without consent.
+Other shared-resource empty results still count as successfully rendered segments;
+we deliberately do not infer whether a user benefited from them. Course/dashboard
+persistent-cache ages are unavailable; do not interpret missing stale_ms as zero.
+
+`account_content_ready` is derived once per document/account/consent epoch after
+the SDK accepts a ready content segment and backend identity is resolved. Empty
+or failed outcomes, unknown resource labels and substitution-plan option loads do not produce it. It carries the same resource/cache/timing
+fields. This supplies a deduplicated account return observation on reloads; it is
+not an all-time first-use event or an activation claim. Identity outages can omit
+it; it is not replayed later. The first observed event per opaque account is the
+cohort anchor. Passive reading can qualify; `feature_engaged` remains a separate
+deliberate-action outcome. Existing login_started → login_succeeded events cover
+attempt and accepted local session; optional onboarding events stay separate.
+Authentication refresh failures already appear in api_request_completed with
+endpoint=/auth/refresh, outcome/status/duration, including retries. Reusing those
+attempts avoids another failure counter. No error text or credential is added.
+
+### Reproducible reports
+
+Run `node scripts/analytics-growth-reports.mjs > /tmp/lanis-growth-reports.json`.
+The output contains reviewable PostHog query definitions for project 214484:
+acquisition reach, ordered first-use funnel, mature day-1/days-1–7 account return
+by source, cache/empty/error/timing health and auth-refresh attempts. Use the query
+objects in the query editor or their SQL in SQL insights and save to a dedicated
+LANIS growth dashboard. The script makes no network requests and applies **no live
+configuration**. Verify query execution with the project's query editor before
+saving; live execution of these new definitions has not been validated here.
+Every definition filters app=lanis_ui; no historical unrelated project data enters
+the LANIS reports. Compare pre/post-v4 experience counts cautiously because
+coverage increased and duplicate refresh views were removed.
+
+The funnel uses merged PostHog person identity so consenting anonymous login
+attempts can join accepted accounts. Retention uses validated opaque account_ref,
+not anonymous browser counts. Use UTC days and complete windows; day 1 is the
+next calendar day, days 1–7 means any later observed useful experience in those
+seven days, not exact day-7 retention. For weekly return, change the return range
+to days 7–13 and require 13 complete later days. Source is frozen from the earliest
+observed useful event per account. New backend accounts and opted-in observed
+accounts are different populations. Neither their difference nor analytics-ref
+availability is a consent acceptance rate. School cohorts and all-account growth
+remain authorized backend/operator aggregates; do not join school IDs into
+PostHog or add public admin screens.
+
+Controlled links, using only the vocabulary above:
+
+- `https://lanis.arg-server.de/schulen?utm_source=lanis&utm_medium=link&utm_campaign=school_directory`
+- `https://lanis.arg-server.de/?utm_source=community&utm_medium=social&utm_campaign=community`
+- `https://lanis.arg-server.de/?utm_source=lanis&utm_medium=link&utm_campaign=release_notes`
+
+Never put a school, person, message or custom value in campaign fields. Search
+Console can independently supply aggregate LANIS-scoped impressions, clicks,
+query/page categories and canonical/indexing issues once available. Compare
+completed daily/weekly totals with these consenting cohorts; do not identify
+searchers, join search text to accounts or equate clicks with successful logins.
