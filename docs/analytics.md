@@ -40,9 +40,9 @@ of this change.
   resets, shared devices, logout, declined consent, blockers and network failures
   affect counts. Install completion depends on browser `appinstalled` support.
 
-## Event contract (schema version 4)
+## Event contract (schema version 5)
 
-Every event has `app=lanis_ui`, `schema_version=4`, `environment=production`,
+Every event has `app=lanis_ui`, `schema_version=5`, `environment=production`,
 a sanitized `page`/`$pathname`, opaque identity/session metadata, identified-only person profiles and disabled GeoIP enrichment. `account_ref` appears only after successful backend identification; `release` is the build SHA or `local`. The public token is retained
 for ingestion. Coarse browser/OS names, browser major version and device type are retained from closed vocabularies to diagnose compatibility. Other SDK properties are removed before transmission, including
 full URLs, raw referrers, arbitrary campaign parameters, page titles, initial person properties,
@@ -228,7 +228,7 @@ Backend request events are optional: configure backend `POSTHOG_PROJECT_KEY` (pu
 
 Source map uploading is configured for trusted builds with a management token; until that secret is configured, diagnosing original source requires matching build artifacts. Generic messages intentionally sacrifice message-based grouping. No recordings or arbitrary DOM/form capture are enabled. Document scroll depth does not measure scrolling inside nested module panes. Time on a hidden/closed page is best effort, subject to browser unload/network limits.
 
-Existing dashboards include v2 browser data. Filter `schema_version=4` and `account_ref is set` for account-based reporting; old events cannot be retroactively linked. Feature flags are deployment controls, not an event taxonomy; no unused flags are created merely to match events.
+Existing dashboards include v2 browser data. Filter `schema_version=5` and `account_ref is set` for account-based reporting; old events cannot be retroactively linked. Feature flags are deployment controls, not an event taxonomy; no unused flags are created merely to match events.
 
 [LANIS — Accounts and diagnostics](https://eu.posthog.com/project/214484/dashboard/1052059) provides six verified native v3 reports: identified active accounts, browser API outcomes, p95 endpoint latency, exceptions/affected accounts, visible engagement segments, and account-linkage failures. It deliberately excludes v2 data. Queries currently return zero/no data until rollout. The connector lacks Data Catalog and dashboard-template scopes; these reports are operational definitions, not approved catalog metrics.
 
@@ -361,3 +361,23 @@ Console can independently supply aggregate LANIS-scoped impressions, clicks,
 query/page categories and canonical/indexing issues once available. Compare
 completed daily/weekly totals with these consenting cohorts; do not identify
 searchers, join search text to accounts or equate clicks with successful logins.
+
+
+## Operational coverage (schema 5)
+
+Deploy the companion lanis_api observability change first. Existing UI key/host and private source-map CI secret remain sufficient; no extra browser token is needed. The JS SDK minimum is now 1.450.0 for the tested Logs/privacy lifecycle. Browser Logs use the configured proxy's `/i/v1/logs` endpoint; it must forward that path to EU ingestion with CORS. The backend sends its OTLP signals directly to EU.
+
+- Native structured Logs (`service.name=lanis_ui`) now mirror request completions and named operation completions. They have a fixed body, severity, safe endpoint, outcome, timings and request/trace IDs. Raw `console.*` capture remains disabled.
+- The Logs filter is independent of the product-event filter. It drops unknown messages/attributes and explicitly overrides `url.full`, because the SDK adds its current-URL context after the log filter. Top-level product `$set`, `$set_once` and `$unset` are also removed; filtering only `event.properties` did not remove initial URL person properties from identify events.
+- Log records are bounded to 100 per interval with a buffer flush threshold of 25. Consent withdrawal and account switches opt out/reset the SDK before re-enabling, discarding queued records. In-flight requests cannot be recalled. Logs share existing consent, opaque identifiers and no-content restrictions.
+- API attempts carry a UUID client request ID and, once the SDK is ready, its session UUID. Responses add server request ID, trace ID and cache result. Purpose distinguishes foreground, speculative prefetch, recovery and public reads; retried auth requests are labeled.
+- Independent homepage and deletion-recovery Axios clients are measured without adding auth side effects. Public status, incident, school-directory/profile and backend-health fetches are timed with explicit endpoint templates and no analytics headers. Fetch timing ends at response headers; backend spans measure full response completion.
+- Named `operation_started`/`operation_completed` events cover session refresh, account export/delete/recovery, message send/reply/read, homework, submission upload/delete, downloads, elections, preference/lesson/class-link changes, notifications, agent authorization/grant/channel/schedule operations, WhatsApp and feedback. They measure transport attempts; auth retries are distinct attempts, not one logical operation. Upload `all_succeeded=false` is a partial failure even with HTTP 200 and `success=true`.
+- Submission list/detail readiness now distinguishes cached, fresh, empty and failed views. Incident, school, agent-authorization and submission-detail routes get useful template labels. Selected join/approval/election/submission controls expose reviewed action enums, never their labels or values.
+- Browser push repair and service-worker registration have explicit outcomes. The page still cannot confirm OS-level notification delivery, download save, meeting attendance or native install completion.
+
+Real-SDK browser tests intercept every external request and decompress OTLP log payloads. They verify that private path/query/header/form sentinels do not escape, that useful request metadata survives, and that queued logs stop after withdrawal. Unit tests cover operation classification, partial failures, correlation headers, account epochs and both privacy filters. No fixture telemetry reaches the real project.
+
+Operational backend logs/traces cover service requests without person identity; consenting requests may carry a browser session UUID for correlation. Historical PostHog retention/deletion is separate from the seven-day local diagnostic vault. Session replay, form/console capture, feature flags/surveys and AI prompt/completion capture remain disabled rather than being activated through an unrelated setup prompt.
+
+References: [JavaScript Logs](https://posthog.com/docs/logs/installation/javascript), [Logs configuration](https://posthog.com/docs/libraries/js/config#configuring-logs).

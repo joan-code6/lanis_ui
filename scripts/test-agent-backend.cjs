@@ -23,7 +23,7 @@ function loadRouting() {
     vm.runInNewContext(output, { ...context, exports, require: requireFn }, { filename: file });
     return exports;
   };
-  const backend = evaluate('backendConfig.ts', () => { throw Error('Unexpected dependency'); });
+  const backend = evaluate('backendConfig.ts', name => { assert.equal(name, '../analytics/requestTelemetry'); return { telemetryFetch: () => { throw Error('Unexpected network request'); } }; });
   const agents = evaluate('agentBackend.ts', name => { assert.equal(name, './backendConfig'); return backend; });
   return { backend, agents, storage };
 }

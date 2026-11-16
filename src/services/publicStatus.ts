@@ -1,3 +1,4 @@
+import { telemetryFetch } from '../analytics/requestTelemetry';
 import { useEffect, useState } from 'react';
 import { formatDuration } from '../utils/formatDuration';
 import { getApiBaseUrl } from '../utils/backendConfig';
@@ -104,7 +105,7 @@ export function usePublicStatus(enabled = true) {
       controller = request;
       const timeout = window.setTimeout(() => request.abort(), 8000);
       try {
-        const response = await fetch(`${getApiBaseUrl()}/status`, {
+        const response = await telemetryFetch(`${getApiBaseUrl()}/status`, '/status', {
           signal: request.signal, credentials: 'omit', cache: 'no-store', referrerPolicy: 'no-referrer',
         });
         if (!response.ok) throw new Error('Status unavailable');

@@ -123,6 +123,24 @@ export function initializeAnalytics(): Promise<void> {
     if (!allowed() || currentGeneration !== generation) return;
     const instance = posthog.init(import.meta.env.VITE_POSTHOG_KEY, {
       api_host: import.meta.env.VITE_POSTHOG_HOST,
+      logs: {
+        serviceName: 'lanis_ui', environment: 'production',
+        serviceVersion: /^[a-f0-9]{7,40}$/.test(import.meta.env.VITE_APP_RELEASE || '') ? import.meta.env.VITE_APP_RELEASE : 'local',
+        captureConsoleLogs: false,
+        maxBufferSize: 25, maxLogsPerInterval: 100,
+        beforeSend: record => {
+          if (!allowed() || !['api_request_completed', 'operation_completed', '$exception'].includes(record.body)) return null;
+          const attributes = sanitizeEventProperties(record.body, record.attributes || {});
+          if (!attributes) return null;
+          // SDK context adds url.full after this hook. Override it explicitly;
+          // never let a raw course/incident path, query, hash or custom host escape.
+          const page = routeLabel(typeof record.attributes?.page === 'string' ? record.attributes.page : window.location.pathname);
+          return { body: record.body, level: record.level === 'error' ? 'error' : 'info',
+            ...(typeof record.trace_id === 'string' && /^[a-f0-9]{32}$/.test(record.trace_id) ? { trace_id: record.trace_id } : {}),
+            attributes: { ...attributes, page, 'url.full': page },
+          };
+        },
+      },
       persistence: 'localStorage', cross_subdomain_cookie: false,
       // Avoid retaining unsent batches after consent is withdrawn.
       request_batching: false,
@@ -149,6 +167,11 @@ export function initializeAnalytics(): Promise<void> {
         properties.release = typeof release === 'string' && /^[a-f0-9]{7,40}$/.test(release) ? release : 'local';
         // Origin is omitted as custom backends / deployments can contain identifying data.
         event.properties = properties;
+        // identify() also places person properties outside event.properties.
+        // These may contain the SDK's raw initial URL and must be removed too.
+        delete event.$set;
+        delete event.$set_once;
+        delete event.$unset;
         return event;
       },
     });
@@ -194,6 +217,13 @@ export async function capture(event: AnalyticsEvent, properties: Record<string, 
   if (!allowed() || currentGeneration !== generation) return;
   try {
     const result = client?.capture(event, { ...properties, page });
+    if (event === 'api_request_completed' || event === 'operation_completed') {
+      const safe = sanitizeEventProperties(event, properties);
+      if (safe) client?.captureLog?.({ body: event,
+        level: properties.outcome === 'success' ? 'info' : 'error', attributes: { ...safe, page },
+        ...(typeof safe.trace_id === 'string' ? { trace_id: safe.trace_id } : {}),
+      });
+    }
     if (result && accountRef && event === 'content_ready' && properties.outcome === 'ready' && properties.resource !== 'other' && properties.resource !== 'vertretungsplan-options' && !usableContentReported) {
       usableContentReported = true;
       client?.capture('account_content_ready', { ...properties, page });
@@ -224,6 +254,7 @@ export function resetAnalyticsIdentity(): void {
   identityPending = undefined;
   identityRetryAt = 0;
   try {
+    client?.opt_out_capturing();
     client?.reset();
     if (allowed()) client?.opt_in_capturing({ captureEventName: false });
   } catch { /* Best effort. */ }
@@ -239,4 +270,13 @@ export async function captureSanitizedException(error: Error, properties: Record
   await synchronizeIdentity();
   if (!allowed() || epoch !== generation) return;
   try { client?.captureException(error, { ...properties, page }); } catch { /* Best effort. */ }
+}
+
+/** Return only the SDK session identifier; no identity/token is exposed. */
+export function analyticsSessionId(): string | undefined {
+  if (!allowed()) return undefined;
+  try {
+    const value = client?.get_session_id?.();
+    return typeof value === 'string' && /^[a-f0-9]{8}-[a-f0-9-]{27}$/.test(value) ? value : undefined;
+  } catch { return undefined; }
 }

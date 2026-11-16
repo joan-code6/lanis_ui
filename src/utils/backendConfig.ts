@@ -1,3 +1,4 @@
+import { telemetryFetch } from '../analytics/requestTelemetry';
 export const CUSTOM_BACKEND_STORAGE_KEY = 'lanis_custom_backend_url';
 
 const BACKEND_SCOPED_STORAGE_KEYS = [
@@ -107,7 +108,7 @@ export async function checkBackendHealth(value: string): Promise<string> {
   const timeout = window.setTimeout(() => controller.abort(), 8000);
 
   try {
-    const response = await fetch(`${normalized}/health`, {
+    const response = await telemetryFetch(`${normalized}/health`, '/health', {
       method: 'GET',
       mode: 'cors',
       cache: 'no-store',

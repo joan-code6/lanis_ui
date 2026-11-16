@@ -10,7 +10,7 @@
     "date-fns": "^2.30.0",
     "leaflet": "^1.9.4",
     "overlayscrollbars": "^2.17.0",
-    "posthog-js": "^1.438.21",
+    "posthog-js": "^1.450.0",
     "react": "^18.2.0",
     "react-colorful": "^5.8.1",
     "react-dom": "^18.2.0",

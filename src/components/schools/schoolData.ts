@@ -1,3 +1,4 @@
+import { telemetryFetch } from '../../analytics/requestTelemetry';
 export interface SchoolListItem { school_id: string; name: string; city: string }
 export interface SchoolProfile extends SchoolListItem {
   palette: { primary: string | null };
@@ -61,7 +62,7 @@ const slugify = (value: string) => value.toLowerCase()
   .normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
 
 export async function fetchDirectory(apiBase: string, signal: AbortSignal) {
-  const response = await fetch(`${apiBase}/schools`, { signal, credentials: 'omit' });
+  const response = await telemetryFetch(`${apiBase}/schools`, '/schools', { signal, credentials: 'omit' });
   if (!response.ok) throw new Error('School directory unavailable');
   return parseDirectory(await response.json());
 }
@@ -76,7 +77,7 @@ export async function loadSchool(value: string, apiBase: string, signal: AbortSi
     if (matches.length !== 1) return null;
     id = matches[0].school_id;
   }
-  const response = await fetch(`${apiBase}/schools/${id}/data`, { signal, credentials: 'omit' });
+  const response = await telemetryFetch(`${apiBase}/schools/${id}/data`, '/schools/:id/data', { signal, credentials: 'omit' });
   if (response.status === 404) return null;
   if (!response.ok) throw new Error('School profile unavailable');
   const payload = await response.json();

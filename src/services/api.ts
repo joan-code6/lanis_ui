@@ -235,6 +235,7 @@ export function clearPrefetchedData(): void {
 }
 
 export function readAPI<T = unknown>(url: string, config: AxiosRequestConfig = {}, prefetch = false): Promise<AxiosResponse<T>> {
+  config = { ...config, ...{ _lanisPurpose: prefetch ? 'prefetch' : 'foreground' } };
   const token = String(config.headers?.['X-Session-Token'] || '');
   const generation = captureAccountDataGeneration();
   const scope = `${generation}:${token}:${window.location.pathname.startsWith('/demo')}`;
@@ -310,6 +311,21 @@ const homepageClient: AxiosInstance = axios.create({
     Accept: 'application/json',
   },
 });
+
+for (const [client, purpose] of [[sessionRecoveryClient, 'recovery'], [homepageClient, 'public']] as const) {
+  client.interceptors.request.use(config => {
+    Object.assign(config, { _lanisPurpose: purpose });
+    startApiRequest(config, purpose !== 'public');
+    return config;
+  });
+  client.interceptors.response.use(response => {
+    finishApiRequest(response.config, response);
+    return response;
+  }, error => {
+    finishApiRequest(error.config, error.response, error.code);
+    return Promise.reject(error);
+  });
+}
 
 const isNonNegativeInteger = (value: unknown): value is number => (
   typeof value === 'number' && Number.isInteger(value) && value >= 0
