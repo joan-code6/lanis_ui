@@ -36,7 +36,7 @@ export default function PasswordChangeGate({ children }: { children: React.React
     }
   };
 
-  const signInAgain = async () => {
+  const handleLogout = async () => {
     setChecking(true);
     try {
       await logout();
@@ -72,11 +72,11 @@ export default function PasswordChangeGate({ children }: { children: React.React
             {checking ? 'Wird geprüft…' : 'Erneut versuchen'}
           </button>
         </div>
-        {error && <div className="space-y-3">
-          <p role="alert" className="text-sm text-red-600 dark:text-red-400">{error}</p>
-          {token && <button type="button" className="btn btn-ghost w-full justify-center" disabled={checking} onClick={() => void signInAgain()}>
-            Mit neuem Passwort anmelden
-          </button>}
+        {error && <p role="alert" className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+        {token && <div className="flex justify-center">
+          <button type="button" className="btn btn-ghost !px-2 !py-1 !text-xs" disabled={checking} onClick={() => void handleLogout()}>
+            Abmelden
+          </button>
         </div>}
       </div>
     </main>
