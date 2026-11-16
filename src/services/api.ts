@@ -415,6 +415,12 @@ async function ensureValidToken(): Promise<string | null> {
 }
 
 export const authAPI = {
+  async checkPasswordChange(token: string): Promise<void> {
+    await apiClient.get('/auth/check-password-change', {
+      headers: { 'X-Session-Token': token },
+    });
+  },
+
   async recoverAccountDeletion(accessToken: string, refreshToken: string): Promise<
     { state: 'revoked' } | { state: 'cancelled'; access_token: string; expires_in: number }
   > {
@@ -1344,6 +1350,12 @@ apiClient.interceptors.response.use(
   async (error) => {
     if (staleRequest(error.config)) return Promise.reject(new axios.CanceledError('Session changed'));
     finishApiRequest(error.config, error.response, error.code);
+    if (error.response?.status === 403
+      && error.response?.data?.detail?.code === 'password_change_required') {
+      window.dispatchEvent(new Event('lanis:password-change-required'));
+      return Promise.reject(error);
+    }
+
     captureApiFailure(error);
     if (['/login', '/logout', '/notifications/unsubscribe'].includes(error.config?.url || '')) return Promise.reject(error);
     if (error.response?.status === 401 && localStorage.getItem('__demo_mode') !== '1') {
