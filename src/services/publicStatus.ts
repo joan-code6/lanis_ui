@@ -1,3 +1,4 @@
+import { telemetryFetch } from '../analytics/requestTelemetry';
 import { useEffect, useState } from 'react';
 import { formatDuration } from '../utils/formatDuration';
 import { getApiBaseUrl } from '../utils/backendConfig';
@@ -5,9 +6,10 @@ import { getApiBaseUrl } from '../utils/backendConfig';
 export type ServiceStatus = 'up' | 'degraded' | 'down' | 'unknown';
 export interface Observation {
   account_checks?: { phase: 'initial' | 'confirmation'; accounts: {
-    label: string; status: ServiceStatus; features: { name: string; status: ServiceStatus }[];
+    label: string; status: ServiceStatus; status_code?: number | null; error?: string | null; features: { name: string; status: ServiceStatus }[];
   }[] }[];
   error?: string | null;
+  status_code?: number | null;
   status: ServiceStatus;
   checked_at: string | null;
   latency_ms?: number | null;
@@ -83,12 +85,15 @@ export function formatTimestamp(value: string | null): string {
 export function formatPercent(value: number | null): string {
   return value === null ? '—' : `${value.toLocaleString('de-DE', { maximumFractionDigits: 2 })} %`;
 }
-export function freshStatus(data: PublicStatus | null): ServiceStatus {
-  if (!data || data.current.stale || !data.current.checked_at) return 'unknown';
+export function isStatusStale(data: PublicStatus | null): boolean {
+  if (!data || data.current.stale || !data.current.checked_at) return true;
   const age = Date.now() - Date.parse(data.current.checked_at);
-  return Number.isFinite(age) && age >= -60_000 && age <= data.measurement.stale_after_seconds * 1000
-    ? data.current.status : 'unknown';
+  return !Number.isFinite(age) || age < -60_000 || age > data.measurement.stale_after_seconds * 1000;
 }
+export function freshStatus(data: PublicStatus | null): ServiceStatus {
+  return data && !isStatusStale(data) ? data.current.status : 'unknown';
+}
+
 export function usePublicStatus(enabled = true) {
   const [data, setData] = useState<PublicStatus | null>(null);
   const [loading, setLoading] = useState(enabled);
@@ -104,7 +109,7 @@ export function usePublicStatus(enabled = true) {
       controller = request;
       const timeout = window.setTimeout(() => request.abort(), 8000);
       try {
-        const response = await fetch(`${getApiBaseUrl()}/status`, {
+        const response = await telemetryFetch(`${getApiBaseUrl()}/status`, '/status', {
           signal: request.signal, credentials: 'omit', cache: 'no-store', referrerPolicy: 'no-referrer',
         });
         if (!response.ok) throw new Error('Status unavailable');

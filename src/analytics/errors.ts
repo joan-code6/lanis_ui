@@ -6,7 +6,7 @@ let windowStarted = 0;
 let reportsInWindow = 0;
 
 /** Actual exception text is sent only to our authenticated encrypted vault. */
-export async function reportException(error: unknown, origin: 'error' | 'rejection' | 'react' | 'api' = 'error', source?: { filename?: string; line?: number; column?: number; requestId?: string }): Promise<void> {
+export async function reportException(error: unknown, origin: 'error' | 'rejection' | 'react' | 'api' = 'error', source?: { filename?: string; line?: number; column?: number; requestId?: string; endpoint?: string }): Promise<void> {
   if (!analyticsEnabled()) return;
   const epoch = analyticsEpoch();
   const page = window.location.pathname;
@@ -32,7 +32,7 @@ export async function reportException(error: unknown, origin: 'error' | 'rejecti
   const safe = new Error('Application error; details are held by LANIS.');
   safe.name = name;
   safe.stack = `${name}: Application error; details are held by LANIS.\n${frames.join('\n')}`;
-  await captureSanitizedException(safe, { error_origin: origin, diagnostic_id: diagnosticId, request_id: source?.requestId }, page);
+  await captureSanitizedException(safe, { error_origin: origin, diagnostic_id: diagnosticId, request_id: source?.requestId, endpoint: source?.endpoint }, page);
 }
 
 export function startErrorTracking(): () => void {
@@ -58,8 +58,8 @@ export function startErrorTracking(): () => void {
       const target = new URL(element.href, window.location.href);
       if (target.origin === window.location.origin) destination = target.pathname;
     }
-    // Never read labels, text, form values, IDs or data attributes.
-    void capture('ui_interaction', { control, destination });
+    // Read only a reviewed action enum; never labels, text, form values or IDs.
+    void capture('ui_interaction', { control, destination, action: element.getAttribute('data-analytics-action') });
   };
   document.addEventListener('click', interaction);
   window.addEventListener('error', onError, true);

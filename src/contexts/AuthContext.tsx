@@ -146,6 +146,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       ];
       if (event.key === USER_KEY && event.newValue !== null
         && !isSameAccountIdentity(event.oldValue, event.newValue)) {
+        resetAnalyticsIdentity();
         setToken(null);
         setUser(null);
         setIsAuthenticated(false);

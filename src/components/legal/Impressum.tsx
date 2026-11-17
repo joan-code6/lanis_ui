@@ -1,3 +1,4 @@
+import BackButton from '../BackButton';
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { DEFAULT_API_BASE_URL } from '../../utils/backendConfig';
@@ -13,12 +14,12 @@ const Impressum: React.FC = () => {
         noindex
       />
       <div className="max-w-2xl mx-auto px-6 py-24">
-        <Link to="/" className="inline-flex items-center gap-2 text-sm text-[#999] hover:text-[#555] transition-colors mb-12">
+        <BackButton fallback="/" className="inline-flex items-center gap-2 text-sm text-[#999] hover:text-[#555] transition-colors mb-12">
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
             <path d="M9 3L5 7L9 11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
-          Zurück zur Startseite
-        </Link>
+          Zurück
+        </BackButton>
 
         <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-[#111] mb-2">Impressum</h1>
         <p className="text-sm text-[#999] mb-16">Anbieter- und Kontaktinformationen</p>

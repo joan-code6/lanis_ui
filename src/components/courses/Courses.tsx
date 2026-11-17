@@ -1,3 +1,5 @@
+import { startExperience } from '../../analytics/experience';
+import { useBackNavigation } from '../../hooks/useBackNavigation';
 import { capture } from '../../analytics/client';
 import { useCachedState } from '../../hooks/useCachedState';
 import { readPersonalCache, writePersonalCache } from '../../utils/accountDataWrites';
@@ -316,6 +318,7 @@ const Courses: React.FC = () => {
   const navigate = useNavigate();
   const { id: courseIdFromUrl } = useParams();
   const basePath = useBasePath();
+  const navigateBack = useBackNavigation(`${basePath}/courses`);
   const [viewMode, setViewMode] = useState<ViewMode>(courseIdFromUrl ? 'course-detail' : 'overview');
   const [courses, setCourses, hasCourses] = useCachedState<CourseEntry[]>('courses', () => {
     try {
@@ -384,6 +387,8 @@ const Courses: React.FC = () => {
 
   const loadCourses = async (signal?: AbortSignal) => {
     if (!token) return;
+    const done = startExperience('courses', () => signal?.aborted === true);
+    if (hasCourses || courses.length > 0) done(courses.length ? 'ready' : 'empty', true);
     const writeGeneration = captureAccountDataGeneration();
     setIsUpdating(true);
     try {
@@ -393,17 +398,20 @@ const Courses: React.FC = () => {
       if (response.success) {
         const courseList = normalizeCourseList(response);
         setCourses(courseList);
+        done(courseList.length ? 'ready' : 'empty');
         if (canWriteAccountData(writeGeneration)) {
           const cachedCourses = JSON.stringify(courseList);
           notifyDemoCacheWrite('courses_cache', cachedCourses);
           writePersonalCache('courses_cache', cachedCourses, writeGeneration);
         }
       } else {
+        done('failed');
         setError('Fehler beim Laden der Kurse.');
       }
       setIsLoading(false);
     } catch (error) {
       if (axios.isCancel(error)) return;
+      done('failed');
       console.error('Error loading courses:', error);
       setError('Fehler beim Laden der Kurse.');
       setIsLoading(false);
@@ -414,6 +422,8 @@ const Courses: React.FC = () => {
 
   const loadCourseDetails = async (courseId: string, signal?: AbortSignal) => {
     if (!token) return;
+    const done = startExperience('course-detail', () => signal?.aborted === true);
+    if (hasCourse && selectedCourse?.success) done('ready', true);
     setIsUpdating(true);
     const writeGeneration = captureAccountDataGeneration();
 
@@ -442,12 +452,15 @@ const Courses: React.FC = () => {
           }
         }
         setSelectedCourse(resolvedCourse);
+        done('ready');
       } else {
+        done('failed');
         setError('Fehler beim Laden der Kursdetails.');
       }
       setIsLoading(false);
     } catch (error) {
       if (axios.isCancel(error)) return;
+      done('failed');
       console.error('Error loading course details:', error);
       setError('Fehler beim Laden der Kursdetails.');
       setIsLoading(false);
@@ -580,7 +593,7 @@ const Courses: React.FC = () => {
     } else if (viewMode === 'weekly') {
       setViewMode('overview');
     } else {
-      navigate(`${basePath}/courses`);
+      navigateBack();
     }
   };
 
@@ -713,6 +726,7 @@ const Courses: React.FC = () => {
             {viewMode !== 'overview' && (
               <button
                 onClick={goBack}
+                aria-label="Zurück"
                 className="mr-4 p-2 text-surface-500 dark:text-surface-400 hover:text-surface-700 dark:text-surface-300 rounded-lg hover:bg-surface-200 dark:bg-surface-700"
               >
                 <ArrowLeftIcon className="h-5 w-5" />
@@ -941,8 +955,13 @@ const Courses: React.FC = () => {
                         {(entry.homework || (entry.files && entry.files.length > 0)) && (
                           <div className="flex items-center gap-2">
                             {entry.homework && (
-                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-secondary-100 text-secondary-800 dark:bg-secondary-900 dark:text-secondary-100">
-                                <ClockIcon className="h-3 w-3 mr-1" />
+                              <span className={clsx(
+                                  "inline-flex items-center px-2 py-1 rounded-full text-xs font-medium",
+                                  entry.homework_done
+                                    ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-100'
+                                    : 'bg-secondary-100 text-secondary-800 dark:bg-secondary-900 dark:text-secondary-100'
+                                )} title={entry.homework_done ? 'Hausaufgaben erledigt' : 'Hausaufgaben offen'}>
+                                {entry.homework_done ? <CheckCircleIcon className="h-3 w-3 mr-1" /> : <ClockIcon className="h-3 w-3 mr-1" />}
                                 HA
                               </span>
                             )}
@@ -1077,7 +1096,12 @@ const Courses: React.FC = () => {
                             
                             <div className="flex items-center gap-2">
                               {entry.homework && (
-                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-secondary-100 dark:bg-secondary-900/40 text-secondary-800 dark:text-secondary-100">
+                                <span className={clsx(
+                                  "inline-flex items-center px-2 py-1 rounded-full text-xs font-medium",
+                                  entry.homework_done
+                                    ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-100'
+                                    : 'bg-secondary-100 dark:bg-secondary-900/40 text-secondary-800 dark:text-secondary-100'
+                                )} title={entry.homework_done ? 'Hausaufgaben erledigt' : 'Hausaufgaben offen'}>
                                   HA
                                 </span>
                               )}

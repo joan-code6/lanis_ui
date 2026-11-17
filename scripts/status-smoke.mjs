@@ -8,7 +8,7 @@ let mode = 'up';
 const now = new Date().toISOString();
 const stats = { checks: 10, available_checks: 9, failed_checks: 1, unknown_checks: 0, uptime_percent: 90, coverage_percent: 50 };
 const makeStatus = () => ({ success: true, service: 'Schulportal Hessen', generated_at: now,
-  current: { status: mode === 'stale' ? 'down' : mode, checked_at: now, stale: mode === 'stale', features: [] },
+  current: { status: ['429', '503'].includes(mode) ? 'unknown' : mode === 'stale' ? 'down' : mode, error: ['429', '503'].includes(mode) ? 'rate_limited' : null, status_code: ['429', '503'].includes(mode) ? Number(mode) : null, checked_at: now, stale: mode === 'stale', features: [] },
   summary: { ...stats, period_days: 90 },
   summary_windows: Object.fromEntries(['24h', '7d', '30d', '90d'].map(key => [key, { ...stats, period_days: 1 }])),
   history_windows: Object.fromEntries([['24h', 48, 1800000], ['7d', 28, 21600000]].map(([key, count, width]) => [key, Array.from({ length: count }, (_, index) => ({ ...stats, start: new Date(Date.now() - (count - index) * width).toISOString(), end: new Date(Date.now() - (count - index - 1) * width).toISOString(), status: index === count - 2 ? 'degraded' : index === 0 ? 'unknown' : 'up' }))])),
@@ -71,11 +71,16 @@ try {
     assert.doesNotMatch(await page.$eval('main', el => el.textContent), /Resolved|955 Minuten/);
     await page.screenshot({ path: `/tmp/lanis-status-${width}.png`, fullPage: true });
   }
-  for (const state of ['down', 'stale', 'error']) {
+  for (const width of [375, 1440]) {
+    await page.setViewport({ width, height: 950 });
+  for (const state of ['429', '503', 'down', 'stale', 'error']) {
     mode = state;
     await page.goto(`${origin}/status`, { waitUntil: 'networkidle0' });
     const text = await page.$eval('main', el => el.textContent);
-    assert.match(text, state === 'down' ? /Nicht erreichbar/ : state === 'stale' ? /Unbekannt/ : /Status nicht verfügbar/);
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+    assert.doesNotMatch(text, /So wird gemessen|Die Abdeckung zeigt|Prüfung durch Anfragelimit pausiert/);
+    assert.match(text, state === '429' ? /Anfragelimit \(HTTP 429\)/ : state === '503' ? /Prüfung pausiert \(HTTP 503\)/ : state === 'down' ? /Nicht erreichbar/ : state === 'stale' ? /Unbekannt/ : /Status nicht verfügbar/);
+  }
   }
   mode = 'up';
   await page.goto(origin, { waitUntil: 'networkidle0' });
@@ -85,5 +90,5 @@ try {
   await page.evaluate(() => document.documentElement.classList.add('dark'));
   await page.screenshot({ path: '/tmp/lanis-status-dark.png', fullPage: true });
   assert.deepEqual(errors, []);
-  console.log('Status smoke passed: desktop/mobile, history selection, fresh/down/stale/unavailable, homepage, no runtime errors.');
+  console.log('Status smoke passed: desktop/mobile, history selection, HTTP 429/503 labels, fresh/down/stale/unavailable, homepage, no runtime errors.');
 } finally { await browser.close(); }

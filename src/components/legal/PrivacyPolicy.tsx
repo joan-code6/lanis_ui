@@ -1,6 +1,6 @@
+import BackButton from '../BackButton';
 import { AnalyticsControls } from '../../analytics/Analytics';
 import React from 'react';
-import { Link } from 'react-router-dom';
 import { API_BASE_URL } from '../../services/api';
 import { DEFAULT_API_BASE_URL, getCustomBackendUrl } from '../../utils/backendConfig';
 import SEO from '../seo/SEO';
@@ -17,12 +17,12 @@ const PrivacyPolicy: React.FC = () => {
         noindex
       />
       <div className="max-w-2xl mx-auto px-6 py-24">
-        <Link to="/" className="inline-flex items-center gap-2 text-sm text-[#999] hover:text-[#555] transition-colors mb-12">
+        <BackButton fallback="/" className="inline-flex items-center gap-2 text-sm text-[#999] hover:text-[#555] transition-colors mb-12">
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
             <path d="M9 3L5 7L9 11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
-          Zurück zur Startseite
-        </Link>
+          Zurück
+        </BackButton>
 
         <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-[#111] mb-2">Datenschutzerklärung</h1>
         <p className="text-sm text-[#999] mb-16">Informationen zur Datenverarbeitung durch Lanis UI und lanis_api</p>
@@ -343,7 +343,8 @@ const PrivacyPolicy: React.FC = () => {
           <div>
             <h2 className="text-base font-semibold text-[#111] mb-3">12. Optionale Nutzungsanalyse mit PostHog</h2>
             <p>Wenn du zustimmst, verwenden wir PostHog mit dem EU-Erfassungsdienst über unseren Proxy t.lanis.arg-server.de. Wir erfassen, welche Funktionen du nutzt, welche Schritte gelingen oder fehlschlagen und wie lange Seiten und API-Anfragen brauchen. Wir messen auch Web Vitals und unterscheiden zwischengespeicherte von frisch geladenen Ansichten. Dazu gehören bereinigte Seitennamen, fest definierte Aktionen, technische Statuswerte sowie Browser- und Sitzungskennungen. Nach der Anmeldung verknüpfen wir diese Ereignisse über eine zufällige Kontokennung mit deinem LANIS-Konto. Nur unser Backend kann diese Kennung deinem Konto zuordnen. So können wir wiederkehrende Probleme und die Nutzung über mehrere Geräte hinweg untersuchen.</p>
-            <p className="mt-2">PostHog erhält keine Zugangsdaten, Schulportal-Inhalte, Suchtexte oder ursprünglichen Fehlertexte. Bei Fehlern übertragen wir bereinigte Stackframes und eine Diagnosekennung an PostHog. Zusätzlich speichern wir im Backend bis zu sieben Tage technische Anfragekennungen, bereinigte Endpunktnamen, Statuswerte und Laufzeiten, damit berechtigte Administratoren Fehler einem Konto zuordnen können. Die ursprüngliche Fehlermeldung und der Stacktrace können Angaben aus dem aktuellen Anwendungskontext enthalten. Sie werden ausschließlich an unser authentifiziertes Backend gesendet, dort mit einem serverseitigen Schlüssel verschlüsselt und nach spätestens sieben Tagen gelöscht. Berechtigte Administratoren können diese Diagnose über die Kennung abrufen; der Zugriff wird protokolliert. Passwörter und Sitzungstoken werden nicht als Verschlüsselungsschlüssel verwendet.</p>
+            <p className="mt-2">Wir erfassen nach deiner Einwilligung außerdem grobe Herkunftskategorien (Google, Bing, andere Suche, soziale Netzwerke, verweisende Website oder unbekannt), die Kategorie der Einstiegsseite und ausschließlich vorab festgelegte Kampagnenkennungen unserer eigenen Links. Vollständige URLs, Referrer, fremde Domains und beliebige Linkparameter werden nicht übermittelt. Die erste beobachtete Herkunft und die aktuelle Sitzung werden erst nach Einwilligung lokal gespeichert und bei Widerruf, Abmeldung oder Kontowechsel gelöscht. Frühere Besuche ohne Einwilligung werden nicht nachträglich rekonstruiert. PostHog erhält keine Zugangsdaten, Schulportal-Inhalte, Suchtexte oder ursprünglichen Fehlertexte. Bei Fehlern übertragen wir bereinigte Stackframes und eine Diagnosekennung an PostHog. Zusätzlich speichern wir im Backend bis zu sieben Tage technische Anfragekennungen, bereinigte Endpunktnamen, Statuswerte und Laufzeiten, damit berechtigte Administratoren Fehler einem Konto zuordnen können. Die ursprüngliche Fehlermeldung und der Stacktrace können Angaben aus dem aktuellen Anwendungskontext enthalten. Sie werden ausschließlich an unser authentifiziertes Backend gesendet, dort mit einem serverseitigen Schlüssel verschlüsselt und nach spätestens sieben Tagen gelöscht. Berechtigte Administratoren können diese Diagnose über die Kennung abrufen; der Zugriff wird protokolliert. Passwörter und Sitzungstoken werden nicht als Verschlüsselungsschlüssel verwendet.</p>
+            <p className="mt-2">Für den technischen Betrieb senden wir außerdem bereinigte Serverprotokolle und Ablaufmessungen an PostHog in der EU. Sie enthalten feste Vorgangs- und Endpunktnamen, Statuswerte, Laufzeiten, Größenangaben sowie technische Anfrage- und Ablaufkennungen, aber keine Kontonamen, IP-Adressen, Zugangsdaten oder Schulportal-Inhalte. Nach deiner Analyse-Einwilligung können wir Browser-Anfragen zusätzlich über eine zufällige Sitzungskennung mit diesen Messungen verbinden. Die Browser-Analyse sendet auch bereinigte technische Protokolle; vollständige URLs, Konsolentexte und Formularwerte werden dabei nicht übermittelt.</p>
             <p className="mt-2">Sitzungsaufzeichnungen, automatisches Erfassen von Formularinhalten und Konsolenaufzeichnungen sind deaktiviert. Die IP-Adresse wird für die Netzwerkverbindung technisch verarbeitet; ihre Speicherung als Ereigniseigenschaft und die Standortanreicherung sind deaktiviert. Deine Entscheidung und die Analysekennung werden lokal gespeichert.</p>
             <p className="mt-2">Du kannst die Analyse ohne Einschränkung der App ablehnen oder hier jederzeit für die Zukunft widerrufen. Dabei löschen wir die lokale Analysekennung und stoppen weitere Analyseübertragungen. Bereits übermittelte Ereignisse werden dadurch nicht gelöscht. Bei einer Kontolöschung entfernen wir die Kontozuordnung und die Diagnosen in unserem Backend. Daten, die bereits bei PostHog liegen, werden dadurch nicht automatisch gelöscht. Die Analyse umfasst nur Nutzende mit Einwilligung und bildet deshalb nicht die gesamte Nutzung ab.</p>
             <a href="https://posthog.com/privacy" className="underline">Datenschutzhinweise von PostHog</a>
@@ -353,7 +354,7 @@ const PrivacyPolicy: React.FC = () => {
           <hr className="border-black/[0.06]" />
 
           <p className="text-xs text-[#bbb] pt-2">
-            Stand: 26. Oktober 2026
+            Stand: 16. November 2026
           </p>
         </section>
       </div>

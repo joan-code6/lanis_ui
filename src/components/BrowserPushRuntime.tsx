@@ -1,3 +1,4 @@
+import { analyticsEpoch, capture } from '../analytics/client';
 import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -25,12 +26,15 @@ export default function BrowserPushRuntime() {
     const repair = async () => {
       if (running || document.visibilityState !== 'visible' || !navigator.onLine
         || Date.now() < nextAttemptAt) return;
+      const epoch = analyticsEpoch();
       running = true;
       nextAttemptAt = Date.now() + 60_000;
       try {
         const result = await repairBrowserPushRegistration(token, controller.signal, isCurrent, repairState);
+        if (epoch === analyticsEpoch()) void capture('push_repair_completed', { outcome: result });
         if (result === 'registered' || result === 'inactive') nextAttemptAt = Date.now() + 15 * 60_000;
       } catch (error) {
+        if (!controller.signal.aborted && epoch === analyticsEpoch()) void capture('push_repair_completed', { outcome: 'failed' });
         if (!controller.signal.aborted) console.warn('Browser push registration will retry:', error);
       } finally {
         running = false;

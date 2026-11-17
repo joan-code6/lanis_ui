@@ -81,7 +81,7 @@ export const RoomCard: React.FC<{ room: VideoRoom; statusLive: boolean }> = ({ r
           </p>
         </div>
         {joinUrl && (
-          <a href={joinUrl} target="_blank" rel="noopener noreferrer" className="btn btn-primary self-start sm:self-auto">
+          <a data-analytics-action="video_join" href={joinUrl} target="_blank" rel="noopener noreferrer" className="btn btn-primary self-start sm:self-auto">
             Raum betreten
             <ArrowTopRightOnSquareIcon className="ml-2 h-4 w-4" />
           </a>

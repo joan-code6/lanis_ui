@@ -1,7 +1,7 @@
 import { AttendanceSkeleton } from '../shared/ModuleLoadingSkeletons';
 import React, { useMemo } from 'react';
 import { useCachedResource } from '../../hooks/useCachedResource';
-import { useNavigate } from 'react-router-dom';
+import { useBackNavigation } from '../../hooks/useBackNavigation';
 import {
   AcademicCapIcon,
   ArrowLeftIcon,
@@ -95,7 +95,7 @@ const CourseAttendanceCard: React.FC<{ course: AttendanceCourse }> = ({ course }
 const AttendanceOverview: React.FC = () => {
   const { token } = useAuth();
   const basePath = useBasePath();
-  const navigate = useNavigate();
+  const goBack = useBackNavigation(`${basePath}/courses`);
   const { data, loading, refreshing, error, refresh } = useCachedResource('attendance', async (signal, force) => {
     const response = await coursesAPI.getAttendanceOverview(token!, force, signal);
     if (!response.success) throw new Error(response.error || 'Die Anwesenheitsdaten konnten nicht geladen werden.');
@@ -134,8 +134,8 @@ const AttendanceOverview: React.FC = () => {
             <button
               type="button"
               className="mt-0.5 rounded-lg p-2 text-surface-500 transition-colors hover:bg-surface-100 hover:text-surface-800 dark:text-surface-400 dark:hover:bg-surface-800 dark:hover:text-white"
-              onClick={() => navigate(`${basePath}/courses`)}
-              aria-label="Zurück zu Mein Unterricht"
+              onClick={goBack}
+              aria-label="Zurück"
             >
               <ArrowLeftIcon className="h-5 w-5" />
             </button>

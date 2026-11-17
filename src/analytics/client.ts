@@ -1,3 +1,4 @@
+import { attributionProperties, clearAttribution } from './attribution';
 import type { PostHog } from 'posthog-js';
 import { AnalyticsEvent, engagedFeatures, routeLabel, sanitizeEventProperties } from './policy';
 
@@ -13,6 +14,7 @@ let accountContext: { token: string; backend: string; key: string; resolveToken?
 let accountRef: string | undefined;
 let identityPending: Promise<void> | undefined;
 let identityRetryAt = 0;
+let usableContentReported = false;
 const pendingRequests = new Set<AbortController>();
 
 export function configureAccountAnalytics(token: string | null, backend: string, key: string, resolveToken?: () => Promise<string | null>): void {
@@ -121,6 +123,24 @@ export function initializeAnalytics(): Promise<void> {
     if (!allowed() || currentGeneration !== generation) return;
     const instance = posthog.init(import.meta.env.VITE_POSTHOG_KEY, {
       api_host: import.meta.env.VITE_POSTHOG_HOST,
+      logs: {
+        serviceName: 'lanis_ui', environment: 'production',
+        serviceVersion: /^[a-f0-9]{7,40}$/.test(import.meta.env.VITE_APP_RELEASE || '') ? import.meta.env.VITE_APP_RELEASE : 'local',
+        captureConsoleLogs: false,
+        maxBufferSize: 25, maxLogsPerInterval: 100,
+        beforeSend: record => {
+          if (!allowed() || !['api_request_completed', 'operation_completed', '$exception'].includes(record.body)) return null;
+          const attributes = sanitizeEventProperties(record.body, record.attributes || {});
+          if (!attributes) return null;
+          // SDK context adds url.full after this hook. Override it explicitly;
+          // never let a raw course/incident path, query, hash or custom host escape.
+          const page = routeLabel(typeof record.attributes?.page === 'string' ? record.attributes.page : window.location.pathname);
+          return { body: record.body, level: record.level === 'error' ? 'error' : 'info',
+            ...(typeof record.trace_id === 'string' && /^[a-f0-9]{32}$/.test(record.trace_id) ? { trace_id: record.trace_id } : {}),
+            attributes: { ...attributes, page, 'url.full': page },
+          };
+        },
+      },
       persistence: 'localStorage', cross_subdomain_cookie: false,
       // Avoid retaining unsent batches after consent is withdrawn.
       request_batching: false,
@@ -131,10 +151,10 @@ export function initializeAnalytics(): Promise<void> {
       disable_session_recording: true, enable_recording_console_log: false,
       disable_surveys: true, disable_external_dependency_loading: true,
       advanced_disable_flags: true, advanced_disable_feature_flags: true,
-      save_referrer: false, store_google: false,
+      save_referrer: false, store_google: false, save_campaign_params: false,
       before_send: event => {
         if (!event || !allowed()) return null;
-        const properties = sanitizeEventProperties(event.event, event.properties || {});
+        const properties = sanitizeEventProperties(event.event, { ...event.properties, ...attributionProperties(), identity_kind: accountRef ? 'account' : 'browser' });
         if (!properties) return null;
         const page = routeLabel(typeof event.properties?.page === 'string'
           ? event.properties.page : window.location.pathname);
@@ -147,6 +167,11 @@ export function initializeAnalytics(): Promise<void> {
         properties.release = typeof release === 'string' && /^[a-f0-9]{7,40}$/.test(release) ? release : 'local';
         // Origin is omitted as custom backends / deployments can contain identifying data.
         event.properties = properties;
+        // identify() also places person properties outside event.properties.
+        // These may contain the SDK's raw initial URL and must be removed too.
+        delete event.$set;
+        delete event.$set_once;
+        delete event.$unset;
         return event;
       },
     });
@@ -167,6 +192,8 @@ export function setConsent(consent: Exclude<Consent, null>): void {
 }
 
 export function stopAnalytics(): void {
+  clearAttribution();
+  usableContentReported = false;
   generation++;
   for (const request of pendingRequests) request.abort();
   accountRef = undefined;
@@ -190,6 +217,17 @@ export async function capture(event: AnalyticsEvent, properties: Record<string, 
   if (!allowed() || currentGeneration !== generation) return;
   try {
     const result = client?.capture(event, { ...properties, page });
+    if (event === 'api_request_completed' || event === 'operation_completed') {
+      const safe = sanitizeEventProperties(event, properties);
+      if (safe) client?.captureLog?.({ body: event,
+        level: properties.outcome === 'success' ? 'info' : 'error', attributes: { ...safe, page },
+        ...(typeof safe.trace_id === 'string' ? { trace_id: safe.trace_id } : {}),
+      });
+    }
+    if (result && accountRef && event === 'content_ready' && properties.outcome === 'ready' && properties.resource !== 'other' && properties.resource !== 'vertretungsplan-options' && !usableContentReported) {
+      usableContentReported = true;
+      client?.capture('account_content_ready', { ...properties, page });
+    }
     const feature = engagedFeatures[event];
     if (result && feature) client?.capture('feature_engaged', { feature, page });
   } catch { /* Best effort. */ }
@@ -207,6 +245,8 @@ export async function capturePage(): Promise<void> {
 }
 
 export function resetAnalyticsIdentity(): void {
+  clearAttribution(allowed());
+  usableContentReported = false;
   generation++;
   for (const request of pendingRequests) request.abort();
   accountContext = undefined;
@@ -214,6 +254,7 @@ export function resetAnalyticsIdentity(): void {
   identityPending = undefined;
   identityRetryAt = 0;
   try {
+    client?.opt_out_capturing();
     client?.reset();
     if (allowed()) client?.opt_in_capturing({ captureEventName: false });
   } catch { /* Best effort. */ }
@@ -229,4 +270,13 @@ export async function captureSanitizedException(error: Error, properties: Record
   await synchronizeIdentity();
   if (!allowed() || epoch !== generation) return;
   try { client?.captureException(error, { ...properties, page }); } catch { /* Best effort. */ }
+}
+
+/** Return only the SDK session identifier; no identity/token is exposed. */
+export function analyticsSessionId(): string | undefined {
+  if (!allowed()) return undefined;
+  try {
+    const value = client?.get_session_id?.();
+    return typeof value === 'string' && /^[a-f0-9]{8}-[a-f0-9-]{27}$/.test(value) ? value : undefined;
+  } catch { return undefined; }
 }

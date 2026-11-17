@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { gunzipSync } from 'node:zlib';
 import puppeteer from 'puppeteer-core';
 
 // Vite development module with production analytics gate enabled only in this test.
@@ -6,6 +7,17 @@ import puppeteer from 'puppeteer-core';
 const browser=await puppeteer.launch({headless:true,executablePath:process.env.CHROME_PATH,args:['--no-sandbox']});
 try {
  const page=await browser.newPage();
+ const wireLogs=[];
+ const cdp=await page.createCDPSession();await cdp.send('Network.enable');
+ cdp.on('Network.requestWillBeSent', event=>{
+  if(event.request.method==='POST' && new URL(event.request.url).pathname.includes('/i/v1/logs')) {
+   const entries=event.request.postDataEntries || [];
+   if(entries.length) {
+    const bytes=Buffer.concat(entries.map(entry=>Buffer.from(entry.bytes || '', 'base64')));
+    wireLogs.push((bytes[0]===31 && bytes[1]===139 ? gunzipSync(bytes) : bytes).toString('utf8'));
+   }
+  }
+ });
  await page.setUserAgent('Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36');
  const outbound=[];const errors=[];const privateDiagnostics=[];let sdkURL;
  page.on('pageerror',e=>errors.push(e.message));
@@ -24,11 +36,14 @@ try {
    const body=url.endsWith('/identity')?{account_ref:request.headers()['x-session-token']==='fake-account-a'?'la_'+'a'.repeat(32):'la_'+'b'.repeat(32)}:{diagnostic_id:'ld_'+'d'.repeat(32)};
    await request.respond({status:200,contentType:'application/json',headers,body:JSON.stringify(body)});
   } else if(url.startsWith('http://127.0.0.1:5198/') || url.startsWith('data:')) await request.continue();
-  else {outbound.push({url,body:request.postData()});await request.respond({status:200,contentType:'application/json',headers:{'Access-Control-Allow-Origin':'*'},body:'{"status":1}'});}
+  else {outbound.push({url,method:request.method(),body:request.postData()});await request.respond({status:200,contentType:'application/json',headers:{'Access-Control-Allow-Origin':'*','Access-Control-Allow-Headers':'content-type,authorization,x-posthog-token','Access-Control-Allow-Methods':'GET,POST,OPTIONS'},body:'{"status":1}'});}
  });
- await page.goto('http://127.0.0.1:5198/privacy-policy?private=SECRET',{waitUntil:'networkidle0'});
+ await page.goto('http://127.0.0.1:5198/privacy-policy?private=SECRET&utm_source=community&utm_medium=social&utm_campaign=community',{waitUntil:'networkidle0'});
  assert.equal(outbound.some(r=>(new URL(r.url).hostname === 't.lanis.arg-server.de' || new URL(r.url).hostname.endsWith('.posthog.com'))),false,'no PostHog traffic before consent');
+ assert.equal(await page.evaluate(()=>localStorage.getItem('lanis_analytics_first_v1')),null);
+ assert.equal(await page.evaluate(()=>sessionStorage.getItem('lanis_analytics_session_v1')),null);
  assert.equal(await page.evaluate(()=>Object.keys(localStorage).some(k=>k.startsWith('ph_'))),false);
+ assert.equal(await page.evaluate(()=>Object.keys(localStorage).some(k=>k.startsWith('lanis_analytics_first'))),false);
  await page.evaluate(async()=>{
   const client=await import('/src/analytics/client.ts');client.setConsent('granted');await client.initializeAnalytics();
  });
@@ -52,13 +67,34 @@ try {
  assert.equal(typeof event.properties.distinct_id,'string','ingestion retains random distinct ID');
  assert.equal(typeof event.properties.$session_id,'string','session metadata retained');
  assert.equal(event.properties.page,'/privacy-policy');assert.equal(event.properties.$geoip_disable,true);
+ assert.equal(event.properties.first_campaign,'community');assert.equal(event.properties.session_source,'unknown');
  assert.equal(event.properties.$current_url,undefined);assert.equal(event.properties.$set,undefined);
  await page.evaluate(async sdkURL=>{const {default:ph}=await import(sdkURL);if(ph.config.request_batching!==false)throw new Error('Batching must be disabled');ph.capture('message_replied');},sdkURL);
  await new Promise(r=>setTimeout(r,300));
+ // Exercise the real native Logs pipeline with a private URL/query and dirty attributes.
+ await page.evaluate(async sdkURL=>{
+  const {default:ph}=await import(sdkURL);const c=await import('/src/analytics/client.ts');
+  history.replaceState(null, '', '/courses/PRIVATE?token=SECRET#SECRET');
+  await c.capture('api_request_completed', { endpoint:'/meinunterricht/course/PRIVATE', method:'GET', status:200,
+    outcome:'success', duration_ms:12, trace_id:'a'.repeat(32), password:'SECRET' });
+  ph.captureLog({body:'SECRET console output',attributes:{password:'SECRET'}});
+  await ph.logs.flush();
+ },sdkURL);
+ await new Promise(r=>setTimeout(r,300));
+ const logRequests=outbound.filter(r=>new URL(r.url).pathname.includes('/i/v1/logs'));
+ assert.ok(logRequests.length,'structured browser Logs really reach the ingestion transport');
+ assert.ok(wireLogs.length,'inspect decompressed OTLP log payloads');
+ assert.equal(JSON.stringify(wireLogs).includes('SECRET'),false,'Logs remove content and override SDK URL context');
+ assert.equal(JSON.stringify(wireLogs).includes('PRIVATE'),false,'Logs remove dynamic identifiers');
+ assert.ok(JSON.stringify(wireLogs).includes('api_request_completed'));
+ // Queued records must be discarded when consent/account identity changes.
+ await page.evaluate(async sdkURL=>{const {default:ph}=await import(sdkURL);ph.captureLog({body:'operation_completed',attributes:{operation:'message_send',outcome:'success'}});},sdkURL);
  const before=outbound.length;
  await page.evaluate(async()=>{const c=await import('/src/analytics/client.ts');c.setConsent('denied');await c.capture('message_sent');});
  await new Promise(r=>setTimeout(r,3500));assert.equal(outbound.length,before,'no queued or new captures after withdrawal');
  assert.equal(await page.evaluate(()=>Object.keys(localStorage).some(k=>k.startsWith('ph_') && k.endsWith('_posthog'))),false,'withdrawal clears identity storage');
+ assert.equal(await page.evaluate(()=>localStorage.getItem('lanis_analytics_first_v1')),null);
+ assert.equal(await page.evaluate(()=>sessionStorage.getItem('lanis_analytics_session_v1')),null);
  await page.evaluate(async sdkURL=>{const c=await import('/src/analytics/client.ts');c.setConsent('granted');await c.capture('message_replied');const {default:ph}=await import(sdkURL);ph.capture('message_sent',{}, {send_instantly:true});},sdkURL);
  await new Promise(r=>setTimeout(r,300));assert.ok(outbound.length>before,'capture resumes after regrant');
  const linked=await page.evaluate(async sdkURL=>{
@@ -76,6 +112,7 @@ try {
  const logins=linked.filter(e=>e.event==='login_succeeded');
  assert.equal(logins[0].properties.distinct_id,'la_'+'a'.repeat(32));
  assert.equal(logins[1].properties.distinct_id,'la_'+'b'.repeat(32));
+ const privatePaths=[];const visit=(value,path)=>{if(typeof value==='string' && value.includes('PRIVATE'))privatePaths.push(path);else if(value && typeof value==='object')for(const [key,item] of Object.entries(value))visit(item,path+'.'+key);};visit(linked,'events');if(privatePaths.length)console.log('Unexpected private fields:',privatePaths);
  assert.equal(JSON.stringify(linked).includes('PRIVATE'),false,'private text never enters PostHog');
  const exception=linked.find(e=>e.event==='$exception');assert.ok(exception,'native PostHog error tracking event');
  assert.equal(exception.properties.diagnostic_id,'ld_'+'d'.repeat(32));

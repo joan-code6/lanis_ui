@@ -1,3 +1,5 @@
+import { startExperience } from '../../analytics/experience';
+import { useBackNavigation } from '../../hooks/useBackNavigation';
 import { useCachedState } from '../../hooks/useCachedState';
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -307,7 +309,7 @@ const SubmissionDetailView: React.FC<{
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex min-w-0 items-start gap-3">
-          <button type="button" onClick={onBack} className="mt-1 rounded-lg p-2 text-surface-500 hover:bg-surface-200 hover:text-surface-800 dark:text-surface-400 dark:hover:bg-surface-800 dark:hover:text-surface-100" aria-label="Zurück zu den Abgaben">
+          <button type="button" onClick={onBack} className="mt-1 rounded-lg p-2 text-surface-500 hover:bg-surface-200 hover:text-surface-800 dark:text-surface-400 dark:hover:bg-surface-800 dark:hover:text-surface-100" aria-label="Zurück">
             <ArrowLeftIcon className="h-5 w-5" />
           </button>
           <div className="min-w-0">
@@ -326,7 +328,7 @@ const SubmissionDetailView: React.FC<{
         <section className="card overflow-hidden p-0">
           <div className="border-b border-surface-200 px-5 py-4 dark:border-surface-800">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <div><p className="text-xs font-semibold uppercase tracking-[0.14em] text-surface-500">Abgabe</p><h2 className="mt-1 text-xl font-semibold text-surface-900 dark:text-surface-100">Deine Dateien</h2></div>
+              <h2 className="section-title">Deine Dateien</h2>
               <SubmissionStatus status={detail.status} />
             </div>
           </div>
@@ -337,14 +339,14 @@ const SubmissionDetailView: React.FC<{
                 key={file.index}
                 name={file.name}
                 meta={[file.time, file.comment].filter(Boolean).join(' · ') || null}
-                action={<div className="flex shrink-0 items-center gap-1"><button type="button" className="rounded-lg p-2 text-surface-500 hover:bg-surface-100 hover:text-primary-700 dark:hover:bg-surface-800 dark:hover:text-primary-300" onClick={() => void download(file.download_ref, file.name)} disabled={Boolean(downloading)} title="Datei herunterladen"><ArrowDownTrayIcon className={clsx('h-4 w-4', downloading === file.download_ref && 'animate-bounce')} /></button>{detail.can_delete && <button type="button" className="rounded-lg p-2 text-surface-500 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/40 dark:hover:text-red-300" onClick={() => setDeleteTarget(file.index)} disabled={busy || refreshing || Boolean(refreshError)} aria-label={`${file.name} löschen`} title="Datei löschen"><TrashIcon className="h-4 w-4" /></button>}</div>}
+                action={<div className="flex shrink-0 items-center gap-1"><button type="button" className="rounded-lg p-2 text-surface-500 hover:bg-surface-100 hover:text-primary-700 dark:hover:bg-surface-800 dark:hover:text-primary-300" onClick={() => void download(file.download_ref, file.name)} disabled={Boolean(downloading)} title="Datei herunterladen"><ArrowDownTrayIcon className={clsx('h-4 w-4', downloading === file.download_ref && 'animate-bounce')} /></button>{detail.can_delete && <button type="button" className="rounded-lg p-2 text-surface-500 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/40 dark:hover:text-red-300" data-analytics-action="submission_delete" onClick={() => setDeleteTarget(file.index)} disabled={busy || refreshing || Boolean(refreshError)} aria-label={`${file.name} löschen`} title="Datei löschen"><TrashIcon className="h-4 w-4" /></button>}</div>}
               />
             ))}</div>}
 
             {uploadAllowed ? (
               <div className="space-y-4 pt-2">
                 <input ref={inputRef} type="file" className="hidden" multiple={multipleFilesAllowed} accept={accept} onChange={chooseFiles} disabled={busy || refreshing || Boolean(refreshError)} />
-                <button type="button" onClick={() => inputRef.current?.click()} disabled={busy || refreshing || Boolean(refreshError)} className="flex w-full items-center gap-3 rounded-lg border border-dashed border-surface-300 px-4 py-5 text-left text-surface-700 transition-colors hover:border-primary-400 hover:bg-surface-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 disabled:cursor-not-allowed dark:border-surface-700 dark:text-surface-200 dark:hover:border-primary-500 dark:hover:bg-surface-800/50">
+                <button type="button" data-analytics-action="submission_choose" onClick={() => inputRef.current?.click()} disabled={busy || refreshing || Boolean(refreshError)} className="flex w-full items-center gap-3 rounded-lg border border-dashed border-surface-300 px-4 py-5 text-left text-surface-700 transition-colors hover:border-primary-400 hover:bg-surface-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 disabled:cursor-not-allowed dark:border-surface-700 dark:text-surface-200 dark:hover:border-primary-500 dark:hover:bg-surface-800/50">
                   <DocumentArrowUpIcon className="h-6 w-6 shrink-0 text-surface-500 dark:text-surface-400" />
                   <span className="min-w-0">
                     <span className="block font-semibold">Dateien auswählen</span>
@@ -353,23 +355,22 @@ const SubmissionDetailView: React.FC<{
                 </button>
                 {selectedFiles.length > 0 && <div>{selectedFiles.map(file => <FileRow key={`${file.name}-${file.lastModified}`} name={file.name} meta={formatBytes(file.size)} action={<button type="button" onClick={() => { setSelectedFiles(current => current.filter(item => item !== file)); if (inputRef.current) inputRef.current.value = ''; }} className="rounded-lg p-2 text-surface-500 hover:bg-surface-200 dark:hover:bg-surface-800" disabled={busy || refreshing || Boolean(refreshError)} aria-label={`${file.name} entfernen`}><XMarkIcon className="h-4 w-4" /></button>} />)}</div>}
                 <div className="flex justify-end">
-                  <button type="button" onClick={() => void upload()} disabled={!selectedFiles.length || busy || refreshing} className="btn btn-primary w-full disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto">{busy ? 'Wird hochgeladen …' : 'Hochladen'}</button>
+                  <button type="button" data-analytics-action="submission_upload" onClick={() => void upload()} disabled={!selectedFiles.length || busy || refreshing} className="btn btn-primary w-full disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto">{busy ? 'Wird hochgeladen …' : 'Hochladen'}</button>
                 </div>
               </div>
-            ) : (
-              <div className="mt-5 flex items-start gap-2 rounded-xl bg-surface-100 px-4 py-3 text-sm text-surface-600 dark:bg-surface-800 dark:text-surface-300"><InformationCircleIcon className="mt-0.5 h-5 w-5 shrink-0" />{attemptClosed ? 'Diese Abgabe erlaubt keine weiteren Versuche.' : detail.status === 'closed' ? 'Die Abgabe ist geschlossen.' : 'Das Hochladen ist derzeit nicht möglich.'}</div>
-            )}
+            ) : detail.status !== 'closed' ? (
+              <div className="mt-5 flex items-start gap-2 rounded-xl bg-surface-100 px-4 py-3 text-sm text-surface-600 dark:bg-surface-800 dark:text-surface-300"><InformationCircleIcon className="mt-0.5 h-5 w-5 shrink-0" />{attemptClosed ? 'Diese Abgabe erlaubt keine weiteren Versuche.' : 'Das Hochladen ist derzeit nicht möglich.'}</div>
+            ) : null}
             {uploadStatuses.length > 0 && <UploadResults statuses={uploadStatuses} />}
           </div>
         </section>
 
         <aside className="space-y-4">
-          <section className="card">
-            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-surface-500">Zeitfenster</p>
-            <dl className="mt-4 space-y-3 text-sm"><div><dt className="text-surface-500">Start</dt><dd className="font-medium text-surface-900 dark:text-surface-100">{detail.start || 'Nicht angegeben'}</dd></div><div><dt className="text-surface-500">Frist</dt><dd className="font-medium text-surface-900 dark:text-surface-100">{detail.deadline || 'Nicht angegeben'}</dd></div><div><dt className="text-surface-500">Automatische Löschung</dt><dd className="font-medium text-surface-900 dark:text-surface-100">{detail.automatic_deletion || 'Nicht angegeben'}</dd></div></dl>
+          <section className="card" aria-label="Zeitfenster">
+            <dl className="space-y-3 text-sm"><div><dt className="text-surface-500">Start</dt><dd className="font-medium text-surface-900 dark:text-surface-100">{detail.start || 'Nicht angegeben'}</dd></div><div><dt className="text-surface-500">Frist</dt><dd className="font-medium text-surface-900 dark:text-surface-100">{detail.deadline || 'Nicht angegeben'}</dd></div><div><dt className="text-surface-500">Automatische Löschung</dt><dd className="font-medium text-surface-900 dark:text-surface-100">{detail.automatic_deletion || 'Nicht angegeben'}</dd></div></dl>
           </section>
-          <section className="card"><p className="text-xs font-semibold uppercase tracking-[0.14em] text-surface-500">Regeln</p><dl className="mt-4 space-y-3 text-sm"><div><dt className="text-surface-500">Dateitypen</dt><dd className="font-medium text-surface-900 dark:text-surface-100">{detail.allowed_file_types.join(', ') || 'Portal entscheidet'}</dd></div><div><dt className="text-surface-500">Maximale Größe</dt><dd className="font-medium text-surface-900 dark:text-surface-100">{detail.max_file_size || 'Portal entscheidet'}</dd></div><div><dt className="text-surface-500">Mehrere Dateien</dt><dd className="font-medium text-surface-900 dark:text-surface-100">{detail.allows_multiple_files == null ? 'Nicht angegeben' : detail.allows_multiple_files ? 'Erlaubt' : 'Nicht erlaubt'}</dd></div><div><dt className="text-surface-500">Weitere Versuche</dt><dd className="font-medium text-surface-900 dark:text-surface-100">{detail.allows_multiple_attempts == null ? 'Nicht angegeben' : detail.allows_multiple_attempts ? 'Erlaubt' : 'Nicht erlaubt'}</dd></div></dl>{detail.additional_text && <p className="mt-4 rounded-lg bg-primary-50 px-3 py-2 text-sm text-primary-900 dark:bg-primary-950/40 dark:text-primary-100">{detail.additional_text}</p>}</section>
-          {detail.public_files.length > 0 && <section className="card"><p className="text-xs font-semibold uppercase tracking-[0.14em] text-surface-500">Weitere Dateien</p><div className="mt-3 space-y-2">{detail.public_files.map(file => <FileRow key={file.index} name={file.name} meta={[file.person, file.time, file.comment].filter(Boolean).join(' · ') || null} action={<button type="button" onClick={() => void download(file.download_ref, file.name)} className="rounded-lg p-2 text-surface-500 hover:bg-surface-100 hover:text-primary-700 dark:hover:bg-surface-800 dark:hover:text-primary-300" disabled={Boolean(downloading)} title="Datei herunterladen"><ArrowDownTrayIcon className="h-4 w-4" /></button>} />)}</div></section>}
+          <section className="card" aria-label="Abgaberegeln"><dl className="space-y-3 text-sm"><div><dt className="text-surface-500">Dateitypen</dt><dd className="font-medium text-surface-900 dark:text-surface-100">{detail.allowed_file_types.join(', ') || 'Portal entscheidet'}</dd></div><div><dt className="text-surface-500">Maximale Größe</dt><dd className="font-medium text-surface-900 dark:text-surface-100">{detail.max_file_size || 'Portal entscheidet'}</dd></div><div><dt className="text-surface-500">Mehrere Dateien</dt><dd className="font-medium text-surface-900 dark:text-surface-100">{detail.allows_multiple_files == null ? 'Nicht angegeben' : detail.allows_multiple_files ? 'Erlaubt' : 'Nicht erlaubt'}</dd></div><div><dt className="text-surface-500">Weitere Versuche</dt><dd className="font-medium text-surface-900 dark:text-surface-100">{detail.allows_multiple_attempts == null ? 'Nicht angegeben' : detail.allows_multiple_attempts ? 'Erlaubt' : 'Nicht erlaubt'}</dd></div></dl>{detail.additional_text && <p className="mt-4 rounded-lg bg-primary-50 px-3 py-2 text-sm text-primary-900 dark:bg-primary-950/40 dark:text-primary-100">{detail.additional_text}</p>}</section>
+          {detail.public_files.length > 0 && <section className="card"><h2 className="section-title">Weitere Dateien</h2><div className="mt-3 space-y-2">{detail.public_files.map(file => <FileRow key={file.index} name={file.name} meta={[file.person, file.time, file.comment].filter(Boolean).join(' · ') || null} action={<button type="button" onClick={() => void download(file.download_ref, file.name)} className="rounded-lg p-2 text-surface-500 hover:bg-surface-100 hover:text-primary-700 dark:hover:bg-surface-800 dark:hover:text-primary-300" disabled={Boolean(downloading)} title="Datei herunterladen"><ArrowDownTrayIcon className="h-4 w-4" /></button>} />)}</div></section>}
         </aside>
       </div>
 
@@ -419,19 +420,24 @@ const Submissions: React.FC = () => {
   }, [id]);
 
   const listPath = `${basePath}/courses/submissions`;
+  const goBack = useBackNavigation(id ? listPath : `${basePath}/courses`);
   const openSubmission = (submission: Submission) => navigate(`${listPath}/${encodeURIComponent(submission.detail_ref || submission.id)}`);
 
   const loadList = async (signal?: AbortSignal, refresh = false) => {
     if (!token || currentIdRef.current) return;
     const requestId = ++listRequestRef.current;
+    const done = startExperience('submissions', () => Boolean(signal?.aborted) || requestId !== listRequestRef.current || Boolean(currentIdRef.current));
+    if (hasSubmissions) done(submissions.length ? 'ready' : 'empty', true);
     setLoading(true);
     setError('');
     try {
       const response = await coursesAPI.getSubmissions(token, signal, refresh || hasSubmissions);
       if (requestId !== listRequestRef.current || signal?.aborted || currentIdRef.current) return;
+      done(response.success ? response.submissions?.length ? 'ready' : 'empty' : 'failed');
       if (response.success) setSubmissions(response.submissions || []);
       else setError(response.error || 'Die Abgaben konnten nicht geladen werden.');
     } catch (loadError) {
+      if (!axios.isCancel(loadError)) done('failed');
       if (requestId === listRequestRef.current && !currentIdRef.current && !axios.isCancel(loadError)) setError('Die Abgaben konnten nicht geladen werden.');
     } finally {
       if (requestId === listRequestRef.current && !currentIdRef.current && !signal?.aborted) setLoading(false);
@@ -442,14 +448,18 @@ const Submissions: React.FC = () => {
     if (!token || currentIdRef.current !== detailRef) return;
     const requestId = detailRequestRef.current + 1;
     detailRequestRef.current = requestId;
+    const done = startExperience('submission-detail', () => Boolean(signal?.aborted) || requestId !== detailRequestRef.current || currentIdRef.current !== detailRef);
+    if (hasDetail && detail) done('ready', true);
     setLoading(true);
     setError('');
     try {
       const response = await coursesAPI.getSubmission(token, detailRef, signal, refresh || hasDetail);
       if (requestId !== detailRequestRef.current || signal?.aborted || currentIdRef.current !== detailRef) return;
+      done(response.success && response.submission ? 'ready' : 'failed');
       if (response.success && response.submission) setDetail(response.submission);
       else setError(response.error || 'Die Abgabe konnte nicht geladen werden.');
     } catch (loadError) {
+      if (!axios.isCancel(loadError)) done('failed');
       if (requestId === detailRequestRef.current && currentIdRef.current === detailRef && !axios.isCancel(loadError)) {
         setError('Die Abgabe konnte nicht geladen werden.');
       }
@@ -498,7 +508,7 @@ const Submissions: React.FC = () => {
   return (
     <div className="min-h-full min-w-0 module-padding">
       {isDetail && detail && detail.detail_ref === id ? (
-        <SubmissionDetailView key={id} detail={detail} refreshError={error} refreshing={loading || detailNavigationPending} token={token} onBack={() => navigate(listPath)} onRefresh={async () => { if (id && currentIdRef.current === id) await loadDetail(id, undefined, true); }} />
+        <SubmissionDetailView key={id} detail={detail} refreshError={error} refreshing={loading || detailNavigationPending} token={token} onBack={goBack} onRefresh={async () => { if (id && currentIdRef.current === id) await loadDetail(id, undefined, true); }} />
       ) : !isDetail ? (
         <div className="mx-auto max-w-7xl space-y-6">
           <header className="page-header page-header-actions">
@@ -506,8 +516,8 @@ const Submissions: React.FC = () => {
               <button
                 type="button"
                 className="mt-0.5 rounded-lg p-2 text-surface-500 transition-colors hover:bg-surface-100 hover:text-surface-800 dark:text-surface-400 dark:hover:bg-surface-800 dark:hover:text-white"
-                onClick={() => navigate(`${basePath}/courses`)}
-                aria-label="Zurück zu Mein Unterricht"
+                onClick={goBack}
+                aria-label="Zurück"
               >
                 <ArrowLeftIcon className="h-5 w-5" />
               </button>
@@ -567,7 +577,7 @@ const Submissions: React.FC = () => {
       ) : loading || detailNavigationPending ? (
         <div className="mx-auto max-w-5xl space-y-4"><div className="h-10 w-2/3 animate-pulse rounded bg-surface-200 dark:bg-surface-800" /><div className="card h-96 animate-pulse bg-surface-100 dark:bg-surface-900" /></div>
       ) : (
-        <div className="mx-auto max-w-5xl"><div role="alert" className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900/70 dark:bg-red-950/30 dark:text-red-200"><ExclamationCircleIcon className="mt-0.5 h-5 w-5 shrink-0" />{error || 'Die Abgabe konnte nicht geladen werden.'}</div><button type="button" className="btn btn-secondary mt-4" onClick={() => navigate(listPath)}>Zurück zu den Abgaben</button></div>
+        <div className="mx-auto max-w-5xl"><div role="alert" className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900/70 dark:bg-red-950/30 dark:text-red-200"><ExclamationCircleIcon className="mt-0.5 h-5 w-5 shrink-0" />{error || 'Die Abgabe konnte nicht geladen werden.'}</div><button type="button" className="btn btn-secondary mt-4" onClick={goBack}>Zurück</button></div>
       )}
     </div>
   );
