@@ -1,3 +1,4 @@
+import { telemetryFetch } from '../../analytics/requestTelemetry';
 import BackButton from '../BackButton';
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
@@ -21,7 +22,7 @@ export default function IncidentPage() {
     setData(null);
     setError(false);
     const timeout = window.setTimeout(() => controller.abort(), 10000);
-    void fetch(`${getApiBaseUrl()}/status/incident/${encodeURIComponent(id || '')}`, {
+    void telemetryFetch(`${getApiBaseUrl()}/status/incident/${encodeURIComponent(id || '')}`, '/status/incident/:id', {
       signal: controller.signal, credentials: 'omit',
     }).then(response => {
       if (!response.ok) throw new Error('Incident unavailable');

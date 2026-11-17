@@ -1,3 +1,4 @@
+import { capture } from './analytics/client'
 import AnalyticsErrorBoundary from './analytics/AnalyticsErrorBoundary'
 import React from 'react'
 import ReactDOM from 'react-dom/client'
@@ -33,7 +34,8 @@ ReactDOM.createRoot(appRoot).render(
 
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' }).catch((error) => {
+    navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' }).then(() => { void capture('service_worker_registration', { outcome: 'registered' }) }).catch((error) => {
+      void capture('service_worker_registration', { outcome: 'failed' })
       console.warn('Service worker registration failed:', error)
     })
   })

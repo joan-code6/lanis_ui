@@ -1,3 +1,4 @@
+import { startExperience } from '../../analytics/experience';
 import { useBackNavigation } from '../../hooks/useBackNavigation';
 import { useCachedState } from '../../hooks/useCachedState';
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
@@ -338,14 +339,14 @@ const SubmissionDetailView: React.FC<{
                 key={file.index}
                 name={file.name}
                 meta={[file.time, file.comment].filter(Boolean).join(' · ') || null}
-                action={<div className="flex shrink-0 items-center gap-1"><button type="button" className="rounded-lg p-2 text-surface-500 hover:bg-surface-100 hover:text-primary-700 dark:hover:bg-surface-800 dark:hover:text-primary-300" onClick={() => void download(file.download_ref, file.name)} disabled={Boolean(downloading)} title="Datei herunterladen"><ArrowDownTrayIcon className={clsx('h-4 w-4', downloading === file.download_ref && 'animate-bounce')} /></button>{detail.can_delete && <button type="button" className="rounded-lg p-2 text-surface-500 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/40 dark:hover:text-red-300" onClick={() => setDeleteTarget(file.index)} disabled={busy || refreshing || Boolean(refreshError)} aria-label={`${file.name} löschen`} title="Datei löschen"><TrashIcon className="h-4 w-4" /></button>}</div>}
+                action={<div className="flex shrink-0 items-center gap-1"><button type="button" className="rounded-lg p-2 text-surface-500 hover:bg-surface-100 hover:text-primary-700 dark:hover:bg-surface-800 dark:hover:text-primary-300" onClick={() => void download(file.download_ref, file.name)} disabled={Boolean(downloading)} title="Datei herunterladen"><ArrowDownTrayIcon className={clsx('h-4 w-4', downloading === file.download_ref && 'animate-bounce')} /></button>{detail.can_delete && <button type="button" className="rounded-lg p-2 text-surface-500 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/40 dark:hover:text-red-300" data-analytics-action="submission_delete" onClick={() => setDeleteTarget(file.index)} disabled={busy || refreshing || Boolean(refreshError)} aria-label={`${file.name} löschen`} title="Datei löschen"><TrashIcon className="h-4 w-4" /></button>}</div>}
               />
             ))}</div>}
 
             {uploadAllowed ? (
               <div className="space-y-4 pt-2">
                 <input ref={inputRef} type="file" className="hidden" multiple={multipleFilesAllowed} accept={accept} onChange={chooseFiles} disabled={busy || refreshing || Boolean(refreshError)} />
-                <button type="button" onClick={() => inputRef.current?.click()} disabled={busy || refreshing || Boolean(refreshError)} className="flex w-full items-center gap-3 rounded-lg border border-dashed border-surface-300 px-4 py-5 text-left text-surface-700 transition-colors hover:border-primary-400 hover:bg-surface-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 disabled:cursor-not-allowed dark:border-surface-700 dark:text-surface-200 dark:hover:border-primary-500 dark:hover:bg-surface-800/50">
+                <button type="button" data-analytics-action="submission_choose" onClick={() => inputRef.current?.click()} disabled={busy || refreshing || Boolean(refreshError)} className="flex w-full items-center gap-3 rounded-lg border border-dashed border-surface-300 px-4 py-5 text-left text-surface-700 transition-colors hover:border-primary-400 hover:bg-surface-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 disabled:cursor-not-allowed dark:border-surface-700 dark:text-surface-200 dark:hover:border-primary-500 dark:hover:bg-surface-800/50">
                   <DocumentArrowUpIcon className="h-6 w-6 shrink-0 text-surface-500 dark:text-surface-400" />
                   <span className="min-w-0">
                     <span className="block font-semibold">Dateien auswählen</span>
@@ -354,7 +355,7 @@ const SubmissionDetailView: React.FC<{
                 </button>
                 {selectedFiles.length > 0 && <div>{selectedFiles.map(file => <FileRow key={`${file.name}-${file.lastModified}`} name={file.name} meta={formatBytes(file.size)} action={<button type="button" onClick={() => { setSelectedFiles(current => current.filter(item => item !== file)); if (inputRef.current) inputRef.current.value = ''; }} className="rounded-lg p-2 text-surface-500 hover:bg-surface-200 dark:hover:bg-surface-800" disabled={busy || refreshing || Boolean(refreshError)} aria-label={`${file.name} entfernen`}><XMarkIcon className="h-4 w-4" /></button>} />)}</div>}
                 <div className="flex justify-end">
-                  <button type="button" onClick={() => void upload()} disabled={!selectedFiles.length || busy || refreshing} className="btn btn-primary w-full disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto">{busy ? 'Wird hochgeladen …' : 'Hochladen'}</button>
+                  <button type="button" data-analytics-action="submission_upload" onClick={() => void upload()} disabled={!selectedFiles.length || busy || refreshing} className="btn btn-primary w-full disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto">{busy ? 'Wird hochgeladen …' : 'Hochladen'}</button>
                 </div>
               </div>
             ) : detail.status !== 'closed' ? (
@@ -425,14 +426,18 @@ const Submissions: React.FC = () => {
   const loadList = async (signal?: AbortSignal, refresh = false) => {
     if (!token || currentIdRef.current) return;
     const requestId = ++listRequestRef.current;
+    const done = startExperience('submissions', () => Boolean(signal?.aborted) || requestId !== listRequestRef.current || Boolean(currentIdRef.current));
+    if (hasSubmissions) done(submissions.length ? 'ready' : 'empty', true);
     setLoading(true);
     setError('');
     try {
       const response = await coursesAPI.getSubmissions(token, signal, refresh || hasSubmissions);
       if (requestId !== listRequestRef.current || signal?.aborted || currentIdRef.current) return;
+      done(response.success ? response.submissions?.length ? 'ready' : 'empty' : 'failed');
       if (response.success) setSubmissions(response.submissions || []);
       else setError(response.error || 'Die Abgaben konnten nicht geladen werden.');
     } catch (loadError) {
+      if (!axios.isCancel(loadError)) done('failed');
       if (requestId === listRequestRef.current && !currentIdRef.current && !axios.isCancel(loadError)) setError('Die Abgaben konnten nicht geladen werden.');
     } finally {
       if (requestId === listRequestRef.current && !currentIdRef.current && !signal?.aborted) setLoading(false);
@@ -443,14 +448,18 @@ const Submissions: React.FC = () => {
     if (!token || currentIdRef.current !== detailRef) return;
     const requestId = detailRequestRef.current + 1;
     detailRequestRef.current = requestId;
+    const done = startExperience('submission-detail', () => Boolean(signal?.aborted) || requestId !== detailRequestRef.current || currentIdRef.current !== detailRef);
+    if (hasDetail && detail) done('ready', true);
     setLoading(true);
     setError('');
     try {
       const response = await coursesAPI.getSubmission(token, detailRef, signal, refresh || hasDetail);
       if (requestId !== detailRequestRef.current || signal?.aborted || currentIdRef.current !== detailRef) return;
+      done(response.success && response.submission ? 'ready' : 'failed');
       if (response.success && response.submission) setDetail(response.submission);
       else setError(response.error || 'Die Abgabe konnte nicht geladen werden.');
     } catch (loadError) {
+      if (!axios.isCancel(loadError)) done('failed');
       if (requestId === detailRequestRef.current && currentIdRef.current === detailRef && !axios.isCancel(loadError)) {
         setError('Die Abgabe konnte nicht geladen werden.');
       }

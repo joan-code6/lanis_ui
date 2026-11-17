@@ -137,11 +137,12 @@ console.log('Account linking, account switching, consent upgrade and exception r
 // API timing, status/body outcome, and revocation must use the original consent epoch.
 let enabled=true, epoch=1, clock=100; const requestEvents=[];
 const requestContext=vm.createContext({performance:{now:()=>clock},window:{location:{pathname:'/messages'}},crypto:{randomUUID:()=> '12345678-1234-1234-1234-123456789abc'}});
-const requestClient=new vm.SyntheticModule(['analyticsEnabled','analyticsEpoch','capture'],function(){
+const requestClient=new vm.SyntheticModule(['analyticsEnabled','analyticsEpoch','analyticsSessionId','capture'],function(){
+ this.setExport('analyticsSessionId',()=> '12345678-1234-1234-1234-123456789abc');
  this.setExport('analyticsEnabled',()=>enabled);this.setExport('analyticsEpoch',()=>epoch);
  this.setExport('capture',(event,props,page)=>requestEvents.push({event,props,page}));
 },{context:requestContext});await requestClient.link(()=>{});await requestClient.evaluate();
-const requestPolicy=new vm.SyntheticModule(['endpointLabel'],function(){this.setExport('endpointLabel',policy.endpointLabel);},{context:requestContext});await requestPolicy.link(()=>{});await requestPolicy.evaluate();
+const requestPolicy=new vm.SyntheticModule(['endpointLabel','operationForRequest'],function(){this.setExport('endpointLabel',policy.endpointLabel);this.setExport('operationForRequest',policy.operationForRequest);},{context:requestContext});await requestPolicy.link(()=>{});await requestPolicy.evaluate();
 const requestSource=await readFile(new URL('../src/analytics/requestTelemetry.ts',import.meta.url),'utf8');
 const requestModule=new vm.SourceTextModule(ts.transpileModule(requestSource,{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2020}}).outputText,{context:requestContext});
 const supportModule=new vm.SyntheticModule(['rememberRequest'],function(){this.setExport('rememberRequest',()=>{});},{context:requestContext});await supportModule.link(()=>{});await supportModule.evaluate();
@@ -338,3 +339,38 @@ assert.equal(secondTab.session.size,0,'withdrawal also clears the pending reload
 const unconsented = await harness();unconsented.api.resetAnalyticsIdentity();
 assert.equal(unconsented.session.size,0,'no reset marker is stored without consent');
 console.log('Fresh-document tagged-URL reload, repeated reload, withdrawal and no-consent boundary tests passed.');
+
+// New operation taxonomy never retains resource IDs or input values.
+for (const [url, method, operation] of [
+ ['/meinunterricht/submissions/upload','POST','submission_upload'],
+ ['/meinunterricht/submissions/file','DELETE','submission_delete'],
+ ['/meinunterricht/submissions/file/PRIVATE','GET','file_download'],
+ ['/wahlen/PRIVATE/submit','POST','election_submit'],
+ ['/agents/PRIVATE/schedules/PRIVATE','DELETE','schedule_delete'],
+ ['/agents/channels/whatsapp/pairing','POST','channel_pair'],
+ ['/account','DELETE','account_delete'],
+ ['/auth/refresh','POST','session_refresh'],
+]) assert.equal(policy.operationForRequest(url,method),operation);
+assert.equal(policy.routeLabel('/courses/submissions/PRIVATE'),'/courses/submissions/:id');
+assert.equal(policy.routeLabel('/status/incident/PRIVATE'),'/status/incident/:id');
+assert.equal(policy.routeLabel('/schule/PRIVATE'),'/schule/:id');
+assert.equal(policy.sanitizeEventProperties('ui_interaction',{action:'PRIVATE'}).action,undefined);
+const envelope=proxy.getConfig().before_send({event:'$identify',properties:{},$set:{email:'PRIVATE'},$set_once:{$current_url:'PRIVATE'},$unset:['PRIVATE']});
+assert.equal(JSON.stringify(envelope).includes('PRIVATE'),false,'top-level SDK person properties are removed');
+const filteredLog=proxy.getConfig().logs.beforeSend({body:'api_request_completed',attributes:{endpoint:'/wahlen/PRIVATE/submit',password:'PRIVATE',page:'/courses/PRIVATE'}});
+assert.equal(JSON.stringify(filteredLog).includes('PRIVATE'),false);
+assert.equal(filteredLog.attributes['url.full'],'/courses/:id','override URL context added after the SDK log filter');
+assert.equal(proxy.getConfig().logs.beforeSend({body:'PRIVATE raw console error'}),null);
+const beforeOperation=requestEvents.length;
+enabled=true;
+const mutation={url:'/meinunterricht/submissions/upload',method:'post',headers:{}};
+requestModule.namespace.startApiRequest(mutation);
+requestModule.namespace.finishApiRequest(mutation,{status:200,data:{success:true,all_succeeded:false},headers:{'x-lanis-trace-id':'a'.repeat(32),'x-lanis-cache':'stale'}});
+assert.equal(requestEvents[beforeOperation].event,'operation_started');
+assert.equal(requestEvents.at(-1).props.outcome,'partial_failure');
+assert.equal(requestEvents.at(-1).props.trace_id,'a'.repeat(32));
+assert.equal(requestEvents.at(-1).props.cache,'stale');
+assert.equal(mutation.headers['X-LANIS-Session-ID'],'12345678-1234-1234-1234-123456789abc');
+enabled=false;requestModule.namespace.startApiRequest(mutation);
+assert.equal(mutation.headers['X-LANIS-Session-ID'],undefined);
+console.log('Named operations, partial failures, trace/session correlation, native log filters and top-level person-property privacy passed.');

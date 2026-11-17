@@ -1,6 +1,6 @@
 import { analyticsEnabled, analyticsEpoch, capture } from './client';
 
-const resources = new Set(['dashboard', 'courses', 'course-detail', 'dsb', 'study-groups', 'videokonferenz', 'wahlen', 'timetable', 'attendance', 'calendar', 'dateiverteilung', 'dateispeicher', 'dateispeicher-search', 'vertretungsplan', 'vertretungsplan-options']);
+const resources = new Set(['dashboard', 'courses', 'course-detail', 'dsb', 'study-groups', 'videokonferenz', 'wahlen', 'timetable', 'attendance', 'calendar', 'dateiverteilung', 'dateispeicher', 'dateispeicher-search', 'vertretungsplan', 'vertretungsplan-options', 'submissions', 'submission-detail', 'messages']);
 /** Classify locally. Never transmit a cache key, query, resource ID, or filter value. */
 export function resourceLabel(resource: string): string {
   let name = resource.split(':')[0];
