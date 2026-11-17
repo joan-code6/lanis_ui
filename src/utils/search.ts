@@ -2,7 +2,7 @@
 export function normalizeSearchText(value: unknown): string {
   if (typeof value !== 'string' && typeof value !== 'number') return '';
   return String(value).toLocaleLowerCase('de-DE')
-    .replace(/ä|ae/g, 'a').replace(/ö|oe/g, 'o').replace(/ü|ue/g, 'u').replace(/ß/g, 'ss')
+    .replace(/ä/g, 'a').replace(/ö/g, 'o').replace(/ü/g, 'u').replace(/ß/g, 'ss')
     .normalize('NFKD').replace(/[\u0300-\u036f]/g, '')
     .replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
 }
@@ -26,6 +26,13 @@ export function searchScore(query: string, value: unknown): number {
   const needle = normalizeSearchText(query);
   const text = normalizeSearchText(value);
   if (!needle || !text) return 0;
+  // Preserve ordinary substrings such as 'elle' in 'Aktuelle', while also
+  // accepting transliterated umlauts in either the query or the source text.
+  const foldDigraphs = (text: string) => text.replace(/ae/g, 'a').replace(/oe/g, 'o').replace(/ue/g, 'u');
+  return Math.max(scoreNormalized(needle, text), scoreNormalized(foldDigraphs(needle), foldDigraphs(text)));
+}
+
+function scoreNormalized(needle: string, text: string): number {
   if (needle === text) return 100;
   if (text.startsWith(needle)) return 90;
   if (text.includes(needle)) return 80;
@@ -41,11 +48,11 @@ export function searchScore(query: string, value: unknown): number {
 
 function collectTexts(value: unknown, depth = 0): string {
   if (depth > 4 || value == null) return '';
-  if (typeof value === 'string') return value.replace(/<[^>]*>/g, ' ');
+  if (typeof value === 'string') return /^\s*https?:\/\//i.test(value) ? '' : value.replace(/<[^>]*>/g, ' ');
   if (typeof value === 'number') return String(value);
   if (Array.isArray(value)) return value.map(item => collectTexts(item, depth + 1)).join(' ');
   if (typeof value === 'object') return Object.entries(value)
-    .filter(([key]) => !/^(id|uniquid|url|direct_url|href|logo|color|token|ts|timestamp|private|papierkorb|unread|read)$/i.test(key) && !/(?:_id|Id)$/.test(key))
+    .filter(([key]) => !/^(id|uniquid|url|direct_url|href|logo|color|token|ts|timestamp|private|papierkorb|unread|read|target)$/i.test(key) && !/(?:_id|Id|_?[Ll]ink)$/.test(key))
     .map(([, item]) => collectTexts(item, depth + 1)).join(' ');
   return '';
 }
@@ -77,10 +84,10 @@ export function rankSearchResults<T extends SearchResult>(query: string, keyword
     seen.add(key);
     return true;
   });
-  const ranked = unique(keyword).sort((a, b) => {
-    const score = (item: T) => searchScore(query, item.title) * 100 + searchScore(query, item.subtitle);
-    return score(b) - score(a);
-  });
+  const ranked = unique(keyword)
+    .map(item => ({ item, score: searchScore(query, item.title) * 100 + searchScore(query, item.subtitle) }))
+    .sort((a, b) => b.score - a.score)
+    .map(({ item }) => item);
   return [...ranked, ...unique(semantic)].slice(0, 60);
 }
 

@@ -232,7 +232,7 @@ function searchCacheData(
           results.push({
             id: `user-${k}`,
             title: (v as string) || k,
-            subtitle: `Username: ${k}`,
+            subtitle: /^\d+$/.test(k) ? 'Nutzer' : `Username: ${k}`,
             category: 'Nutzer',
             icon: UserIcon,
             href: '/messages',
@@ -328,7 +328,10 @@ export default function GlobalSearch({
       : moduleItems;
   }, [basePath, hasDsbModule, hasNativeDateispeicher, hasNativeDateiverteilung, hasNativeSubstitutionPlan, hasVideokonferenzModule]);
 
-  const cachedModules = basePath === '/demo' ? [] : readModulesCache(user);
+  const cachedModules = useMemo(
+    () => basePath === '/demo' || !isOpen ? [] : readModulesCache(user),
+    [basePath, user, isOpen],
+  );
   const cacheResults = useMemo(
     () => searchCacheData(query, planNavigation, basePath, cachedModules),
     [basePath, cachedModules, planNavigation, query],
@@ -646,7 +649,7 @@ export default function GlobalSearch({
           <kbd className="hidden sm:inline-flex items-center justify-center min-w-[20px] h-[20px] px-1 rounded text-[11px] font-medium text-surface-400 bg-surface-100 dark:bg-surface-800/80 dark:text-surface-500 border border-surface-200/60 dark:border-surface-700/60">esc</kbd>
         </div>
 
-        <div ref={listRef} id="global-search-results" role="listbox" aria-label="Suchergebnisse" className="max-h-80 overflow-y-auto p-2">
+        <div ref={listRef} className="max-h-80 overflow-y-auto p-2">
           {query.length === 0 && (
             <div className="py-12 text-center">
               <MagnifyingGlassIcon className="h-8 w-8 text-surface-300 dark:text-surface-600 mx-auto mb-3 opacity-60" />
@@ -672,46 +675,49 @@ export default function GlobalSearch({
             </div>
           )}
 
-          {groupedResults.map(([category, items]) => {
-            const CatIcon = CATEGORY_ICONS[category] || MagnifyingGlassIcon;
-            let before = 0;
-            for (const g of groupedResults) {
-              if (g[0] === category) break;
-              before += g[1].length;
-            }
-            return (
-              <div key={category} className="mb-1">
-                <div className="flex items-center gap-2 px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-surface-400 dark:text-surface-500">
-                  <CatIcon className="h-3.5 w-3.5 text-primary-500 dark:text-primary-400" />
-                  {category}
-                  <span className="ml-auto text-[10px] opacity-60">{items.length}</span>
+          <div id="global-search-results" role="listbox" aria-label="Suchergebnisse">
+            {groupedResults.map(([category, items], groupIndex) => {
+              const CatIcon = CATEGORY_ICONS[category] || MagnifyingGlassIcon;
+              let before = 0;
+              for (const g of groupedResults) {
+                if (g[0] === category) break;
+                before += g[1].length;
+              }
+              return (
+                <div key={category} role="group" aria-labelledby={`global-search-category-${groupIndex}`} className="mb-1">
+                  <div id={`global-search-category-${groupIndex}`} className="flex items-center gap-2 px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-surface-400 dark:text-surface-500">
+                    <CatIcon className="h-3.5 w-3.5 text-primary-500 dark:text-primary-400" />
+                    {category}
+                    <span className="ml-auto text-[10px] opacity-60">{items.length}</span>
+                  </div>
+                  {items.map((item, idx) => (
+                    <button
+                      key={item.id}
+                      id={`global-search-result-${before + idx}`}
+                      role="option"
+                      tabIndex={-1}
+                      aria-selected={before + idx === selectedIndex}
+                      onMouseEnter={() => setSelectedIndex(before + idx)}
+                      onClick={() => executeAction(item)}
+                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all duration-150 text-sm ${
+                        before + idx === selectedIndex
+                          ? 'bg-primary-50 dark:bg-primary-950/60 text-primary-700 dark:text-primary-300 shadow-sm'
+                          : 'text-surface-700 dark:text-surface-300 hover:bg-surface-100/80 dark:hover:bg-surface-800/60'
+                      }`}
+                    >
+                      <item.icon className={`h-[18px] w-[18px] flex-shrink-0 transition-colors ${
+                        before + idx === selectedIndex ? 'text-primary-500 dark:text-primary-400' : 'text-surface-400 dark:text-surface-500'
+                      }`} />
+                      <div className="flex-1 min-w-0">
+                        <div className="truncate font-medium">{item.title}</div>
+                        <div className="text-[13px] text-surface-400 dark:text-surface-500 mt-0.5 truncate leading-snug">{item.subtitle}</div>
+                      </div>
+                    </button>
+                  ))}
                 </div>
-                {items.map((item, idx) => (
-                  <button
-                    key={item.id}
-                    id={`global-search-result-${before + idx}`}
-                    role="option"
-                    aria-selected={before + idx === selectedIndex}
-                    onMouseEnter={() => setSelectedIndex(before + idx)}
-                    onClick={() => executeAction(item)}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all duration-150 text-sm ${
-                      before + idx === selectedIndex
-                        ? 'bg-primary-50 dark:bg-primary-950/60 text-primary-700 dark:text-primary-300 shadow-sm'
-                        : 'text-surface-700 dark:text-surface-300 hover:bg-surface-100/80 dark:hover:bg-surface-800/60'
-                    }`}
-                  >
-                    <item.icon className={`h-[18px] w-[18px] flex-shrink-0 transition-colors ${
-                      before + idx === selectedIndex ? 'text-primary-500 dark:text-primary-400' : 'text-surface-400 dark:text-surface-500'
-                    }`} />
-                    <div className="flex-1 min-w-0">
-                      <div className="truncate font-medium">{item.title}</div>
-                      <div className="text-[13px] text-surface-400 dark:text-surface-500 mt-0.5 truncate leading-snug">{item.subtitle}</div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
 
         </div>
 

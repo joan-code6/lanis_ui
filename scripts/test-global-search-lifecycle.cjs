@@ -47,6 +47,8 @@ function load(path, require) {
 }
 const matching = load('src/utils/search.ts');
 const semanticRequests = [];
+const personalCaches = {};
+let moduleReads = 0;
 const pending = () => { let resolve; const promise = new Promise(r => { resolve = r; }); return { promise, resolve }; };
 const empty = async () => ({ success: false });
 const navigated = [];
@@ -65,9 +67,9 @@ const Component = load('src/components/search/GlobalSearch.tsx', name => {
   if (name.endsWith('/AuthContext')) return { useAuth: () => ({ token: 'test', user: null }) };
   if (name.endsWith('/services/api')) return api;
   if (name.endsWith('/utils/search')) return matching;
-  if (name.endsWith('/moduleCache')) return { readModulesCache: () => [] };
+  if (name.endsWith('/moduleCache')) return { readModulesCache: () => { moduleReads++; return []; } };
   if (name.endsWith('/courseNormalization')) return { normalizeCourseList: () => [] };
-  if (name.endsWith('/accountDataWrites')) return { readPersonalCache: () => null };
+  if (name.endsWith('/accountDataWrites')) return { readPersonalCache: key => personalCaches[key] || null };
   if (name.endsWith('/analytics/client')) return { capture: empty };
   if (name.endsWith('/analytics/policy')) return { resultCountBucket: () => '0', searchCategory: x => x };
   if (name.startsWith('@heroicons')) return new Proxy({}, { get: () => 'icon' });
@@ -151,13 +153,43 @@ const result = (id, category, href) => ({ id, category, href, title: id, subtitl
   const more = nodes(tree).find(node => node.type === 'button' && node.props.children === 'Weitere Treffer anzeigen');
   assert(more); more.props.onClick(); render();
   assert.equal(options().length, 20, 'additional direct results remain available on request');
+  const listbox = nodes(tree).find(node => node.props?.role === 'listbox');
+  const groups = listbox.props.children.flat(Infinity).filter(Boolean);
+  assert(groups.every(node => node.props.role === 'group'));
+  assert(groups.every(group => nodes(group).some(node => node.props?.id === group.props['aria-labelledby'])));
+  assert(options().every(node => node.props.tabIndex === -1));
+  assert(!nodes(listbox).some(node => node.props?.role === 'status'));
+
+  const staleHeaders = pending();
+  api.messagesAPI.getMessageHeaders = () => staleHeaders.promise;
+  type('stalelive'); runTimers(); await flush();
+  api.messagesAPI.getMessageHeaders = empty;
+  type('replacement'); runTimers(); await flush();
+  staleHeaders.resolve({ success: true, conversations: [{ Id: 'stale', Betreff: 'stalelive', Sender: 'Someone' }] });
+  await flush();
+  assert.equal(options().length, 0, 'late live results for the previous query must not append');
+
+  personalCaches.username_cache = JSON.stringify({ data: { '1724128': 'Cached Person' } });
+  props = { ...props, basePath: '' }; render();
+  type('Cached Person'); runTimers(); await flush();
+  assert(JSON.stringify(options()).includes('Cached Person'));
+  assert(!JSON.stringify(options()).includes('Username: 1724128'));
+  const readsBeforeNavigation = moduleReads;
+  key('ArrowDown'); key('ArrowUp');
+  assert.equal(moduleReads, readsBeforeNavigation, 'selection changes must not re-read the module cache');
+
   type('uniquezz'); runTimers(); await flush();
   assert.equal(options().length, 0, 'a new query resets expanded and related results');
-  related(); runTimers(); await flush();
+  const closedHeaders = pending();
+  api.messagesAPI.getMessageHeaders = () => closedHeaders.promise;
+  type('closedlive'); related(); runTimers(); await flush();
   props = { ...props, isOpen: false }; render();
   assert(semanticRequests.at(-1).signal.aborted, 'closing cancels active search');
   semanticRequests.at(-1).resolve({ success: true, results: [result('late', 'Kalender', '/calendar')] });
+  closedHeaders.resolve({ success: true, conversations: [{ Id: 'late', Betreff: 'closedlive', Sender: 'Someone' }] });
   await flush();
   assert.equal(tree, null);
+  props = { ...props, isOpen: true }; render();
+  assert.equal(options().length, 0, 'closing and reopening must not restore late live results');
   console.log('Global search lifecycle checks passed: explicit related search, compact/expanded results, sender names, request races, and keyboard navigation.');
 })().catch(error => { console.error(error); process.exitCode = 1; });

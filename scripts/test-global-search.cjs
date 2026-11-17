@@ -53,3 +53,12 @@ assert(compactSearchResults(mixed).every(entry => mixed.includes(entry)));
 
 assert.equal(messageSearchData({ SenderName: '<span>1724128</span>' }).sender, '');
 console.log('Global search checks passed: matching, identifiers, sender resolution, deduplication, and compact results.');
+
+assert(searchText('aktuel', 'Aktuelles'));
+assert(searchText('elle', 'Aktuelle'));
+assert(searchText('mull', 'Mueller'));
+assert(searchText('muell', 'Müller'));
+assert(!searchText('hessen', { name: 'Mathematik', course_link: 'https://hessen.example/courses' }));
+assert(!searchText('courses', { teacherMessageLink: '/courses/messages', target: '/courses' }));
+assert(!searchText('hessen', { arbitrary: ' HTTPS://hessen.example/courses' }));
+assert(searchText('hessen', { name: 'Hessen' }));
