@@ -174,6 +174,13 @@ const result = (id, category, href) => ({ id, category, href, title: id, subtitl
   type('Cached Person'); runTimers(); await flush();
   assert(JSON.stringify(options()).includes('Cached Person'));
   assert(!JSON.stringify(options()).includes('Username: 1724128'));
+  personalCaches.messages_cache_v2 = JSON.stringify([
+    { Id: 'cached-message', Uniquid: 'cached-message', Betreff: 'Cached announcement', Sender: '1724128' },
+  ]);
+  type('Cached announcement'); runTimers(); await flush();
+  assert.equal(options().length, 1, 'the subject query should find the cached message, not the cached user');
+  assert(JSON.stringify(options()[0]).includes('Cached announcement'));
+  assert(JSON.stringify(options()[0]).includes('Von: Cached Person'), 'cached message rows must resolve their sender name');
   const readsBeforeNavigation = moduleReads;
   key('ArrowDown'); key('ArrowUp');
   assert.equal(moduleReads, readsBeforeNavigation, 'selection changes must not re-read the module cache');

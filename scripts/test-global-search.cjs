@@ -62,3 +62,8 @@ assert(!searchText('hessen', { name: 'Mathematik', course_link: 'https://hessen.
 assert(!searchText('courses', { teacherMessageLink: '/courses/messages', target: '/courses' }));
 assert(!searchText('hessen', { arbitrary: ' HTTPS://hessen.example/courses' }));
 assert(searchText('hessen', { name: 'Hessen' }));
+
+assert(searchText('Treffpunkt', { content: 'https://schule.example/plan Treffpunkt Aula' }));
+assert(searchText('Aula', { content: 'Treffpunkt https://schule.example/plan Aula' }));
+assert(!searchText('schule', { content: 'https://schule.example/plan Treffpunkt Aula' }));
+assert(!searchText('schule', 'https://schule.example/plan'));

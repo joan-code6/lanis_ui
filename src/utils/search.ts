@@ -48,7 +48,7 @@ function scoreNormalized(needle: string, text: string): number {
 
 function collectTexts(value: unknown, depth = 0): string {
   if (depth > 4 || value == null) return '';
-  if (typeof value === 'string') return /^\s*https?:\/\//i.test(value) ? '' : value.replace(/<[^>]*>/g, ' ');
+  if (typeof value === 'string') return value.replace(/<[^>]*>/g, ' ').replace(/\bhttps?:\/\/[^\s<>"']+/gi, ' ');
   if (typeof value === 'number') return String(value);
   if (Array.isArray(value)) return value.map(item => collectTexts(item, depth + 1)).join(' ');
   if (typeof value === 'object') return Object.entries(value)
