@@ -9,12 +9,14 @@ import {
   formatIncidentRange,
   getEffectiveDailyStatus,
   incidentsForDay,
+  isStatusStale,
   statusColors,
   statusLabels,
   PublicIncident,
   PublicStatus,
   usePublicStatus,
 } from '../../services/publicStatus';
+import { observationLabel } from '../../services/statusLabel';
 import { getApiBaseUrl } from '../../utils/backendConfig';
 import { getCustomBackendUrl } from '../../utils/backendConfig';
 
@@ -126,7 +128,7 @@ export default function StatusPage() {
                 <span className="font-medium">{service.name}</span>
                 <span className="flex items-center gap-2 text-sm text-surface-600 dark:text-surface-300">
                   <span className={`h-2.5 w-2.5 rounded-full ${statusColors[service.state]}`} />
-                  {loading ? 'Wird geladen' : statusLabels[service.state]}
+                  {loading ? 'Wird geladen' : service.name === 'Schulportal Hessen' && data && !isStatusStale(data) ? observationLabel(data.current) : statusLabels[service.state]}
                 </span>
               </div>
             ))}
