@@ -36,6 +36,7 @@ import {
 import { Link, useLocation } from 'react-router-dom';
 import GlobalSearch from '../search/GlobalSearch';
 import OutageNotice from '../status/OutageNotice';
+import SavedDataNotice from '../status/SavedDataNotice';
 import { PwaInstallProvider } from '../../contexts/PwaInstallContext';
 import { getModuleAvailability, readModulesCache, writeModulesCache } from '../../utils/moduleCache';
 import { captureAccountDataGeneration } from '../../utils/accountDataWrites';
@@ -288,6 +289,7 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
         <BasePathProvider basePath={basePath}>
           <div className="animate-fade-in">
             {!isDemo && <OutageNotice />}
+            {!isDemo && <SavedDataNotice />}
             {children}
           </div>
         </BasePathProvider>

@@ -1,6 +1,7 @@
 import { getApiBaseUrl } from '../utils/backendConfig';
 import { capture, configureAccountAnalytics, resetAnalyticsIdentity } from '../analytics/client';
-import { clearResourceCache } from '../utils/resourceCache';
+import { clearResourceCache, setResourcePersistence } from '../utils/resourceCache';
+import { createResourcePersistence } from '../utils/resourcePersistence';
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { AuthContextType, LoginRequest, User } from '../types';
 import { authAPI, notificationsAPI, unsubscribeBrowserPushSubscription } from '../services/api';
@@ -21,6 +22,7 @@ import {
   withAccountDataLifecycleLock,
 } from '../utils/accountDataWrites';
 
+setResourcePersistence(createResourcePersistence());
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const useAuth = () => {

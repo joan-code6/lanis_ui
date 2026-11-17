@@ -3,7 +3,16 @@ export interface ResourceSnapshot<T> {
   updatedAt: number;
   refreshing: boolean;
   error: string;
+  restored?: boolean;
 }
+
+export interface ResourcePersistence {
+  read(key: string): ResourceSnapshot<unknown> | undefined;
+  write(key: string, snapshot: ResourceSnapshot<unknown>): void;
+  clear(): void;
+}
+let persistence: ResourcePersistence | undefined;
+export function setResourcePersistence(adapter: ResourcePersistence): void { persistence = adapter; }
 
 interface ResourceEntry {
   snapshot: ResourceSnapshot<unknown>;
@@ -15,7 +24,7 @@ interface ResourceEntry {
 const emptySnapshot: ResourceSnapshot<never> = {
   data: undefined, updatedAt: 0, refreshing: false, error: '',
 };
-// Keep school data in memory for this app session, without writing it to disk.
+// Memory stays authoritative; optional saved snapshots only seed empty entries.
 let generation = 0;
 export const resourceCacheGeneration = () => generation;
 
@@ -24,7 +33,7 @@ const entries = new Map<string, ResourceEntry>();
 function entryFor(key: string): ResourceEntry {
   let entry = entries.get(key);
   if (!entry) {
-    entry = { snapshot: emptySnapshot, listeners: new Set() };
+    entry = { snapshot: persistence?.read(key) || emptySnapshot, listeners: new Set() };
     entries.set(key, entry);
   }
   return entry;
@@ -38,12 +47,29 @@ export function subscribeResource(key: string | null, listener: () => void): () 
   if (!key) return () => {};
   const entry = entryFor(key);
   entry.listeners.add(listener);
-  return () => { entry.listeners.delete(listener); };
+  notifyCacheStatus();
+  return () => { entry.listeners.delete(listener); notifyCacheStatus(); };
+}
+
+const statusListeners = new Set<() => void>();
+function notifyCacheStatus() { statusListeners.forEach(listener => listener()); }
+export function subscribeSavedData(listener: () => void): () => void {
+  statusListeners.add(listener);
+  return () => { statusListeners.delete(listener); };
+}
+/** Only describe restored data used by a currently mounted view. */
+export function savedDataTimestamp(): number {
+  let oldest = 0;
+  for (const { snapshot, listeners } of entries.values()) {
+    if (listeners.size && snapshot.restored && (!oldest || snapshot.updatedAt < oldest)) oldest = snapshot.updatedAt;
+  }
+  return oldest;
 }
 
 function publish(entry: ResourceEntry, snapshot: ResourceSnapshot<unknown>) {
   entry.snapshot = snapshot;
   entry.listeners.forEach(listener => listener());
+  notifyCacheStatus();
 }
 
 export function refreshResource<T>(
@@ -60,7 +86,9 @@ export function refreshResource<T>(
   entry.pending = Promise.resolve().then(() => load(controller.signal, refresh))
     .then(data => {
       if (!controller.signal.aborted) {
-        publish(entry, { data, updatedAt: Date.now(), refreshing: false, error: '' });
+        const snapshot = { data, updatedAt: Date.now(), refreshing: false, error: '' };
+        persistence?.write(key, snapshot);
+        publish(entry, snapshot);
       }
     })
     .catch(error => {
@@ -85,11 +113,14 @@ export function updateResource<T>(key: string, value: T | ((previous: T | undefi
   const data = typeof value === 'function'
     ? (value as (previous: T | undefined) => T)(entry.snapshot.data as T | undefined)
     : value;
-  publish(entry, { ...entry.snapshot, data, updatedAt: Date.now() });
+  const snapshot = { ...entry.snapshot, data, updatedAt: Date.now(), restored: false };
+  persistence?.write(key, snapshot);
+  publish(entry, snapshot);
 }
 
 export function clearResourceCache(): void {
   generation++;
+  persistence?.clear();
   for (const entry of entries.values()) {
     entry.controller?.abort();
     entry.controller = undefined;

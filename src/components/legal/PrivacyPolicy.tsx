@@ -127,6 +127,13 @@ const PrivacyPolicy: React.FC = () => {
               Website-Einstellungen löschen. Dadurch wirst du möglicherweise abgemeldet und lokale
               Einstellungen gehen verloren.
             </p>
+            <p className="mt-2">
+              Für einen schnellen Neustart werden zuletzt angezeigte Kontodaten lokal zwischengespeichert.
+              Dieser Cache enthält höchstens 40 Ansichten und ungefähr 1,5 MB Text. Gespeicherte
+              Ansichten werden nach sieben Tagen nicht mehr angezeigt und bei der nächsten
+              Aktualisierung bereinigt. Während der Aktualisierung wird ihr gespeicherter Stand angezeigt.
+              Abmelden, Kontolöschung und ein Wechsel des Backends entfernen diesen Cache.
+            </p>
           </div>
 
           <div>
