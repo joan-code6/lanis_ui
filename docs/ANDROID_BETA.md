@@ -1,6 +1,6 @@
 # Self-service Android closed beta
 
-Depends on [lanis_api #98](https://github.com/joan-code6/lanis_api/pull/98).
+Depends on [lanis_api #98](https://github.com/Lanis-dev/lanis_api/pull/98).
 Rollout: backend then UI; admin #15 is superseded, with no queue or export dependency.
 Only the PR-specific frontend preview deployment is authorized. Recruitment defaults to disabled until
 the CLOSED release is approved and actual opt-in/download access is verified.
@@ -35,7 +35,7 @@ self-confirmation, approval popup or waiting-list state remains.
 
 The API retains only account ID, dismissal and cooldown-until. It removes the old
 email registry on migration while preserving recruitment preferences. Privacy copy
-and the [operator runbook](https://github.com/joan-code6/lanis_api/blob/feat/android-beta-signup/docs/android-closed-beta.md)
+and the [operator runbook](https://github.com/Lanis-dev/lanis_api/blob/feat/android-beta-signup/docs/android-closed-beta.md)
 describe activation and genuine 12-tester/14-day participation requirements.
 
 Validation: `npm test`, `npm run test:beta`, `npm run build`, and after building,

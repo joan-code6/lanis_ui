@@ -1,6 +1,6 @@
 # LANIS UI
 
-A responsive, unofficial frontend for **Schulportal Hessen**, built with React, TypeScript, Vite, and Tailwind CSS. LANIS UI connects to [lanis_api](https://github.com/joan-code6/lanis_api), which handles Schulportal authentication and data access.
+A responsive, unofficial frontend for **Schulportal Hessen**, built with React, TypeScript, Vite, and Tailwind CSS. LANIS UI connects to [lanis_api](https://github.com/Lanis-dev/lanis_api), which handles Schulportal authentication and data access.
 
 The interface brings together a dashboard, messages, Mein Unterricht (courses, homework, and attendance), calendar, timetable, study groups, file storage, substitution plans, DSBmobile, and elections. It also includes global search, configurable themes, and PWA installation and push notification support. Available modules depend on the school and account.
 
@@ -8,14 +8,14 @@ The interface brings together a dashboard, messages, Mein Unterricht (courses, h
 
 **[Open LANIS at lanis.arg-server.de](https://lanis.arg-server.de)** — no local installation required. You can also **[try the demo](https://lanis.arg-server.de/demo)** with sample data before signing in.
 
-**Bring your own backend:** the hosted UI can connect to your own compatible [lanis_api](https://github.com/joan-code6/lanis_api) instance. Open **[Custom backend](https://lanis.arg-server.de/set-custom-backend)**, enter your backend's HTTPS base URL, and save. The selection is stored in your browser, and you can reset it on the same page. You do not need to host or rebuild the frontend to use a custom backend. Your backend must allow `https://lanis.arg-server.de` through CORS.
+**Bring your own backend:** the hosted UI can connect to your own compatible [lanis_api](https://github.com/Lanis-dev/lanis_api) instance. Open **[Custom backend](https://lanis.arg-server.de/set-custom-backend)**, enter your backend's HTTPS base URL, and save. The selection is stored in your browser, and you can reset it on the same page. You do not need to host or rebuild the frontend to use a custom backend. Your backend must allow `https://lanis.arg-server.de` through CORS.
 
 ## Run locally
 
 Use **Node.js 22.12+** and npm. Vite 7 requires Node.js `^20.19.0 || >=22.12.0`.
 
 ```sh
-git clone https://github.com/joan-code6/lanis_ui.git
+git clone https://github.com/Lanis-dev/lanis_ui.git
 cd lanis_ui
 npm ci
 cp .env.example .env.local
@@ -25,7 +25,7 @@ npm run dev
 Open **http://localhost:3000** (or the address Vite prints if that port is occupied).
 
 - Visit **`/demo`** to explore the interface with bundled sample data, without a Schulportal login or a running backend for the mocked module flows.
-- For real data, start a compatible [lanis_api](https://github.com/joan-code6/lanis_api) instance separately, configure its URL below, and visit **`/login`**. Choose your school and sign in with your Schulportal account.
+- For real data, start a compatible [lanis_api](https://github.com/Lanis-dev/lanis_api) instance separately, configure its URL below, and visit **`/login`**. Choose your school and sign in with your Schulportal account.
 - The landing page is at `/`; public service status is at `/status`.
 
 Demo fixtures and responses live in [`src/components/demo/`](src/components/demo/). Demo coverage is limited to the routes and requests implemented there; it does not verify real backend integration.
@@ -43,7 +43,7 @@ This is also the fallback when the variable is unset. Use the backend base URL, 
 The browser calls this URL directly, so:
 
 - The backend must be reachable **from the browser**. On another device, `localhost` refers to that device.
-- [lanis_api](https://github.com/joan-code6/lanis_api) must allow the frontend origin through CORS, including the actual dev server port.
+- [lanis_api](https://github.com/Lanis-dev/lanis_api) must allow the frontend origin through CORS, including the actual dev server port.
 - Remote backend URLs must use HTTPS. HTTP is accepted only for loopback hosts such as `localhost` and `127.0.0.1`.
 - `VITE_*` values are public and embedded in the frontend bundle. Never put credentials or private keys in them.
 
@@ -222,13 +222,13 @@ tailwind.config.js      Tailwind theme and design tokens
 vite.config.ts          Development server and proxy configuration
 ```
 
-For a feature change, start with its screen in `src/components/`, follow its calls into `src/services/api.ts`, and update shared contracts in `src/types/` as needed. Keep demo responses in sync when changing a flow supported by `/demo`. [`api-documenation.md`](api-documenation.md) provides additional endpoint notes; check current client code and [lanis_api](https://github.com/joan-code6/lanis_api) when confirming contracts.
+For a feature change, start with its screen in `src/components/`, follow its calls into `src/services/api.ts`, and update shared contracts in `src/types/` as needed. Keep demo responses in sync when changing a flow supported by `/demo`. [`api-documenation.md`](api-documenation.md) provides additional endpoint notes; check current client code and [lanis_api](https://github.com/Lanis-dev/lanis_api) when confirming contracts.
 
-Work in a dedicated Git worktree when contributing in the combined LANIS workspace. Frontend changes belong here; backend changes belong in [lanis_api](https://github.com/joan-code6/lanis_api), and private operator pages belong in **lanis_admin**.
+Work in a dedicated Git worktree when contributing in the combined LANIS workspace. Frontend changes belong here; backend changes belong in [lanis_api](https://github.com/Lanis-dev/lanis_api), and private operator pages belong in **lanis_admin**.
 
 ## Troubleshooting
 
-- **School list or login fails:** inspect the browser's Network panel for the request URL and response. Check that [lanis_api](https://github.com/joan-code6/lanis_api) is running, the API URL is correct, and CORS allows the frontend origin.
+- **School list or login fails:** inspect the browser's Network panel for the request URL and response. Check that [lanis_api](https://github.com/Lanis-dev/lanis_api) is running, the API URL is correct, and CORS allows the frontend origin.
 - **The app still contacts an old backend:** reset the saved override at `/set-custom-backend`, then check `.env.local` and restart Vite. Deployed bundles require a rebuild to pick up a new default URL.
 - **Refreshing a nested route returns 404:** configure the static host's SPA fallback to `/index.html`.
 - **Old UI remains after deployment:** check the service worker and caches in browser developer tools. Unregister the worker and reload to diagnose stale shell assets; clearing site storage also removes saved sessions and preferences.

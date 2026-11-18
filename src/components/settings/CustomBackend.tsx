@@ -122,7 +122,7 @@ const CustomBackend: React.FC = () => {
           <p className="mt-3 text-sm text-surface-500 dark:text-surface-400">
             Du möchtest ein eigenes Backend betreiben?{' '}
             <a
-              href="https://github.com/joan-code6/lanis_api"
+              href="https://github.com/Lanis-dev/lanis_api"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1 font-medium text-primary-700 underline decoration-primary-300 underline-offset-4 transition-colors hover:text-primary-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:text-primary-300 dark:decoration-primary-700 dark:hover:text-primary-200"
