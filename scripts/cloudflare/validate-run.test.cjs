@@ -1,7 +1,7 @@
 const {test} = require('node:test');
 const assert = require('node:assert/strict');
 const {selectTarget} = require('./validate-run.cjs');
-const repo = 'joan-code6/lanis_ui';
+const repo = 'Lanis-dev/lanis_ui';
 const sha = 'a'.repeat(40);
 const run = {repository: {full_name: repo}, head_repository: {full_name: repo},
   path: '.github/workflows/build.yml', conclusion: 'success', head_sha: sha,
@@ -48,7 +48,7 @@ test('approved fork builds resolve open PRs without commit associations', async 
     },
   };
   assert.deepEqual(await validate({github, context: {
-    repo: {owner: 'joan-code6', repo: 'lanis_ui'}, payload: {workflow_run: {id: 42}},
+    repo: {owner: 'Lanis-dev', repo: 'lanis_ui'}, payload: {workflow_run: {id: 42}},
   }}), {kind: 'preview', sha, pr: 123});
   for (const head of [{...forkPr.head, sha: 'b'.repeat(40)},
     {...forkPr.head, ref: 'other'}, {...forkPr.head, repo: {full_name: repo}}]) {
