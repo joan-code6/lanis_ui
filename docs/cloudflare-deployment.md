@@ -1,7 +1,12 @@
 # Frontend deployments
 
 LANIS UI is hosted as static assets on Cloudflare Workers. The backend stays at
-`https://lanis-backend.joancode.dev`.
+`https://api.lanis.arg-server.de`.
+
+Before deploying this URL change, complete the lanis_api
+`docs/api-domain-migration.md` rollout and verify DNS, TLS, health, login, refresh
+and downloads. Keep `https://lanis-backend.joancode.dev` serving older clients
+and the existing OAuth/MCP issuer. Revert the client URL and rebuild to roll back.
 
 ## Automatic deployments
 
@@ -30,7 +35,7 @@ makes a missing browser fail the deployment instead of skipping prerendering.
 The artifact must contain `index.html`, `status/index.html`, and `sw.js`.
 
 Hosted builds use `NODE_ENV=production` and
-`VITE_API_URL=https://lanis-backend.joancode.dev`. These are public frontend
+`VITE_API_URL=https://api.lanis.arg-server.de`. These are public frontend
 settings; never put credentials in `VITE_*` variables. `.env.production` supplies
 the API URL for local production builds too. Local `npm run dev` stays in
 development mode.
