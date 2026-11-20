@@ -3,7 +3,7 @@ import { OverlayScrollbars } from 'overlayscrollbars';
 import 'overlayscrollbars/overlayscrollbars.css';
 import { capture, analyticsEnabled } from '../../analytics/client';
 import { supportContext } from '../../analytics/supportContext';
-import { modulePreloadOrder, prefetchModule } from '../../utils/modulePrefetch';
+import { modulePreloadOrder, prefetchModule, preloadModules as preloadModuleBatch } from '../../utils/modulePrefetch';
 import { useAuth } from '../../contexts/AuthContext';
 import { usePreferences } from '../../contexts/PreferencesContext';
 import { BasePathProvider } from '../../contexts/BasePathContext';
@@ -182,15 +182,12 @@ const Layout: React.FC<LayoutProps> = ({ children, basePath = '' }) => {
 
   React.useEffect(() => {
     if (!token || !preloadModules.length) return;
-    let cancelled = false;
-    const timer = window.setTimeout(async () => {
-      for (const id of modulePreloadOrder(preloadModules, preferences)) {
-        if (cancelled) break;
-        if (window.location.pathname.replace(/^\/demo/, '').split('/')[1] === id) continue;
-        await prefetchModule(id, token, preferences);
-      }
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => {
+      const active = window.location.pathname.replace(/^\/demo/, '').split('/')[1];
+      void preloadModuleBatch(modulePreloadOrder(preloadModules, preferences).filter(id => id !== active), token, preferences, controller.signal);
     }, 500);
-    return () => { cancelled = true; window.clearTimeout(timer); };
+    return () => { controller.abort(); window.clearTimeout(timer); };
   }, [token, preloadModules, preferences]);
 
   React.useEffect(() => {
