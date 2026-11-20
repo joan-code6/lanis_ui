@@ -684,6 +684,21 @@ const Settings: React.FC = () => {
   const [notificationError, setNotificationError] = useState('');
   const [notificationClassSyncFailed, setNotificationClassSyncFailed] = useState(false);
   const [notificationMessage, setNotificationMessage] = useState('');
+  const [isBrave, setIsBrave] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    const brave = (navigator as Navigator & {
+      brave?: { isBrave?: () => Promise<boolean> };
+    }).brave;
+    void brave?.isBrave?.().then((result) => {
+      if (!cancelled) setIsBrave(result === true);
+    }).catch(() => {
+      // Keep the browser-specific notice hidden if detection is unavailable.
+    });
+    return () => { cancelled = true; };
+  }, []);
+
 
   useEffect(() => {
     if (!savedCustomColor || localStorage.getItem(CUSTOM_THEME_COLOR_KEY) === savedCustomColor) return;
@@ -1341,6 +1356,14 @@ const Settings: React.FC = () => {
           </div>
 
           <div className="mt-5 space-y-4 border-t border-surface-100 pt-5 dark:border-surface-800">
+            {isBrave && pushSupported && (
+              <p className="rounded-xl bg-surface-50 p-3 text-xs text-surface-600 dark:bg-surface-800 dark:text-surface-300">
+                <strong>Brave:</strong> Push-Benachrichtigungen sind in Brave standardmäßig deaktiviert.
+                Aktiviere unter Einstellungen → Datenschutz und Sicherheit die Option
+                „Google-Dienste für Push-Nachrichten verwenden“. Starte Brave anschließend neu
+                und aktiviere die Benachrichtigungen hier erneut.
+              </p>
+            )}
             {!notificationConfigured && (
               <p className="rounded-xl bg-amber-50 p-3 text-xs text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
                 Push-Benachrichtigungen sind auf diesem Server noch nicht eingerichtet.
